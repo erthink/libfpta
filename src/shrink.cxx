@@ -17,11 +17,10 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples.h"
-#include "internal.h"
+#include "fast_positive/internals.h"
 
 void fpt_shrink(fpt_rw* pt) {
-    if (pt->junk) {
-        // TODO
-    }
+	if (pt->junk) {
+		// TODO
+	}
 }

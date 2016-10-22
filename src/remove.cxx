@@ -17,68 +17,74 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples.h"
-#include "internal.h"
+#include "fast_positive/internals.h"
+
+static __inline
+bool fpt_is_tailed(fpt_rw* pt, fpt_field *pf, size_t units) {
+	assert(pf == &pt->units[pt->head].field);
+
+	return units == 0
+		|| &pf->body[pf->offset + units] == &pt->units[pt->tail].data;
+}
 
 void fpt_erase_field(fpt_rw* pt, fpt_field *pf) {
-    if (unlikely(ct_is_dead(pf->ct)))
-        return;
+	if (unlikely(ct_is_dead(pf->ct)))
+		return;
 
-    // mark field as `dead`
-    pf->ct |= fpt_co_dead << fpt_co_shift;
+	// mark field as `dead`
+	pf->ct |= fpt_co_dead << fpt_co_shift;
+	size_t units = fpt_field_units(pf);
 
-    size_t units = fpt_field_units(pf);
+	// head & tail optimization
+	if (pf != &pt->units[pt->head].field
+			|| ! fpt_is_tailed(pt, pf, units)) {
+		// account junk
+		pt->junk += units + 1;
+		return;
+	}
 
-    // head & tail optimization
-    if (pf == &pt->units[pt->head].field) {
-        if (&pf->body[pf->offset + units] == &pt->units[pt->tail].data) {
-            // cutoff head and tail
-            pt->head += 1;
-            pt->tail -= units;
+	// cutoff head and tail
+	pt->head += 1;
+	pt->tail -= units;
 
-            // continue cutting junk
-            while (pt->head < pt->pivot) {
-                pf = &pt->units[pt->head].field;
-                if (! ct_is_dead(pf->ct))
-                    break;
+	// continue cutting junk
+	while (pt->head < pt->pivot) {
+		pf = &pt->units[pt->head].field;
+		if (! ct_is_dead(pf->ct))
+			break;
 
-                units = fpt_field_units(pf);
-                if (&pf->body[pf->offset + units] != &pt->units[pt->tail].data)
-                    break;
+		units = fpt_field_units(pf);
+		if (! fpt_is_tailed(pt, pf, units))
+			break;
 
-                assert(pt->junk >= units + 1);
-                pt->junk -= units + 1;
-                pt->head += 1;
-                pt->tail -= units;
-            }
-        }
-    } else {
-        // account junk
-        pt->junk += units + 1;
-    }
+		assert(pt->junk >= units + 1);
+		pt->junk -= units + 1;
+		pt->head += 1;
+		pt->tail -= units;
+	}
 }
 
 int fpt_erase(fpt_rw* pt, unsigned column, int type_or_filter) {
-    if (unlikely(column > fpt_max_cols))
-        return fpt_einval;
+	if (unlikely(column > fpt_max_cols))
+		return fpt_einval;
 
-    if (type_or_filter & fpt_filter) {
-        int count = 0;
-        fpt_field *begin = &pt->units[pt->head].field;
-        fpt_field *pivot = &pt->units[pt->pivot].field;
-        for (fpt_field* pf = begin; pf < pivot; ++pf) {
-            if (fpt_ct_match(pf, column, type_or_filter)) {
-                fpt_erase_field(pt, pf);
-                count++;
-            }
-        }
-        return count;
-    }
+	if (type_or_filter & fpt_filter) {
+		int count = 0;
+		fpt_field *begin = &pt->units[pt->head].field;
+		fpt_field *pivot = &pt->units[pt->pivot].field;
+		for (fpt_field* pf = begin; pf < pivot; ++pf) {
+			if (fpt_ct_match(pf, column, type_or_filter)) {
+				fpt_erase_field(pt, pf);
+				count++;
+			}
+		}
+		return count;
+	}
 
-    fpt_field *pf = fpt_lookup_ct(pt, fpt_pack_coltype(column, type_or_filter));
-    if (pf == nullptr)
-        return 0;
+	fpt_field *pf = fpt_lookup_ct(pt, fpt_pack_coltype(column, type_or_filter));
+	if (pf == nullptr)
+		return 0;
 
-    fpt_erase_field(pt, pf);
-    return 1;
+	fpt_erase_field(pt, pf);
+	return 1;
 }

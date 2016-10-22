@@ -17,8 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples.h"
-#include "internal.h"
+#include "fast_positive/internals.h"
 
 #include <stdio.h>
 

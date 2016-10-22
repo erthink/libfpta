@@ -20,214 +20,166 @@
 #pragma once
 /* *INDENT-OFF* */
 
-#ifndef __STDC_LIMIT_MACROS
-#   define __STDC_LIMIT_MACROS 1
-#endif
-
-/*! \todo Support for other compilers. */
-#if !defined(__GNUC__) || __GNUC__ < 4
-#    error Sorry, this source code wanna GCC >= 4.x only :(
-#endif
-
-/*! \todo Enhance for Linux kernel. */
 #if defined(__KERNEL__) || !defined(__cplusplus) || __cplusplus < 201103L
-#    include <stddef.h>
-#    include <stdint.h>
+#	include <stddef.h>
+#	include <stdint.h>
+#	include <assert.h>
 #else
-#    include <cstddef>
-#    include <cstdint>
+#	include <cstddef>
+#	include <cstdint>
+#	include <cassert>
 #endif
 
-#if !defined(__cplusplus) || __cplusplus < 201103L
-#    define nullptr NULL
-#    define final
+#if !defined(__GNUC__) || !__GNUC_PREREQ(4,2)
+	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
+	 * But you could remove this #error and try to continue at your own risk.
+	 * In such case please don't rise up an issues related ONLY to old compilers. */
+#	error "libfptu required at least GCC 4.2 compatible C/C++ compiler."
 #endif
 
-#ifndef __cplusplus
-#    define mutable
-#    ifndef bool
-#        define bool _Bool
-#    endif
-#    ifndef true
-#        define true (1)
-#    endif
-#    ifndef false
-#        define false (0)
-#    endif
+#ifndef __CLANG_PREREQ
+#	ifdef __clang__
+#		define __CLANG_PREREQ(maj,min) \
+			((__clang_major__ << 16) + __clang_minor__ >= ((maj) << 16) + (min))
+#	else
+#		define __CLANG_PREREQ(maj,min) (0)
+#	endif
+#endif /* __CLANG_PREREQ */
+
+#ifndef __has_attribute
+#	define __has_attribute(x) (0)
 #endif
+
+//----------------------------------------------------------------------
 
 #ifndef __extern_C
-#    ifdef __cplusplus
-#        define __extern_C extern "C"
-#    else
-#        define __extern_C
-#    endif
+#	ifdef __cplusplus
+#		define __extern_C extern "C"
+#	else
+#		define __extern_C
+#	endif
+#endif /* __extern_C */
+
+#ifndef __cplusplus
+#	ifndef bool
+#		define bool _Bool
+#	endif
+#	ifndef true
+#		define true (1)
+#	endif
+#	ifndef false
+#		define false (0)
+#	endif
 #endif
+
+//----------------------------------------------------------------------
+
+#if !defined(__thread) && (defined(_MSC_VER) || defined(__DMC__))
+#	define __thread __declspec(thread)
+#endif
+
+#ifndef __alwaysinline
+#	if defined(__GNUC__) || __has_attribute(always_inline)
+#		define __alwaysinline __inline __attribute__((always_inline))
+#	elif defined(_MSC_VER)
+#		define __alwaysinline __forceinline
+#	else
+#		define __alwaysinline
+#	endif
+#endif /* __alwaysinline */
 
 #ifndef __noinline
-#    define __noinline __attribute__((__noinline__))
-#endif
+#	if defined(__GNUC__) || __has_attribute(noinline)
+#		define __noinline __attribute__((noinline))
+#	elif defined(_MSC_VER)
+#		define __noinline __declspec(noinline)
+#	endif
+#endif /* __noinline */
 
 #ifndef __must_check_result
-#    define __must_check_result __attribute__((warn_unused_result))
-#endif
+#	if defined(__GNUC__) || __has_attribute(warn_unused_result)
+#		define __must_check_result __attribute__((warn_unused_result))
+#	else
+#		define __must_check_result
+#	endif
+#endif /* __must_check_result */
 
 #ifndef __deprecated
-#    define __deprecated __attribute__((deprecated))
-#endif
-
-#ifndef __forceinline
-#    define __forceinline __inline __attribute__((always_inline))
-#endif
+#	if defined(__GNUC__) || __has_attribute(deprecated)
+#		define __deprecated __attribute__((deprecated))
+#	elif defined(_MSC_VER)
+#		define __deprecated __declspec(deprecated)
+#	else
+#		define __deprecated
+#	endif
+#endif /* __deprecated */
 
 #ifndef __packed
-#    define __packed __attribute__((packed))
-#endif
-
-#ifndef __maybe_unused
-#    define __maybe_unused __attribute__((unused))
+#	define __packed __attribute__((packed))
 #endif
 
 #ifndef __hidden
-#    define __hidden __attribute__((visibility("hidden")))
+#	if defined(__GNUC__) || __has_attribute(visibility)
+#		define __hidden __attribute__((visibility("hidden")))
+#	else
+#		define __hidden
+#	endif
 #endif
 
 #ifndef __public
-#    define __public __attribute__((visibility("default")))
+#	if defined(__GNUC__) || __has_attribute(visibility)
+#		define __public __attribute__((visibility("default")))
+#	else
+#		define __public
+#	endif
 #endif
 
 #ifndef __noreturn
-#    define __noreturn __attribute__((noreturn))
+#	if defined(__GNUC__) || __has_attribute(noreturn)
+#		define __noreturn __attribute__((noreturn))
+#	elif defined(__MSC_VER)
+#		define __noreturn __declspec(noreturn)
+#	else
+#		define __noreturn
+#	endif
 #endif
 
 #ifndef __nothrow
-#    define __nothrow __attribute__((nothrow))
+#	if defined(__GNUC__) || __has_attribute(nothrow)
+#		define __nothrow __attribute__((nothrow))
+#	elif defined(__MSC_VER)
+#		define __nothrow __declspec(nothrow)
+#	else
+#		define __nothrow
+#	endif
 #endif
 
 #ifndef __pure_function
-/*
- * Many functions have no effects except the return value and their return value depends only
- * on the parameters and/or global variables. Such a function can be subject to common
- * subexpression elimination and loop optimization just as an arithmetic operator would be.
- * These functions should be declared with the attribute pure.
- */
-#    define __pure_function __attribute__((pure))
+	/* Many functions have no effects except the return value and their
+	 * return value depends only on the parameters and/or global variables.
+	 * Such a function can be subject to common subexpression elimination
+	 * and loop optimization just as an arithmetic operator would be.
+	 * These functions should be declared with the attribute pure. */
+#	if defined(__GNUC__) || __has_attribute(pure)
+#		define __pure_function __attribute__((pure))
+#	else
+#		define __pure_function
+#	endif
 #endif
 
 #ifndef __const_function
-/*
- * Many functions do not examine any values except their arguments,
- * and have no effects except the return value. Basically this is just slightly
- * more strict class than the PURE attribute, since function is not allowed to read global memory.
- *
- * Note that a function that has pointer arguments and examines the data pointed to must not be declared const.
- * Likewise, a function that calls a non-const function usually must not be const.
- * It does not make sense for a const function to return void..
- */
-#    define __const_function __attribute__((const))
-#endif
-
-#ifndef __aligned
-#   define __aligned(N) __attribute__((aligned(N)))
-#endif
-
-/*! \todo Be sure to NDEBUG is enough. */
-#if NDEBUG
-#    ifndef __hot
-#        define __hot __attribute__((hot, optimize("O3")))
-#    endif
-#    ifndef __cold
-#        define __cold __attribute__((cold, optimize("Os")))
-#    endif
-#    ifndef __flatten
-#        define __flatten __attribute__((flatten))
-#    endif
-#else
-#    ifndef __hot
-#        define __hot
-#    endif
-#    ifndef __cold
-#        define __cold
-#    endif
-#    ifndef __flatten
-#        define __flatten
-#    endif
-#endif
-
-#ifdef __cplusplus
-#   define FPT_NONCOPYABLE(typename) \
-        typename(const typename&) = delete; \
-        typename& operator=(typename const&) = delete
-#endif
-
-#ifndef __noop
-#    define __noop() do {} while (0)
-#endif
-
-#ifndef __unreachable
-#    if __GNUC_MINOR__ >= 5
-#        define __unreachable() __builtin_unreachable()
-#    else
-#        define __unreachable() __noop()
-#    endif
-#endif
-
-#ifndef __prefetch
-#    define __prefetch(ptr) __builtin_prefetch(ptr)
-#endif
-
-#ifndef __expect_equal
-#    define __expect_equal(a, b) __builtin_expect((a), (b))
-#endif
-
-#define FPT_TETRAD(a, b, c, d) ((a) << 24 | (b) << 16 | (c) << 8 | (d))
-
-#ifdef __cplusplus
-    template <typename T, size_t N>
-    char (&__FPT_ArraySizeHelper(T (&array)[N]))[N];
-#   define FPT_ARRAY_LENGTH(array) (sizeof(::__FPT_ArraySizeHelper(array)))
-#else
-#   define FPT_ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
-#endif
-
-#define FPT_ARRAY_END(array) (&array[FPT_ARRAY_LENGTH(array)])
-
-#define FPT_STR(x) #x
-#define FPT_STRINGIFY(x) FPT_STR(x)
-
-#ifndef offsetof
-#   define offsetof(type, member)  __builtin_offsetof(type, member)
-#endif
-
-#ifndef container_of
-#   define container_of(ptr, type, member) \
-    ({ \
-        const __typeof(((type*)nullptr)->member) * __ptr = (ptr); \
-        (type*)((char*)__ptr - offsetof(type, member)); \
-    })
-#endif
-
-#define FPT_IS_POWER2(value) (((value) & ((value) - 1)) == 0 && (value) > 0)
-#define __FPT_FLOOR_MASK(type, value, mask) ((value) & ~(type)(mask))
-#define __FPT_CEIL_MASK(type, value, mask) __FPT_FLOOR_MASK(type, (value) + (mask), mask)
-#define FPT_ALIGN_FLOOR(value, align) __FPT_FLOOR_MASK(__typeof(value), value, (align) - 1LL)
-#define FPT_ALIGN_CEIL(value, align) __FPT_CEIL_MASK(__typeof(value), value, (align) - 1LL)
-#define FPT_IS_ALIGNED(ptr, align) ((((align) - 1LL) & ((__typeof(align))((uintptr_t)(ptr)))) == 0)
-
-#ifndef likely
-#ifdef __cplusplus
-    /* LY: workaround for "pretty" boost */
-    static __forceinline bool likely(bool cond) { return __builtin_expect(cond, 1); }
-#else
-#    define likely(cond) __builtin_expect(!!(cond), 1)
-#endif
-#endif /* likely */
-
-#ifndef unlikely
-#ifdef __cplusplus
-    /* LY: workaround for "pretty" boost */
-    static __forceinline bool unlikely(bool cond) { return __builtin_expect(cond, 0); }
-#else
-#    define unlikely(cond) __builtin_expect(!!(cond), 0)
-#endif
-#endif /* unlikely */
+	/* Many functions do not examine any values except their arguments,
+	 * and have no effects except the return value. Basically this is just
+	 * slightly more strict class than the PURE attribute, since function
+	 * is not allowed to read global memory.
+	 *
+	 * Note that a function that has pointer arguments and examines the
+	 * data pointed to must not be declared const. Likewise, a function
+	 * that calls a non-const function usually must not be const.
+	 * It does not make sense for a const function to return void. */
+#	if defined(__GNUC__) || __has_attribute(const)
+#		define __const_function __attribute__((const))
+#	else
+#		define __const_function
+#	endif
+#endif /* __const_function */

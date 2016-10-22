@@ -1,7 +1,7 @@
 add_library(fptu STATIC
     ../fast_positive/defs.h
     ../fast_positive/tuples.h
-    internal.h
+    ../fast_positive/internals.h
     common.cxx
     create.cxx
     check.cxx

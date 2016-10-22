@@ -17,176 +17,175 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples.h"
-#include "internal.h"
+#include "fast_positive/internals.h"
 
-#include <string.h>
-
-static
+static __hot
 const char* fpt_field_check(const fpt_field* pf, const char* pivot,
-                               const char *detent, size_t &payload_units) {
-    payload_units = 0;
-    if (unlikely(detent < (const char*) pf + 4))
-        return "field.header > detent";
+							   const char *detent, size_t &payload_units) {
+	payload_units = 0;
+	if (unlikely(detent < (const char*) pf + fpt_unit_size))
+		return "field.header > detent";
 
-    unsigned type = fpt_get_type(pf->ct);
-    if (type <= fpt_uint16)
-        // without ex-data
-        return nullptr;
+	unsigned type = fpt_get_type(pf->ct);
+	if (type <= fpt_uint16)
+		// without ex-data
+		return nullptr;
 
-    payload_units = 1;
-    const fpt_payload* payload = fpt_field_payload(pf);
-    if (unlikely((char*) payload < pivot))
-        return "field.begin < tuple.pivot";
+	payload_units = 1;
+	const fpt_payload* payload = fpt_field_payload(pf);
+	if (unlikely((char*) payload < pivot))
+		return "field.begin < tuple.pivot";
 
-    size_t len;
-    ptrdiff_t left = (char*) detent - (const char*) payload;
-    if (type < fpt_string) {
-        // fixed length type
-        payload_units = fpt_internal_map_t2u[type];
-        len = fpt_internal_map_t2b[type];
-        if (unlikely((ptrdiff_t) len > left))
-            return "field.end > detent";
-        return nullptr;
-    }
+	size_t len;
+	ptrdiff_t left = (char*) detent - (const char*) payload;
+	if (type < fpt_string) {
+		// fixed length type
+		payload_units = fpt_internal_map_t2u[type];
+		len = fpt_internal_map_t2b[type];
+		if (unlikely((ptrdiff_t) len > left))
+			return "field.end > detent";
+		return nullptr;
+	}
 
-    if (unlikely(left < 4))
-        return "field.varlen > detent";
+	if (unlikely(left < fpt_unit_size))
+		return "field.varlen > detent";
 
-    if (type == fpt_string) {
-        // length is'nt stored, but zero terminated
-        len = strnlen((const char*) payload, left) + 1;
-        payload_units = (len + 3) >> 2;
-    } else {
-        // length is stored
-        payload_units += ((fpt_varlen*) payload)->brutto;
-        len = ((fpt_varlen*) payload)->brutto * (size_t) 4 + 4;
-    }
+	if (type == fpt_string) {
+		// length is'nt stored, but zero terminated
+		len = strnlen((const char*) payload, left) + 1;
+		payload_units = bytes2units(len);
+	} else {
+		// length is stored
+		payload_units += payload->other.varlen.brutto;
+		len = units2bytes(payload_units);
+	}
 
-    if (unlikely(len > fpt_max_field_bytes))
-        return "field.length > max_field_bytes";
+	if (unlikely(len > fpt_max_field_bytes))
+		return "field.length > max_field_bytes";
 
-    if (unlikely((ptrdiff_t) len > left))
-        return "field.end > detent";
+	if (unlikely((ptrdiff_t) len > left))
+		return "field.end > detent";
 
-    if (pf->ct & fpt_farray) {
-        // TODO
-        return "array not yet supported";
-    }
+	if (unlikely(type & fpt_farray)) {
+		// TODO
+		return "arrays not yet supported";
+	} else if (type == fpt_opaque) {
+		len = payload->other.varlen.opaque_bytes;
+		if (unlikely(payload_units != bytes2units(len) + 1))
+			return "field.opaque_bytes != field.brutto";
+	} else if (pf->ct == fpt_nested) {
+		// TODO
+		return "nested tuples not yet supported";
+	}
 
-    if (pf->ct == fpt_nested) {
-        // TODO
-        return "nested tuples not yet supported";
-    }
-
-    return nullptr;
+	return nullptr;
 }
 
 const char* fpt_check_ro(fpt_ro ro) {
-    if (ro.total_bytes == 0)
-        // valid empty tuple
-        return nullptr;
+	if (ro.total_bytes == 0)
+		// valid empty tuple
+		return nullptr;
 
-    if (unlikely(ro.units == nullptr))
-        return "tuple.items.is_nullptr";
+	if (unlikely(ro.units == nullptr))
+		return "tuple.items.is_nullptr";
 
-    if (unlikely(ro.total_bytes < 4))
-        return "tuple.length_bytes < 4";
+	if (unlikely(ro.total_bytes < fpt_unit_size))
+		return "tuple.length_bytes < fpt_unit_size";
 
-    if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
-        return "tuple.length_bytes < max_bytes";
+	if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
+		return "tuple.length_bytes < max_bytes";
 
-    if (unlikely(ro.total_bytes != 4 + 4 * (size_t) ro.units[0].varlen.brutto))
-        return "tuple.length_bytes != tuple.brutto";
+	if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
+		return "tuple.length_bytes != tuple.brutto";
 
-    const char *detent = (const char*) ro.units + ro.total_bytes;
-    unsigned items = ro.units[0].varlen.tuple_items & 0x7FFF;
-    if (unlikely(items > fpt_max_cols))
-        return "tuple.items > fpt_max_cols";
+	const char *detent = (const char*) ro.units + ro.total_bytes;
+	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
+	if (unlikely(items > fpt_max_fields))
+		return "tuple.items > fpt_max_fields";
 
-    const fpt_field *scan = &ro.units[1].field;
-    const char* pivot = (const char*) scan + items * 4;
-    if (unlikely(pivot > detent))
-        return "tuple.pivot > tuple.end";
+	const fpt_field *scan = &ro.units[1].field;
+	const char* pivot = (const char*) scan + units2bytes(items);
+	if (unlikely(pivot > detent))
+		return "tuple.pivot > tuple.end";
 
-    if (0x8000 & ro.units[0].varlen.tuple_items) {
-        // TODO: support for sorted tuple
-    }
+	if (fpt_lx_mask & ro.units[0].varlen.tuple_items) {
+		// TODO: support for sorted tuples
+	}
 
-    size_t payload_total_bytes = 0;
-    for (; (const char*) scan < pivot; ++scan) {
-        size_t payload_units;
-        const char* bug = fpt_field_check(scan, pivot, detent, payload_units);
-        if (unlikely(bug))
-            return bug;
+	size_t payload_total_bytes = 0;
+	for (; (const char*) scan < pivot; ++scan) {
+		size_t payload_units;
+		const char* bug = fpt_field_check(scan, pivot, detent, payload_units);
+		if (unlikely(bug))
+			return bug;
 
-        payload_total_bytes += payload_units * 4;
-        //if (ct_is_dead(scan->ct))
-        //    return "tuple.has_junk";
-    }
+		payload_total_bytes += units2bytes(payload_units);
+		//if (ct_is_dead(scan->ct))
+		//    return "tuple.has_junk";
+	}
 
-    if (pivot + payload_total_bytes > detent)
-        return "tuple.overlapped";
+	if (unlikely(pivot + payload_total_bytes > detent))
+		return "tuple.overlapped";
 
-    if (pivot + payload_total_bytes != detent)
-        return "tuple.has_wholes";
+	if (unlikely(pivot + payload_total_bytes != detent))
+		return "tuple.has_wholes";
 
-    return nullptr;
+	return nullptr;
 }
 
 const char* fpt_check(fpt_rw *pt) {
-    if (unlikely(pt == nullptr))
-        return "tuple.is_nullptr";
+	if (unlikely(pt == nullptr))
+		return "tuple.is_nullptr";
 
-    if (unlikely(pt->end < 1))
-        return "tuple.end < 1";
+	if (unlikely(pt->head < 1))
+		return "tuple.head < 1";
 
-    if (unlikely(pt->tail > pt->end))
-        return "tuple.tail > tuple.end";
+	if (unlikely(pt->head > pt->pivot))
+		return "tuple.head > tuple.pivot";
 
-    if (unlikely(pt->pivot > pt->tail))
-        return "tuple.pivot > tuple.tail";
+	if (unlikely(pt->pivot > pt->tail))
+		return "tuple.pivot > tuple.tail";
 
-    if (unlikely(pt->head > pt->pivot))
-        return "tuple.head > tuple.pivot";
+	if (unlikely(pt->tail > pt->end))
+		return "tuple.tail > tuple.end";
 
-    if (unlikely(pt->pivot - pt->head > fpt_max_cols))
-        return "tuple.n_cols > max_cols";
+	if (unlikely(pt->pivot - pt->head > fpt_max_fields))
+		return "tuple.n_cols > fpt_max_fields";
 
-    if (pt->tail - pt->head > fpt_max_tuple_bytes/4 - 1)
-        return "tuple.size > max_bytes";
+	if (unlikely(pt->tail - pt->head > fpt_max_tuple_bytes/fpt_unit_size - 1))
+		return "tuple.size > max_bytes";
 
-    if (unlikely(pt->junk > pt->tail - pt->head))
-        return "tuple.junk > tuple.size";
+	if (unlikely(pt->junk > pt->tail - pt->head))
+		return "tuple.junk > tuple.size";
 
-    const fpt_field *scan = &pt->units[pt->head].field;
-    const char* pivot = (const char*) &pt->units[pt->pivot];
-    const char* detent = (const char*) &pt->units[pt->tail];
-    size_t payload_total_bytes = 0;
-    size_t payload_junk_units = 0;
-    size_t junk_items = 0;
-    for (; (const char*) scan < pivot; ++scan) {
-        size_t payload_units;
-        const char* bug = fpt_field_check(scan, pivot, detent, payload_units);
-        if (unlikely(bug))
-            return bug;
+	const fpt_field *scan = &pt->units[pt->head].field;
+	const char* pivot = (const char*) &pt->units[pt->pivot];
+	const char* detent = (const char*) &pt->units[pt->tail];
+	size_t payload_total_bytes = 0;
+	size_t payload_junk_units = 0;
+	size_t junk_items = 0;
+	for (; (const char*) scan < pivot; ++scan) {
+		size_t payload_units;
+		const char* bug = fpt_field_check(scan, pivot, detent, payload_units);
+		if (unlikely(bug))
+			return bug;
 
-        payload_total_bytes += payload_units * 4;
-        if (ct_is_dead(scan->ct)) {
-            junk_items++;
-            payload_junk_units += payload_units;
-        }
-    }
+		payload_total_bytes += units2bytes(payload_units);
+		if (ct_is_dead(scan->ct)) {
+			junk_items++;
+			payload_junk_units += payload_units;
+		}
+	}
 
-    if (pivot + payload_total_bytes > detent)
-        return "tuple.overlapped";
+	if (unlikely(pivot + payload_total_bytes > detent))
+		return "tuple.overlapped";
 
-    if (pt->junk != payload_junk_units + junk_items)
-        return "tuple.junk != junk_items + junk_payload";
+	if (unlikely(pt->junk != payload_junk_units + junk_items))
+		return "tuple.junk != junk_items + junk_payload";
 
-    if (pivot + payload_total_bytes != detent)
-        return "tuple.has_wholes";
+	if (unlikely(pivot + payload_total_bytes != detent))
+		return "tuple.has_wholes";
 
-    return nullptr;
+	return nullptr;
 }
 
