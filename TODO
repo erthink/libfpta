@@ -1,0 +1,11 @@
+2016 october:
+ fpt_fetch();
+ xxx_insert(), e.g. collections;
+ xxx_update();
+ shrink(), e.g. defragmentation;
+ xxx_cmp();
+ support for arrays and nested tuples;
+ C++ bindings;
+
+Later:
+ external scheme support and C++ binding auto-generation;
