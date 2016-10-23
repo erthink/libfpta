@@ -4,6 +4,8 @@ CMakeFiles/
 CTestTestfile.cmake
 DartConfiguration.tcl
 Makefile
+CMakeLists.txt.user
+libfptu.cbp
 Testing/
 VERSION
 cmake_install.cmake
@@ -22,3 +24,5 @@ test/cmake_install.cmake
 test/ut_0trivia
 test/ut_1create
 test/ut_2upsert
+test/ut_3iterate
+test/ut_4fetch

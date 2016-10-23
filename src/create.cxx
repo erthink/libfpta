@@ -60,6 +60,61 @@ size_t fpt_junkspace(const fpt_rw* pt) {
 	return units2bytes(pt->junk);
 }
 
+fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes,
+		unsigned more_items, const char** error) {
+	if (ro.total_bytes == 0)
+		return fpt_init(space, buffer_bytes, more_items);
+
+	if (error) {
+		*error = fpt_check_ro(ro);
+		if (unlikely(*error != nullptr))
+			return nullptr;
+	} else {
+		if (unlikely(ro.units == nullptr))
+			return nullptr;
+		if (unlikely(ro.total_bytes < fpt_unit_size))
+			return nullptr;
+		if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
+			return nullptr;
+		if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
+			return nullptr;
+	}
+
+	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
+	if (unlikely(items > fpt_max_fields))
+		return nullptr;
+	if (unlikely(space == nullptr || more_items > fpt_max_fields))
+		return nullptr;
+	if (unlikely(buffer_bytes > FPT_ALIGN_CEIL(sizeof(fpt_rw)
+			+ fpt_max_tuple_bytes, CACHELINE_SIZE)))
+		return nullptr;
+
+	const char *end = (const char*) ro.units + ro.total_bytes;
+	const char *begin = (const char*) &ro.units[1];
+	const char* pivot = (const char*) begin + units2bytes(items);
+	if (unlikely(pivot > end))
+		return nullptr;
+
+	if (fpt_max_fields - items > more_items)
+		more_items = fpt_max_fields;
+	else
+		more_items = items + more_items;
+	assert(more_items <= fpt_max_fields);
+
+	ptrdiff_t payload_bytes = end - begin;
+	if (unlikely(buffer_bytes < sizeof(fpt_rw)
+			+ payload_bytes + units2bytes(more_items)))
+		return nullptr;
+
+	fpt_rw *pt = (fpt_rw*) space;
+	pt->end = (buffer_bytes - sizeof(fpt_rw)) / fpt_unit_size + 1;
+	pt->pivot = more_items + 1;
+	pt->head = pt->pivot - items;
+	pt->tail = pt->head + (payload_bytes >> fpt_unit_shift);
+	pt->junk = 0;
+	return pt;
+}
+
 //----------------------------------------------------------------------
 
 #include <stdlib.h>

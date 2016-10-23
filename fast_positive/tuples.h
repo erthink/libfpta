@@ -203,8 +203,7 @@ const char* fpt_check_ro(fpt_ro ro);
 const char* fpt_check(fpt_rw *pt);
 
 fpt_ro fpt_take_noshrink(fpt_rw* pt);
-// TODO
-//fpt_rw fpt_fetch(void* buffer_space, size_t buffer_bytes, unsigned items_max, fpt_ro ro);
+fpt_rw* fpt_fetch(fpt_ro ro, void* buffer_space, size_t buffer_bytes, unsigned more_items, const char** error);
 
 // TODO
 //void fpt_shrink(fpt_rw* pt);
