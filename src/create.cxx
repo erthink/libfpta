@@ -93,23 +93,23 @@ fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes,
 	if (unlikely(pivot > end))
 		return nullptr;
 
-	if (fpt_max_fields - items > more_items)
-		more_items = fpt_max_fields;
-	else
-		more_items = items + more_items;
-	assert(more_items <= fpt_max_fields);
+	size_t reserve_items = items + more_items;
+	if (reserve_items > fpt_max_fields)
+		reserve_items = fpt_max_fields;
 
-	ptrdiff_t payload_bytes = end - begin;
-	if (unlikely(buffer_bytes < sizeof(fpt_rw)
-			+ payload_bytes + units2bytes(more_items)))
+	ptrdiff_t payload_bytes = end - pivot;
+	if (unlikely(buffer_bytes < sizeof(fpt_rw) + units2bytes(reserve_items)
+			+ payload_bytes))
 		return nullptr;
 
 	fpt_rw *pt = (fpt_rw*) space;
 	pt->end = (buffer_bytes - sizeof(fpt_rw)) / fpt_unit_size + 1;
-	pt->pivot = more_items + 1;
+	pt->pivot = reserve_items + 1;
 	pt->head = pt->pivot - items;
-	pt->tail = pt->head + (payload_bytes >> fpt_unit_shift);
+	pt->tail = pt->pivot + (payload_bytes >> fpt_unit_shift);
 	pt->junk = 0;
+
+	memcpy(&pt->units[pt->head], begin, ro.total_bytes - fpt_unit_size);
 	return pt;
 }
 
