@@ -58,7 +58,7 @@
 
 #ifndef __hot
 #	if defined(NDEBUG)
-#		if defined(__clang__))
+#		if defined(__clang__)
 			/* cland case, just put frequently used functions in separate section */
 #			define __hot __attribute__((section("text.hot_fptu")))
 #		elif defined(__GNUC__)
@@ -73,7 +73,7 @@
 
 #ifndef __cold
 #	if defined(NDEBUG)
-#		if defined(__clang__))
+#		if defined(__clang__)
 			/* cland case, just put infrequently used functions in separate section */
 #			define __cold __attribute__((section("text.unlikely_fptu")))
 #		elif defined(__GNUC__)
