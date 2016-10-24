@@ -39,13 +39,16 @@ fpt_field* fpt_append(fpt_rw* pt, unsigned ct, unsigned units) {
 		return pf;
 	}
 
-	if (pt->head < 2 || pt->end - pt->tail < units)
+	if (unlikely(pt->head < 2 || pt->tail + units > pt->end))
 		return nullptr;
 
 	pt->head -= 1;
 	pf = &pt->units[pt->head].field;
 	if (likely(units)) {
-		pf->offset = &pt->units[pt->tail].data - pf->body;
+		size_t offset = &pt->units[pt->tail].data - pf->body;
+		if (unlikely(offset > fpt_limit))
+			return nullptr;
+		pf->offset = offset;
 		pt->tail += units;
 	} else {
 		pf->offset = -1;
@@ -62,7 +65,15 @@ fpt_field* fpt_emplace(fpt_rw* pt, unsigned ct, unsigned units) {
 		unsigned avail = fpt_field_units(pf);
 		if (likely(avail == units))
 			return pf;
+
 		fpt_erase_field(pt, pf);
+		fpt_field* fresh = fpt_append(pt, ct, units);
+		if (unlikely(fresh == nullptr)) {
+			// revert erase
+			pf->ct = ct;
+		}
+
+		return fresh;
 	}
 
 	return fpt_append(pt, ct, units);

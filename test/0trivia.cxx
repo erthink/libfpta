@@ -95,7 +95,7 @@ TEST(Trivia, Apriory) {
 
 	ASSERT_EQ(4, sizeof(fpt_varlen));
 	ASSERT_EQ(4, sizeof(fpt_field));
-	//ASSERT_EQ(8, sizeof(fpt_value));
+	ASSERT_EQ(4, sizeof(fpt_unit));
 	ASSERT_EQ(sizeof(struct iovec), sizeof(fpt_ro));
 
 	ASSERT_EQ(sizeof(fpt_rw), fpt_space(0, 0));
