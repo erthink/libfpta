@@ -206,7 +206,8 @@ const char* fpt_check_ro(fpt_ro ro);
 const char* fpt_check(fpt_rw *pt);
 
 fpt_ro fpt_take_noshrink(fpt_rw* pt);
-fpt_rw* fpt_fetch(fpt_ro ro, void* buffer_space, size_t buffer_bytes, unsigned more_items, const char** error);
+fpt_rw* fpt_fetch(fpt_ro ro, void* buffer_space, size_t buffer_bytes, unsigned more_items);
+size_t fpt_check_and_get_buffer_size(fpt_ro ro, unsigned more_items, unsigned more_payload, const char** error);
 
 // TODO
 //void fpt_shrink(fpt_rw* pt);

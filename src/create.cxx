@@ -59,25 +59,20 @@ size_t fpt_junkspace(const fpt_rw* pt) {
 	return units2bytes(pt->junk);
 }
 
-fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes,
-		unsigned more_items, const char** error) {
+//----------------------------------------------------------------------
+
+fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes, unsigned more_items) {
 	if (ro.total_bytes == 0)
 		return fpt_init(space, buffer_bytes, more_items);
 
-	if (error) {
-		*error = fpt_check_ro(ro);
-		if (unlikely(*error != nullptr))
-			return nullptr;
-	} else {
-		if (unlikely(ro.units == nullptr))
-			return nullptr;
-		if (unlikely(ro.total_bytes < fpt_unit_size))
-			return nullptr;
-		if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
-			return nullptr;
-		if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
-			return nullptr;
-	}
+	if (unlikely(ro.units == nullptr))
+		return nullptr;
+	if (unlikely(ro.total_bytes < fpt_unit_size))
+		return nullptr;
+	if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
+		return nullptr;
+	if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
+		return nullptr;
 
 	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
 	if (unlikely(items > fpt_max_fields))
@@ -111,6 +106,24 @@ fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes,
 
 	memcpy(&pt->units[pt->head], begin, ro.total_bytes - fpt_unit_size);
 	return pt;
+}
+
+size_t fpt_check_and_get_buffer_size(fpt_ro ro,
+	unsigned more_items, unsigned more_payload, const char** error) {
+	if (likely(error)) {
+		*error = fpt_check_ro(ro);
+		if (unlikely(*error != nullptr))
+			return 0;
+	}
+
+	if (unlikely(more_items > fpt_max_fields))
+		return 0;
+	if (unlikely(more_payload > fpt_max_tuple_bytes))
+		return 0;
+
+	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
+	size_t payload_bytes = ro.total_bytes - units2bytes(items + 1);
+	return fpt_space(items + more_items, payload_bytes + more_payload);
 }
 
 //----------------------------------------------------------------------

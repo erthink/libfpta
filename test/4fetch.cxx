@@ -25,42 +25,42 @@ TEST(Fetch, Invalid) {
 	ro.total_bytes = 0;
 	ro.units = nullptr;
 
-	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, 0, 0, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, fpt_max_tuple_bytes/2, fpt_max_fields/2, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, fpt_max_tuple_bytes, fpt_max_fields, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, ~0u, ~0u, nullptr));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, 0, 0));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, fpt_max_tuple_bytes/2, fpt_max_fields/2));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, fpt_max_tuple_bytes, fpt_max_fields));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, ~0u, ~0u));
 
 	char space_exactly_noitems[sizeof(fpt_rw)];
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), 1, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), fpt_max_fields, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, sizeof(space_exactly_noitems), 0, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems) - 1, 0, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, 0, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, 1, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, fpt_max_fields, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, fpt_max_fields * 2, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, ~0u, nullptr));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), 1));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), fpt_max_fields));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, sizeof(space_exactly_noitems), 0));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems) - 1, 0));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, 0));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, 1));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, fpt_max_fields));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, fpt_max_fields * 2));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, 0, ~0u));
 
 	char space_maximum[sizeof(fpt_rw) + fpt_max_tuple_bytes];
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_maximum, sizeof(space_maximum), fpt_max_fields + 1, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, sizeof(space_maximum), 0, nullptr));
-	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, ~0u, 1, nullptr));
-	ASSERT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, fpt_buffer_limit + 1, fpt_max_fields, nullptr));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_maximum, sizeof(space_maximum), fpt_max_fields + 1));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, nullptr, sizeof(space_maximum), 0));
+	EXPECT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, ~0u, 1));
+	ASSERT_EQ(nullptr, fpt_fetch(ro, space_exactly_noitems, fpt_buffer_limit + 1, fpt_max_fields));
 
 	fpt_rw *pt;
-	pt = fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), 0, nullptr);
+	pt = fpt_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), 0);
 	ASSERT_NE(nullptr, pt);
 	EXPECT_STREQ(nullptr, fpt_check(pt));
-	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), 0, nullptr);
+	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), 0);
 	ASSERT_NE(nullptr, pt);
 	EXPECT_STREQ(nullptr, fpt_check(pt));
-	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), 1, nullptr);
+	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), 1);
 	ASSERT_NE(nullptr, pt);
 	EXPECT_STREQ(nullptr, fpt_check(pt));
-	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), fpt_max_fields/2, nullptr);
+	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), fpt_max_fields/2);
 	ASSERT_NE(nullptr, pt);
 	EXPECT_STREQ(nullptr, fpt_check(pt));
-	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), fpt_max_fields, nullptr);
+	pt = fpt_fetch(ro, space_maximum, sizeof(space_maximum), fpt_max_fields);
 	ASSERT_NE(nullptr, pt);
 	EXPECT_STREQ(nullptr, fpt_check(pt));
 }
@@ -79,7 +79,7 @@ TEST(Fetch, Base) {
 	EXPECT_EQ(fpt_unit_size, origin_ro.total_bytes);
 
 	// check empty without more-items
-	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), 0, nullptr);
+	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), 0);
 	ASSERT_NE(nullptr, fetched_pt);
 	EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 
@@ -89,7 +89,7 @@ TEST(Fetch, Base) {
 	EXPECT_EQ(0, memcmp(origin_ro.units, fetched_ro.units, origin_ro.total_bytes));
 
 	// check empty with max-more-items
-	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), fpt_max_fields, nullptr);
+	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), fpt_max_fields);
 	ASSERT_NE(nullptr, fetched_pt);
 	EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 
@@ -112,7 +112,7 @@ TEST(Fetch, Base) {
 	EXPECT_EQ(fpt_unit_size * 2, origin_ro.total_bytes);
 
 	// check with max-more-items
-	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), fpt_max_fields, nullptr);
+	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), fpt_max_fields);
 	ASSERT_NE(nullptr, fetched_pt);
 	EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 
@@ -128,7 +128,7 @@ TEST(Fetch, Base) {
 	EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
 
 	// check without more-items
-	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), 0, nullptr);
+	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), 0);
 	ASSERT_NE(nullptr, fetched_pt);
 	EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 
@@ -149,7 +149,7 @@ TEST(Fetch, Base) {
 	EXPECT_EQ(fpt_unit_size * 3, origin_ro.total_bytes);
 
 	// check with max-more-items
-	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), fpt_max_fields, nullptr);
+	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), fpt_max_fields);
 	ASSERT_NE(nullptr, fetched_pt);
 	EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 
@@ -165,7 +165,7 @@ TEST(Fetch, Base) {
 	EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
 
 	// check without more-items
-	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), 0, nullptr);
+	fetched_pt = fpt_fetch(origin_ro, fetched_space, sizeof(fetched_space), 0);
 	ASSERT_NE(nullptr, fetched_pt);
 	EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 
@@ -207,7 +207,7 @@ TEST(Fetch, Variate) {
 				+ ", origin.payload_bytes " + std::to_string(origin_payload_bytes)
 				+ ", fetch.buffer_space " + std::to_string(fetch_buffer_space)
 				+ ", fetch.more_items " + std::to_string(more_items));
-			fetched_pt = fpt_fetch(origin_ro, fetched_space, bytes, more_items, nullptr);
+			fetched_pt = fpt_fetch(origin_ro, fetched_space, bytes, more_items);
 			if (more_items > fpt_max_fields
 					|| bytes < fpt_space(origin_items + more_items, origin_payload_bytes)) {
 				EXPECT_EQ(nullptr, fetched_pt);
@@ -217,6 +217,7 @@ TEST(Fetch, Variate) {
 			if (! fetched_pt)
 				continue;
 
+			EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
 			EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 			fetched_ro = fpt_take_noshrink(fetched_pt);
 			ASSERT_STREQ(nullptr, fpt_check_ro(fetched_ro));
@@ -248,7 +249,7 @@ TEST(Fetch, Variate) {
 					+ ", origin.payload_bytes " + std::to_string(origin_payload_bytes)
 					+ ", fetch.space " + std::to_string(fetch_buffer_space)
 					+ ", more_items " + std::to_string(more_items));
-				fetched_pt = fpt_fetch(origin_ro, fetched_space, bytes, more_items, nullptr);
+				fetched_pt = fpt_fetch(origin_ro, fetched_space, bytes, more_items);
 				if (more_items > fpt_max_fields
 						|| bytes < fpt_space(origin_items + more_items, origin_payload_bytes)) {
 					EXPECT_EQ(nullptr, fetched_pt);
@@ -258,6 +259,7 @@ TEST(Fetch, Variate) {
 				if (! fetched_pt)
 					continue;
 
+				EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
 				EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 				fetched_ro = fpt_take_noshrink(fetched_pt);
 				ASSERT_STREQ(nullptr, fpt_check_ro(fetched_ro));
@@ -294,7 +296,7 @@ TEST(Fetch, Variate) {
 					+ ", origin.payload_bytes " + std::to_string(origin_payload_bytes)
 					+ ", fetch.space " + std::to_string(fetch_buffer_space)
 					+ ", more_items " + std::to_string(more_items));
-				fetched_pt = fpt_fetch(origin_ro, fetched_space, bytes, more_items, nullptr);
+				fetched_pt = fpt_fetch(origin_ro, fetched_space, bytes, more_items);
 				if (more_items > fpt_max_fields
 						|| bytes < fpt_space(origin_items + more_items, origin_payload_bytes)) {
 					EXPECT_EQ(nullptr, fetched_pt);
@@ -304,6 +306,7 @@ TEST(Fetch, Variate) {
 				if (! fetched_pt)
 					continue;
 
+				EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
 				EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 				fetched_ro = fpt_take_noshrink(fetched_pt);
 				ASSERT_STREQ(nullptr, fpt_check_ro(fetched_ro));
@@ -322,10 +325,6 @@ TEST(Fetch, Variate) {
 		}
 	}
 }
-
-//TEST(Fetch, Alloc) {
-//	// TODO
-//}
 
 int main(int argc, char** argv) {
 	testing ::InitGoogleTest(&argc, argv);
