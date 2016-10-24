@@ -34,6 +34,50 @@
 extern "C" {
 #endif
 
+typedef union fpt_varlen {
+	struct __packed {
+		uint16_t brutto;
+		union {
+			uint16_t opaque_bytes;
+			uint16_t array_length;
+			uint16_t tuple_items;
+		};
+	};
+	uint32_t flat;
+} fpt_varlen;
+
+typedef union fpt_field {
+	struct __packed {
+		uint16_t ct;
+		uint16_t offset;
+	};
+	uint32_t header;
+	uint32_t body[1];
+} fpt_field;
+
+typedef union fpt_unit {
+	fpt_field field;
+	fpt_varlen varlen;
+	uint32_t data;
+} fpt_unit;
+
+typedef union fpt_ro {
+	struct {
+		const fpt_unit *units;
+		size_t total_bytes;
+	};
+	struct iovec sys;
+} fpt_ro;
+
+typedef struct fpt_rw {
+	unsigned head;  ///< Индекс дозаписи дескрипторов, растет к началу буфера, указывает на первый занятый элемент.
+	unsigned tail;  ///< Индекс для дозаписи данных, растет к концу буфера, указываент на первый не занятый элемент.
+	unsigned junk;  ///< Счетчик мусорных 32-битных элементов, которые образовались при удалении/обновлении.
+	unsigned end;   ///< Конец выделенного буфера, т.е. units[end] не наше.
+	unsigned pivot; ///< Индекс опорной точки, от которой растут "голова" и "хвоcт", указывает на терминатор заголовка.
+	fpt_unit units[1];
+} fpt_rw;
+
 enum fpt_bits {
 	// базовые лимиты и параметры
 	fpt_bits = 16,           // ширина счетчиков
@@ -83,6 +127,11 @@ enum fpt_bits {
 	// максимальное кол-во элементов в массиве,
 	// так чтобы при любом базовом типе не превышались другие лимиты
 	fpt_max_array = fpt_max_opaque_bytes / 32,
+	// буфер достаточного размера для любого кортежа
+	fpt_buffer_enought = sizeof(fpt_rw)
+		+ fpt_max_tuple_bytes + fpt_max_fields * fpt_unit_size,
+	// предельный размер, превышение которого считается ошибкой
+	fpt_buffer_limit = fpt_max_tuple_bytes * 2
 };
 
 enum fpt_type {
@@ -142,52 +191,6 @@ enum fpt_type {
 	fpt_sha256   = fpt_256,
 	fpt_wstring  = fpt_opaque
 };
-
-//----------------------------------------------------------------------
-
-typedef union fpt_varlen {
-	struct __packed {
-		uint16_t brutto;
-		union {
-			uint16_t opaque_bytes;
-			uint16_t array_length;
-			uint16_t tuple_items;
-		};
-	};
-	uint32_t flat;
-} fpt_varlen;
-
-typedef union fpt_field {
-	struct __packed {
-		uint16_t ct;
-		uint16_t offset;
-	};
-	uint32_t header;
-	uint32_t body[1];
-} fpt_field;
-
-typedef union fpt_unit {
-	fpt_field field;
-	fpt_varlen varlen;
-	uint32_t data;
-} fpt_unit;
-
-typedef union fpt_ro {
-	struct {
-		const fpt_unit *units;
-		size_t total_bytes;
-	};
-	struct iovec sys;
-} fpt_ro;
-
-typedef struct fpt_rw {
-	unsigned head;  ///< Индекс дозаписи дескрипторов, растет к началу буфера, указывает на первый занятый элемент.
-	unsigned tail;  ///< Индекс для дозаписи данных, растет к концу буфера, указываент на первый не занятый элемент.
-	unsigned junk;  ///< Счетчик мусорных 32-битных элементов, которые образовались при удалении/обновлении.
-	unsigned end;   ///< Конец выделенного буфера, т.е. units[end] не наше.
-	unsigned pivot; ///< Индекс опорной точки, от которой растут "голова" и "хвоcт", указывает на терминатор заголовка.
-	fpt_unit units[1];
-} fpt_rw;
 
 //----------------------------------------------------------------------
 

@@ -43,6 +43,7 @@ TEST(Trivia, Apriory) {
 	ASSERT_GE(fpt_max_field_bytes, fpt_max_fields * fpt_unit_size);
 	ASSERT_GE(fpt_max_tuple_bytes, fpt_max_field_bytes + fpt_unit_size * 2);
 	ASSERT_GE(fpt_max_tuple_bytes, (fpt_max_fields + 1) * fpt_unit_size * 2);
+	ASSERT_LE(fpt_buffer_enought, fpt_buffer_limit);
 
 	ASSERT_EQ(fpt_ty_mask, fpt_farray | fpt_nested);
 	ASSERT_GT(fpt_fr_mask, fpt_ty_mask);

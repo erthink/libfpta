@@ -67,7 +67,7 @@ TEST(Iterate, Empty) {
 }
 
 TEST(Iterate, Simple) {
-	char space[sizeof(fpt_rw) + fpt_max_tuple_bytes];
+	char space[fpt_buffer_enought];
 	fpt_rw *pt = fpt_init(space, sizeof(space), fpt_max_fields);
 	ASSERT_NE(nullptr, pt);
 	ASSERT_STREQ(nullptr, fpt_check(pt));
@@ -155,7 +155,7 @@ TEST(Iterate, Simple) {
 }
 
 TEST(Iterate, Filter) {
-	char space[sizeof(fpt_rw) + fpt_max_tuple_bytes];
+	char space[fpt_buffer_enought];
 	fpt_rw *pt = fpt_init(space, sizeof(space), fpt_max_fields);
 	ASSERT_NE(nullptr, pt);
 	ASSERT_STREQ(nullptr, fpt_check(pt));

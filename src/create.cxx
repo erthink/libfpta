@@ -36,8 +36,7 @@ fpt_rw* fpt_init(void* space, size_t buffer_bytes, size_t items_limit) {
 	if (unlikely(buffer_bytes < sizeof(fpt_rw) + fpt_unit_size * items_limit))
 		return nullptr;
 
-	if (unlikely(buffer_bytes > FPT_ALIGN_CEIL(sizeof(fpt_rw)
-			+ fpt_max_tuple_bytes, CACHELINE_SIZE)))
+	if (unlikely(buffer_bytes > fpt_buffer_limit))
 		return nullptr;
 
 	fpt_rw *pt = (fpt_rw*) space;
@@ -85,8 +84,7 @@ fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes,
 		return nullptr;
 	if (unlikely(space == nullptr || more_items > fpt_max_fields))
 		return nullptr;
-	if (unlikely(buffer_bytes > FPT_ALIGN_CEIL(sizeof(fpt_rw)
-			+ fpt_max_tuple_bytes, CACHELINE_SIZE)))
+	if (unlikely(buffer_bytes > fpt_buffer_limit))
 		return nullptr;
 
 	const char *end = (const char*) ro.units + ro.total_bytes;

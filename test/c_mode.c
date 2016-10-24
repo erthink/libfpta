@@ -65,5 +65,10 @@ int main(int argc, char* argv[]) {
 	print_value("fpt_max_array", "максимальное кол-во элементов в массиве", fpt_max_array);
 	printf("\n");
 
+	printf("// максимальные размеры буферов:\n");
+	print_value("fpt_buffer_enought", "буфер достаточного размера для любого кортежа", fpt_buffer_enought);
+	print_value("fpt_buffer_limit", "предельный размер, превышение которого считается ошибкой", fpt_buffer_limit);
+	printf("\n");
+
 	return 0;
 }

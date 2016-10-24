@@ -38,11 +38,11 @@ TEST(Init, Invalid) {
 	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, fpt_max_fields * 2));
 	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, ~0u));
 
-	char space_maximum[sizeof(fpt_rw) + fpt_max_tuple_bytes];
+	char space_maximum[fpt_buffer_enought];
 	EXPECT_EQ(nullptr, fpt_init(space_maximum, sizeof(space_maximum), fpt_max_fields + 1));
 	EXPECT_EQ(nullptr, fpt_init(nullptr, sizeof(space_maximum), 0));
 	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, ~0u, 1));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, fpt_max_tuple_bytes * 2, fpt_max_fields));
+	ASSERT_EQ(nullptr, fpt_init(space_exactly_noitems, fpt_buffer_limit + 1, fpt_max_fields));
 
 	EXPECT_NE(nullptr, fpt_init(space_maximum, sizeof(space_maximum), 0));
 	EXPECT_NE(nullptr, fpt_init(space_maximum, sizeof(space_maximum), 1));
@@ -51,7 +51,7 @@ TEST(Init, Invalid) {
 }
 
 TEST(Init, Base) {
-	char space[sizeof(fpt_rw) + fpt_max_tuple_bytes];
+	char space[fpt_buffer_enought];
 
 	static const size_t extra_space_cases[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 42,
 		sizeof(fpt_rw), fpt_max_tuple_bytes/3, fpt_max_tuple_bytes/2, fpt_max_tuple_bytes};
