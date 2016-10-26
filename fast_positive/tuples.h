@@ -194,33 +194,105 @@ enum fpt_type {
 
 //----------------------------------------------------------------------
 
+/* Возвращает минимальный размер буфера, который необходим для размещения
+ * кортежа с указанным кол-вом полей и данных. */
 size_t fpt_space(size_t items, size_t data_bytes);
+
+/* Инициализирует в буфере кортеж, резервируя (отступая) место достаточное
+ * для добавления до items_limit полей. Оставшееся место будет использоваться
+ * для размещения данных.
+ *
+ * Возвращает указатель на созданный в буфере объект, либо nullptr, если
+ * заданы неверные параметры или размер буфера недостаточен. */
 fpt_rw* fpt_init(void* buffer_space, size_t buffer_bytes, size_t items_limit);
 
+/* Выделяет через malloc() и инициализирует кортеж достаточный для
+ * размещения заданного кол-ва полей и данных.
+ *
+ * Возвращает адрес объекта, который необходимо free() по окончании
+ * использования. Либо nullptr при неверных параметрах или нехватке памяти. */
 fpt_rw* fpt_alloc(size_t items_limit, size_t data_bytes);
+
+/* Возвращает кол-во свобожных слотов для добавления дескрипторов
+ * полей в заголовок кортежа. */
 size_t fpt_space4items(const fpt_rw* pt);
+
+/* Возвращает остаток места доступного для размещения для данных. */
 size_t fpt_space4data(const fpt_rw* pt);
+
+/* Возвращает объем мусора в байтах, который станет доступным для добавления
+ * полей и данных после fpt_shrink(). */
 size_t fpt_junkspace(const fpt_rw* pt);
 
+/* Проверяет сериализованную форму кортежа на корректность.
+ *
+ * Возвращает nullptr если ошибок не обнаружено, либо указатель на константную
+ * строку с краткой информацией о проблеме (нарушенное условие). */
 const char* fpt_check_ro(fpt_ro ro);
+
+/* Проверяет модифицированную форму кортежа на корректность.
+ *
+ * Возвращает nullptr если ошибок не обнаружено, либо указатель на константную
+ * строку с краткой информацией о проблеме (нарушенное условие). */
 const char* fpt_check(fpt_rw *pt);
 
+/* Возвращает сериализованную форму кортежа, которая находится внутри
+ * модифицируемой. Дефрагментация не выполняется, поэтому сериализованная
+ * форма может содержать лишний мусор, см fpt_junkspace().
+ *
+ * Возвращаемый результат валиден до изменения или разрушения исходной
+ * модифицируемой формы кортежа. */
 fpt_ro fpt_take_noshrink(fpt_rw* pt);
-fpt_rw* fpt_fetch(fpt_ro ro, void* buffer_space, size_t buffer_bytes, unsigned more_items);
-size_t fpt_check_and_get_buffer_size(fpt_ro ro, unsigned more_items, unsigned more_payload, const char** error);
 
+/* Строит в указанном буфере модифицируемую форму кортежа из сериализованной.
+ * Проверка корректности данных в сериализованной форме не производится.
+ * Сериализованная форма не модифицируется и не требуется после возврата из
+ * функции.
+ * Аргумент more_items резервирует кол-во полей, которые можно будет добавить
+ * в создаваемую модифицируемую форму.
+ *
+ * Возвращает указатель на созданный в буфере объект, либо nullptr, если
+ * заданы неверные параметры или размер буфера недостаточен. */
+fpt_rw* fpt_fetch(fpt_ro ro, void* buffer_space, size_t buffer_bytes,
+	unsigned more_items);
+
+/* Проверяет содержимое сериализованной формы на корректность. Одновременно
+ * возвращает размер буфера, который потребуется для модифицируемой формы,
+ * с учетом добавляемых more_items полей и more_payload данных.
+ *
+ * При неверных параметрах или некорректных данных возвращает 0 и записывает
+ * по указателю error информацию об ошибке (указатель на константную
+ * строку с краткой информацией о проблеме). */
+size_t fpt_check_and_get_buffer_size(fpt_ro ro, unsigned more_items,
+	unsigned more_payload, const char** error);
+
+/* Производит дефрагментацию модифицируемой формы кортежа. */
 void fpt_shrink(fpt_rw* pt);
+
+/* Возвращает сериализованную форму кортежа, которая находится внутри
+ * модифицируемой. При необходимости автоматически производится дефрагментация.
+ * Возвращаемый результат валиден до изменения или разрушения исходной
+ * модифицируемой формы кортежа. */
 static __inline fpt_ro fpt_take(fpt_rw* pt) {
 	if (pt->junk)
 		fpt_shrink(pt);
 	return fpt_take_noshrink(pt);
 }
 
-void fpt_erase_field(fpt_rw* pt, fpt_field *pf);
+/* Если в аргументе type_or_filter взведен бит fpt_filter,
+ * то type_or_filter интерпретируется как битовая маска типов.
+ * Соответственно, будут удалены все поля с заданным column и попадающие
+ * в маску типов. Например, если type_or_filter равен fpt_any_fp,
+ * то удаляются все fpt_fp32 и fpt_fp64.
+ *
+ * Возвращается кол-во удаленных полей (больше либо равно нулю),
+ * либо отрицательный код ошибки. */
 int fpt_erase(fpt_rw* pt, unsigned column, int type_or_filter);
+void fpt_erase_field(fpt_rw* pt, fpt_field *pf);
 
 //----------------------------------------------------------------------
 
+// Вставка или обновление существующего поля (первого найденного для коллекций).
 int fpt_upsert_null(fpt_rw* pt, unsigned column);
 int fpt_upsert_uint16(fpt_rw* pt, unsigned column, unsigned value);
 int fpt_upsert_int32(fpt_rw* pt, unsigned column, int32_t value);
@@ -249,10 +321,11 @@ int fpt_upsert_opaque_iov(fpt_rw* pt, unsigned column, const struct iovec value)
 //int fpt_upsert_array_int64(fpt_rw* pt, unsigned ct, size_t array_length, const int64_t* array_data);
 //int fpt_upsert_array_uint64(fpt_rw* pt, unsigned ct, size_t array_length, const uint64_t* array_data);
 //int fpt_upsert_array_str(fpt_rw* pt, unsigned ct, size_t array_length, const char* array_data[]);
+//int fpt_upsert_array_nested(fpt_rw* pt, unsigned ct, size_t array_length, const char* array_data[]);
 
 //----------------------------------------------------------------------
 
-// LY: добавляем еще одно поле, для поддержки коллекций.
+// Добавление ещё одного поля, для поддержки коллекций.
 int fpt_insert_uint16(fpt_rw* pt, unsigned column, unsigned value);
 int fpt_insert_int32(fpt_rw* pt, unsigned column, int32_t value);
 int fpt_insert_uint32(fpt_rw* pt, unsigned column, uint32_t value);
@@ -283,7 +356,7 @@ int fpt_insert_opaque_iov(fpt_rw* pt, unsigned column, const struct iovec value)
 
 //----------------------------------------------------------------------
 
-// LY: обновляем существующее поле (первое найденное для коллекций).
+// Обновление существующего поля (первого найденного для коллекций).
 int fpt_update_uint16(fpt_rw* pt, unsigned column, unsigned value);
 int fpt_update_int32(fpt_rw* pt, unsigned column, int32_t value);
 int fpt_update_uint32(fpt_rw* pt, unsigned column, uint32_t value);
@@ -314,18 +387,29 @@ int fpt_update_opaque_iov(fpt_rw* pt, unsigned column, const struct iovec value)
 
 //----------------------------------------------------------------------
 
+/* Возвращает первое поле попадающее под критерий выбора, либо nullptr.
+ * Семантика type_or_filter указана в описании fpt_erase(). */
 const fpt_field* fpt_lookup_ro(fpt_ro ro, unsigned column, int type_or_filter);
 fpt_field* fpt_lookup(fpt_rw* pt, unsigned column, int type_or_filter);
 
+/* Возвращает "итераторы" по кортежу, в виде указателей.
+ * Гарантируется что begin меньше, либо равно end.
+ * В возвращаемом диапазоне могут буть удаленные поля,
+ * для которых fpt_field_column() возвращает отрицательное значение. */
 const fpt_field* fpt_begin_ro(fpt_ro ro);
 const fpt_field* fpt_end_ro(fpt_ro ro);
-
 const fpt_field* fpt_begin(const fpt_rw* pt);
 const fpt_field* fpt_end(const fpt_rw* pt);
 
+/* Итерация полей кортежа с заданным условие отбора, при этом
+ * удаленные поля пропускаются.
+ * Семантика type_or_filter указана в описании fpt_erase(). */
 const fpt_field* fpt_first(const fpt_field* begin, const fpt_field* end, unsigned column, int type_or_filter);
 const fpt_field* fpt_next(const fpt_field* from, const fpt_field* end, unsigned column, int type_or_filter);
 
+/* Итерация полей кортежа с заданным внешним фильтром, при этом
+ * удаленные поля пропускаются.
+ * Семантика type_or_filter указана в описании fpt_erase(). */
 typedef bool fpt_field_filter(const fpt_field*, void *context, void *param);
 const fpt_field* fpt_first_ex(const fpt_field* begin, const fpt_field* end,
 							  fpt_field_filter filter, void* context, void *param);
