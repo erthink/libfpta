@@ -49,6 +49,8 @@ __hot
 const fpt_field* fpt_first_ex(const fpt_field* begin, const fpt_field* end,
 							  fpt_field_filter filter, void* context, void *param) {
 	for (const fpt_field* pf = begin; pf < end; ++pf) {
+		if (ct_is_dead(pf->ct))
+			continue;
 		if (filter(pf, context, param))
 			return pf;
 	}
