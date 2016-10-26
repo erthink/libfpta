@@ -73,8 +73,8 @@ typedef struct fpt_rw {
 	unsigned head;  ///< Индекс дозаписи дескрипторов, растет к началу буфера, указывает на первый занятый элемент.
 	unsigned tail;  ///< Индекс для дозаписи данных, растет к концу буфера, указываент на первый не занятый элемент.
 	unsigned junk;  ///< Счетчик мусорных 32-битных элементов, которые образовались при удалении/обновлении.
-	unsigned end;   ///< Конец выделенного буфера, т.е. units[end] не наше.
 	unsigned pivot; ///< Индекс опорной точки, от которой растут "голова" и "хвоcт", указывает на терминатор заголовка.
+	unsigned end;   ///< Конец выделенного буфера, т.е. units[end] не наше.
 	fpt_unit units[1];
 } fpt_rw;
 
@@ -209,13 +209,12 @@ fpt_ro fpt_take_noshrink(fpt_rw* pt);
 fpt_rw* fpt_fetch(fpt_ro ro, void* buffer_space, size_t buffer_bytes, unsigned more_items);
 size_t fpt_check_and_get_buffer_size(fpt_ro ro, unsigned more_items, unsigned more_payload, const char** error);
 
-// TODO
-//void fpt_shrink(fpt_rw* pt);
-//static __inline fpt_ro fpt_take(fpt_rw* pt) {
-//    if (pt->junk)
-//        fpt_shrink(pt);
-//    return fpt_take_noshrink(pt);
-//}
+void fpt_shrink(fpt_rw* pt);
+static __inline fpt_ro fpt_take(fpt_rw* pt) {
+	if (pt->junk)
+		fpt_shrink(pt);
+	return fpt_take_noshrink(pt);
+}
 
 void fpt_erase_field(fpt_rw* pt, fpt_field *pf);
 int fpt_erase(fpt_rw* pt, unsigned column, int type_or_filter);
