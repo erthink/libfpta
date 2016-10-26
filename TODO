@@ -1,9 +1,9 @@
-October 2016:
+2016:
  done: fpt_fetch();
  done: xxx_insert(), e.g. collections;
  done: xxx_update();
  done: iterators;
- shrink(), e.g. defragmentation;
+ done: shrink(), e.g. defragmentation;
  xxx_cmp();
  support for arrays and nested tuples;
  C++ bindings;
