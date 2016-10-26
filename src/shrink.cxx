@@ -64,7 +64,7 @@ void fpt_shrink(fpt_rw* pt) {
 
 	if (state & fpt_mesh) {
 		// TODO: support for sorted tuples;
-		assert(!"sorted/mesh tuples not yet supported");
+		assert(!"sorted/mesh tuples NOT yet supported");
 	}
 
 	fpt_field* begin = &pt->units[pt->head].field;

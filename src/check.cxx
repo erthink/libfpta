@@ -21,7 +21,7 @@
 
 static __hot
 const char* fpt_field_check(const fpt_field* pf, const char* pivot,
-							   const char *detent, size_t &payload_units) {
+		const char *detent, size_t &payload_units, const char* &prev_payload) {
 	payload_units = 0;
 	if (unlikely(detent < (const char*) pf + fpt_unit_size))
 		return "field.header > detent";
@@ -50,6 +50,9 @@ const char* fpt_field_check(const fpt_field* pf, const char* pivot,
 	if (unlikely(left < fpt_unit_size))
 		return "field.varlen > detent";
 
+	if (unlikely((const char*) payload < prev_payload))
+		return "field.payload < previous.payload (sorted and mesh tuples NOT yet supported)";
+
 	if (type == fpt_string) {
 		// length is'nt stored, but zero terminated
 		len = strnlen((const char*) payload, left) + 1;
@@ -66,16 +69,18 @@ const char* fpt_field_check(const fpt_field* pf, const char* pivot,
 	if (unlikely((ptrdiff_t) len > left))
 		return "field.end > detent";
 
+	prev_payload = (const char*) payload + len;
+
 	if (unlikely(type & fpt_farray)) {
 		// TODO
-		return "arrays not yet supported";
+		return "arrays NOT yet supported";
 	} else if (type == fpt_opaque) {
 		len = payload->other.varlen.opaque_bytes;
 		if (unlikely(payload_units != bytes2units(len) + 1))
 			return "field.opaque_bytes != field.brutto";
 	} else if (pf->ct == fpt_nested) {
 		// TODO
-		return "nested tuples not yet supported";
+		return "nested tuples NOT yet supported";
 	}
 
 	return nullptr;
@@ -103,8 +108,8 @@ const char* fpt_check_ro(fpt_ro ro) {
 	if (unlikely(items > fpt_max_fields))
 		return "tuple.items > fpt_max_fields";
 
-	const fpt_field *scan = &ro.units[1].field;
-	const char* pivot = (const char*) scan + units2bytes(items);
+	const fpt_field *begin = &ro.units[1].field;
+	const char* pivot = (const char*) begin + units2bytes(items);
 	if (unlikely(pivot > detent))
 		return "tuple.pivot > tuple.end";
 
@@ -113,14 +118,16 @@ const char* fpt_check_ro(fpt_ro ro) {
 	}
 
 	size_t payload_total_bytes = 0;
-	for (; (const char*) scan < pivot; ++scan) {
+	const char* prev_payload = pivot;
+	for (const fpt_field *pf = (const fpt_field *) pivot; --pf >= begin; ) {
 		size_t payload_units;
-		const char* bug = fpt_field_check(scan, pivot, detent, payload_units);
+		const char* bug = fpt_field_check(pf, pivot,
+			detent, payload_units, prev_payload);
 		if (unlikely(bug))
 			return bug;
 
 		payload_total_bytes += units2bytes(payload_units);
-		//if (ct_is_dead(scan->ct))
+		//if (ct_is_dead(pf->ct))
 		//    return "tuple.has_junk";
 	}
 
@@ -158,20 +165,22 @@ const char* fpt_check(fpt_rw *pt) {
 	if (unlikely(pt->junk > pt->tail - pt->head))
 		return "tuple.junk > tuple.size";
 
-	const fpt_field *scan = &pt->units[pt->head].field;
+	const fpt_field *begin = &pt->units[pt->head].field;
 	const char* pivot = (const char*) &pt->units[pt->pivot];
 	const char* detent = (const char*) &pt->units[pt->tail];
 	size_t payload_total_bytes = 0;
 	size_t payload_junk_units = 0;
 	size_t junk_items = 0;
-	for (; (const char*) scan < pivot; ++scan) {
+	const char* prev_payload = pivot;
+	for (const fpt_field *pf = (const fpt_field *) pivot; --pf >= begin; ) {
 		size_t payload_units;
-		const char* bug = fpt_field_check(scan, pivot, detent, payload_units);
+		const char* bug = fpt_field_check(pf, pivot,
+			detent, payload_units, prev_payload);
 		if (unlikely(bug))
 			return bug;
 
 		payload_total_bytes += units2bytes(payload_units);
-		if (ct_is_dead(scan->ct)) {
+		if (ct_is_dead(pf->ct)) {
 			junk_items++;
 			payload_junk_units += payload_units;
 		}
@@ -188,4 +197,3 @@ const char* fpt_check(fpt_rw *pt) {
 
 	return nullptr;
 }
-
