@@ -110,16 +110,21 @@ fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes, unsigned more_ite
 
 size_t fpt_check_and_get_buffer_size(fpt_ro ro,
 	unsigned more_items, unsigned more_payload, const char** error) {
-	if (likely(error)) {
-		*error = fpt_check_ro(ro);
-		if (unlikely(*error != nullptr))
-			return 0;
-	}
+	if (unlikely(error == nullptr))
+		return ~(size_t)0;
 
-	if (unlikely(more_items > fpt_max_fields))
+	*error = fpt_check_ro(ro);
+	if (unlikely(*error != nullptr))
 		return 0;
-	if (unlikely(more_payload > fpt_max_tuple_bytes))
+
+	if (unlikely(more_items > fpt_max_fields)) {
+		*error = "more_items > fpt_max_fields";
 		return 0;
+	}
+	if (unlikely(more_payload > fpt_max_tuple_bytes)) {
+		*error = "more_payload > fpt_max_tuple_bytes";
+		return 0;
+	}
 
 	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
 	size_t payload_bytes = ro.total_bytes - units2bytes(items + 1);

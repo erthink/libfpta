@@ -217,7 +217,10 @@ TEST(Fetch, Variate) {
 			if (! fetched_pt)
 				continue;
 
-			EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
+			EXPECT_GE(0, (int) fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
+			const char* error = "clean me";
+			EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, &error));
+			EXPECT_STREQ(nullptr, error);
 			EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 			fetched_ro = fpt_take_noshrink(fetched_pt);
 			ASSERT_STREQ(nullptr, fpt_check_ro(fetched_ro));
@@ -259,7 +262,8 @@ TEST(Fetch, Variate) {
 				if (! fetched_pt)
 					continue;
 
-				EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
+				EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, &error));
+				EXPECT_STREQ(nullptr, error);
 				EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 				fetched_ro = fpt_take_noshrink(fetched_pt);
 				ASSERT_STREQ(nullptr, fpt_check_ro(fetched_ro));
@@ -306,7 +310,8 @@ TEST(Fetch, Variate) {
 				if (! fetched_pt)
 					continue;
 
-				EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, nullptr));
+				EXPECT_GE(bytes, fpt_check_and_get_buffer_size(origin_ro, more_items, 0, &error));
+				EXPECT_STREQ(nullptr, error);
 				EXPECT_STREQ(nullptr, fpt_check(fetched_pt));
 				fetched_ro = fpt_take_noshrink(fetched_pt);
 				ASSERT_STREQ(nullptr, fpt_check_ro(fetched_ro));
