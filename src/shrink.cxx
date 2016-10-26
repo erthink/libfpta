@@ -55,9 +55,6 @@ static unsigned fpt_state(const fpt_rw* pt) {
 }
 
 void fpt_shrink(fpt_rw* pt) {
-	if (pt->junk == 0)
-		return;
-
 	unsigned state = fpt_state(pt);
 	if ((state & (fpt_junk_header | fpt_junk_data)) == 0)
 		return;
