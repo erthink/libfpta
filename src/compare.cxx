@@ -17,7 +17,6 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtest/gtest.h>
 #include "fast_positive/internals.h"
 
 static __inline

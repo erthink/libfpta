@@ -7,6 +7,7 @@
  xxx_cmp();
  support for arrays and nested tuples;
  C++ bindings;
+ unit test for `limits`;
 
 Later:
  external scheme support and C++ binding auto-generation;

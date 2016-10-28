@@ -29,7 +29,7 @@ enum {
 static unsigned fpt_state(const fpt_rw* pt) {
 	const fpt_field* begin = fpt_begin(pt);
 	const fpt_field* end = fpt_end(pt);
-	const char* last_payload = (const char*) end;
+	const char* prev_payload = (const char*) end;
 	unsigned last_ct = fpt_limit;
 
 	unsigned state = 0;
@@ -44,9 +44,9 @@ static unsigned fpt_state(const fpt_rw* pt) {
 					: fpt_junk_header;
 		} else if (fpt_get_type(pf->ct) > fpt_uint16) {
 			const char* payload = (const char*) fpt_field_payload(pf);
-			if (payload < last_payload)
+			if (payload < prev_payload)
 				state |= fpt_mesh;
-			last_payload = payload;
+			prev_payload = payload;
 		}
 		if (state == (fpt_unsorted | fpt_junk_header | fpt_junk_data | fpt_mesh))
 			break;
