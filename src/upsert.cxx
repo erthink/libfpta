@@ -66,11 +66,26 @@ fpt_field* fpt_emplace(fpt_rw* pt, unsigned ct, unsigned units) {
 		if (likely(avail == units))
 			return pf;
 
+		assert(pf->ct == ct);
+		unsigned save_head = pt->head;
+		unsigned save_tail = pt->tail;
+		unsigned save_junk = pt->junk;
+
 		fpt_erase_field(pt, pf);
 		fpt_field* fresh = fpt_append(pt, ct, units);
 		if (unlikely(fresh == nullptr)) {
-			// revert erase
+			// undo erase
+			// TODO: unit test for this case
+			/* yes this is a badly hack,
+			 * but on the other hand,
+			 * it is reasonably and easy decision. */
 			pf->ct = ct;
+			assert(pt->head >= save_head);
+			assert(pt->tail <= save_tail);
+			assert(pt->junk >= save_junk);
+			pt->head = save_head;
+			pt->tail = save_tail;
+			pt->junk = save_junk;
 		}
 
 		return fresh;
