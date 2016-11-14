@@ -62,6 +62,14 @@ add_custom_target(tags COMMAND ${CTAGS} -R -f tags
 add_custom_target(ctags DEPENDS tags)
 
 #
+# Enable 'make reformat' target.
+#
+add_custom_target(reformat
+    VERBATIM
+    COMMAND git ls-files | grep -E \\.\(c|cc|cxx|cpp|h|hh|hxx|hpp\)\$ | xargs clang-format -i --style=file
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+#
 # Get version
 #
 set (PACKAGE_VERSION "")
