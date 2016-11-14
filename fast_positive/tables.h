@@ -40,11 +40,29 @@
 #include "fast_positive/defs.h"
 #include "fast_positive/tuples.h"
 
+#include <assert.h>  // for assert()
 #include <errno.h>   // for error codes
-#include <string.h>  // for strlen
+#include <limits.h>  // for INT_MAX
+#include <string.h>  // for strlen()
 #include <sys/uio.h> // for struct iovec
 
+#ifndef FPTA_PROHIBIT_LOSS_PRECISION
+/* При обслуживании индексированных колонок типа float/fptu_fp32
+ * double значения из fpta_value будут преобразовываться в float.
+ * Опция определяет, считать ли этом потерю точности ошибкой или нет.
+ */
+#define FPTA_PROHIBIT_LOSS_PRECISION 0
+#endif
+
+/* Опция определяет, поддерживать ли для курсора возврат в диапазон строк
+ * после его исчерпания при итерировании. Например, позволить ли возврат
+ * к последней строке посредством move(prev), после того как
+ * move(next) вернул NODATA, так как курсор уже был на последней строке. */
+#define FPTA_ENABLE_RETURN_INTO_RANGE 1
+
 #ifdef __cplusplus
+#include <string> // for std::string
+
 extern "C" {
 #endif
 
@@ -160,10 +178,11 @@ typedef enum fpta_value_type {
                       * или отсутствия колонки/поля в строке. */
     fpta_signed_int, /* Integer со знаком, задается в int64_t */
     fpta_unsigned_int, /* Беззнаковый integer, задается в uint64_t */
-    fpta_datetime, /* Время в форме fpta_time */
+    // fpta_datetime, /* Время в форме fpta_time */
     fpta_float_point, /* Плавающая точка, задается в double */
-    fpta_string, /* Строка, задается в const char* */
-    fpta_binary, /* Бинарные данные, задается адресом и длинной */
+    fpta_string, /* Строка utf8, задается адресом и длиной, без терминатора!
+                    */
+    fpta_binary, /* Бинарные данные, задается адресом и длиной */
     fpta_shoved, /* Преобразованный длинный ключ из индекса. */
     fpta_begin,  /* Псевдо-тип, всегда меньше любого значения.
                   * Используется при открытии курсора для выборки
@@ -181,11 +200,27 @@ typedef struct fpta_value {
     fpta_value_type type;
     unsigned binary_length;
     union {
+        void *binary_data;
         int64_t sint;
         uint64_t uint;
         double fp;
-        const char *cstr;
-        void *binary_data;
+
+        /* ВАЖНО! К большому сожалению и грандиозному неудобству, строка
+         * здесь НЕ в традиционной для C форме, а БЕЗ терминирующего
+         * нуля с явным указанием длины в binary_length.
+         *
+         * Причины таковы:
+         *  - fpta_value также используется для возврата значений из индексов;
+         *  - в индексах и ключах строки без терминирующего нуля;
+         *  - поддержка двух форм/типов строк только увеличивает энтропию.
+         *
+         * Однако, в реальности терминирующий ноль:
+         *  - будет на конце строк расположенных внутри строк таблицы
+         * (кортежах);
+         *  - отсутствует в строках от fpta_cursor_key();
+         *  - в остальных случаях - как было подготовлено вашим кодом;
+         */
+        const char *str;
     };
 #ifdef __cplusplus
 // TODO: constructors from basic types.
@@ -197,6 +232,7 @@ static __inline fpta_value fpta_value_sint(int64_t value)
 {
     fpta_value r;
     r.type = fpta_signed_int;
+    r.binary_length = ~0u;
     r.sint = value;
     return r;
 }
@@ -206,6 +242,7 @@ static __inline fpta_value fpta_value_uint(uint64_t value)
 {
     fpta_value r;
     r.type = fpta_unsigned_int;
+    r.binary_length = ~0u;
     r.uint = value;
     return r;
 }
@@ -215,18 +252,46 @@ static __inline fpta_value fpta_value_float(double value)
 {
     fpta_value r;
     r.type = fpta_float_point;
+    r.binary_length = ~0u;
     r.fp = value;
     return r;
 }
 
-/* Конструктор value со строковым значением,
+/* Конструктор value со строковым значением из c-str,
  * строка не копируется и не хранится внутри. */
-static __inline fpta_value fpta_value_str(const char *value)
+static __inline fpta_value fpta_value_cstr(const char *value)
 {
+    size_t length = value ? strlen(value) : 0;
+    assert(length < INT_MAX);
     fpta_value r;
     r.type = fpta_string;
-    r.cstr = value;
-    r.binary_length = value ? strlen(value) : 0;
+    r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+    r.str = value;
+    return r;
+}
+
+/* Конструктор value со строковым значением
+ * строка не копируется и не хранится внутри. */
+static __inline fpta_value fpta_value_string(const char *text, size_t length)
+{
+    assert(strnlen(text, length) == length);
+    assert(length < INT_MAX);
+    fpta_value r;
+    r.type = fpta_string;
+    r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+    r.str = text;
+    return r;
+}
+
+/* Конструктор value с бинарным/opaque значением,
+ * даные не копируются и не хранятся внутри. */
+static __inline fpta_value fpta_value_binary(const void *data, size_t length)
+{
+    assert(length < INT_MAX);
+    fpta_value r;
+    r.type = fpta_binary;
+    r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+    r.binary_data = (void *)data;
     return r;
 }
 
@@ -235,6 +300,8 @@ static __inline fpta_value fpta_value_null()
 {
     fpta_value r;
     r.type = fpta_null;
+    r.binary_length = 0;
+    r.binary_data = nullptr;
     return r;
 }
 
@@ -243,6 +310,8 @@ static __inline fpta_value fpta_value_begin(void)
 {
     fpta_value r;
     r.type = fpta_begin;
+    r.binary_length = ~0u;
+    r.binary_data = nullptr;
     return r;
 }
 
@@ -251,6 +320,8 @@ static __inline fpta_value fpta_value_end(void)
 {
     fpta_value r;
     r.type = fpta_end;
+    r.binary_length = ~0u;
+    r.binary_data = nullptr;
     return r;
 }
 
@@ -378,7 +449,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
  * курсоры и завершены все транзакции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_db_close(fpta_db **db);
+int fpta_db_close(fpta_db *db);
 
 //----------------------------------------------------------------------------
 /* Инициация и завершение транзакций. */
@@ -531,7 +602,7 @@ int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
  *   - fpta_secondary_unique_reversed, fpta_secondary_withdups_reversed.
  *
  *   Индексы этого типа применимы только для строк и бинарных данных (типы
- *   fptu_96..fptu_256, fptu_string и fptu_opaque При этом значения ключей
+ *   fptu_96..fptu_256, fptu_cstr и fptu_opaque При этом значения ключей
  *   сравниваются в обратном порядке байт. Не от первых к последним,
  *   а от последних к первым. Не следует пусть с обратным порядком сортировки
  *   или упорядочения величин.
@@ -839,7 +910,7 @@ bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
 typedef enum fpta_cursor_options {
     /* Без обязательного порядка. Требуется для неупорядоченных индексов,
      * для упорядоченных равносилен fpta_ascending */
-    fpta_unordered = 0,
+    fpta_unsorted = 0,
 
     /* По-возрастанию */
     fpta_ascending = 1,
@@ -852,7 +923,7 @@ typedef enum fpta_cursor_options {
      * если известно, что сразу после открытия курсор будет перемещен. */
     fpta_dont_fetch = 4,
 
-    fpta_unordered_dont_fetch = fpta_unordered | fpta_dont_fetch,
+    fpta_unsorted_dont_fetch = fpta_unsorted | fpta_dont_fetch,
     fpta_ascending_dont_fetch = fpta_ascending | fpta_dont_fetch,
     fpta_descending_dont_fetch = fpta_descending | fpta_dont_fetch,
 } fpta_cursor_options;
@@ -992,23 +1063,26 @@ int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
 /* Опции при помещении или обновлении данных, т.е. для fpta_cursor_put(). */
 typedef enum fpta_put_options {
     /* Вставить новую запись, т.е. не обновлять существующую.
+     *
      * Будет возвращена ошибка, если указанный ключ уже присутствует в
      * таблице и соответствующий индекс требует уникальности. */
     fpta_insert,
-    fpta_not_overwrite = fpta_insert,
 
-    /* Не добавлять новую запись, а обновить текущую запись.
+    /* Не добавлять новую запись, а обновить существующую запись.
+     *
+     * Должна быть одна и только одна запись с соответствующим значением
+     * ключевой колонке, иначе будет возвращена ошибка.
      *
      * При обновлении посредством fpta_cursor_update() за курсором должна
-     * быть текущая запись, а в новом значении строки ключевое поле должно
+     * быть текущая запись, а в новой строки значение ключевой колонки должно
      * совпадать со значением в текущей позиции курсора, иначе будет
      * возвращена ошибка. */
     fpta_update,
-    fpta_overwrite = fpta_update,
 
-    /* Обновить существующую запись, либо вставить новую. Опция допустима
-     * только если соответствующий индекс требует уникальности, иначе будет
-     * возвращена ошибка. */
+    /* Обновить существующую запись, либо вставить новую.
+     *
+     * Будет возвращена ошибка если существует более одной записи
+     * с соответствующим значением ключевой колонки. */
     fpta_upsert
 } fpta_put_options;
 
@@ -1050,6 +1124,9 @@ fpta_value fpta_field2value(const fptu_field *pf);
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
                        fpta_value value);
+
+int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
+                    fpta_value *value);
 
 /* Базовая функция для вставки и обновления строк таблицы.
  *
@@ -1106,6 +1183,34 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
 
 #ifdef __cplusplus
 }
+
+namespace std
+{
+string to_string(fpta_error);
+string to_string(const fpta_time &);
+string to_string(fpta_value_type);
+string to_string(const fpta_value &);
+string to_string(fpta_durability);
+string to_string(fpta_level);
+string to_string(const fpta_db *);
+string to_string(const fpta_txn *);
+string to_string(fpta_index_type);
+string to_string(const fpta_column_set &);
+string to_string(const fpta_name &);
+string to_string(fpta_schema_item);
+string to_string(fpta_filter_bits);
+string to_string(const fpta_filter &);
+string to_string(fpta_cursor_options);
+string to_string(const fpta_cursor *);
+string to_string(fpta_seek_operations);
+string to_string(fpta_put_options);
+}
+
+static __inline fpta_value fpta_value_str(const std::string &str)
+{
+    return fpta_value_string(str.data(), str.length());
+}
+
 #endif
 
 #endif /* FAST_POSITIVE_TABLES_H */

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project(libfpta C CXX)
 
@@ -175,3 +175,10 @@ endforeach(option)
 message (STATUS "")
 
 #######################################################################
+
+# Specify where to look for include files.
+include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/submodules/libfptu" "${PROJECT_SOURCE_DIR}/submodules")
+
+add_subdirectory(submodules)
+add_subdirectory(src)
+add_subdirectory(test)
