@@ -140,7 +140,7 @@ endif()
 
 setup_compile_flags()
 
-# 
+#
 # info summary (used in server version output)
 #
 set(FPTU_OPTIONS "-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")

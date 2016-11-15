@@ -162,6 +162,8 @@ enum fpt_type {
 	fpt_nested   = 15, // nested tuple
 	fpt_farray   = 16, // flag
 
+	fpt_typeid_max = (1 << fpt_typeid_bits) - 1,
+
 	// pseudo types for lookup and filtering
 	fpt_filter   = 1 << (fpt_null | fpt_farray),
 	fpt_any      = -1,       // match any type

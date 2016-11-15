@@ -11,7 +11,7 @@ if (${HAVE_BYTE_ORDER_BIG_ENDIAN} OR
     ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ia64" OR
     ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^alpha")
     message (FATAL_ERROR "Unsupported architecture -- ${CMAKE_SYSTEM_PROCESSOR}, ")
-    message (FATAL_ERROR "libptubles currently only supports little-endian hardware")
+    message (FATAL_ERROR "libfptu currently only supports little-endian hardware")
     message (FATAL_ERROR "with unaligned word access.")
 endif()
 

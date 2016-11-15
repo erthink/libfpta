@@ -45,4 +45,3 @@ if (CC_ATOMICS_WORKAROUND_WORKS)
 else()
     message(FATAL_ERROR "C atomics not supported")
 endif()
-

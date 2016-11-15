@@ -68,12 +68,12 @@ size_t fpt_field_units(const fpt_field* pf) {
 	// variable length type
 	const fpt_payload* payload = fpt_field_payload(pf);
 	if (type == fpt_string) {
-		// length is'nt stored, but zero terminated
+		// length is not stored, but zero terminated
 		return bytes2units(strlen(payload->cstr) + 1);
-	} else {
-		// length is stored
-		return payload->other.varlen.brutto + (size_t) 1;
 	}
+
+	// length is stored
+	return payload->other.varlen.brutto + (size_t) 1;
 }
 
 //----------------------------------------------------------------------
