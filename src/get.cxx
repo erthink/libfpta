@@ -19,163 +19,163 @@
 
 #include "fast_positive/internals.h"
 
-int fpt_field_type(const fpt_field* pf) {
+int fptu_field_type(const fptu_field* pf) {
 	if (unlikely(pf == nullptr))
-		return fpt_null;
+		return fptu_null;
 
-	return fpt_get_type(pf->ct);
+	return fptu_get_type(pf->ct);
 }
 
-int fpt_field_column(const fpt_field* pf) {
+int fptu_field_column(const fptu_field* pf) {
 	if (unlikely(pf == nullptr || ct_is_dead(pf->ct)))
 		return -1;
 
-	return fpt_get_col(pf->ct);
+	return fptu_get_col(pf->ct);
 }
 
 //----------------------------------------------------------------------
 
-uint16_t fpt_field_uint16(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_uint16))
+uint16_t fptu_field_uint16(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_uint16))
 		return 0;
 
 	return pf->offset;
 }
 
-int32_t fpt_field_int32(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_int32))
+int32_t fptu_field_int32(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_int32))
 		return 0;
 
-	return fpt_field_payload(pf)->i32;
+	return fptu_field_payload(pf)->i32;
 }
 
-uint32_t fpt_field_uint32(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_uint32))
+uint32_t fptu_field_uint32(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_uint32))
 		return 0;
 
-	return fpt_field_payload(pf)->u32;
+	return fptu_field_payload(pf)->u32;
 }
 
-int64_t fpt_field_int64(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_int64))
+int64_t fptu_field_int64(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_int64))
 		return 0;
 
-	return fpt_field_payload(pf)->i64;
+	return fptu_field_payload(pf)->i64;
 }
 
-uint64_t fpt_field_uint64(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_uint64))
+uint64_t fptu_field_uint64(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_uint64))
 		return 0;
 
-	return fpt_field_payload(pf)->u64;
+	return fptu_field_payload(pf)->u64;
 }
 
-double fpt_field_fp64(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_fp64))
+double fptu_field_fp64(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_fp64))
 		return 0.0;
 
-	return fpt_field_payload(pf)->fp64;
+	return fptu_field_payload(pf)->fp64;
 }
 
-float fpt_field_fp32(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_fp32))
+float fptu_field_fp32(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_fp32))
 		return 0.0;
 
-	return fpt_field_payload(pf)->fp32;
+	return fptu_field_payload(pf)->fp32;
 }
 
-const char* fpt_field_cstr(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_string))
+const char* fptu_field_cstr(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_string))
 		return "";
 
-	return fpt_field_payload(pf)->cstr;
+	return fptu_field_payload(pf)->cstr;
 }
 
-const uint8_t* fpt_field_96(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_96))
+const uint8_t* fptu_field_96(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_96))
 		return nullptr;
 
-	return fpt_field_payload(pf)->fixed_opaque;
+	return fptu_field_payload(pf)->fixed_opaque;
 }
 
-const uint8_t* fpt_field_128(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_128))
+const uint8_t* fptu_field_128(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_128))
 		return nullptr;
 
-	return fpt_field_payload(pf)->fixed_opaque;
+	return fptu_field_payload(pf)->fixed_opaque;
 }
 
-const uint8_t* fpt_field_160(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_160))
+const uint8_t* fptu_field_160(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_160))
 		return nullptr;
 
-	return fpt_field_payload(pf)->fixed_opaque;
+	return fptu_field_payload(pf)->fixed_opaque;
 }
 
-const uint8_t* fpt_field_192(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_192))
+const uint8_t* fptu_field_192(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_192))
 		return nullptr;
 
-	return fpt_field_payload(pf)->fixed_opaque;
+	return fptu_field_payload(pf)->fixed_opaque;
 }
 
-const uint8_t* fpt_field_256(const fpt_field* pf) {
-	if (unlikely(fpt_field_type(pf) != fpt_256))
+const uint8_t* fptu_field_256(const fptu_field* pf) {
+	if (unlikely(fptu_field_type(pf) != fptu_256))
 		return nullptr;
-	return fpt_field_payload(pf)->fixed_opaque;
+	return fptu_field_payload(pf)->fixed_opaque;
 }
 
-struct iovec fpt_field_opaque(const fpt_field* pf) {
+struct iovec fptu_field_opaque(const fptu_field* pf) {
 	iovec io;
-	if (unlikely(fpt_field_type(pf) != fpt_opaque)) {
+	if (unlikely(fptu_field_type(pf) != fptu_opaque)) {
 		io.iov_base = nullptr;
 		io.iov_len = 0;
 	} else {
-		const fpt_payload* payload = fpt_field_payload(pf);
+		const fptu_payload* payload = fptu_field_payload(pf);
 		io.iov_len = payload->other.varlen.opaque_bytes;
 		io.iov_base = (void*) payload->other.data;
 	}
 	return io;
 }
 
-struct iovec fpt_field_as_iovec(const fpt_field* pf) {
+struct iovec fptu_field_as_iovec(const fptu_field* pf) {
 	struct iovec opaque;
-	const fpt_payload* payload;
-	unsigned type = fpt_field_type(pf);
+	const fptu_payload* payload;
+	unsigned type = fptu_field_type(pf);
 
 	switch(type) {
 	default:
-		if (likely(type < fpt_farray)) {
-			assert(type < fpt_string);
-			opaque.iov_len = fpt_internal_map_t2b[type];
-			opaque.iov_base = (void*) fpt_field_payload(pf);
+		if (likely(type < fptu_farray)) {
+			assert(type < fptu_string);
+			opaque.iov_len = fptu_internal_map_t2b[type];
+			opaque.iov_base = (void*) fptu_field_payload(pf);
 			break;
 		}
 		// TODO: array support
-		payload = fpt_field_payload(pf);
+		payload = fptu_field_payload(pf);
 		opaque.iov_base = (void*) payload->other.data;
 		opaque.iov_len = units2bytes(payload->other.varlen.brutto);
 		break;
-	case fpt_null:
+	case fptu_null:
 		opaque.iov_base = nullptr;
 		opaque.iov_len = 0;
 		break;
-	case fpt_uint16:
+	case fptu_uint16:
 		opaque.iov_base = (void*) &pf->offset;
 		opaque.iov_len = 2;
 		break;
-	case fpt_opaque:
-		payload = fpt_field_payload(pf);
+	case fptu_opaque:
+		payload = fptu_field_payload(pf);
 		opaque.iov_len = payload->other.varlen.opaque_bytes;
 		opaque.iov_base = (void*) payload->other.data;
 		break;
-	case fpt_string:
-		payload = fpt_field_payload(pf);
+	case fptu_string:
+		payload = fptu_field_payload(pf);
 		opaque.iov_len = strlen(payload->cstr) + 1;
 		opaque.iov_base = (void*) payload->cstr;
 		break;
-	case fpt_nested:
-		payload = fpt_field_payload(pf);
+	case fptu_nested:
+		payload = fptu_field_payload(pf);
 		opaque.iov_len = units2bytes(payload->other.varlen.brutto + (size_t) 1);
 		opaque.iov_base = (void*) payload;
 		break;
@@ -184,124 +184,124 @@ struct iovec fpt_field_as_iovec(const fpt_field* pf) {
 	return opaque;
 }
 
-fpt_ro fpt_field_nested(const fpt_field* pf) {
-	fpt_ro tuple;
+fptu_ro fptu_field_nested(const fptu_field* pf) {
+	fptu_ro tuple;
 
-	if (unlikely(fpt_field_type(pf) != fpt_nested)) {
+	if (unlikely(fptu_field_type(pf) != fptu_nested)) {
 		tuple.total_bytes = 0;
 		tuple.units = nullptr;
 		return tuple;
 	}
 
-	const fpt_payload* payload = fpt_field_payload(pf);
+	const fptu_payload* payload = fptu_field_payload(pf);
 	tuple.total_bytes = units2bytes(payload->other.varlen.brutto + (size_t) 1);
-	tuple.units = (const fpt_unit*) payload;
+	tuple.units = (const fptu_unit*) payload;
 	return tuple;
 }
 
 //----------------------------------------------------------------------
 
-uint16_t fpt_get_uint16(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_uint16);
+uint16_t fptu_get_uint16(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_uint16);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_uint16(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_uint16(pf);
 }
 
-int32_t fpt_get_int32(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_int32);
+int32_t fptu_get_int32(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_int32);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_int32(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_int32(pf);
 }
 
-uint32_t fpt_get_uint32(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_uint32);
+uint32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_uint32);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_uint32(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_uint32(pf);
 }
 
-int64_t fpt_get_int64(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_int64);
+int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_int64);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_int64(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_int64(pf);
 }
 
-uint64_t fpt_get_uint64(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_uint64);
+uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_uint64);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_uint64(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_uint64(pf);
 }
 
-double fpt_get_fp64(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_fp64);
+double fptu_get_fp64(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_fp64);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_fp64(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_fp64(pf);
 }
 
-float fpt_get_fp32(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_fp32);
+float fptu_get_fp32(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_fp32);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_fp32(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_fp32(pf);
 }
 
-const uint8_t* fpt_get_96(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_96);
+const uint8_t* fptu_get_96(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_96);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_96(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_96(pf);
 }
 
-const uint8_t* fpt_get_128(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_128);
+const uint8_t* fptu_get_128(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_128);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_128(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_128(pf);
 }
 
-const uint8_t* fpt_get_160(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_160);
+const uint8_t* fptu_get_160(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_160);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_160(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_160(pf);
 }
 
-const uint8_t* fpt_get_192(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_192);
+const uint8_t* fptu_get_192(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_192);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_192(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_192(pf);
 }
 
-const uint8_t* fpt_get_256(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_256);
+const uint8_t* fptu_get_256(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_256);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_256(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_256(pf);
 }
 
-const char* fpt_get_cstr(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_string);
+const char* fptu_get_cstr(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_string);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_cstr(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_cstr(pf);
 }
 
-struct iovec fpt_get_opaque(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_opaque);
+struct iovec fptu_get_opaque(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_opaque);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_opaque(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_opaque(pf);
 }
 
-fpt_ro fpt_get_nested(fpt_ro ro, unsigned column, int *error) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_nested);
+fptu_ro fptu_get_nested(fptu_ro ro, unsigned column, int *error) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_nested);
 	if (error)
-		*error = pf ? fpt_ok : fpt_noent;
-	return fpt_field_nested(pf);
+		*error = pf ? fptu_ok : fptu_noent;
+	return fptu_field_nested(pf);
 }

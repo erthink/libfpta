@@ -201,32 +201,32 @@
 //----------------------------------------------------------------------
 
 static __inline
-unsigned fpt_get_col(uint16_t packed) {
-	return packed >> fpt_co_shift;
+unsigned fptu_get_col(uint16_t packed) {
+	return packed >> fptu_co_shift;
 }
 
 static __inline
-fpt_type fpt_get_type(unsigned packed) {
-	return (fpt_type) (packed & fpt_ty_mask);
+fptu_type fptu_get_type(unsigned packed) {
+	return (fptu_type) (packed & fptu_ty_mask);
 }
 
 static __inline
-unsigned fpt_pack_coltype(unsigned column, unsigned type) {
-	assert(type <= fpt_ty_mask);
-	assert(column <= fpt_max_cols);
-	return type + (column << fpt_co_shift);
+unsigned fptu_pack_coltype(unsigned column, unsigned type) {
+	assert(type <= fptu_ty_mask);
+	assert(column <= fptu_max_cols);
+	return type + (column << fptu_co_shift);
 }
 
 static __inline
-bool fpt_ct_match(const fpt_field* pf, unsigned column, int type_or_filter) {
-	if (fpt_get_col(pf->ct) != column)
+bool fptu_ct_match(const fptu_field* pf, unsigned column, int type_or_filter) {
+	if (fptu_get_col(pf->ct) != column)
 		return false;
-	if (type_or_filter & fpt_filter)
-		return (type_or_filter & (1 << fpt_get_type(pf->ct))) ? true : false;
-	return type_or_filter == fpt_get_type(pf->ct);
+	if (type_or_filter & fptu_filter)
+		return (type_or_filter & (1 << fptu_get_type(pf->ct))) ? true : false;
+	return type_or_filter == fptu_get_type(pf->ct);
 }
 
-typedef union fpt_payload {
+typedef union fptu_payload {
 	uint32_t u32;
 	int32_t  i32;
 	uint64_t u64;
@@ -236,82 +236,82 @@ typedef union fpt_payload {
 	char     cstr[4];
 	uint8_t  fixed_opaque[8];
 	struct {
-		fpt_varlen varlen;
+		fptu_varlen varlen;
 		uint32_t data[1];
 	} other;
-} fpt_payload;
+} fptu_payload;
 
 
 static __inline
 size_t bytes2units(size_t bytes) {
-	return (bytes + fpt_unit_size - 1) >> fpt_unit_shift;
+	return (bytes + fptu_unit_size - 1) >> fptu_unit_shift;
 }
 
 static __inline
 size_t units2bytes(size_t units) {
-	return units << fpt_unit_shift;
+	return units << fptu_unit_shift;
 }
 
 static __inline
-fpt_payload* fpt_field_payload(fpt_field* pf) {
-	return (fpt_payload*) &pf->body[pf->offset];
+fptu_payload* fptu_field_payload(fptu_field* pf) {
+	return (fptu_payload*) &pf->body[pf->offset];
 }
 
 #ifdef __cplusplus
 static __inline
-const fpt_payload* fpt_field_payload(const fpt_field* pf) {
-	return (const fpt_payload*) &pf->body[pf->offset];
+const fptu_payload* fptu_field_payload(const fptu_field* pf) {
+	return (const fptu_payload*) &pf->body[pf->offset];
 }
 #endif /* __cplusplus */
 
-extern const uint8_t fpt_internal_map_t2b[];
-extern const uint8_t fpt_internal_map_t2u[];
+extern const uint8_t fptu_internal_map_t2b[];
+extern const uint8_t fptu_internal_map_t2u[];
 
 static __inline
 bool ct_is_fixedsize(unsigned ct) {
-	return fpt_get_type(ct) < fpt_string;
+	return fptu_get_type(ct) < fptu_string;
 }
 
 static __inline
 bool ct_is_dead(unsigned ct) {
-	return ct >= (fpt_co_dead << fpt_co_shift);
+	return ct >= (fptu_co_dead << fptu_co_shift);
 }
 
 static __inline
 size_t ct_elem_size(unsigned ct) {
-	unsigned type = fpt_get_type(ct);
+	unsigned type = fptu_get_type(ct);
 	if (likely(ct_is_fixedsize(type)))
-		return fpt_internal_map_t2b[type];
+		return fptu_internal_map_t2b[type];
 
-	/* fpt_opaque, fpt_string or fpt_farray.
+	/* fptu_opaque, fptu_string or fptu_farray.
 	 * at least 4 bytes for length or '\0'. */
-	return fpt_unit_size;
+	return fptu_unit_size;
 }
 
 static __inline
 bool ct_match_fixedsize(unsigned ct, unsigned units) {
 	return ct_is_fixedsize(ct)
-		&& units == fpt_internal_map_t2u[fpt_get_type(ct)];
+		&& units == fptu_internal_map_t2u[fptu_get_type(ct)];
 }
 
-size_t fpt_field_units(const fpt_field* pf);
+size_t fptu_field_units(const fptu_field* pf);
 
 static __inline
-const void* fpt_ro_detent(fpt_ro ro) {
+const void* fptu_ro_detent(fptu_ro ro) {
 	return (char *) ro.sys.iov_base + ro.sys.iov_len;
 }
 
 static __inline
-const void* fpt_detent(const fpt_rw* rw) {
+const void* fptu_detent(const fptu_rw* rw) {
 	return &rw->units[rw->end];
 }
 
-fpt_field* fpt_lookup_ct(fpt_rw* pt, unsigned ct);
+fptu_field* fptu_lookup_ct(fptu_rw* pt, unsigned ct);
 
 template<typename type>
 static __inline
-int fpt_cmp2bits(type left, type right) {
+int fptu_cmp2bits(type left, type right) {
 	if (left == right)
-		return fpt_eq;
-	return (left < right) ? fpt_lt : fpt_gt;
+		return fptu_eq;
+	return (left < right) ? fptu_lt : fptu_gt;
 }

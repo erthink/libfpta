@@ -21,78 +21,78 @@
 
 static __inline
 int memcmp2bits(const void* a, const void* b, size_t bytes) {
-	return fpt_cmp2bits(memcmp(a, b, bytes), 0);
+	return fptu_cmp2bits(memcmp(a, b, bytes), 0);
 }
 
-int fpt_cmp_96(fpt_ro ro, unsigned column, const uint8_t* value) {
+int fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t* value) {
 	if (unlikely(value == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_96);
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_96);
 	if (unlikely(pf == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	return memcmp2bits(fpt_field_payload(pf)->fixed_opaque, value, 12);
+	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 12);
 }
 
-int fpt_cmp_128(fpt_ro ro, unsigned column, const uint8_t* value) {
+int fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t* value) {
 	if (unlikely(value == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_128);
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_128);
 	if (unlikely(pf == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	return memcmp2bits(fpt_field_payload(pf)->fixed_opaque, value, 16);
+	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 16);
 }
 
-int fpt_cmp_160(fpt_ro ro, unsigned column, const uint8_t* value) {
+int fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t* value) {
 	if (unlikely(value == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_160);
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_160);
 	if (unlikely(pf == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	return memcmp2bits(fpt_field_payload(pf)->fixed_opaque, value, 20);
+	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 20);
 }
 
-int fpt_cmp_192(fpt_ro ro, unsigned column, const uint8_t* value) {
+int fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t* value) {
 	if (unlikely(value == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_192);
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_192);
 	if (unlikely(pf == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	return memcmp2bits(fpt_field_payload(pf)->fixed_opaque, value, 24);
+	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 24);
 }
 
-int fpt_cmp_256(fpt_ro ro, unsigned column, const uint8_t* value) {
+int fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t* value) {
 	if (unlikely(value == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_256);
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_256);
 	if (unlikely(pf == nullptr))
-		return fpt_ic;
+		return fptu_ic;
 
-	return memcmp2bits(fpt_field_payload(pf)->fixed_opaque, value, 32);
+	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 32);
 }
 
 //----------------------------------------------------------------------
 
-int fpt_cmp_opaque(fpt_ro ro, unsigned column, const void* value, size_t bytes) {
-	const fpt_field* pf = fpt_lookup_ro(ro, column, fpt_opaque);
+int fptu_cmp_opaque(fptu_ro ro, unsigned column, const void* value, size_t bytes) {
+	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_opaque);
 	if (pf == nullptr)
-		return bytes ? fpt_ic : fpt_eq;
+		return bytes ? fptu_ic : fptu_eq;
 
-	const struct iovec field = fpt_field_opaque(pf);
+	const struct iovec field = fptu_field_opaque(pf);
 	if (field.iov_len != bytes)
-		return (field.iov_len < bytes) ? fpt_lt : fpt_gt;
+		return (field.iov_len < bytes) ? fptu_lt : fptu_gt;
 
 	return memcmp2bits(field.iov_base, value, bytes);
 }
 
-int fpt_cmp_opaque_iov(fpt_ro ro, unsigned column, const struct iovec value) {
-	return fpt_cmp_opaque(ro, column, value.iov_base, value.iov_len);
+int fptu_cmp_opaque_iov(fptu_ro ro, unsigned column, const struct iovec value) {
+	return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
 }

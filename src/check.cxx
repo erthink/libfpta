@@ -20,40 +20,40 @@
 #include "fast_positive/internals.h"
 
 static __hot
-const char* fpt_field_check(const fpt_field* pf, const char* pivot,
+const char* fptu_field_check(const fptu_field* pf, const char* pivot,
 		const char *detent, size_t &payload_units, const char* &prev_payload) {
 	payload_units = 0;
-	if (unlikely(detent < (const char*) pf + fpt_unit_size))
+	if (unlikely(detent < (const char*) pf + fptu_unit_size))
 		return "field.header > detent";
 
-	unsigned type = fpt_get_type(pf->ct);
-	if (type <= fpt_uint16)
+	unsigned type = fptu_get_type(pf->ct);
+	if (type <= fptu_uint16)
 		// without ex-data
 		return nullptr;
 
 	payload_units = 1;
-	const fpt_payload* payload = fpt_field_payload(pf);
+	const fptu_payload* payload = fptu_field_payload(pf);
 	if (unlikely((char*) payload < pivot))
 		return "field.begin < tuple.pivot";
 
 	size_t len;
 	ptrdiff_t left = (char*) detent - (const char*) payload;
-	if (type < fpt_string) {
+	if (type < fptu_string) {
 		// fixed length type
-		payload_units = fpt_internal_map_t2u[type];
-		len = fpt_internal_map_t2b[type];
+		payload_units = fptu_internal_map_t2u[type];
+		len = fptu_internal_map_t2b[type];
 		if (unlikely((ptrdiff_t) len > left))
 			return "field.end > detent";
 		return nullptr;
 	}
 
-	if (unlikely(left < fpt_unit_size))
+	if (unlikely(left < fptu_unit_size))
 		return "field.varlen > detent";
 
 	if (unlikely((const char*) payload < prev_payload))
 		return "field.payload < previous.payload (sorted and mesh tuples NOT yet supported)";
 
-	if (type == fpt_string) {
+	if (type == fptu_string) {
 		// length is'nt stored, but zero terminated
 		len = strnlen((const char*) payload, left) + 1;
 		payload_units = bytes2units(len);
@@ -63,7 +63,7 @@ const char* fpt_field_check(const fpt_field* pf, const char* pivot,
 		len = units2bytes(payload_units);
 	}
 
-	if (unlikely(len > fpt_max_field_bytes))
+	if (unlikely(len > fptu_max_field_bytes))
 		return "field.length > max_field_bytes";
 
 	if (unlikely((ptrdiff_t) len > left))
@@ -71,14 +71,14 @@ const char* fpt_field_check(const fpt_field* pf, const char* pivot,
 
 	prev_payload = (const char*) payload + len;
 
-	if (unlikely(type & fpt_farray)) {
+	if (unlikely(type & fptu_farray)) {
 		// TODO
 		return "arrays NOT yet supported";
-	} else if (type == fpt_opaque) {
+	} else if (type == fptu_opaque) {
 		len = payload->other.varlen.opaque_bytes;
 		if (unlikely(payload_units != bytes2units(len) + 1))
 			return "field.opaque_bytes != field.brutto";
-	} else if (pf->ct == fpt_nested) {
+	} else if (pf->ct == fptu_nested) {
 		// TODO
 		return "nested tuples NOT yet supported";
 	}
@@ -86,7 +86,7 @@ const char* fpt_field_check(const fpt_field* pf, const char* pivot,
 	return nullptr;
 }
 
-const char* fpt_check_ro(fpt_ro ro) {
+const char* fptu_check_ro(fptu_ro ro) {
 	if (ro.total_bytes == 0)
 		// valid empty tuple
 		return nullptr;
@@ -94,34 +94,34 @@ const char* fpt_check_ro(fpt_ro ro) {
 	if (unlikely(ro.units == nullptr))
 		return "tuple.items.is_nullptr";
 
-	if (unlikely(ro.total_bytes < fpt_unit_size))
-		return "tuple.length_bytes < fpt_unit_size";
+	if (unlikely(ro.total_bytes < fptu_unit_size))
+		return "tuple.length_bytes < fptu_unit_size";
 
-	if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
+	if (unlikely(ro.total_bytes > fptu_max_tuple_bytes))
 		return "tuple.length_bytes < max_bytes";
 
 	if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
 		return "tuple.length_bytes != tuple.brutto";
 
 	const char *detent = (const char*) ro.units + ro.total_bytes;
-	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
-	if (unlikely(items > fpt_max_fields))
-		return "tuple.items > fpt_max_fields";
+	size_t items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+	if (unlikely(items > fptu_max_fields))
+		return "tuple.items > fptu_max_fields";
 
-	const fpt_field *begin = &ro.units[1].field;
+	const fptu_field *begin = &ro.units[1].field;
 	const char* pivot = (const char*) begin + units2bytes(items);
 	if (unlikely(pivot > detent))
 		return "tuple.pivot > tuple.end";
 
-	if (fpt_lx_mask & ro.units[0].varlen.tuple_items) {
+	if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
 		// TODO: support for sorted tuples
 	}
 
 	size_t payload_total_bytes = 0;
 	const char* prev_payload = pivot;
-	for (const fpt_field *pf = (const fpt_field *) pivot; --pf >= begin; ) {
+	for (const fptu_field *pf = (const fptu_field *) pivot; --pf >= begin; ) {
 		size_t payload_units;
-		const char* bug = fpt_field_check(pf, pivot,
+		const char* bug = fptu_field_check(pf, pivot,
 			detent, payload_units, prev_payload);
 		if (unlikely(bug))
 			return bug;
@@ -140,7 +140,7 @@ const char* fpt_check_ro(fpt_ro ro) {
 	return nullptr;
 }
 
-const char* fpt_check(fpt_rw *pt) {
+const char* fptu_check(fptu_rw *pt) {
 	if (unlikely(pt == nullptr))
 		return "tuple.is_nullptr";
 
@@ -156,25 +156,25 @@ const char* fpt_check(fpt_rw *pt) {
 	if (unlikely(pt->tail > pt->end))
 		return "tuple.tail > tuple.end";
 
-	if (unlikely(pt->pivot - pt->head > fpt_max_fields))
-		return "tuple.n_cols > fpt_max_fields";
+	if (unlikely(pt->pivot - pt->head > fptu_max_fields))
+		return "tuple.n_cols > fptu_max_fields";
 
-	if (unlikely(pt->tail - pt->head > fpt_max_tuple_bytes/fpt_unit_size - 1))
+	if (unlikely(pt->tail - pt->head > fptu_max_tuple_bytes/fptu_unit_size - 1))
 		return "tuple.size > max_bytes";
 
 	if (unlikely(pt->junk > pt->tail - pt->head))
 		return "tuple.junk > tuple.size";
 
-	const fpt_field *begin = &pt->units[pt->head].field;
+	const fptu_field *begin = &pt->units[pt->head].field;
 	const char* pivot = (const char*) &pt->units[pt->pivot];
 	const char* detent = (const char*) &pt->units[pt->tail];
 	size_t payload_total_bytes = 0;
 	size_t payload_junk_units = 0;
 	size_t junk_items = 0;
 	const char* prev_payload = pivot;
-	for (const fpt_field *pf = (const fpt_field *) pivot; --pf >= begin; ) {
+	for (const fptu_field *pf = (const fptu_field *) pivot; --pf >= begin; ) {
 		size_t payload_units;
-		const char* bug = fpt_field_check(pf, pivot,
+		const char* bug = fptu_field_check(pf, pivot,
 			detent, payload_units, prev_payload);
 		if (unlikely(bug))
 			return bug;

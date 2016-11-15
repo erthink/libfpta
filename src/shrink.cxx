@@ -20,54 +20,54 @@
 #include "fast_positive/internals.h"
 
 enum {
-	fpt_unsorted    = 1,
-	fpt_junk_header = 2,
-	fpt_junk_data   = 4,
-	fpt_mesh        = 8
+	fptu_unsorted    = 1,
+	fptu_junk_header = 2,
+	fptu_junk_data   = 4,
+	fptu_mesh        = 8
 };
 
-static unsigned fpt_state(const fpt_rw* pt) {
-	const fpt_field* begin = fpt_begin(pt);
-	const fpt_field* end = fpt_end(pt);
+static unsigned fptu_state(const fptu_rw* pt) {
+	const fptu_field* begin = fptu_begin(pt);
+	const fptu_field* end = fptu_end(pt);
 	const char* prev_payload = (const char*) end;
-	unsigned last_ct = fpt_limit;
+	unsigned last_ct = fptu_limit;
 
 	unsigned state = 0;
-	for(const fpt_field* pf = end; --pf >= begin; ) {
+	for(const fptu_field* pf = end; --pf >= begin; ) {
 		if (pf->ct > last_ct)
-			state |= fpt_unsorted;
+			state |= fptu_unsorted;
 		last_ct = pf->ct;
 
 		if (ct_is_dead(pf->ct)) {
-			state |= (fpt_get_type(pf->ct) > fpt_uint16)
-					? fpt_junk_header | fpt_junk_data
-					: fpt_junk_header;
-		} else if (fpt_get_type(pf->ct) > fpt_uint16) {
-			const char* payload = (const char*) fpt_field_payload(pf);
+			state |= (fptu_get_type(pf->ct) > fptu_uint16)
+					? fptu_junk_header | fptu_junk_data
+					: fptu_junk_header;
+		} else if (fptu_get_type(pf->ct) > fptu_uint16) {
+			const char* payload = (const char*) fptu_field_payload(pf);
 			if (payload < prev_payload)
-				state |= fpt_mesh;
+				state |= fptu_mesh;
 			prev_payload = payload;
 		}
-		if (state == (fpt_unsorted | fpt_junk_header | fpt_junk_data | fpt_mesh))
+		if (state == (fptu_unsorted | fptu_junk_header | fptu_junk_data | fptu_mesh))
 			break;
 	}
 	return state;
 }
 
-void fpt_shrink(fpt_rw* pt) {
-	unsigned state = fpt_state(pt);
-	if ((state & (fpt_junk_header | fpt_junk_data)) == 0)
+void fptu_shrink(fptu_rw* pt) {
+	unsigned state = fptu_state(pt);
+	if ((state & (fptu_junk_header | fptu_junk_data)) == 0)
 		return;
 
-	if (state & fpt_mesh) {
+	if (state & fptu_mesh) {
 		// TODO: support for sorted tuples;
 		assert(0 && "sorted/mesh tuples NOT yet supported");
 	}
 
-	fpt_field* begin = &pt->units[pt->head].field;
+	fptu_field* begin = &pt->units[pt->head].field;
 	void* pivot = &pt->units[pt->pivot];
 
-	fpt_field f, *h = (fpt_field *) pivot;
+	fptu_field f, *h = (fptu_field *) pivot;
 	uint32_t *t = (uint32_t *) pivot;
 	size_t shift;
 
@@ -78,14 +78,14 @@ void fpt_shrink(fpt_rw* pt) {
 			continue;
 		}
 
-		if (fpt_get_type(f.ct) > fpt_uint16) {
-			size_t u = fpt_field_units(h);
-			uint32_t* p = (uint32_t*) fpt_field_payload(h);
+		if (fptu_get_type(f.ct) > fptu_uint16) {
+			size_t u = fptu_field_units(h);
+			uint32_t* p = (uint32_t*) fptu_field_payload(h);
 			assert(t <= p);
 			if (t != p)
 				memmove(t, p, units2bytes(u));
 			size_t offset = t - h[shift].body;
-			assert(offset <= fpt_limit);
+			assert(offset <= fptu_limit);
 			f.offset = offset;
 			t += u;
 		}

@@ -22,76 +22,76 @@
 
 #include "shuffle6.hpp"
 
-static bool field_filter_any(const fpt_field*, void *context, void *param) {
+static bool field_filter_any(const fptu_field*, void *context, void *param) {
 	(void) context;
 	(void) param;
 	return true;
 }
 
 TEST(Shrink, Base) {
-	char space[fpt_buffer_enought];
-	fpt_rw *pt = fpt_init(space, sizeof(space), fpt_max_fields);
+	char space[fptu_buffer_enought];
+	fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
 	ASSERT_NE(nullptr, pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
+	ASSERT_STREQ(nullptr, fptu_check(pt));
 
 	// shrink empty
-	fpt_shrink(pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
+	fptu_shrink(pt);
+	ASSERT_STREQ(nullptr, fptu_check(pt));
 
 	// shrink one header-only field
-	EXPECT_EQ(fpt_ok, fpt_insert_uint16(pt, 0xA, 0xAA42));
-	EXPECT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-	fpt_shrink(pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, 0xA, 0xAA42));
+	EXPECT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	fptu_shrink(pt);
+	ASSERT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(0, pt->junk);
 
 	// add one more header-only and erase first
-	EXPECT_EQ(fpt_ok, fpt_insert_uint16(pt, 0xB, 0xBB43));
-	EXPECT_EQ(1, fpt_erase(pt, 0xA, fpt_uint16));
-	EXPECT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, 0xB, 0xBB43));
+	EXPECT_EQ(1, fptu_erase(pt, 0xA, fptu_uint16));
+	EXPECT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(1, pt->junk);
-	fpt_shrink(pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	fptu_shrink(pt);
+	ASSERT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(0, pt->junk);
-	fpt_field* fp = fpt_lookup(pt, 0xB, fpt_uint16);
+	fptu_field* fp = fptu_lookup(pt, 0xB, fptu_uint16);
 	ASSERT_NE(nullptr, fp);
-	EXPECT_EQ(0xBB43, fpt_field_uint16(fp));
+	EXPECT_EQ(0xBB43, fptu_field_uint16(fp));
 
 	// add thrid field and erase previous
-	EXPECT_EQ(fpt_ok, fpt_insert_uint32(pt, 0xC, 42));
-	EXPECT_EQ(1, fpt_erase(pt, 0xB, fpt_uint16));
-	EXPECT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	EXPECT_EQ(fptu_ok, fptu_insert_uint32(pt, 0xC, 42));
+	EXPECT_EQ(1, fptu_erase(pt, 0xB, fptu_uint16));
+	EXPECT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(1, pt->junk);
-	fpt_shrink(pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	fptu_shrink(pt);
+	ASSERT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(0, pt->junk);
-	fp = fpt_lookup(pt, 0xC, fpt_uint32);
+	fp = fptu_lookup(pt, 0xC, fptu_uint32);
 	ASSERT_NE(nullptr, fp);
-	EXPECT_EQ(42, fpt_field_uint32(fp));
+	EXPECT_EQ(42, fptu_field_uint32(fp));
 
 	// add fourth field and erase previous
-	EXPECT_EQ(fpt_ok, fpt_insert_int64(pt, 0xD, -555));
-	EXPECT_EQ(1, fpt_erase(pt, 0xC, fpt_uint32));
-	EXPECT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	EXPECT_EQ(fptu_ok, fptu_insert_int64(pt, 0xD, -555));
+	EXPECT_EQ(1, fptu_erase(pt, 0xC, fptu_uint32));
+	EXPECT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(2, pt->junk);
-	fpt_shrink(pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
-	EXPECT_EQ(1, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+	fptu_shrink(pt);
+	ASSERT_STREQ(nullptr, fptu_check(pt));
+	EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 	EXPECT_EQ(0, pt->junk);
-	fp = fpt_lookup(pt, 0xD, fpt_int64);
+	fp = fptu_lookup(pt, 0xD, fptu_int64);
 	ASSERT_NE(nullptr, fp);
-	EXPECT_EQ(-555, fpt_field_int64(fp));
+	EXPECT_EQ(-555, fptu_field_int64(fp));
 }
 
 TEST(Shrink, Shuffle) {
-	char space[fpt_buffer_enought];
+	char space[fptu_buffer_enought];
 
 	ASSERT_TRUE(shuffle6::selftest());
 
@@ -100,7 +100,7 @@ TEST(Shrink, Shuffle) {
 		for (unsigned n = 0; n < shuffle6::factorial; ++n) {
 			shuffle6 order(n);
 			while(! order.empty()) {
-				fpt_rw *pt = fpt_init(space, sizeof(space), fpt_max_fields);
+				fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
 				ASSERT_NE(nullptr, pt);
 
 				int count = 0;
@@ -110,22 +110,22 @@ TEST(Shrink, Shuffle) {
 						default:
 							assert(false);
 						case 0:
-							EXPECT_EQ(fpt_ok, fpt_insert_uint16(pt, i, 7717 * i));
+							EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, i, 7717 * i));
 							break;
 						case 1:
-							EXPECT_EQ(fpt_ok, fpt_insert_int32(pt, i, -14427139 * i));
+							EXPECT_EQ(fptu_ok, fptu_insert_int32(pt, i, -14427139 * i));
 							break;
 						case 2:
-							EXPECT_EQ(fpt_ok, fpt_insert_uint64(pt, i, 53299271467827031 * i));
+							EXPECT_EQ(fptu_ok, fptu_insert_uint64(pt, i, 53299271467827031 * i));
 							break;
 						}
 						count++;
 					}
 				}
 
-				ASSERT_STREQ(nullptr, fpt_check(pt));
-				EXPECT_EQ(0, fpt_junkspace(pt));
-				EXPECT_EQ(count, fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+				ASSERT_STREQ(nullptr, fptu_check(pt));
+				EXPECT_EQ(0, fptu_junkspace(pt));
+				EXPECT_EQ(count, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
 				int present_mask = create_mask;
 				int i = order.next();
@@ -136,13 +136,13 @@ TEST(Shrink, Shuffle) {
 				default:
 					assert(false);
 				case 0:
-					EXPECT_EQ(present, fpt_erase(pt, i, fpt_uint16));
+					EXPECT_EQ(present, fptu_erase(pt, i, fptu_uint16));
 					break;
 				case 1:
-					EXPECT_EQ(present, fpt_erase(pt, i, fpt_int32));
+					EXPECT_EQ(present, fptu_erase(pt, i, fptu_int32));
 					break;
 				case 2:
-					EXPECT_EQ(present, fpt_erase(pt, i, fpt_uint64));
+					EXPECT_EQ(present, fptu_erase(pt, i, fptu_uint64));
 					break;
 				}
 
@@ -157,37 +157,37 @@ TEST(Shrink, Shuffle) {
 					+ ", shuffle-item #" + std::to_string(i)
 					+ ", present-mask #" + std::to_string(present_mask));
 
-				ASSERT_STREQ(nullptr, fpt_check(pt));
+				ASSERT_STREQ(nullptr, fptu_check(pt));
 				ASSERT_EQ(count,
-					fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+					fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
-				fpt_shrink(pt);
-				ASSERT_STREQ(nullptr, fpt_check(pt));
+				fptu_shrink(pt);
+				ASSERT_STREQ(nullptr, fptu_check(pt));
 				ASSERT_EQ(count,
-					fpt_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+					fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 				EXPECT_EQ(0, pt->junk);
 
 				if (count) {
 					for (int i = 0; i < 6; ++i) {
 						if (present_mask & (1 << i)) {
-							fpt_field* fp;
+							fptu_field* fp;
 							switch(i % 3) {
 							default:
 								assert(false);
 							case 0:
-								fp = fpt_lookup(pt, i, fpt_uint16);
+								fp = fptu_lookup(pt, i, fptu_uint16);
 								ASSERT_NE(nullptr, fp);
-								EXPECT_EQ(7717 * i, fpt_field_uint16(fp));
+								EXPECT_EQ(7717 * i, fptu_field_uint16(fp));
 								break;
 							case 1:
-								fp = fpt_lookup(pt, i, fpt_int32);
+								fp = fptu_lookup(pt, i, fptu_int32);
 								ASSERT_NE(nullptr, fp);
-								EXPECT_EQ(-14427139 * i, fpt_field_int32(fp));
+								EXPECT_EQ(-14427139 * i, fptu_field_int32(fp));
 								break;
 							case 2:
-								fp = fpt_lookup(pt, i, fpt_uint64);
+								fp = fptu_lookup(pt, i, fptu_uint64);
 								ASSERT_NE(nullptr, fp);
-								EXPECT_EQ(53299271467827031 * i, fpt_field_uint64(fp));
+								EXPECT_EQ(53299271467827031 * i, fptu_field_uint64(fp));
 								break;
 							}
 						}

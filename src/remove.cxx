@@ -20,24 +20,24 @@
 #include "fast_positive/internals.h"
 
 static __inline
-bool fpt_is_tailed(fpt_rw* pt, fpt_field *pf, size_t units) {
+bool fptu_is_tailed(fptu_rw* pt, fptu_field *pf, size_t units) {
 	assert(pf == &pt->units[pt->head].field);
 
 	return units == 0
 		|| &pf->body[pf->offset + units] == &pt->units[pt->tail].data;
 }
 
-void fpt_erase_field(fpt_rw* pt, fpt_field *pf) {
+void fptu_erase_field(fptu_rw* pt, fptu_field *pf) {
 	if (unlikely(ct_is_dead(pf->ct)))
 		return;
 
 	// mark field as `dead`
-	pf->ct |= fpt_co_dead << fpt_co_shift;
-	size_t units = fpt_field_units(pf);
+	pf->ct |= fptu_co_dead << fptu_co_shift;
+	size_t units = fptu_field_units(pf);
 
 	// head & tail optimization
 	if (pf != &pt->units[pt->head].field
-			|| ! fpt_is_tailed(pt, pf, units)) {
+			|| ! fptu_is_tailed(pt, pf, units)) {
 		// account junk
 		pt->junk += units + 1;
 		return;
@@ -53,8 +53,8 @@ void fpt_erase_field(fpt_rw* pt, fpt_field *pf) {
 		if (! ct_is_dead(pf->ct))
 			break;
 
-		units = fpt_field_units(pf);
-		if (! fpt_is_tailed(pt, pf, units))
+		units = fptu_field_units(pf);
+		if (! fptu_is_tailed(pt, pf, units))
 			break;
 
 		assert(pt->junk >= units + 1);
@@ -64,27 +64,27 @@ void fpt_erase_field(fpt_rw* pt, fpt_field *pf) {
 	}
 }
 
-int fpt_erase(fpt_rw* pt, unsigned column, int type_or_filter) {
-	if (unlikely(column > fpt_max_cols))
-		return fpt_einval;
+int fptu_erase(fptu_rw* pt, unsigned column, int type_or_filter) {
+	if (unlikely(column > fptu_max_cols))
+		return fptu_einval;
 
-	if (type_or_filter & fpt_filter) {
+	if (type_or_filter & fptu_filter) {
 		int count = 0;
-		fpt_field *begin = &pt->units[pt->head].field;
-		fpt_field *pivot = &pt->units[pt->pivot].field;
-		for (fpt_field* pf = begin; pf < pivot; ++pf) {
-			if (fpt_ct_match(pf, column, type_or_filter)) {
-				fpt_erase_field(pt, pf);
+		fptu_field *begin = &pt->units[pt->head].field;
+		fptu_field *pivot = &pt->units[pt->pivot].field;
+		for (fptu_field* pf = begin; pf < pivot; ++pf) {
+			if (fptu_ct_match(pf, column, type_or_filter)) {
+				fptu_erase_field(pt, pf);
 				count++;
 			}
 		}
 		return count;
 	}
 
-	fpt_field *pf = fpt_lookup_ct(pt, fpt_pack_coltype(column, type_or_filter));
+	fptu_field *pf = fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
 	if (pf == nullptr)
 		return 0;
 
-	fpt_erase_field(pt, pf);
+	fptu_erase_field(pt, pf);
 	return 1;
 }

@@ -19,67 +19,67 @@
 
 #include "fast_positive/internals.h"
 
-size_t fpt_space(size_t items, size_t data_bytes) {
-	if (items > fpt_max_fields)
-		items = fpt_max_fields;
-	if (data_bytes > fpt_max_tuple_bytes)
-		data_bytes = fpt_max_tuple_bytes;
+size_t fptu_space(size_t items, size_t data_bytes) {
+	if (items > fptu_max_fields)
+		items = fptu_max_fields;
+	if (data_bytes > fptu_max_tuple_bytes)
+		data_bytes = fptu_max_tuple_bytes;
 
-	return sizeof(fpt_rw) + items * fpt_unit_size
-		+ FPT_ALIGN_CEIL(data_bytes, fpt_unit_size);
+	return sizeof(fptu_rw) + items * fptu_unit_size
+		+ FPT_ALIGN_CEIL(data_bytes, fptu_unit_size);
 }
 
-fpt_rw* fpt_init(void* space, size_t buffer_bytes, size_t items_limit) {
-	if (unlikely(space == nullptr || items_limit > fpt_max_fields))
+fptu_rw* fptu_init(void* space, size_t buffer_bytes, size_t items_limit) {
+	if (unlikely(space == nullptr || items_limit > fptu_max_fields))
 		return nullptr;
 
-	if (unlikely(buffer_bytes < sizeof(fpt_rw) + fpt_unit_size * items_limit))
+	if (unlikely(buffer_bytes < sizeof(fptu_rw) + fptu_unit_size * items_limit))
 		return nullptr;
 
-	if (unlikely(buffer_bytes > fpt_buffer_limit))
+	if (unlikely(buffer_bytes > fptu_buffer_limit))
 		return nullptr;
 
-	fpt_rw *pt = (fpt_rw*) space;
+	fptu_rw *pt = (fptu_rw*) space;
 	// make a empty tuple
-	pt->end = (buffer_bytes - sizeof(fpt_rw)) / fpt_unit_size + 1;
+	pt->end = (buffer_bytes - sizeof(fptu_rw)) / fptu_unit_size + 1;
 	pt->head = pt->tail = pt->pivot = items_limit + 1;
 	pt->junk = 0;
 	return pt;
 }
 
-size_t fpt_space4items(const fpt_rw* pt) {
+size_t fptu_space4items(const fptu_rw* pt) {
 	return (pt->head > 0) ? pt->head - 1 : 0;
 }
 
-size_t fpt_space4data(const fpt_rw* pt) {
+size_t fptu_space4data(const fptu_rw* pt) {
 	return units2bytes(pt->end - pt->tail);
 }
 
-size_t fpt_junkspace(const fpt_rw* pt) {
+size_t fptu_junkspace(const fptu_rw* pt) {
 	return units2bytes(pt->junk);
 }
 
 //----------------------------------------------------------------------
 
-fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes, unsigned more_items) {
+fptu_rw* fptu_fetch(fptu_ro ro, void* space, size_t buffer_bytes, unsigned more_items) {
 	if (ro.total_bytes == 0)
-		return fpt_init(space, buffer_bytes, more_items);
+		return fptu_init(space, buffer_bytes, more_items);
 
 	if (unlikely(ro.units == nullptr))
 		return nullptr;
-	if (unlikely(ro.total_bytes < fpt_unit_size))
+	if (unlikely(ro.total_bytes < fptu_unit_size))
 		return nullptr;
-	if (unlikely(ro.total_bytes > fpt_max_tuple_bytes))
+	if (unlikely(ro.total_bytes > fptu_max_tuple_bytes))
 		return nullptr;
 	if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
 		return nullptr;
 
-	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
-	if (unlikely(items > fpt_max_fields))
+	size_t items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+	if (unlikely(items > fptu_max_fields))
 		return nullptr;
-	if (unlikely(space == nullptr || more_items > fpt_max_fields))
+	if (unlikely(space == nullptr || more_items > fptu_max_fields))
 		return nullptr;
-	if (unlikely(buffer_bytes > fpt_buffer_limit))
+	if (unlikely(buffer_bytes > fptu_buffer_limit))
 		return nullptr;
 
 	const char *end = (const char*) ro.units + ro.total_bytes;
@@ -89,46 +89,46 @@ fpt_rw* fpt_fetch(fpt_ro ro, void* space, size_t buffer_bytes, unsigned more_ite
 		return nullptr;
 
 	size_t reserve_items = items + more_items;
-	if (reserve_items > fpt_max_fields)
-		reserve_items = fpt_max_fields;
+	if (reserve_items > fptu_max_fields)
+		reserve_items = fptu_max_fields;
 
 	ptrdiff_t payload_bytes = end - pivot;
-	if (unlikely(buffer_bytes < sizeof(fpt_rw) + units2bytes(reserve_items)
+	if (unlikely(buffer_bytes < sizeof(fptu_rw) + units2bytes(reserve_items)
 			+ payload_bytes))
 		return nullptr;
 
-	fpt_rw *pt = (fpt_rw*) space;
-	pt->end = (buffer_bytes - sizeof(fpt_rw)) / fpt_unit_size + 1;
+	fptu_rw *pt = (fptu_rw*) space;
+	pt->end = (buffer_bytes - sizeof(fptu_rw)) / fptu_unit_size + 1;
 	pt->pivot = reserve_items + 1;
 	pt->head = pt->pivot - items;
-	pt->tail = pt->pivot + (payload_bytes >> fpt_unit_shift);
+	pt->tail = pt->pivot + (payload_bytes >> fptu_unit_shift);
 	pt->junk = 0;
 
-	memcpy(&pt->units[pt->head], begin, ro.total_bytes - fpt_unit_size);
+	memcpy(&pt->units[pt->head], begin, ro.total_bytes - fptu_unit_size);
 	return pt;
 }
 
-size_t fpt_check_and_get_buffer_size(fpt_ro ro,
+size_t fptu_check_and_get_buffer_size(fptu_ro ro,
 	unsigned more_items, unsigned more_payload, const char** error) {
 	if (unlikely(error == nullptr))
 		return ~(size_t)0;
 
-	*error = fpt_check_ro(ro);
+	*error = fptu_check_ro(ro);
 	if (unlikely(*error != nullptr))
 		return 0;
 
-	if (unlikely(more_items > fpt_max_fields)) {
-		*error = "more_items > fpt_max_fields";
+	if (unlikely(more_items > fptu_max_fields)) {
+		*error = "more_items > fptu_max_fields";
 		return 0;
 	}
-	if (unlikely(more_payload > fpt_max_tuple_bytes)) {
-		*error = "more_payload > fpt_max_tuple_bytes";
+	if (unlikely(more_payload > fptu_max_tuple_bytes)) {
+		*error = "more_payload > fptu_max_tuple_bytes";
 		return 0;
 	}
 
-	size_t items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
+	size_t items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
 	size_t payload_bytes = ro.total_bytes - units2bytes(items + 1);
-	return fpt_space(items + more_items, payload_bytes + more_payload);
+	return fptu_space(items + more_items, payload_bytes + more_payload);
 }
 
 //----------------------------------------------------------------------
@@ -136,16 +136,16 @@ size_t fpt_check_and_get_buffer_size(fpt_ro ro,
 #include <stdlib.h>
 
 // TODO: split out
-fpt_rw* fpt_alloc(size_t items_limit, size_t data_bytes) {
-	if (unlikely(items_limit > fpt_max_fields || data_bytes > fpt_max_tuple_bytes))
+fptu_rw* fptu_alloc(size_t items_limit, size_t data_bytes) {
+	if (unlikely(items_limit > fptu_max_fields || data_bytes > fptu_max_tuple_bytes))
 		return nullptr;
 
-	size_t size = fpt_space(items_limit, data_bytes);
+	size_t size = fptu_space(items_limit, data_bytes);
 	void* buffer = malloc(size);
 	if (unlikely(! buffer))
 		return nullptr;
 
-	fpt_rw* pt = fpt_init(buffer, size, items_limit);
+	fptu_rw* pt = fptu_init(buffer, size, items_limit);
 	assert(pt != nullptr);
 
 	return pt;

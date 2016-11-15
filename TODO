@@ -1,5 +1,5 @@
 done:
-	fpt_fetch();
+	fptu_fetch();
 	xxx_insert(), e.g. collections;
 	xxx_update();
 	iterators;

@@ -21,77 +21,77 @@
 #include "fast_positive/internals.h"
 
 TEST(Init, Invalid) {
-	EXPECT_EQ(nullptr, fpt_init(nullptr, 0, 0));
-	EXPECT_EQ(nullptr, fpt_init(nullptr, fpt_max_tuple_bytes/2, fpt_max_fields/2));
-	EXPECT_EQ(nullptr, fpt_init(nullptr, fpt_max_tuple_bytes, fpt_max_fields));
-	EXPECT_EQ(nullptr, fpt_init(nullptr, ~0u, ~0u));
+	EXPECT_EQ(nullptr, fptu_init(nullptr, 0, 0));
+	EXPECT_EQ(nullptr, fptu_init(nullptr, fptu_max_tuple_bytes/2, fptu_max_fields/2));
+	EXPECT_EQ(nullptr, fptu_init(nullptr, fptu_max_tuple_bytes, fptu_max_fields));
+	EXPECT_EQ(nullptr, fptu_init(nullptr, ~0u, ~0u));
 
-	char space_exactly_noitems[sizeof(fpt_rw)];
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, sizeof(space_exactly_noitems), 1));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, sizeof(space_exactly_noitems), fpt_max_fields));
-	EXPECT_EQ(nullptr, fpt_init(nullptr, sizeof(space_exactly_noitems), 0));
-	EXPECT_NE(nullptr, fpt_init(space_exactly_noitems, sizeof(space_exactly_noitems), 0));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, sizeof(space_exactly_noitems) - 1, 0));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, 0));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, 1));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, fpt_max_fields));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, fpt_max_fields * 2));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, 0, ~0u));
+	char space_exactly_noitems[sizeof(fptu_rw)];
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems), 1));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems), fptu_max_fields));
+	EXPECT_EQ(nullptr, fptu_init(nullptr, sizeof(space_exactly_noitems), 0));
+	EXPECT_NE(nullptr, fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems), 0));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems) - 1, 0));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, 0));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, 1));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, fptu_max_fields));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, fptu_max_fields * 2));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, ~0u));
 
-	char space_maximum[fpt_buffer_enought];
-	EXPECT_EQ(nullptr, fpt_init(space_maximum, sizeof(space_maximum), fpt_max_fields + 1));
-	EXPECT_EQ(nullptr, fpt_init(nullptr, sizeof(space_maximum), 0));
-	EXPECT_EQ(nullptr, fpt_init(space_exactly_noitems, ~0u, 1));
-	ASSERT_EQ(nullptr, fpt_init(space_exactly_noitems, fpt_buffer_limit + 1, fpt_max_fields));
+	char space_maximum[fptu_buffer_enought];
+	EXPECT_EQ(nullptr, fptu_init(space_maximum, sizeof(space_maximum), fptu_max_fields + 1));
+	EXPECT_EQ(nullptr, fptu_init(nullptr, sizeof(space_maximum), 0));
+	EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, ~0u, 1));
+	ASSERT_EQ(nullptr, fptu_init(space_exactly_noitems, fptu_buffer_limit + 1, fptu_max_fields));
 
-	EXPECT_NE(nullptr, fpt_init(space_maximum, sizeof(space_maximum), 0));
-	EXPECT_NE(nullptr, fpt_init(space_maximum, sizeof(space_maximum), 1));
-	EXPECT_NE(nullptr, fpt_init(space_maximum, sizeof(space_maximum), fpt_max_fields/2));
-	EXPECT_NE(nullptr, fpt_init(space_maximum, sizeof(space_maximum), fpt_max_fields));
+	EXPECT_NE(nullptr, fptu_init(space_maximum, sizeof(space_maximum), 0));
+	EXPECT_NE(nullptr, fptu_init(space_maximum, sizeof(space_maximum), 1));
+	EXPECT_NE(nullptr, fptu_init(space_maximum, sizeof(space_maximum), fptu_max_fields/2));
+	EXPECT_NE(nullptr, fptu_init(space_maximum, sizeof(space_maximum), fptu_max_fields));
 }
 
 TEST(Init, Base) {
-	char space[fpt_buffer_enought];
+	char space[fptu_buffer_enought];
 
 	static const size_t extra_space_cases[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 42,
-		sizeof(fpt_rw), fpt_max_tuple_bytes/3, fpt_max_tuple_bytes/2, fpt_max_tuple_bytes};
+		sizeof(fptu_rw), fptu_max_tuple_bytes/3, fptu_max_tuple_bytes/2, fptu_max_tuple_bytes};
 
 	static const unsigned items_cases[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 42, ~0u,
-		fpt_max_fields/3, fpt_max_fields/2, fpt_max_fields, fpt_max_fields + 1, fpt_max_fields * 2};
+		fptu_max_fields/3, fptu_max_fields/2, fptu_max_fields, fptu_max_fields + 1, fptu_max_fields * 2};
 
 	for (auto extra : extra_space_cases) {
-		size_t bytes = sizeof(fpt_rw) + extra;
+		size_t bytes = sizeof(fptu_rw) + extra;
 		ASSERT_LE(bytes, sizeof(space));
 
 		for (auto items : items_cases) {
 			SCOPED_TRACE("extra " + std::to_string(extra) + ", items " + std::to_string(items));
 
-			fpt_rw *pt = fpt_init(space, bytes, items);
-			if (items > extra / 4 || items > fpt_max_fields) {
+			fptu_rw *pt = fptu_init(space, bytes, items);
+			if (items > extra / 4 || items > fptu_max_fields) {
 				EXPECT_EQ(nullptr, pt);
 				continue;
 			}
 			ASSERT_NE(nullptr, pt);
 
-			fpt_ro io = fpt_take_noshrink(pt);
+			fptu_ro io = fptu_take_noshrink(pt);
 			EXPECT_NE(nullptr, io.units);
-			EXPECT_EQ(fpt_unit_size, io.total_bytes);
+			EXPECT_EQ(fptu_unit_size, io.total_bytes);
 
-			EXPECT_EQ(items, fpt_space4items(pt));
-			size_t avail = FPT_ALIGN_FLOOR(extra, fpt_unit_size) - fpt_unit_size * items;
-			EXPECT_EQ(avail, fpt_space4data(pt));
-			EXPECT_EQ(0, fpt_junkspace(pt));
+			EXPECT_EQ(items, fptu_space4items(pt));
+			size_t avail = FPT_ALIGN_FLOOR(extra, fptu_unit_size) - fptu_unit_size * items;
+			EXPECT_EQ(avail, fptu_space4data(pt));
+			EXPECT_EQ(0, fptu_junkspace(pt));
 
-			EXPECT_STREQ(nullptr, fpt_check_ro(io));
-			EXPECT_STREQ(nullptr, fpt_check(pt));
+			EXPECT_STREQ(nullptr, fptu_check_ro(io));
+			EXPECT_STREQ(nullptr, fptu_check(pt));
 		}
 	}
 }
 
 TEST(Init, Alloc) {
-	fpt_rw* pt = fpt_alloc(7, 42);
+	fptu_rw* pt = fptu_alloc(7, 42);
 	ASSERT_NE(nullptr, pt);
-	ASSERT_STREQ(nullptr, fpt_check(pt));
+	ASSERT_STREQ(nullptr, fptu_check(pt));
 	free(pt);
 }
 

@@ -19,7 +19,7 @@
 
 #include "fast_positive/internals.h"
 
-const uint8_t fpt_internal_map_t2b[fpt_string] = {
+const uint8_t fptu_internal_map_t2b[fptu_string] = {
 	/* void */      0,
 	/* uint16 */    0,
 
@@ -38,7 +38,7 @@ const uint8_t fpt_internal_map_t2b[fpt_string] = {
 	/* 256 */       32
 };
 
-const uint8_t fpt_internal_map_t2u[fpt_string] = {
+const uint8_t fptu_internal_map_t2u[fptu_string] = {
 	/* void */      0,
 	/* uint16 */    0,
 
@@ -58,16 +58,16 @@ const uint8_t fpt_internal_map_t2u[fpt_string] = {
 };
 
 __hot
-size_t fpt_field_units(const fpt_field* pf) {
-	unsigned type = fpt_get_type(pf->ct);
-	if (likely(type < fpt_string)) {
+size_t fptu_field_units(const fptu_field* pf) {
+	unsigned type = fptu_get_type(pf->ct);
+	if (likely(type < fptu_string)) {
 		// fixed length type
-		return fpt_internal_map_t2u[type];
+		return fptu_internal_map_t2u[type];
 	}
 
 	// variable length type
-	const fpt_payload* payload = fpt_field_payload(pf);
-	if (type == fpt_string) {
+	const fptu_payload* payload = fptu_field_payload(pf);
+	if (type == fptu_string) {
 		// length is not stored, but zero terminated
 		return bytes2units(strlen(payload->cstr) + 1);
 	}
@@ -79,31 +79,31 @@ size_t fpt_field_units(const fpt_field* pf) {
 //----------------------------------------------------------------------
 
 __hot
-const fpt_field* fpt_lookup_ro(fpt_ro ro, unsigned column, int type_or_filter) {
-	if (unlikely(ro.total_bytes < fpt_unit_size))
+const fptu_field* fptu_lookup_ro(fptu_ro ro, unsigned column, int type_or_filter) {
+	if (unlikely(ro.total_bytes < fptu_unit_size))
 		return nullptr;
-	if (unlikely(ro.total_bytes != fpt_unit_size
-			+ fpt_unit_size * (size_t) ro.units[0].varlen.brutto))
+	if (unlikely(ro.total_bytes != fptu_unit_size
+			+ fptu_unit_size * (size_t) ro.units[0].varlen.brutto))
 		return nullptr;
-	if (unlikely(column > fpt_max_cols))
+	if (unlikely(column > fptu_max_cols))
 		return nullptr;
 
-	unsigned items = ro.units[0].varlen.tuple_items & fpt_lt_mask;
-	const fpt_field *begin = &ro.units[1].field;
-	const fpt_field *end = begin + items;
+	unsigned items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+	const fptu_field *begin = &ro.units[1].field;
+	const fptu_field *end = begin + items;
 
-	if (fpt_lx_mask & ro.units[0].varlen.tuple_items) {
+	if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
 		// TODO: support for sorted tuples
 	}
 
-	if (type_or_filter & fpt_filter) {
-		for (const fpt_field* pf = begin; pf < end; ++pf) {
-			if (fpt_ct_match(pf, column, type_or_filter))
+	if (type_or_filter & fptu_filter) {
+		for (const fptu_field* pf = begin; pf < end; ++pf) {
+			if (fptu_ct_match(pf, column, type_or_filter))
 				return pf;
 		}
 	} else {
-		unsigned ct = fpt_pack_coltype(column, type_or_filter);
-		for (const fpt_field* pf = begin; pf < end; ++pf) {
+		unsigned ct = fptu_pack_coltype(column, type_or_filter);
+		for (const fptu_field* pf = begin; pf < end; ++pf) {
 			if (pf->ct == ct)
 				return pf;
 		}
@@ -112,47 +112,47 @@ const fpt_field* fpt_lookup_ro(fpt_ro ro, unsigned column, int type_or_filter) {
 }
 
 __hot
-fpt_field* fpt_lookup_ct(fpt_rw* pt, unsigned ct) {
-	const fpt_field *begin = &pt->units[pt->head].field;
-	const fpt_field *pivot = &pt->units[pt->pivot].field;
-	for (const fpt_field* pf = begin; pf < pivot; ++pf) {
+fptu_field* fptu_lookup_ct(fptu_rw* pt, unsigned ct) {
+	const fptu_field *begin = &pt->units[pt->head].field;
+	const fptu_field *pivot = &pt->units[pt->pivot].field;
+	for (const fptu_field* pf = begin; pf < pivot; ++pf) {
 		if (pf->ct == ct)
-			return (fpt_field *) pf;
+			return (fptu_field *) pf;
 	}
 	return nullptr;
 }
 
 __hot
-fpt_field* fpt_lookup(fpt_rw* pt, unsigned column, int type_or_filter) {
-	if (unlikely(column > fpt_max_cols))
+fptu_field* fptu_lookup(fptu_rw* pt, unsigned column, int type_or_filter) {
+	if (unlikely(column > fptu_max_cols))
 		return nullptr;
 
-	if (type_or_filter & fpt_filter) {
-		const fpt_field *begin = &pt->units[pt->head].field;
-		const fpt_field *pivot = &pt->units[pt->pivot].field;
-		for (const fpt_field* pf = begin; pf < pivot; ++pf) {
-			if (fpt_ct_match(pf, column, type_or_filter))
-				return (fpt_field *) pf;
+	if (type_or_filter & fptu_filter) {
+		const fptu_field *begin = &pt->units[pt->head].field;
+		const fptu_field *pivot = &pt->units[pt->pivot].field;
+		for (const fptu_field* pf = begin; pf < pivot; ++pf) {
+			if (fptu_ct_match(pf, column, type_or_filter))
+				return (fptu_field *) pf;
 		}
 		return nullptr;
 	}
 
-	return fpt_lookup_ct(pt, fpt_pack_coltype(column, type_or_filter));
+	return fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
 }
 
 //----------------------------------------------------------------------
 
 __hot
-fpt_ro fpt_take_noshrink(fpt_rw* pt) {
-	fpt_ro tuple;
+fptu_ro fptu_take_noshrink(fptu_rw* pt) {
+	fptu_ro tuple;
 
 	assert(pt->head > 0);
 	ptrdiff_t items = pt->pivot - pt->head;
-	fpt_payload* payload = (fpt_payload*) &pt->units[pt->head - 1];
+	fptu_payload* payload = (fptu_payload*) &pt->units[pt->head - 1];
 	payload->other.varlen.brutto = pt->tail - pt->head;
 	payload->other.varlen.tuple_items = items;
 	// TODO: support for sorted tuples
-	tuple.units = (const fpt_unit*) payload;
+	tuple.units = (const fptu_unit*) payload;
 	tuple.total_bytes = (char*) &pt->units[pt->tail] - (char*) payload;
 	return tuple;
 }
