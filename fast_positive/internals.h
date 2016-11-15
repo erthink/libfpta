@@ -307,3 +307,11 @@ const void* fpt_detent(const fpt_rw* rw) {
 }
 
 fpt_field* fpt_lookup_ct(fpt_rw* pt, unsigned ct);
+
+template<typename type>
+static __inline
+int fpt_cmp2bits(type left, type right) {
+	if (left == right)
+		return fpt_eq;
+	return (left < right) ? fpt_lt : fpt_gt;
+}
