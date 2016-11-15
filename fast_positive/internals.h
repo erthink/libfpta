@@ -17,6 +17,8 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* *INDENT-OFF* */
+/* clang-format off */
 #ifndef _ISOC99_SOURCE
 #	define _ISOC99_SOURCE 1
 #endif
@@ -54,7 +56,7 @@
 #	define final
 #endif
 
-//----------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 #ifndef __hot
 #	if defined(NDEBUG)
@@ -158,7 +160,7 @@
 #	define __cache_aligned __aligned(CACHELINE_SIZE)
 #endif
 
-//----------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 #ifdef __cplusplus
 	template <typename T, size_t N>
@@ -178,140 +180,140 @@
 #endif
 
 #ifndef container_of
-#	define container_of(ptr, type, member) \
-	({ \
-		const __typeof(((type*)nullptr)->member) * __ptr = (ptr); \
-		(type*)((char*)__ptr - offsetof(type, member)); \
-	})
+#define container_of(ptr, type, member)                                      \
+    ({                                                                       \
+        const __typeof(((type *)nullptr)->member) *__ptr = (ptr);            \
+        (type *)((char *)__ptr - offsetof(type, member));                    \
+    })
 #endif /* container_of */
 
-#define FPT_IS_POWER2(value) \
-	(((value) & ((value) - 1LL)) == 0 && (value) > 0)
-#define __FPT_FLOOR_MASK(type, value, mask) \
-	((value) & ~(type)(mask))
-#define __FPT_CEIL_MASK(type, value, mask) \
-	__FPT_FLOOR_MASK(type, (value) + (mask), mask)
-#define FPT_ALIGN_FLOOR(value, align) \
-	__FPT_FLOOR_MASK(__typeof(value), value, (align) - 1LL)
-#define FPT_ALIGN_CEIL(value, align) \
-	__FPT_CEIL_MASK(__typeof(value), value, (align) - 1LL)
-#define FPT_IS_ALIGNED(ptr, align) \
-	((((align) - 1LL) & ((__typeof(align))((uintptr_t)(ptr)))) == 0)
+#define FPT_IS_POWER2(value) (((value) & ((value)-1LL)) == 0 && (value) > 0)
+#define __FPT_FLOOR_MASK(type, value, mask) ((value) & ~(type)(mask))
+#define __FPT_CEIL_MASK(type, value, mask)                                   \
+    __FPT_FLOOR_MASK(type, (value) + (mask), mask)
+#define FPT_ALIGN_FLOOR(value, align)                                        \
+    __FPT_FLOOR_MASK(__typeof(value), value, (align)-1LL)
+#define FPT_ALIGN_CEIL(value, align)                                         \
+    __FPT_CEIL_MASK(__typeof(value), value, (align)-1LL)
+#define FPT_IS_ALIGNED(ptr, align)                                           \
+    ((((align)-1LL) & ((__typeof(align))((uintptr_t)(ptr)))) == 0)
 
-//----------------------------------------------------------------------
+/* *INDENT-ON* */
+/* clang-format on */
+//----------------------------------------------------------------------------
 
-static __inline
-unsigned fptu_get_col(uint16_t packed) {
-	return packed >> fptu_co_shift;
+static __inline unsigned fptu_get_col(uint16_t packed)
+{
+    return packed >> fptu_co_shift;
 }
 
-static __inline
-fptu_type fptu_get_type(unsigned packed) {
-	return (fptu_type) (packed & fptu_ty_mask);
+static __inline fptu_type fptu_get_type(unsigned packed)
+{
+    return (fptu_type)(packed & fptu_ty_mask);
 }
 
-static __inline
-unsigned fptu_pack_coltype(unsigned column, unsigned type) {
-	assert(type <= fptu_ty_mask);
-	assert(column <= fptu_max_cols);
-	return type + (column << fptu_co_shift);
+static __inline unsigned fptu_pack_coltype(unsigned column, unsigned type)
+{
+    assert(type <= fptu_ty_mask);
+    assert(column <= fptu_max_cols);
+    return type + (column << fptu_co_shift);
 }
 
-static __inline
-bool fptu_ct_match(const fptu_field* pf, unsigned column, int type_or_filter) {
-	if (fptu_get_col(pf->ct) != column)
-		return false;
-	if (type_or_filter & fptu_filter)
-		return (type_or_filter & (1 << fptu_get_type(pf->ct))) ? true : false;
-	return type_or_filter == fptu_get_type(pf->ct);
+static __inline bool fptu_ct_match(const fptu_field *pf, unsigned column,
+                                   int type_or_filter)
+{
+    if (fptu_get_col(pf->ct) != column)
+        return false;
+    if (type_or_filter & fptu_filter)
+        return (type_or_filter & (1 << fptu_get_type(pf->ct))) ? true : false;
+    return type_or_filter == fptu_get_type(pf->ct);
 }
 
 typedef union fptu_payload {
-	uint32_t u32;
-	int32_t  i32;
-	uint64_t u64;
-	int64_t  i64;
-	float    fp32;
-	double   fp64;
-	char     cstr[4];
-	uint8_t  fixed_opaque[8];
-	struct {
-		fptu_varlen varlen;
-		uint32_t data[1];
-	} other;
+    uint32_t u32;
+    int32_t i32;
+    uint64_t u64;
+    int64_t i64;
+    float fp32;
+    double fp64;
+    char cstr[4];
+    uint8_t fixed_opaque[8];
+    struct {
+        fptu_varlen varlen;
+        uint32_t data[1];
+    } other;
 } fptu_payload;
 
-
-static __inline
-size_t bytes2units(size_t bytes) {
-	return (bytes + fptu_unit_size - 1) >> fptu_unit_shift;
+static __inline size_t bytes2units(size_t bytes)
+{
+    return (bytes + fptu_unit_size - 1) >> fptu_unit_shift;
 }
 
-static __inline
-size_t units2bytes(size_t units) {
-	return units << fptu_unit_shift;
+static __inline size_t units2bytes(size_t units)
+{
+    return units << fptu_unit_shift;
 }
 
-static __inline
-fptu_payload* fptu_field_payload(fptu_field* pf) {
-	return (fptu_payload*) &pf->body[pf->offset];
+static __inline fptu_payload *fptu_field_payload(fptu_field *pf)
+{
+    return (fptu_payload *)&pf->body[pf->offset];
 }
 
 #ifdef __cplusplus
-static __inline
-const fptu_payload* fptu_field_payload(const fptu_field* pf) {
-	return (const fptu_payload*) &pf->body[pf->offset];
+static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf)
+{
+    return (const fptu_payload *)&pf->body[pf->offset];
 }
 #endif /* __cplusplus */
 
 extern const uint8_t fptu_internal_map_t2b[];
 extern const uint8_t fptu_internal_map_t2u[];
 
-static __inline
-bool ct_is_fixedsize(unsigned ct) {
-	return fptu_get_type(ct) < fptu_string;
+static __inline bool ct_is_fixedsize(unsigned ct)
+{
+    return fptu_get_type(ct) < fptu_string;
 }
 
-static __inline
-bool ct_is_dead(unsigned ct) {
-	return ct >= (fptu_co_dead << fptu_co_shift);
+static __inline bool ct_is_dead(unsigned ct)
+{
+    return ct >= (fptu_co_dead << fptu_co_shift);
 }
 
-static __inline
-size_t ct_elem_size(unsigned ct) {
-	unsigned type = fptu_get_type(ct);
-	if (likely(ct_is_fixedsize(type)))
-		return fptu_internal_map_t2b[type];
+static __inline size_t ct_elem_size(unsigned ct)
+{
+    unsigned type = fptu_get_type(ct);
+    if (likely(ct_is_fixedsize(type)))
+        return fptu_internal_map_t2b[type];
 
-	/* fptu_opaque, fptu_string or fptu_farray.
-	 * at least 4 bytes for length or '\0'. */
-	return fptu_unit_size;
+    /* fptu_opaque, fptu_string or fptu_farray.
+     * at least 4 bytes for length or '\0'. */
+    return fptu_unit_size;
 }
 
-static __inline
-bool ct_match_fixedsize(unsigned ct, unsigned units) {
-	return ct_is_fixedsize(ct)
-		&& units == fptu_internal_map_t2u[fptu_get_type(ct)];
+static __inline bool ct_match_fixedsize(unsigned ct, unsigned units)
+{
+    return ct_is_fixedsize(ct) &&
+           units == fptu_internal_map_t2u[fptu_get_type(ct)];
 }
 
-size_t fptu_field_units(const fptu_field* pf);
+size_t fptu_field_units(const fptu_field *pf);
 
-static __inline
-const void* fptu_ro_detent(fptu_ro ro) {
-	return (char *) ro.sys.iov_base + ro.sys.iov_len;
+static __inline const void *fptu_ro_detent(fptu_ro ro)
+{
+    return (char *)ro.sys.iov_base + ro.sys.iov_len;
 }
 
-static __inline
-const void* fptu_detent(const fptu_rw* rw) {
-	return &rw->units[rw->end];
+static __inline const void *fptu_detent(const fptu_rw *rw)
+{
+    return &rw->units[rw->end];
 }
 
-fptu_field* fptu_lookup_ct(fptu_rw* pt, unsigned ct);
+fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct);
 
-template<typename type>
-static __inline
-int fptu_cmp2bits(type left, type right) {
-	if (left == right)
-		return fptu_eq;
-	return (left < right) ? fptu_lt : fptu_gt;
+template <typename type>
+static __inline int fptu_cmp2bits(type left, type right)
+{
+    if (left == right)
+        return fptu_eq;
+    return (left < right) ? fptu_lt : fptu_gt;
 }

@@ -19,80 +19,88 @@
 
 #include "fast_positive/internals.h"
 
-static __inline
-int memcmp2bits(const void* a, const void* b, size_t bytes) {
-	return fptu_cmp2bits(memcmp(a, b, bytes), 0);
+static __inline int memcmp2bits(const void *a, const void *b, size_t bytes)
+{
+    return fptu_cmp2bits(memcmp(a, b, bytes), 0);
 }
 
-int fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t* value) {
-	if (unlikely(value == nullptr))
-		return fptu_ic;
+int fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
+{
+    if (unlikely(value == nullptr))
+        return fptu_ic;
 
-	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_96);
-	if (unlikely(pf == nullptr))
-		return fptu_ic;
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_96);
+    if (unlikely(pf == nullptr))
+        return fptu_ic;
 
-	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 12);
+    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 12);
 }
 
-int fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t* value) {
-	if (unlikely(value == nullptr))
-		return fptu_ic;
+int fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
+{
+    if (unlikely(value == nullptr))
+        return fptu_ic;
 
-	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_128);
-	if (unlikely(pf == nullptr))
-		return fptu_ic;
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_128);
+    if (unlikely(pf == nullptr))
+        return fptu_ic;
 
-	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 16);
+    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 16);
 }
 
-int fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t* value) {
-	if (unlikely(value == nullptr))
-		return fptu_ic;
+int fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
+{
+    if (unlikely(value == nullptr))
+        return fptu_ic;
 
-	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_160);
-	if (unlikely(pf == nullptr))
-		return fptu_ic;
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_160);
+    if (unlikely(pf == nullptr))
+        return fptu_ic;
 
-	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 20);
+    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 20);
 }
 
-int fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t* value) {
-	if (unlikely(value == nullptr))
-		return fptu_ic;
+int fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
+{
+    if (unlikely(value == nullptr))
+        return fptu_ic;
 
-	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_192);
-	if (unlikely(pf == nullptr))
-		return fptu_ic;
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_192);
+    if (unlikely(pf == nullptr))
+        return fptu_ic;
 
-	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 24);
+    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 24);
 }
 
-int fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t* value) {
-	if (unlikely(value == nullptr))
-		return fptu_ic;
+int fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
+{
+    if (unlikely(value == nullptr))
+        return fptu_ic;
 
-	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_256);
-	if (unlikely(pf == nullptr))
-		return fptu_ic;
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_256);
+    if (unlikely(pf == nullptr))
+        return fptu_ic;
 
-	return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 32);
+    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 32);
 }
 
-//----------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
-int fptu_cmp_opaque(fptu_ro ro, unsigned column, const void* value, size_t bytes) {
-	const fptu_field* pf = fptu_lookup_ro(ro, column, fptu_opaque);
-	if (pf == nullptr)
-		return bytes ? fptu_ic : fptu_eq;
+int fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
+                    size_t bytes)
+{
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_opaque);
+    if (pf == nullptr)
+        return bytes ? fptu_ic : fptu_eq;
 
-	const struct iovec field = fptu_field_opaque(pf);
-	if (field.iov_len != bytes)
-		return (field.iov_len < bytes) ? fptu_lt : fptu_gt;
+    const struct iovec field = fptu_field_opaque(pf);
+    if (field.iov_len != bytes)
+        return (field.iov_len < bytes) ? fptu_lt : fptu_gt;
 
-	return memcmp2bits(field.iov_base, value, bytes);
+    return memcmp2bits(field.iov_base, value, bytes);
 }
 
-int fptu_cmp_opaque_iov(fptu_ro ro, unsigned column, const struct iovec value) {
-	return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
+int fptu_cmp_opaque_iov(fptu_ro ro, unsigned column, const struct iovec value)
+{
+    return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
 }

@@ -19,6 +19,7 @@
 
 #pragma once
 /* *INDENT-OFF* */
+/* clang-format off */
 
 #if defined(__KERNEL__) || !defined(__cplusplus) || __cplusplus < 201103L
 #	include <stddef.h>
@@ -50,7 +51,7 @@
 #	define __has_attribute(x) (0)
 #endif
 
-//----------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 #ifndef __extern_C
 #	ifdef __cplusplus
@@ -72,7 +73,7 @@
 #	endif
 #endif
 
-//----------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 #if !defined(__thread) && (defined(_MSC_VER) || defined(__DMC__))
 #	define __thread __declspec(thread)

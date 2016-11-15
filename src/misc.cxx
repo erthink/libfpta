@@ -20,4 +20,3 @@
 #include "fast_positive/internals.h"
 
 #include <stdio.h>
-
