@@ -4,3 +4,6 @@
 [submodule "submodules/libmdbx"]
 	path = submodules/libmdbx
 	url = https://github.com/ReOpen/libmdbx
+[submodule "submodules/t1ha"]
+	path = submodules/t1ha
+	url = https://github.com/PositiveTechnologies/t1ha
