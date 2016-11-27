@@ -107,19 +107,19 @@ static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, unsigned ct,
 
     result.pf = fptu_lookup_ct(pt, ct);
     if (unlikely(result.pf == nullptr)) {
-        result.error = fptu_noent;
+        result.error = FPTU_ENOFIELD;
         return result;
     }
 
     unsigned avail = fptu_field_units(result.pf);
     if (likely(avail == units)) {
-        result.error = fptu_ok;
+        result.error = FPTU_SUCCESS;
         return result;
     }
 
     fptu_erase_field(pt, result.pf);
     result.pf = fptu_append(pt, ct, units);
-    result.error = likely(result.pf != nullptr) ? fptu_ok : fptu_enospc;
+    result.error = likely(result.pf != nullptr) ? FPTU_OK : FPTU_ENOSPACE;
     return result;
 }
 
@@ -136,26 +136,26 @@ static __inline void fptu_cstrcpy(fptu_field *pf, size_t units,
 int fptu_upsert_null(fptu_rw *pt, unsigned col)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_null), 0);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_uint16(fptu_rw *pt, unsigned col, unsigned value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_uint16), 0);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     pf->offset = value;
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
@@ -167,23 +167,23 @@ static int fptu_upsert_32(fptu_rw *pt, unsigned ct, uint32_t value)
 
     fptu_field *pf = fptu_emplace(pt, ct, 1);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_field_payload(pf)->u32 = value;
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_int32(fptu_rw *pt, unsigned col, int32_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_int32), value);
 }
 
 int fptu_upsert_uint32(fptu_rw *pt, unsigned col, uint32_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_uint32), value);
 }
 
@@ -196,23 +196,23 @@ static int fptu_upsert_64(fptu_rw *pt, unsigned ct, uint64_t value)
 
     fptu_field *pf = fptu_emplace(pt, ct, 2);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_field_payload(pf)->u64 = value;
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_int64(fptu_rw *pt, unsigned col, int64_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_int64), value);
 }
 
 int fptu_upsert_uint64(fptu_rw *pt, unsigned col, uint64_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
 }
 
@@ -221,7 +221,7 @@ int fptu_upsert_uint64(fptu_rw *pt, unsigned col, uint64_t value)
 int fptu_upsert_fp32(fptu_rw *pt, unsigned col, float value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     union {
         uint32_t u32;
@@ -235,7 +235,7 @@ int fptu_upsert_fp32(fptu_rw *pt, unsigned col, float value)
 int fptu_upsert_fp64(fptu_rw *pt, unsigned col, double value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     union {
         uint64_t u64;
@@ -251,66 +251,66 @@ int fptu_upsert_fp64(fptu_rw *pt, unsigned col, double value)
 int fptu_upsert_96(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_96), 3);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 12);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_128(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_128), 4);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 16);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_160(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_160), 5);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 20);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_192(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_192), 6);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 24);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_256(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_256), 8);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 32);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
@@ -318,46 +318,49 @@ int fptu_upsert_256(fptu_rw *pt, unsigned col, const void *data)
 int fptu_upsert_cstr(fptu_rw *pt, unsigned col, const char *value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (unlikely(value == nullptr))
         value = "";
 
     size_t bytes = strlen(value) + 1;
     if (unlikely(bytes > fptu_max_field_bytes))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     size_t units = bytes2units(bytes);
     fptu_field *pf =
         fptu_emplace(pt, fptu_pack_coltype(col, fptu_string), units);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_cstrcpy(pf, units, value, bytes);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_opaque(fptu_rw *pt, unsigned col, const void *value,
                        size_t bytes)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (unlikely(bytes > fptu_max_opaque_bytes))
-        return fptu_einval;
+        return FPTU_EINVAL;
+
+    if (unlikely(value == nullptr && bytes != 0))
+        return FPTU_EINVAL;
 
     size_t units = bytes2units(bytes) + 1;
     fptu_field *pf =
         fptu_emplace(pt, fptu_pack_coltype(col, fptu_opaque), units);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_payload *payload = fptu_field_payload(pf);
     payload->other.varlen.brutto = units - 1;
     payload->other.varlen.opaque_bytes = bytes;
 
     memcpy(payload->other.data, value, bytes);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
@@ -384,11 +387,11 @@ int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
 int fptu_update_uint16(fptu_rw *pt, unsigned col, unsigned value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_uint16), 0);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         result.pf->offset = value;
     }
@@ -403,7 +406,7 @@ static int fptu_update_32(fptu_rw *pt, unsigned ct, uint32_t value)
     assert(!ct_is_dead(ct));
 
     fptu_takeover_result result = fptu_takeover(pt, ct, 1);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         fptu_field_payload(result.pf)->u32 = value;
     }
@@ -413,14 +416,14 @@ static int fptu_update_32(fptu_rw *pt, unsigned ct, uint32_t value)
 int fptu_update_int32(fptu_rw *pt, unsigned col, int32_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_update_32(pt, fptu_pack_coltype(col, fptu_int32), value);
 }
 
 int fptu_update_uint32(fptu_rw *pt, unsigned col, uint32_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_update_32(pt, fptu_pack_coltype(col, fptu_uint32), value);
 }
 
@@ -432,7 +435,7 @@ static int fptu_update_64(fptu_rw *pt, unsigned ct, uint64_t value)
     assert(!ct_is_dead(ct));
 
     fptu_takeover_result result = fptu_takeover(pt, ct, 2);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         fptu_field_payload(result.pf)->u64 = value;
     }
@@ -442,14 +445,14 @@ static int fptu_update_64(fptu_rw *pt, unsigned ct, uint64_t value)
 int fptu_update_int64(fptu_rw *pt, unsigned col, int64_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_update_64(pt, fptu_pack_coltype(col, fptu_int64), value);
 }
 
 int fptu_update_uint64(fptu_rw *pt, unsigned col, uint64_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_update_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
 }
 
@@ -458,7 +461,7 @@ int fptu_update_uint64(fptu_rw *pt, unsigned col, uint64_t value)
 int fptu_update_fp32(fptu_rw *pt, unsigned col, float value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     union {
         uint32_t u32;
@@ -472,7 +475,7 @@ int fptu_update_fp32(fptu_rw *pt, unsigned col, float value)
 int fptu_update_fp64(fptu_rw *pt, unsigned col, double value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     union {
         uint64_t u64;
@@ -488,11 +491,11 @@ int fptu_update_fp64(fptu_rw *pt, unsigned col, double value)
 int fptu_update_96(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_96), 3);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         memcpy(fptu_field_payload(result.pf), data, 12);
     }
@@ -502,11 +505,11 @@ int fptu_update_96(fptu_rw *pt, unsigned col, const void *data)
 int fptu_update_128(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_128), 4);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         memcpy(fptu_field_payload(result.pf), data, 16);
     }
@@ -516,11 +519,11 @@ int fptu_update_128(fptu_rw *pt, unsigned col, const void *data)
 int fptu_update_160(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_160), 5);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         memcpy(fptu_field_payload(result.pf), data, 20);
     }
@@ -530,11 +533,11 @@ int fptu_update_160(fptu_rw *pt, unsigned col, const void *data)
 int fptu_update_192(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_192), 6);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         memcpy(fptu_field_payload(result.pf), data, 24);
     }
@@ -544,11 +547,11 @@ int fptu_update_192(fptu_rw *pt, unsigned col, const void *data)
 int fptu_update_256(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_256), 8);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         memcpy(fptu_field_payload(result.pf), data, 32);
     }
@@ -560,19 +563,19 @@ int fptu_update_256(fptu_rw *pt, unsigned col, const void *data)
 int fptu_update_cstr(fptu_rw *pt, unsigned col, const char *value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (unlikely(value == nullptr))
         value = "";
 
     size_t bytes = strlen(value) + 1;
     if (unlikely(bytes > fptu_max_field_bytes))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     size_t units = bytes2units(bytes);
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_string), units);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         fptu_cstrcpy(result.pf, units, value, bytes);
     }
@@ -583,15 +586,15 @@ int fptu_update_opaque(fptu_rw *pt, unsigned col, const void *value,
                        size_t bytes)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (unlikely(bytes > fptu_max_opaque_bytes))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     size_t units = bytes2units(bytes) + 1;
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_opaque), units);
-    if (likely(result.error == fptu_ok)) {
+    if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         fptu_payload *payload = fptu_field_payload(result.pf);
         payload->other.varlen.brutto = units - 1;
@@ -612,14 +615,14 @@ int fptu_update_opaque_iov(fptu_rw *pt, unsigned column,
 int fptu_insert_uint16(fptu_rw *pt, unsigned col, unsigned value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_uint16), 0);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     pf->offset = value;
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
@@ -631,23 +634,23 @@ static int fptu_insert_32(fptu_rw *pt, unsigned ct, uint32_t v)
 
     fptu_field *pf = fptu_append(pt, ct, 1);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_field_payload(pf)->u32 = v;
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_int32(fptu_rw *pt, unsigned col, int32_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_int32), value);
 }
 
 int fptu_insert_uint32(fptu_rw *pt, unsigned col, uint32_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_uint32), value);
 }
 
@@ -660,23 +663,23 @@ static int fptu_insert_64(fptu_rw *pt, unsigned ct, uint64_t v)
 
     fptu_field *pf = fptu_append(pt, ct, 2);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_field_payload(pf)->u64 = v;
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_int64(fptu_rw *pt, unsigned col, int64_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_int64), value);
 }
 
 int fptu_insert_uint64(fptu_rw *pt, unsigned col, uint64_t value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
     return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
 }
 
@@ -685,7 +688,7 @@ int fptu_insert_uint64(fptu_rw *pt, unsigned col, uint64_t value)
 int fptu_insert_fp32(fptu_rw *pt, unsigned col, float value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     union {
         uint32_t u32;
@@ -699,7 +702,7 @@ int fptu_insert_fp32(fptu_rw *pt, unsigned col, float value)
 int fptu_insert_fp64(fptu_rw *pt, unsigned col, double value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     union {
         uint64_t u64;
@@ -715,66 +718,66 @@ int fptu_insert_fp64(fptu_rw *pt, unsigned col, double value)
 int fptu_insert_96(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_96), 3);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 12);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_128(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_128), 4);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 16);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_160(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_160), 5);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 20);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_192(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_192), 6);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 24);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_256(fptu_rw *pt, unsigned col, const void *data)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_256), 8);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     memcpy(fptu_field_payload(pf), data, 32);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
@@ -782,46 +785,46 @@ int fptu_insert_256(fptu_rw *pt, unsigned col, const void *data)
 int fptu_insert_cstr(fptu_rw *pt, unsigned col, const char *value)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (unlikely(value == nullptr))
         value = "";
 
     size_t bytes = strlen(value) + 1;
     if (unlikely(bytes > fptu_max_field_bytes))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     size_t units = bytes2units(bytes);
     fptu_field *pf =
         fptu_append(pt, fptu_pack_coltype(col, fptu_string), units);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_cstrcpy(pf, units, value, bytes);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_opaque(fptu_rw *pt, unsigned col, const void *value,
                        size_t bytes)
 {
     if (unlikely(col > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (unlikely(bytes > fptu_max_opaque_bytes))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     size_t units = bytes2units(bytes) + 1;
     fptu_field *pf =
         fptu_append(pt, fptu_pack_coltype(col, fptu_opaque), units);
     if (unlikely(pf == nullptr))
-        return fptu_enospc;
+        return FPTU_ENOSPACE;
 
     fptu_payload *payload = fptu_field_payload(pf);
     payload->other.varlen.brutto = units - 1;
     payload->other.varlen.opaque_bytes = bytes;
 
     memcpy(payload->other.data, value, bytes);
-    return fptu_ok;
+    return FPTU_SUCCESS;
 }
 
 int fptu_insert_opaque_iov(fptu_rw *pt, unsigned column,

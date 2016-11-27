@@ -28,11 +28,20 @@
 
 #include "fast_positive/defs.h"
 
+#include <errno.h>   // for error codes
 #include <sys/uio.h> // for struct iovec
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+enum fptu_error {
+    FPTU_SUCCESS = 0,
+    FPTU_OK = FPTU_SUCCESS,
+    FPTU_ENOFIELD = ENOENT,
+    FPTU_EINVAL = EINVAL,
+    FPTU_ENOSPACE = ENOSPC,
+};
 
 typedef union fptu_varlen {
     struct __packed {
@@ -53,6 +62,10 @@ typedef union fptu_field {
     };
     uint32_t header;
     uint32_t body[1];
+
+#ifdef __cplusplus
+    uint16_t get_payload_uint16() const { return offset; }
+#endif
 } fptu_field;
 
 typedef union fptu_unit {
@@ -84,10 +97,10 @@ typedef struct fptu_rw {
 
 enum fptu_bits {
     // базовые лимиты и параметры
-    fptu_bits = 16,     // ширина счетчиков
-    fptu_unit_size = 4, // размер одного юнита
+    fptu_bits = 16, // ширина счетчиков
     fptu_typeid_bits = 5, // ширина типа в идентификаторе поля
     fptu_ct_reserve_bits = 1, // резерв в идентификаторе поля
+    fptu_unit_size = 4, // размер одного юнита
     // количество служебных (зарезервированных) бит в заголовке кортежа,
     // для признаков сортированности и отсутствия повторяющихся полей
     fptu_lx_bits = 2,
@@ -539,16 +552,6 @@ int fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
                     size_t bytes);
 int fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
                         const struct iovec value);
-
-//----------------------------------------------------------------------------
-
-enum fptu_error {
-    fptu_ok = 0,
-    fptu_noent = -1,
-    fptu_einval = -2,
-    fptu_enospc = -3,
-    fptu_etm = -4,
-};
 
 #ifdef __cplusplus
 }

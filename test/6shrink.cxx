@@ -41,7 +41,7 @@ TEST(Shrink, Base)
     ASSERT_STREQ(nullptr, fptu_check(pt));
 
     // shrink one header-only field
-    EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, 0xA, 0xAA42));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0xA, 0xAA42));
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
     fptu_shrink(pt);
@@ -50,7 +50,7 @@ TEST(Shrink, Base)
     EXPECT_EQ(0, pt->junk);
 
     // add one more header-only and erase first
-    EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, 0xB, 0xBB43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0xB, 0xBB43));
     EXPECT_EQ(1, fptu_erase(pt, 0xA, fptu_uint16));
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
@@ -64,7 +64,7 @@ TEST(Shrink, Base)
     EXPECT_EQ(0xBB43, fptu_field_uint16(fp));
 
     // add thrid field and erase previous
-    EXPECT_EQ(fptu_ok, fptu_insert_uint32(pt, 0xC, 42));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0xC, 42));
     EXPECT_EQ(1, fptu_erase(pt, 0xB, fptu_uint16));
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
@@ -78,7 +78,7 @@ TEST(Shrink, Base)
     EXPECT_EQ(42, fptu_field_uint32(fp));
 
     // add fourth field and erase previous
-    EXPECT_EQ(fptu_ok, fptu_insert_int64(pt, 0xD, -555));
+    EXPECT_EQ(FPTU_OK, fptu_insert_int64(pt, 0xD, -555));
     EXPECT_EQ(1, fptu_erase(pt, 0xC, fptu_uint32));
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
@@ -114,15 +114,15 @@ TEST(Shrink, Shuffle)
                         default:
                             assert(false);
                         case 0:
-                            EXPECT_EQ(fptu_ok,
+                            EXPECT_EQ(FPTU_OK,
                                       fptu_insert_uint16(pt, i, 7717 * i));
                             break;
                         case 1:
-                            EXPECT_EQ(fptu_ok, fptu_insert_int32(
+                            EXPECT_EQ(FPTU_OK, fptu_insert_int32(
                                                    pt, i, -14427139 * i));
                             break;
                         case 2:
-                            EXPECT_EQ(fptu_ok,
+                            EXPECT_EQ(FPTU_OK,
                                       fptu_insert_uint64(
                                           pt, i, 53299271467827031 * i));
                             break;

@@ -84,7 +84,7 @@ TEST(Iterate, Simple)
     ASSERT_NE(nullptr, pt);
     ASSERT_STREQ(nullptr, fptu_check(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, 0));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 0));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(1, fptu_end(pt) - fptu_begin(pt));
 
@@ -120,7 +120,7 @@ TEST(Iterate, Simple)
     EXPECT_EQ(
         0, fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, 1));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 1));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     end = fptu_end(pt);
     begin = fptu_begin(pt);
@@ -146,7 +146,7 @@ TEST(Iterate, Simple)
 
     for (unsigned n = 1; n < 11; n++) {
         SCOPED_TRACE("n = " + std::to_string(n));
-        EXPECT_EQ(fptu_ok, fptu_insert_uint32(pt, 2, 42));
+        EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 2, 42));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         end = fptu_end(pt);
         begin = fptu_begin(pt);
@@ -187,15 +187,15 @@ TEST(Iterate, Filter)
     ASSERT_NE(nullptr, pt);
     ASSERT_STREQ(nullptr, fptu_check(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, 9));
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint16(pt, 9, 2));
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint32(pt, 9, 3));
-    EXPECT_EQ(fptu_ok, fptu_upsert_int32(pt, 9, 4));
-    EXPECT_EQ(fptu_ok, fptu_upsert_int64(pt, 9, 5));
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint64(pt, 9, 6));
-    EXPECT_EQ(fptu_ok, fptu_upsert_fp32(pt, 9, 7));
-    EXPECT_EQ(fptu_ok, fptu_upsert_fp64(pt, 9, 8));
-    EXPECT_EQ(fptu_ok, fptu_upsert_cstr(pt, 9, "cstr"));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 9));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint16(pt, 9, 2));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint32(pt, 9, 3));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_int32(pt, 9, 4));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_int64(pt, 9, 5));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint64(pt, 9, 6));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_fp32(pt, 9, 7));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_fp64(pt, 9, 8));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_cstr(pt, 9, "cstr"));
 
     ASSERT_STREQ(nullptr, fptu_check(pt));
     // TODO: check array-only filter

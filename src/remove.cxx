@@ -67,7 +67,7 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf)
 int fptu_erase(fptu_rw *pt, unsigned column, int type_or_filter)
 {
     if (unlikely(column > fptu_max_cols))
-        return fptu_einval;
+        return FPTU_EINVAL;
 
     if (type_or_filter & fptu_filter) {
         int count = 0;

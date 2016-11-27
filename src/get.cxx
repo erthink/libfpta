@@ -224,7 +224,7 @@ uint16_t fptu_get_uint16(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_uint16);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_uint16(pf);
 }
 
@@ -232,7 +232,7 @@ int32_t fptu_get_int32(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_int32);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_int32(pf);
 }
 
@@ -240,7 +240,7 @@ uint32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_uint32);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_uint32(pf);
 }
 
@@ -248,7 +248,7 @@ int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_int64);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_int64(pf);
 }
 
@@ -256,7 +256,7 @@ uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_uint64);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_uint64(pf);
 }
 
@@ -264,7 +264,7 @@ double fptu_get_fp64(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_fp64);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_fp64(pf);
 }
 
@@ -272,7 +272,7 @@ float fptu_get_fp32(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_fp32);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_fp32(pf);
 }
 
@@ -280,7 +280,7 @@ const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_96);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_96(pf);
 }
 
@@ -288,7 +288,7 @@ const uint8_t *fptu_get_128(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_128);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_128(pf);
 }
 
@@ -296,7 +296,7 @@ const uint8_t *fptu_get_160(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_160);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_160(pf);
 }
 
@@ -304,7 +304,7 @@ const uint8_t *fptu_get_192(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_192);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_192(pf);
 }
 
@@ -312,7 +312,7 @@ const uint8_t *fptu_get_256(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_256);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_256(pf);
 }
 
@@ -320,7 +320,7 @@ const char *fptu_get_cstr(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_string);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_cstr(pf);
 }
 
@@ -328,7 +328,7 @@ struct iovec fptu_get_opaque(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_opaque);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_opaque(pf);
 }
 
@@ -336,6 +336,6 @@ fptu_ro fptu_get_nested(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_nested);
     if (error)
-        *error = pf ? fptu_ok : fptu_noent;
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_nested(pf);
 }

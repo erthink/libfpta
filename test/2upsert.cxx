@@ -32,63 +32,63 @@ TEST(Upsert, InvalidColumn)
 
     // column is a stub, expect EINVAL
     const unsigned inval_col = fptu_max_cols + 1;
-    EXPECT_EQ(fptu_einval, fptu_upsert_null(pt, inval_col));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_null(pt, inval_col));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_uint16(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_uint16(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_uint16(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_uint16(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_uint16(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_uint16(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_uint32(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_uint32(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_uint32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_uint32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_uint32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_uint32(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_int32(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_int32(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_int32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_int32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_int32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_int32(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_uint64(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_uint64(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_uint64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_uint64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_uint64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_uint64(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_int64(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_int64(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_int64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_int64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_int64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_int64(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_fp64(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_fp64(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_fp64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_fp64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_fp64(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_fp64(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_fp32(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_insert_fp32(pt, inval_col, 0));
-    EXPECT_EQ(fptu_einval, fptu_update_fp32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_fp32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_fp32(pt, inval_col, 0));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_fp32(pt, inval_col, 0));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_96(pt, inval_col, "96"));
-    EXPECT_EQ(fptu_einval, fptu_insert_96(pt, inval_col, "96"));
-    EXPECT_EQ(fptu_einval, fptu_update_96(pt, inval_col, "96"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_96(pt, inval_col, "96"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_96(pt, inval_col, "96"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_96(pt, inval_col, "96"));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_128(pt, inval_col, "128"));
-    EXPECT_EQ(fptu_einval, fptu_insert_128(pt, inval_col, "128"));
-    EXPECT_EQ(fptu_einval, fptu_update_128(pt, inval_col, "128"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_128(pt, inval_col, "128"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_128(pt, inval_col, "128"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_128(pt, inval_col, "128"));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_160(pt, inval_col, "160"));
-    EXPECT_EQ(fptu_einval, fptu_insert_160(pt, inval_col, "160"));
-    EXPECT_EQ(fptu_einval, fptu_update_160(pt, inval_col, "160"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_160(pt, inval_col, "160"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_160(pt, inval_col, "160"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_160(pt, inval_col, "160"));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_192(pt, inval_col, "192"));
-    EXPECT_EQ(fptu_einval, fptu_insert_192(pt, inval_col, "192"));
-    EXPECT_EQ(fptu_einval, fptu_update_192(pt, inval_col, "192"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_192(pt, inval_col, "192"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_192(pt, inval_col, "192"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_192(pt, inval_col, "192"));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_256(pt, inval_col, "256"));
-    EXPECT_EQ(fptu_einval, fptu_insert_256(pt, inval_col, "256"));
-    EXPECT_EQ(fptu_einval, fptu_update_256(pt, inval_col, "256"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_256(pt, inval_col, "256"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_256(pt, inval_col, "256"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_256(pt, inval_col, "256"));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_cstr(pt, inval_col, "cstr"));
-    EXPECT_EQ(fptu_einval, fptu_insert_cstr(pt, inval_col, "cstr"));
-    EXPECT_EQ(fptu_einval, fptu_update_cstr(pt, inval_col, "cstr"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_cstr(pt, inval_col, "cstr"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_cstr(pt, inval_col, "cstr"));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_cstr(pt, inval_col, "cstr"));
 
-    EXPECT_EQ(fptu_einval, fptu_upsert_opaque(pt, inval_col, "data", 4));
-    EXPECT_EQ(fptu_einval, fptu_insert_opaque(pt, inval_col, "data", 4));
-    EXPECT_EQ(fptu_einval, fptu_update_opaque(pt, inval_col, "data", 4));
+    EXPECT_EQ(FPTU_EINVAL, fptu_upsert_opaque(pt, inval_col, "data", 4));
+    EXPECT_EQ(FPTU_EINVAL, fptu_insert_opaque(pt, inval_col, "data", 4));
+    EXPECT_EQ(FPTU_EINVAL, fptu_update_opaque(pt, inval_col, "data", 4));
 
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
@@ -108,21 +108,22 @@ TEST(Upsert, ZeroSpace)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // upsert_xyz() expect no-space
-    EXPECT_EQ(fptu_enospc, fptu_upsert_null(pt, fptu_max_cols));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_uint16(pt, 0, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_uint32(pt, 1, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_int32(pt, 42, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_uint64(pt, 111, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_int64(pt, fptu_max_cols / 3, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_fp64(pt, fptu_max_cols - 3, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_fp32(pt, fptu_max_cols - 4, 0));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_96(pt, fptu_max_cols / 2, "96"));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_128(pt, 257, "128"));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_160(pt, 7, "160"));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_192(pt, 8, "192"));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_256(pt, fptu_max_cols - 2, "256"));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_cstr(pt, fptu_max_cols - 1, "cstr"));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_opaque(pt, fptu_max_cols, "data", 4));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_null(pt, fptu_max_cols));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_uint16(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_uint32(pt, 1, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_int32(pt, 42, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_uint64(pt, 111, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_int64(pt, fptu_max_cols / 3, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_fp64(pt, fptu_max_cols - 3, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_fp32(pt, fptu_max_cols - 4, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_96(pt, fptu_max_cols / 2, "96"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_128(pt, 257, "128"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_160(pt, 7, "160"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_192(pt, 8, "192"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_256(pt, fptu_max_cols - 2, "256"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_cstr(pt, fptu_max_cols - 1, "cstr"));
+    EXPECT_EQ(FPTU_ENOSPACE,
+              fptu_upsert_opaque(pt, fptu_max_cols, "data", 4));
 
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(0, fptu_space4items(pt));
@@ -130,20 +131,21 @@ TEST(Upsert, ZeroSpace)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert_xyz() expect no-space
-    EXPECT_EQ(fptu_enospc, fptu_insert_uint16(pt, 0, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_uint32(pt, 1, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_int32(pt, 42, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_uint64(pt, 111, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_int64(pt, fptu_max_cols / 3, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_fp64(pt, fptu_max_cols - 3, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_fp32(pt, fptu_max_cols - 4, 0));
-    EXPECT_EQ(fptu_enospc, fptu_insert_96(pt, fptu_max_cols / 2, "96"));
-    EXPECT_EQ(fptu_enospc, fptu_insert_128(pt, 257, "128"));
-    EXPECT_EQ(fptu_enospc, fptu_insert_160(pt, 7, "160"));
-    EXPECT_EQ(fptu_enospc, fptu_insert_192(pt, 8, "192"));
-    EXPECT_EQ(fptu_enospc, fptu_insert_256(pt, fptu_max_cols - 2, "256"));
-    EXPECT_EQ(fptu_enospc, fptu_insert_cstr(pt, fptu_max_cols - 1, "cstr"));
-    EXPECT_EQ(fptu_enospc, fptu_insert_opaque(pt, fptu_max_cols, "data", 4));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_uint16(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_uint32(pt, 1, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_int32(pt, 42, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_uint64(pt, 111, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_int64(pt, fptu_max_cols / 3, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_fp64(pt, fptu_max_cols - 3, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_fp32(pt, fptu_max_cols - 4, 0));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_96(pt, fptu_max_cols / 2, "96"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_128(pt, 257, "128"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_160(pt, 7, "160"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_192(pt, 8, "192"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_256(pt, fptu_max_cols - 2, "256"));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_insert_cstr(pt, fptu_max_cols - 1, "cstr"));
+    EXPECT_EQ(FPTU_ENOSPACE,
+              fptu_insert_opaque(pt, fptu_max_cols, "data", 4));
 
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(0, fptu_space4items(pt));
@@ -151,20 +153,21 @@ TEST(Upsert, ZeroSpace)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // update_xyz() expect no-entry
-    EXPECT_EQ(fptu_noent, fptu_update_uint16(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_uint32(pt, 1, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_int32(pt, 42, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_uint64(pt, 111, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_int64(pt, fptu_max_cols / 3, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_fp64(pt, fptu_max_cols - 3, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_fp32(pt, fptu_max_cols - 4, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_96(pt, fptu_max_cols / 2, "96"));
-    EXPECT_EQ(fptu_noent, fptu_update_128(pt, 257, "128"));
-    EXPECT_EQ(fptu_noent, fptu_update_160(pt, 7, "160"));
-    EXPECT_EQ(fptu_noent, fptu_update_192(pt, 8, "192"));
-    EXPECT_EQ(fptu_noent, fptu_update_256(pt, fptu_max_cols - 2, "256"));
-    EXPECT_EQ(fptu_noent, fptu_update_cstr(pt, fptu_max_cols - 1, "cstr"));
-    EXPECT_EQ(fptu_noent, fptu_update_opaque(pt, fptu_max_cols, "data", 4));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint16(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint32(pt, 1, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_int32(pt, 42, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint64(pt, 111, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_int64(pt, fptu_max_cols / 3, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_fp64(pt, fptu_max_cols - 3, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_fp32(pt, fptu_max_cols - 4, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_96(pt, fptu_max_cols / 2, "96"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_128(pt, 257, "128"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_160(pt, 7, "160"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_192(pt, 8, "192"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_256(pt, fptu_max_cols - 2, "256"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_cstr(pt, fptu_max_cols - 1, "cstr"));
+    EXPECT_EQ(FPTU_ENOFIELD,
+              fptu_update_opaque(pt, fptu_max_cols, "data", 4));
 
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(0, fptu_space4items(pt));
@@ -204,44 +207,44 @@ TEST(Upsert, Base)
     EXPECT_EQ(38 * 4, fptu_space4data(pt));
     EXPECT_EQ(0, fptu_junkspace(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, fptu_max_cols));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, fptu_max_cols));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(14, fptu_space4items(pt));
     EXPECT_EQ(38 * 4, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint16(pt, 0, 0x8001));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint16(pt, 0, 0x8001));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(13, fptu_space4items(pt));
     EXPECT_EQ(38 * 4, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint32(pt, 1, 1354824703));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint32(pt, 1, 1354824703));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(12, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 4, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_int32(pt, 42, -8782211));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_int32(pt, 42, -8782211));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(11, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 8, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint64(pt, 111, 15047220096467327));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint64(pt, 111, 15047220096467327));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(10, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 16, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok,
+    EXPECT_EQ(FPTU_OK,
               fptu_upsert_int64(pt, fptu_max_cols / 3, -60585001468255361));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(9, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 24, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_fp64(pt, fptu_max_cols - 3,
+    EXPECT_EQ(FPTU_OK, fptu_upsert_fp64(pt, fptu_max_cols - 3,
                                         3.14159265358979323846));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(8, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 32, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok,
+    EXPECT_EQ(FPTU_OK,
               fptu_upsert_fp32(pt, fptu_max_cols - 4, 2.7182818284590452354));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(7, fptu_space4items(pt));
@@ -254,49 +257,49 @@ TEST(Upsert, Base)
     static const uint8_t *_256 = _192 + 24;
     ASSERT_LT(32, pattern + sizeof(pattern) - _256);
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_96(pt, fptu_max_cols / 2, _96));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_96(pt, fptu_max_cols / 2, _96));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(6, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 48, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_128(pt, 257, _128));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_128(pt, 257, _128));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(5, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 64, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_160(pt, 7, _160));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_160(pt, 7, _160));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(4, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 84, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_192(pt, 8, _192));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_192(pt, 8, _192));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(3, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 108, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_256(pt, fptu_max_cols - 2, _256));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_256(pt, fptu_max_cols - 2, _256));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(2, fptu_space4items(pt));
     EXPECT_EQ(38 * 4 - 140, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_cstr(pt, fptu_max_cols - 1, "abc"));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_cstr(pt, fptu_max_cols - 1, "abc"));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(1, fptu_space4items(pt));
     EXPECT_EQ(8, fptu_space4data(pt));
 
-    EXPECT_EQ(fptu_ok, fptu_upsert_cstr(pt, 42, "cstr"));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_cstr(pt, 42, "cstr"));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // update present column, expect no error
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, fptu_max_cols));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, fptu_max_cols));
 
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
     EXPECT_EQ(0, fptu_junkspace(pt));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_null(pt, 33));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_null(pt, 33));
 
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
@@ -350,12 +353,12 @@ TEST(Upsert, Overwrite)
 
     const unsigned m = 46091;
     unsigned n = 1;
-    EXPECT_EQ(fptu_ok, fptu_upsert_opaque_iov(pt, 0, opaque_iov(0, n, 23)));
-    EXPECT_EQ(fptu_ok, fptu_upsert_opaque_iov(pt, 1, opaque_iov(1, n, 37)));
-    EXPECT_EQ(fptu_ok, fptu_upsert_opaque_iov(pt, 2, opaque_iov(2, n, 41)));
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint16(pt, 3, n * m));
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint32(pt, 4, n * m * m));
-    EXPECT_EQ(fptu_ok, fptu_upsert_uint64(pt, 5, n * m * m * m));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_opaque_iov(pt, 0, opaque_iov(0, n, 23)));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_opaque_iov(pt, 1, opaque_iov(1, n, 37)));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_opaque_iov(pt, 2, opaque_iov(2, n, 41)));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint16(pt, 3, n * m));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint32(pt, 4, n * m * m));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_uint64(pt, 5, n * m * m * m));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(3, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_junkspace(pt));
@@ -374,7 +377,7 @@ TEST(Upsert, Overwrite)
 
         // overwrite field#3 and check all
         SCOPED_TRACE("touch field #3, uint16_t, n " + std::to_string(n));
-        ASSERT_EQ(fptu_ok, fptu_upsert_uint16(pt, 3, n * m));
+        ASSERT_EQ(FPTU_OK, fptu_upsert_uint16(pt, 3, n * m));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         ro = fptu_take_noshrink(pt);
         ASSERT_STREQ(nullptr, fptu_check_ro(ro));
@@ -387,7 +390,7 @@ TEST(Upsert, Overwrite)
 
         // overwrite field#5 and check all
         SCOPED_TRACE("touch field #5, uint64_t, n " + std::to_string(n));
-        ASSERT_EQ(fptu_ok, fptu_upsert_uint64(pt, 5, n * m * m * m));
+        ASSERT_EQ(FPTU_OK, fptu_upsert_uint64(pt, 5, n * m * m * m));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         ro = fptu_take_noshrink(pt);
         ASSERT_STREQ(nullptr, fptu_check_ro(ro));
@@ -406,7 +409,7 @@ TEST(Upsert, Overwrite)
                      std::to_string(fptu_space4items(pt)) + "/" +
                      std::to_string(fptu_space4data(pt)) + ", junk " +
                      std::to_string(fptu_junkspace(pt)));
-        ASSERT_EQ(fptu_ok,
+        ASSERT_EQ(FPTU_OK,
                   fptu_upsert_opaque_iov(pt, 0, opaque_iov(0, n, 23)));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         ro = fptu_take_noshrink(pt);
@@ -425,7 +428,7 @@ TEST(Upsert, Overwrite)
                      ", space " + std::to_string(fptu_space4items(pt)) + "/" +
                      std::to_string(fptu_space4data(pt)) + ", junk " +
                      std::to_string(fptu_junkspace(pt)));
-        ASSERT_EQ(fptu_ok,
+        ASSERT_EQ(FPTU_OK,
                   fptu_upsert_opaque_iov(pt, 2, opaque_iov(2, n, 41)));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         ro = fptu_take_noshrink(pt);
@@ -439,7 +442,7 @@ TEST(Upsert, Overwrite)
 
         // overwrite field#4 and check all
         SCOPED_TRACE("touch field #4, uint32_t, n " + std::to_string(n));
-        ASSERT_EQ(fptu_ok, fptu_upsert_uint32(pt, 4, n * m * m));
+        ASSERT_EQ(FPTU_OK, fptu_upsert_uint32(pt, 4, n * m * m));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         ro = fptu_take_noshrink(pt);
         ASSERT_STREQ(nullptr, fptu_check_ro(ro));
@@ -457,7 +460,7 @@ TEST(Upsert, Overwrite)
                      ", space " + std::to_string(fptu_space4items(pt)) + "/" +
                      std::to_string(fptu_space4data(pt)) + ", junk " +
                      std::to_string(fptu_junkspace(pt)));
-        ASSERT_EQ(fptu_ok,
+        ASSERT_EQ(FPTU_OK,
                   fptu_upsert_opaque_iov(pt, 1, opaque_iov(1, n, 37)));
         ASSERT_STREQ(nullptr, fptu_check(pt));
         ro = fptu_take_noshrink(pt);
@@ -486,27 +489,27 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     unsigned bytes_used = 0;
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, 0));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 0));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 1, fptu_space4items(pt));
     EXPECT_EQ(bytes_limit - bytes_used, fptu_space4data(pt));
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // update_xyz() expect no-entry
-    EXPECT_EQ(fptu_noent, fptu_update_uint16(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_uint32(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_int32(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_uint64(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_int64(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_fp64(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_fp32(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_96(pt, 0, "96"));
-    EXPECT_EQ(fptu_noent, fptu_update_128(pt, 0, "128"));
-    EXPECT_EQ(fptu_noent, fptu_update_160(pt, 0, "160"));
-    EXPECT_EQ(fptu_noent, fptu_update_192(pt, 0, "192"));
-    EXPECT_EQ(fptu_noent, fptu_update_256(pt, 0, "256"));
-    EXPECT_EQ(fptu_noent, fptu_update_cstr(pt, 0, "cstr"));
-    EXPECT_EQ(fptu_noent, fptu_update_opaque(pt, 0, "data", 4));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint16(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint32(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_int32(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint64(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_int64(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_fp64(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_fp32(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_96(pt, 0, "96"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_128(pt, 0, "128"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_160(pt, 0, "160"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_192(pt, 0, "192"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_256(pt, 0, "256"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_cstr(pt, 0, "cstr"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_opaque(pt, 0, "data", 4));
 
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 1, fptu_space4items(pt));
@@ -517,7 +520,7 @@ TEST(Upsert, InsertUpdate)
     fptu_ro ro;
 
     // insert the first copy of field(0, uint16)
-    EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, 0, 0x8001));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0, 0x8001));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 2, fptu_space4items(pt));
     EXPECT_EQ(bytes_limit - bytes_used, fptu_space4data(pt));
@@ -525,7 +528,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ(0x8001, fptu_get_uint16(ro, 0, nullptr));
     // insert the second copy of field(0, uint16)
-    EXPECT_EQ(fptu_ok, fptu_insert_uint16(pt, 0, 0x8001 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0, 0x8001 + 43));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 3, fptu_space4items(pt));
     EXPECT_EQ(bytes_limit - bytes_used, fptu_space4data(pt));
@@ -535,7 +538,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, uint32)
-    EXPECT_EQ(fptu_ok, fptu_insert_uint32(pt, 0, 1354824703));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0, 1354824703));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 4, fptu_space4items(pt));
@@ -544,7 +547,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ(1354824703, fptu_get_uint32(ro, 0, nullptr));
     // insert the second copy of field(0, uint32)
-    EXPECT_EQ(fptu_ok, fptu_insert_uint32(pt, 0, 1354824703 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0, 1354824703 + 43));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 5, fptu_space4items(pt));
@@ -555,7 +558,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, int32)
-    EXPECT_EQ(fptu_ok, fptu_insert_int32(pt, 0, -8782211));
+    EXPECT_EQ(FPTU_OK, fptu_insert_int32(pt, 0, -8782211));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 6, fptu_space4items(pt));
@@ -564,7 +567,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ(-8782211, fptu_get_int32(ro, 0, nullptr));
     // insert the second copy of field(0, int32)
-    EXPECT_EQ(fptu_ok, fptu_insert_int32(pt, 0, -8782211 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_int32(pt, 0, -8782211 + 43));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 7, fptu_space4items(pt));
@@ -575,7 +578,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, uint64)
-    EXPECT_EQ(fptu_ok, fptu_insert_uint64(pt, 0, 15047220096467327));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint64(pt, 0, 15047220096467327));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 8, fptu_space4items(pt));
@@ -584,7 +587,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ(15047220096467327, fptu_get_uint64(ro, 0, nullptr));
     // insert the second copy of field(0, uint64)
-    EXPECT_EQ(fptu_ok, fptu_insert_uint64(pt, 0, 15047220096467327 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint64(pt, 0, 15047220096467327 + 43));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 9, fptu_space4items(pt));
@@ -595,7 +598,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, int64)
-    EXPECT_EQ(fptu_ok, fptu_insert_int64(pt, 0, -60585001468255361));
+    EXPECT_EQ(FPTU_OK, fptu_insert_int64(pt, 0, -60585001468255361));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 10, fptu_space4items(pt));
@@ -604,7 +607,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ(-60585001468255361, fptu_get_int64(ro, 0, nullptr));
     // insert the second copy of field(0, int64)
-    EXPECT_EQ(fptu_ok, fptu_insert_int64(pt, 0, -60585001468255361 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_int64(pt, 0, -60585001468255361 + 43));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 11, fptu_space4items(pt));
@@ -615,7 +618,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, fp64)
-    EXPECT_EQ(fptu_ok, fptu_insert_fp64(pt, 0, 3.14159265358979323846));
+    EXPECT_EQ(FPTU_OK, fptu_insert_fp64(pt, 0, 3.14159265358979323846));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 12, fptu_space4items(pt));
@@ -624,7 +627,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ(3.1415926535897932, fptu_get_fp64(ro, 0, nullptr));
     // insert the second copy of field(0, fp64)
-    EXPECT_EQ(fptu_ok, fptu_insert_fp64(pt, 0, 3.14159265358979323846 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_fp64(pt, 0, 3.14159265358979323846 + 43));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 13, fptu_space4items(pt));
@@ -635,7 +638,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, fp32)
-    EXPECT_EQ(fptu_ok, fptu_insert_fp32(pt, 0, 2.7182818284590452354));
+    EXPECT_EQ(FPTU_OK, fptu_insert_fp32(pt, 0, 2.7182818284590452354));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 14, fptu_space4items(pt));
@@ -644,7 +647,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_EQ((float)2.7182818284590452354, fptu_get_fp32(ro, 0, nullptr));
     // insert the second copy of field(0, fp32)
-    EXPECT_EQ(fptu_ok, fptu_insert_fp32(pt, 0, 2.7182818284590452354 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_fp32(pt, 0, 2.7182818284590452354 + 43));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 15, fptu_space4items(pt));
@@ -663,7 +666,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_LT(32, pattern + sizeof(pattern) - 43 - _256);
 
     // insert the first copy of field(0, _96)
-    EXPECT_EQ(fptu_ok, fptu_insert_96(pt, 0, _96));
+    EXPECT_EQ(FPTU_OK, fptu_insert_96(pt, 0, _96));
     bytes_used += 96 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 16, fptu_space4items(pt));
@@ -673,7 +676,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(fptu_eq, fptu_cmp_96(ro, 0, _96));
     EXPECT_EQ(0, memcmp(_96, fptu_get_96(ro, 0, nullptr), 96 / 8));
     // insert the second copy of field(0, _96)
-    EXPECT_EQ(fptu_ok, fptu_insert_96(pt, 0, _96 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_96(pt, 0, _96 + 43));
     bytes_used += 96 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 17, fptu_space4items(pt));
@@ -685,7 +688,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, _128)
-    EXPECT_EQ(fptu_ok, fptu_insert_128(pt, 0, _128));
+    EXPECT_EQ(FPTU_OK, fptu_insert_128(pt, 0, _128));
     bytes_used += 128 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 18, fptu_space4items(pt));
@@ -695,7 +698,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(fptu_eq, fptu_cmp_128(ro, 0, _128));
     EXPECT_EQ(0, memcmp(_128, fptu_get_128(ro, 0, nullptr), 128 / 8));
     // insert the second copy of field(0, _128)
-    EXPECT_EQ(fptu_ok, fptu_insert_128(pt, 0, _128 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_128(pt, 0, _128 + 43));
     bytes_used += 128 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 19, fptu_space4items(pt));
@@ -707,7 +710,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, _160)
-    EXPECT_EQ(fptu_ok, fptu_insert_160(pt, 0, _160));
+    EXPECT_EQ(FPTU_OK, fptu_insert_160(pt, 0, _160));
     bytes_used += 160 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 20, fptu_space4items(pt));
@@ -717,7 +720,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(fptu_eq, fptu_cmp_160(ro, 0, _160));
     EXPECT_EQ(0, memcmp(_160, fptu_get_160(ro, 0, nullptr), 160 / 8));
     // insert the second copy of field(0, _160)
-    EXPECT_EQ(fptu_ok, fptu_insert_160(pt, 0, _160 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_160(pt, 0, _160 + 43));
     bytes_used += 160 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 21, fptu_space4items(pt));
@@ -729,7 +732,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, _192)
-    EXPECT_EQ(fptu_ok, fptu_insert_192(pt, 0, _192));
+    EXPECT_EQ(FPTU_OK, fptu_insert_192(pt, 0, _192));
     bytes_used += 192 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 22, fptu_space4items(pt));
@@ -739,7 +742,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(fptu_eq, fptu_cmp_192(ro, 0, _192));
     EXPECT_EQ(0, memcmp(_192, fptu_get_192(ro, 0, nullptr), 192 / 8));
     // insert the sexond copy of field(0, _192)
-    EXPECT_EQ(fptu_ok, fptu_insert_192(pt, 0, _192 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_192(pt, 0, _192 + 43));
     bytes_used += 192 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 23, fptu_space4items(pt));
@@ -751,7 +754,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, _256)
-    EXPECT_EQ(fptu_ok, fptu_insert_256(pt, 0, _256));
+    EXPECT_EQ(FPTU_OK, fptu_insert_256(pt, 0, _256));
     bytes_used += 256 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 24, fptu_space4items(pt));
@@ -761,7 +764,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(fptu_eq, fptu_cmp_256(ro, 0, _256));
     EXPECT_EQ(0, memcmp(_256, fptu_get_256(ro, 0, nullptr), 256 / 8));
     // insert the second copy of field(0, _256)
-    EXPECT_EQ(fptu_ok, fptu_insert_256(pt, 0, _256 + 43));
+    EXPECT_EQ(FPTU_OK, fptu_insert_256(pt, 0, _256 + 43));
     bytes_used += 256 / 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 25, fptu_space4items(pt));
@@ -773,7 +776,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, c-string)
-    EXPECT_EQ(fptu_ok, fptu_insert_cstr(pt, 0, "abc"));
+    EXPECT_EQ(FPTU_OK, fptu_insert_cstr(pt, 0, "abc"));
     bytes_used += 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 26, fptu_space4items(pt));
@@ -782,7 +785,7 @@ TEST(Upsert, InsertUpdate)
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     EXPECT_STREQ("abc", fptu_get_cstr(ro, 0, nullptr));
     // insert the second copy of field(0, c-string)
-    EXPECT_EQ(fptu_ok, fptu_insert_cstr(pt, 0, "cstr"));
+    EXPECT_EQ(FPTU_OK, fptu_insert_cstr(pt, 0, "cstr"));
     bytes_used += 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 27, fptu_space4items(pt));
@@ -793,7 +796,7 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_junkspace(pt));
 
     // insert the first copy of field(0, opaque)
-    EXPECT_EQ(fptu_ok, fptu_insert_opaque(pt, 0, "data", 4));
+    EXPECT_EQ(FPTU_OK, fptu_insert_opaque(pt, 0, "data", 4));
     bytes_used += 4 + 4;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 28, fptu_space4items(pt));
@@ -801,7 +804,7 @@ TEST(Upsert, InsertUpdate)
     ro = fptu_take_noshrink(pt);
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
     // insert the second copy of field(0, opaque)
-    EXPECT_EQ(fptu_ok, fptu_insert_opaque(pt, 0, "bananan", 8));
+    EXPECT_EQ(FPTU_OK, fptu_insert_opaque(pt, 0, "bananan", 8));
     bytes_used += 4 + 8;
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(items_limit - 29, fptu_space4items(pt));
@@ -813,12 +816,12 @@ TEST(Upsert, InsertUpdate)
     // update present column, expect no error
     EXPECT_EQ(bytes_limit, bytes_used);
     EXPECT_EQ(0, fptu_space4items(pt));
-    EXPECT_EQ(fptu_ok, fptu_upsert_null(pt, 0));
+    EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 0));
 
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(bytes_limit - bytes_used, fptu_space4data(pt));
     EXPECT_EQ(0, fptu_junkspace(pt));
-    EXPECT_EQ(fptu_enospc, fptu_upsert_null(pt, 33));
+    EXPECT_EQ(FPTU_ENOSPACE, fptu_upsert_null(pt, 33));
 
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
@@ -854,7 +857,7 @@ TEST(Upsert, InsertUpdate)
 
     // update first copy of the field and check value
     unsigned junk = 0;
-    EXPECT_EQ(fptu_ok, fptu_update_uint16(pt, 0, 0x8001 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_uint16(pt, 0, 0x8001 - 42));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
@@ -881,7 +884,7 @@ TEST(Upsert, InsertUpdate)
 
     // try erase one more
     EXPECT_EQ(0, fptu_erase(pt, 0, fptu_uint16));
-    EXPECT_EQ(fptu_noent, fptu_update_uint16(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint16(pt, 0, 0));
     EXPECT_EQ(0, fptu_space4items(pt));
     EXPECT_EQ(0, fptu_space4data(pt));
     EXPECT_EQ(junk, fptu_junkspace(pt));
@@ -895,19 +898,19 @@ TEST(Upsert, InsertUpdate)
     //------------------------------------------------------------------
 
     // update secondary values and check ones
-    EXPECT_EQ(fptu_ok, fptu_update_uint32(pt, 0, 1354824703 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_int32(pt, 0, -8782211 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_uint64(pt, 0, 15047220096467327 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_int64(pt, 0, -64700360770547893));
-    EXPECT_EQ(fptu_ok, fptu_update_fp64(pt, 0, 3.14159265358979323846 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_fp32(pt, 0, 2.7182818284590452354 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_96(pt, 0, _96 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_128(pt, 0, _128 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_160(pt, 0, _160 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_192(pt, 0, _192 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_256(pt, 0, _256 - 42));
-    EXPECT_EQ(fptu_ok, fptu_update_cstr(pt, 0, "xyz_"));
-    EXPECT_EQ(fptu_ok, fptu_update_opaque(pt, 0, "1234567", 8));
+    EXPECT_EQ(FPTU_OK, fptu_update_uint32(pt, 0, 1354824703 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_int32(pt, 0, -8782211 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_uint64(pt, 0, 15047220096467327 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_int64(pt, 0, -64700360770547893));
+    EXPECT_EQ(FPTU_OK, fptu_update_fp64(pt, 0, 3.14159265358979323846 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_fp32(pt, 0, 2.7182818284590452354 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_96(pt, 0, _96 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_128(pt, 0, _128 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_160(pt, 0, _160 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_192(pt, 0, _192 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_256(pt, 0, _256 - 42));
+    EXPECT_EQ(FPTU_OK, fptu_update_cstr(pt, 0, "xyz_"));
+    EXPECT_EQ(FPTU_OK, fptu_update_opaque(pt, 0, "1234567", 8));
 
     ASSERT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(0, fptu_space4items(pt));
@@ -1029,20 +1032,20 @@ TEST(Upsert, InsertUpdate)
     EXPECT_EQ(0, fptu_erase(pt, 0, fptu_null));
 
     // update_xyz() expect no-entry
-    EXPECT_EQ(fptu_noent, fptu_update_uint16(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_uint32(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_int32(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_uint64(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_int64(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_fp64(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_fp32(pt, 0, 0));
-    EXPECT_EQ(fptu_noent, fptu_update_96(pt, 0, "96"));
-    EXPECT_EQ(fptu_noent, fptu_update_128(pt, 0, "128"));
-    EXPECT_EQ(fptu_noent, fptu_update_160(pt, 0, "160"));
-    EXPECT_EQ(fptu_noent, fptu_update_192(pt, 0, "192"));
-    EXPECT_EQ(fptu_noent, fptu_update_256(pt, 0, "256"));
-    EXPECT_EQ(fptu_noent, fptu_update_cstr(pt, 0, "cstr"));
-    EXPECT_EQ(fptu_noent, fptu_update_opaque(pt, 0, "data", 4));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint16(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint32(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_int32(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_uint64(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_int64(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_fp64(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_fp32(pt, 0, 0));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_96(pt, 0, "96"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_128(pt, 0, "128"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_160(pt, 0, "160"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_192(pt, 0, "192"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_256(pt, 0, "256"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_cstr(pt, 0, "cstr"));
+    EXPECT_EQ(FPTU_ENOFIELD, fptu_update_opaque(pt, 0, "data", 4));
     EXPECT_EQ(0, fptu_erase(pt, 0, fptu_any));
 
     //------------------------------------------------------------------

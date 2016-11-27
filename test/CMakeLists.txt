@@ -11,5 +11,5 @@ add_ut(6shrink TIMEOUT 10 SOURCE 6shrink.cxx shuffle6.hpp LIBRARY fptu)
 # add_perf_test(relptr_perf TIMEOUT 60 LIBRARY fptu)
 # add_long_test(jitter_long TIMEOUT 600 LIBRARY fptu)
 
-add_executable(c_mode c_mode.c)
-target_link_libraries(c_mode fptu)
+add_executable(fptu_c_mode c_mode.c)
+target_link_libraries(fptu_c_mode fptu)

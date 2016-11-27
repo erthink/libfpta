@@ -126,7 +126,7 @@ TEST(Fetch, Base)
     EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
 
     // adds header-only fields and check
-    EXPECT_EQ(fptu_ok, fptu_insert_uint16(origin_pt, fptu_max_cols, 42));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint16(origin_pt, fptu_max_cols, 42));
     ASSERT_STREQ(nullptr, fptu_check(origin_pt));
     origin_ro = fptu_take_noshrink(origin_pt);
     ASSERT_STREQ(nullptr, fptu_check_ro(origin_ro));
@@ -168,7 +168,7 @@ TEST(Fetch, Base)
     ASSERT_NE(nullptr, origin_pt);
     EXPECT_STREQ(nullptr, fptu_check(origin_pt));
 
-    EXPECT_EQ(fptu_ok, fptu_insert_uint32(origin_pt, fptu_max_cols, 42));
+    EXPECT_EQ(FPTU_OK, fptu_insert_uint32(origin_pt, fptu_max_cols, 42));
     ASSERT_STREQ(nullptr, fptu_check(origin_pt));
     origin_ro = fptu_take_noshrink(origin_pt);
     ASSERT_STREQ(nullptr, fptu_check_ro(origin_ro));
@@ -292,7 +292,7 @@ TEST(Fetch, Variate)
             for (unsigned n = 1; n < 11; ++n) {
                 SCOPED_TRACE("header-only, n = " + std::to_string(n));
 
-                EXPECT_EQ(fptu_ok,
+                EXPECT_EQ(FPTU_OK,
                           fptu_insert_uint16(origin_pt, fptu_max_cols, n));
                 ASSERT_STREQ(nullptr, fptu_check(origin_pt));
                 origin_ro = fptu_take_noshrink(origin_pt);
@@ -351,7 +351,7 @@ TEST(Fetch, Variate)
             for (unsigned n = 1; n < 11; ++n) {
                 SCOPED_TRACE("with-payload, n = " + std::to_string(n));
 
-                EXPECT_EQ(fptu_ok,
+                EXPECT_EQ(FPTU_OK,
                           fptu_insert_uint32(origin_pt, fptu_max_cols, n));
                 ASSERT_STREQ(nullptr, fptu_check(origin_pt));
                 origin_ro = fptu_take_noshrink(origin_pt);
