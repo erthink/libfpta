@@ -335,8 +335,7 @@ int fptu_upsert_opaque(fptu_rw *pt, unsigned column, const void *value,
                        size_t bytes);
 int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
                            const struct iovec value);
-// TODO
-// int fptu_upsert_nested(fptu_rw* pt, unsigned column, fptu_ro ro);
+int fptu_upsert_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 
 // TODO
 // int fptu_upsert_array_uint16(fptu_rw* pt, unsigned ct, size_t array_length,
@@ -376,8 +375,7 @@ int fptu_insert_opaque(fptu_rw *pt, unsigned column, const void *value,
                        size_t bytes);
 int fptu_insert_opaque_iov(fptu_rw *pt, unsigned column,
                            const struct iovec value);
-// TODO
-// int fptu_insert_nested(fptu_rw* pt, unsigned column, fptu_ro ro);
+int fptu_insert_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 
 // TODO
 // int fptu_insert_array_uint16(fptu_rw* pt, unsigned ct, size_t array_length,
@@ -415,8 +413,7 @@ int fptu_update_opaque(fptu_rw *pt, unsigned column, const void *value,
                        size_t bytes);
 int fptu_update_opaque_iov(fptu_rw *pt, unsigned column,
                            const struct iovec value);
-// TODO
-// int fptu_update_nested(fptu_rw* pt, unsigned column, fptu_ro ro);
+int fptu_update_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 
 // TODO
 // int fptu_update_array_uint16(fptu_rw* pt, unsigned ct, size_t array_length,

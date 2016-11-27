@@ -131,7 +131,7 @@ static __inline void fptu_cstrcpy(fptu_field *pf, size_t units,
     memcpy(payload, value, bytes);
 }
 
-//======================================================================
+//============================================================================
 
 int fptu_upsert_null(fptu_rw *pt, unsigned col)
 {
@@ -369,6 +369,33 @@ int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
     return fptu_upsert_opaque(pt, column, value.iov_base, value.iov_len);
 }
 
+int fptu_upsert_nested(fptu_rw *pt, unsigned col, fptu_ro ro)
+{
+    if (unlikely(col > fptu_max_cols))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.total_bytes > fptu_max_opaque_bytes))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.total_bytes < fptu_unit_size))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.units == nullptr))
+        return FPTU_EINVAL;
+
+    size_t units = 1 + ro.units[0].varlen.brutto;
+    if (unlikely(ro.total_bytes != units2bytes(units)))
+        return FPTU_EINVAL;
+
+    fptu_field *pf =
+        fptu_emplace(pt, fptu_pack_coltype(col, fptu_nested), units);
+    if (unlikely(pf == nullptr))
+        return FPTU_ENOSPACE;
+
+    memcpy(fptu_field_payload(pf), ro.units, ro.total_bytes);
+    return FPTU_SUCCESS;
+}
+
 //----------------------------------------------------------------------------
 
 // int fptu_upsert_array_int32(fptu_rw* pt, unsigned ct, size_t array_length,
@@ -382,7 +409,7 @@ int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
 // int fptu_upsert_array_str(fptu_rw* pt, unsigned ct, size_t array_length,
 // const char* array_data[]);
 
-//======================================================================
+//============================================================================
 
 int fptu_update_uint16(fptu_rw *pt, unsigned col, unsigned value)
 {
@@ -610,7 +637,34 @@ int fptu_update_opaque_iov(fptu_rw *pt, unsigned column,
     return fptu_update_opaque(pt, column, value.iov_base, value.iov_len);
 }
 
-//======================================================================
+int fptu_update_nested(fptu_rw *pt, unsigned col, fptu_ro ro)
+{
+    if (unlikely(col > fptu_max_cols))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.total_bytes > fptu_max_opaque_bytes))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.total_bytes < fptu_unit_size))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.units == nullptr))
+        return FPTU_EINVAL;
+
+    size_t units = 1 + ro.units[0].varlen.brutto;
+    if (unlikely(ro.total_bytes != units2bytes(units)))
+        return FPTU_EINVAL;
+
+    fptu_takeover_result result =
+        fptu_takeover(pt, fptu_pack_coltype(col, fptu_nested), units);
+    if (likely(result.error == FPTU_SUCCESS)) {
+        assert(result.pf != nullptr);
+        memcpy(fptu_field_payload(result.pf), ro.units, ro.total_bytes);
+    }
+    return result.error;
+}
+
+//============================================================================
 
 int fptu_insert_uint16(fptu_rw *pt, unsigned col, unsigned value)
 {
@@ -831,4 +885,31 @@ int fptu_insert_opaque_iov(fptu_rw *pt, unsigned column,
                            const struct iovec value)
 {
     return fptu_insert_opaque(pt, column, value.iov_base, value.iov_len);
+}
+
+int fptu_insert_nested(fptu_rw *pt, unsigned col, fptu_ro ro)
+{
+    if (unlikely(col > fptu_max_cols))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.total_bytes > fptu_max_opaque_bytes))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.total_bytes < fptu_unit_size))
+        return FPTU_EINVAL;
+
+    if (unlikely(ro.units == nullptr))
+        return FPTU_EINVAL;
+
+    size_t units = 1 + ro.units[0].varlen.brutto;
+    if (unlikely(ro.total_bytes != units2bytes(units)))
+        return FPTU_EINVAL;
+
+    fptu_field *pf =
+        fptu_append(pt, fptu_pack_coltype(col, fptu_nested), units);
+    if (unlikely(pf == nullptr))
+        return FPTU_ENOSPACE;
+
+    memcpy(fptu_field_payload(pf), ro.units, ro.total_bytes);
+    return FPTU_SUCCESS;
 }
