@@ -553,6 +553,9 @@ fptu_cmp fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
 fptu_cmp fptu_cmp_binary(const void *left_data, size_t left_len,
                          const void *right_data, size_t right_len);
 
+fptu_cmp fptu_cmp_fields(const fptu_field *left, const fptu_field *right);
+fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right);
+
 #ifdef __cplusplus
 }
 #endif
