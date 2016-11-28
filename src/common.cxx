@@ -17,7 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/internals.h"
+#include "fast_positive/tuples_internal.h"
 
 const uint8_t fptu_internal_map_t2b[fptu_string] = {
     /* void */ 0,

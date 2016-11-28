@@ -311,7 +311,7 @@ static __inline const void *fptu_detent(const fptu_rw *rw)
 fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct);
 
 template <typename type>
-static __inline int fptu_cmp2bits(type left, type right)
+static __inline fptu_cmp fptu_cmp2bits(type left, type right)
 {
     if (left == right)
         return fptu_eq;

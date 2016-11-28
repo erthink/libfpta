@@ -17,7 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/internals.h"
+#include "fast_positive/tuples_internal.h"
 
 static __hot const char *
 fptu_field_check(const fptu_field *pf, const char *pivot, const char *detent,

@@ -17,7 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/internals.h"
+#include "fast_positive/tuples_internal.h"
 
 int fptu_field_type(const fptu_field *pf)
 {

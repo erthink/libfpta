@@ -17,7 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/internals.h"
+#include "fast_positive/tuples_internal.h"
 
 __hot const fptu_field *fptu_first(const fptu_field *begin,
                                    const fptu_field *end, unsigned column,
