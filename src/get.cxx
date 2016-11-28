@@ -106,7 +106,7 @@ const uint8_t *fptu_field_96(const fptu_field *pf)
     if (unlikely(fptu_field_type(pf) != fptu_96))
         return nullptr;
 
-    return fptu_field_payload(pf)->fixed_opaque;
+    return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_128(const fptu_field *pf)
@@ -114,7 +114,7 @@ const uint8_t *fptu_field_128(const fptu_field *pf)
     if (unlikely(fptu_field_type(pf) != fptu_128))
         return nullptr;
 
-    return fptu_field_payload(pf)->fixed_opaque;
+    return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_160(const fptu_field *pf)
@@ -122,7 +122,7 @@ const uint8_t *fptu_field_160(const fptu_field *pf)
     if (unlikely(fptu_field_type(pf) != fptu_160))
         return nullptr;
 
-    return fptu_field_payload(pf)->fixed_opaque;
+    return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_192(const fptu_field *pf)
@@ -130,14 +130,14 @@ const uint8_t *fptu_field_192(const fptu_field *pf)
     if (unlikely(fptu_field_type(pf) != fptu_192))
         return nullptr;
 
-    return fptu_field_payload(pf)->fixed_opaque;
+    return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_256(const fptu_field *pf)
 {
     if (unlikely(fptu_field_type(pf) != fptu_256))
         return nullptr;
-    return fptu_field_payload(pf)->fixed_opaque;
+    return fptu_field_payload(pf)->fixbin;
 }
 
 struct iovec fptu_field_opaque(const fptu_field *pf)

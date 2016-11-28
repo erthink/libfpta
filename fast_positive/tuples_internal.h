@@ -237,7 +237,7 @@ typedef union fptu_payload {
     float fp32;
     double fp64;
     char cstr[4];
-    uint8_t fixed_opaque[8];
+    uint8_t fixbin[8];
     struct {
         fptu_varlen varlen;
         uint32_t data[1];
@@ -311,9 +311,36 @@ static __inline const void *fptu_detent(const fptu_rw *rw)
 fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct);
 
 template <typename type>
-static __inline fptu_cmp fptu_cmp2bits(type left, type right)
+static __inline fptu_cmp fptu_int2cmp(type left, type right)
 {
     if (left == right)
         return fptu_eq;
     return (left < right) ? fptu_lt : fptu_gt;
+}
+
+static __inline fptu_cmp fptu_int2cmp(int cmp)
+{
+    return fptu_int2cmp(cmp, 0);
+}
+
+static __inline fptu_cmp fptu_cmp_binary_str(const void *left_data,
+                                             size_t left_len,
+                                             const char *right_cstr)
+{
+    size_t right_len = right_cstr ? strlen(right_cstr) : 0;
+    return fptu_cmp_binary(left_data, left_len, right_cstr, right_len);
+}
+
+static __inline fptu_cmp fptu_cmp_str_binary(const char *left_cstr,
+                                             const void *right_data,
+                                             size_t right_len)
+{
+    size_t left_len = left_cstr ? strlen(left_cstr) : 0;
+    return fptu_cmp_binary(left_cstr, left_len, right_data, right_len);
+}
+
+template <typename type>
+static __inline int fptu_diff2int(type left, type right)
+{
+    return (right > left) ? -1 : left > right;
 }

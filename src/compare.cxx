@@ -19,12 +19,23 @@
 
 #include "fast_positive/tuples_internal.h"
 
-static __inline int memcmp2bits(const void *a, const void *b, size_t bytes)
+static __inline fptu_cmp cmpbin(const void *a, const void *b, size_t bytes)
 {
-    return fptu_cmp2bits(memcmp(a, b, bytes), 0);
+    return fptu_int2cmp(memcmp(a, b, bytes));
 }
 
-int fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_cmp __hot fptu_cmp_binary(const void *left_data, size_t left_len,
+                               const void *right_data, size_t right_len)
+{
+    int diff = memcmp(left_data, right_data, std::min(left_len, right_len));
+    if (diff == 0)
+        diff = fptu_diff2int(left_len, right_len);
+    return fptu_int2cmp(diff);
+}
+
+//----------------------------------------------------------------------------
+
+fptu_cmp fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -33,10 +44,10 @@ int fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
     if (unlikely(pf == nullptr))
         return fptu_ic;
 
-    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 12);
+    return cmpbin(fptu_field_payload(pf)->fixbin, value, 12);
 }
 
-int fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_cmp fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -45,10 +56,10 @@ int fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
     if (unlikely(pf == nullptr))
         return fptu_ic;
 
-    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 16);
+    return cmpbin(fptu_field_payload(pf)->fixbin, value, 16);
 }
 
-int fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_cmp fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -57,10 +68,10 @@ int fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
     if (unlikely(pf == nullptr))
         return fptu_ic;
 
-    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 20);
+    return cmpbin(fptu_field_payload(pf)->fixbin, value, 20);
 }
 
-int fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_cmp fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -69,10 +80,10 @@ int fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
     if (unlikely(pf == nullptr))
         return fptu_ic;
 
-    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 24);
+    return cmpbin(fptu_field_payload(pf)->fixbin, value, 24);
 }
 
-int fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_cmp fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -81,26 +92,24 @@ int fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
     if (unlikely(pf == nullptr))
         return fptu_ic;
 
-    return memcmp2bits(fptu_field_payload(pf)->fixed_opaque, value, 32);
+    return cmpbin(fptu_field_payload(pf)->fixbin, value, 32);
 }
 
 //----------------------------------------------------------------------------
 
-int fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
-                    size_t bytes)
+fptu_cmp fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
+                         size_t bytes)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_opaque);
     if (pf == nullptr)
         return bytes ? fptu_ic : fptu_eq;
 
-    const struct iovec field = fptu_field_opaque(pf);
-    if (field.iov_len != bytes)
-        return (field.iov_len < bytes) ? fptu_lt : fptu_gt;
-
-    return memcmp2bits(field.iov_base, value, bytes);
+    const struct iovec iov = fptu_field_opaque(pf);
+    return fptu_cmp_binary(iov.iov_base, iov.iov_len, value, bytes);
 }
 
-int fptu_cmp_opaque_iov(fptu_ro ro, unsigned column, const struct iovec value)
+fptu_cmp fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
+                             const struct iovec value)
 {
     return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
 }

@@ -540,15 +540,18 @@ typedef enum fptu_cmp {
     fptu_ge = fptu_gt | fptu_eq,           // left >= right
 } fptu_cmp;
 
-int fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
-int fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
-int fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
-int fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value);
-int fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value);
-int fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
-                    size_t bytes);
-int fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
-                        const struct iovec value);
+fptu_cmp fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_cmp fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_cmp fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_cmp fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_cmp fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_cmp fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
+                         size_t bytes);
+fptu_cmp fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
+                             const struct iovec value);
+
+fptu_cmp fptu_cmp_binary(const void *left_data, size_t left_len,
+                         const void *right_data, size_t right_len);
 
 #ifdef __cplusplus
 }
