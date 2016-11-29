@@ -250,7 +250,7 @@ fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
            tags_right_end <= tags_right_end + right_size);
 
     // идем по отсортированным тегам
-    auto tags_left = tags_right_begin, tags_right = tags_right_begin;
+    auto tags_left = tags_left_begin, tags_right = tags_right_begin;
     for (;;) {
         // если уперлись в конец слева или справа
         if (tags_left == tags_left_end) {
