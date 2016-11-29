@@ -194,29 +194,43 @@ fptu_cmp fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
 
 //----------------------------------------------------------------------------
 
-static uint16_t *fptu_pull_tags(uint16_t *const tags,
-                                const fptu_field *const begin,
-                                const fptu_field *const end)
+static uint16_t *fptu_unique_tags(uint16_t *const first,
+                                  const fptu_field *const begin,
+                                  const fptu_field *const end)
 {
-    uint16_t *first = tags;
-    uint16_t *last = tags;
+    uint16_t *tail = first;
+    if (end > begin) {
+        bool sorted = true;
+        const fptu_field *i;
 
-    int tail = -1;
-    for (auto i = begin; i < end; ++i) {
-        if (i->ct > tail) {
-            *last++ = tail = i->ct;
-        } else if (i->ct < tail) {
-            auto pos = std::lower_bound(first, last, i->ct);
-            if (pos == last || *pos != i->ct) {
-                *pos = i->ct;
-                memmove(pos + 1, pos, (last - pos) * sizeof(*pos));
-                ++last;
+        // пытаемся угадать текущий порядок
+        if (begin->ct >= end[-1].ct) {
+            i = end - 1;
+            *tail = i->ct;
+            while (--i >= begin) {
+                if (i->ct != *tail) {
+                    sorted = i->ct < *tail ? sorted : false;
+                    *++tail = i->ct;
+                }
+            }
+        } else {
+            i = begin;
+            *tail = i->ct;
+            while (++i < end) {
+                if (i->ct != *tail) {
+                    sorted = i->ct < *tail ? sorted : false;
+                    *++tail = i->ct;
+                }
             }
         }
+
+        ++tail;
+        assert(sorted == std::is_sorted(first, tail));
+        if (!sorted)
+            std::sort(first, tail);
     }
 
-    assert(std::is_sorted(tags, last));
-    return last;
+    return tail;
 }
 
 fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
@@ -231,21 +245,21 @@ fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
     auto right_end = fptu_end_ro(right);
     auto right_size = right_end - right_begin;
 
-    // буфера на стеке под сортированные теги полей
+    // буфер на стеке под сортированные теги полей
     uint16_t *const tags =
         (uint16_t *)alloca(sizeof(uint16_t) * (left_size + right_size));
 
     // получаем отсортированные теги слева
     uint16_t *const tags_left_begin = tags;
     uint16_t *const tags_left_end =
-        fptu_pull_tags(tags_left_begin, left_begin, left_end);
+        fptu_unique_tags(tags_left_begin, left_begin, left_end);
     assert(tags_left_end >= tags_left_begin &&
            tags_left_end <= tags_left_end + left_size);
 
     // получаем отсортированные теги справа
     uint16_t *const tags_right_begin = tags_left_end;
     uint16_t *const tags_right_end =
-        fptu_pull_tags(tags_right_begin, right_begin, right_end);
+        fptu_unique_tags(tags_right_begin, right_begin, right_end);
     assert(tags_right_end >= tags_right_begin &&
            tags_right_end <= tags_right_end + right_size);
 

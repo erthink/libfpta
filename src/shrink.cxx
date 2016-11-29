@@ -35,7 +35,7 @@ static unsigned fptu_state(const fptu_rw *pt)
 
     unsigned state = 0;
     for (const fptu_field *pf = end; --pf >= begin;) {
-        if (pf->ct > last_ct)
+        if (pf->ct < last_ct)
             state |= fptu_unsorted;
         last_ct = pf->ct;
 
