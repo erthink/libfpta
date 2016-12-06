@@ -12,4 +12,5 @@ add_library(fptu STATIC
     get.cxx
     compare.cxx
     iterator.cxx
+    sort.cxx
 )

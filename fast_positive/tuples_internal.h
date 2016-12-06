@@ -344,3 +344,7 @@ static __inline int fptu_diff2int(type left, type right)
 {
     return (right > left) ? -1 : left > right;
 }
+
+bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end);
+uint16_t *fptu_tags(uint16_t *const first, const fptu_field *const begin,
+                    const fptu_field *const end);

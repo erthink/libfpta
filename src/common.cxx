@@ -93,7 +93,7 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
     const fptu_field *end = begin + items;
 
     if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
-        // TODO: support for sorted tuples
+        // TODO: support for ordered tuples
     }
 
     if (type_or_filter & fptu_filter) {
@@ -152,7 +152,7 @@ __hot fptu_ro fptu_take_noshrink(fptu_rw *pt)
     fptu_payload *payload = (fptu_payload *)&pt->units[pt->head - 1];
     payload->other.varlen.brutto = pt->tail - pt->head;
     payload->other.varlen.tuple_items = items;
-    // TODO: support for sorted tuples
+    // TODO: support for ordered tuples
     tuple.units = (const fptu_unit *)payload;
     tuple.total_bytes = (char *)&pt->units[pt->tail] - (char *)payload;
     return tuple;

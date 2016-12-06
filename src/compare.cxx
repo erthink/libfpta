@@ -194,130 +194,93 @@ fptu_cmp fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
 
 //----------------------------------------------------------------------------
 
-static uint16_t *fptu_unique_tags(uint16_t *const first,
-                                  const fptu_field *const begin,
-                                  const fptu_field *const end)
-{
-    uint16_t *tail = first;
-    if (end > begin) {
-        bool sorted = true;
-        const fptu_field *i;
-
-        // пытаемся угадать текущий порядок
-        if (begin->ct >= end[-1].ct) {
-            i = end - 1;
-            *tail = i->ct;
-            while (--i >= begin) {
-                if (i->ct != *tail) {
-                    sorted = i->ct < *tail ? sorted : false;
-                    *++tail = i->ct;
-                }
-            }
-        } else {
-            i = begin;
-            *tail = i->ct;
-            while (++i < end) {
-                if (i->ct != *tail) {
-                    sorted = i->ct < *tail ? sorted : false;
-                    *++tail = i->ct;
-                }
-            }
-        }
-
-        ++tail;
-        assert(sorted == std::is_sorted(first, tail));
-        if (!sorted)
-            std::sort(first, tail);
-    }
-
-    return tail;
-}
-
 fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
 {
     // начало и конец дескрипторов слева
-    auto left_begin = fptu_begin_ro(left);
-    auto left_end = fptu_end_ro(left);
-    auto left_size = left_end - left_begin;
+    auto l_begin = fptu_begin_ro(left);
+    auto l_end = fptu_end_ro(left);
+    auto l_size = l_end - l_begin;
 
     // начало и конец дескрипторов справа
-    auto right_begin = fptu_begin_ro(right);
-    auto right_end = fptu_end_ro(right);
-    auto right_size = right_end - right_begin;
+    auto r_begin = fptu_begin_ro(right);
+    auto r_end = fptu_end_ro(right);
+    auto r_size = r_end - r_begin;
+
+    if (likely(fptu_is_ordered(l_begin, l_end) &&
+               fptu_is_ordered(r_begin, r_end))) {
+        // TODO: fastpath если оба кортежа уже упорядоченные.
+    } else {
+        // TODO: account perfomance penalty.
+    }
 
     // буфер на стеке под сортированные теги полей
-    uint16_t *const tags =
-        (uint16_t *)alloca(sizeof(uint16_t) * (left_size + right_size));
+    uint16_t buffer[l_size + r_size];
 
     // получаем отсортированные теги слева
-    uint16_t *const tags_left_begin = tags;
-    uint16_t *const tags_left_end =
-        fptu_unique_tags(tags_left_begin, left_begin, left_end);
-    assert(tags_left_end >= tags_left_begin &&
-           tags_left_end <= tags_left_end + left_size);
+    uint16_t *const tags_l_begin = buffer;
+    uint16_t *const tags_l_end = fptu_tags(tags_l_begin, l_begin, l_end);
+    assert(tags_l_end >= tags_l_begin && tags_l_end <= tags_l_end + l_size);
 
     // получаем отсортированные теги справа
-    uint16_t *const tags_right_begin = tags_left_end;
-    uint16_t *const tags_right_end =
-        fptu_unique_tags(tags_right_begin, right_begin, right_end);
-    assert(tags_right_end >= tags_right_begin &&
-           tags_right_end <= tags_right_end + right_size);
+    uint16_t *const tags_r_begin = tags_l_end;
+    uint16_t *const tags_r_end = fptu_tags(tags_r_begin, r_begin, r_end);
+    assert(tags_r_end >= tags_r_begin && tags_r_end <= tags_r_end + r_size);
 
     // идем по отсортированным тегам
-    auto tags_left = tags_left_begin, tags_right = tags_right_begin;
+    auto tags_l = tags_l_begin, tags_r = tags_r_begin;
     for (;;) {
         // если уперлись в конец слева или справа
-        if (tags_left == tags_left_end) {
-            if (tags_right == tags_right_end)
+        if (tags_l == tags_l_end) {
+            if (tags_r == tags_r_end)
                 return fptu_eq;
             return fptu_lt;
-        } else if (tags_right == tags_right_end)
+        } else if (tags_r == tags_r_end)
             return fptu_gt;
 
         // если слева и справа разные теги
-        if (*tags_left != *tags_right)
-            return fptu_int2cmp(*tags_left, *tags_right);
+        if (*tags_l != *tags_r)
+            return fptu_int2cmp(*tags_l, *tags_r);
 
         // сканируем все поля с текущим тегом, их может быть несколько
         // (коллекции)
-        const uint16_t tag = *tags_left;
+        const uint16_t tag = *tags_l;
 
         // ищем первое вхождение слева, оно обязано быть
-        const fptu_field *field_left = left_begin;
-        while (field_left->ct != tag)
-            field_left++;
-        assert(field_left < left_end);
+        const fptu_field *field_l = l_begin;
+        while (field_l->ct != tag)
+            field_l++;
+        assert(field_l < l_end);
 
         // ищем первое вхождение справа, оно обязано быть
-        const fptu_field *field_right = right_begin;
-        while (field_right->ct != tag)
-            field_right++;
-        assert(field_right < right_end);
+        const fptu_field *field_r = r_begin;
+        while (field_r->ct != tag)
+            field_r++;
+        assert(field_r < r_end);
 
         for (;;) {
             // сравниваем найденые экземпляры
-            fptu_cmp cmp = fptu_cmp_fields_same_type(field_left, field_right);
+            fptu_cmp cmp = fptu_cmp_fields_same_type(field_l, field_r);
             if (cmp != fptu_eq)
                 return cmp;
 
             // ищем следующее слева
-            while (++field_left < left_end && field_left->ct != tag)
+            while (++field_l < l_end && field_l->ct != tag)
                 ;
 
             // ищем следующее справа
-            while (++field_right < right_end && field_right->ct != tag)
+            while (++field_r < r_end && field_r->ct != tag)
                 ;
 
             // если дошли до конца слева или справа
-            if (field_left == left_end) {
-                if (field_right == right_end)
+            if (field_l == l_end) {
+                if (field_r == r_end)
                     return fptu_eq;
                 return fptu_lt;
-            } else if (field_right == right_end)
+            } else if (field_r == r_end)
                 return fptu_gt;
         }
 
-        tags_left++;
-        tags_right++;
+        tags_l++;
+        tags_r++;
     }
 }

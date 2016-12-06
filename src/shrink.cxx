@@ -20,7 +20,7 @@
 #include "fast_positive/tuples_internal.h"
 
 enum {
-    fptu_unsorted = 1,
+    fptu_unordered = 1,
     fptu_junk_header = 2,
     fptu_junk_data = 4,
     fptu_mesh = 8
@@ -28,16 +28,16 @@ enum {
 
 static unsigned fptu_state(const fptu_rw *pt)
 {
-    const fptu_field *begin = fptu_begin(pt);
-    const fptu_field *end = fptu_end(pt);
+    const fptu_field *const begin = fptu_begin(pt);
+    const fptu_field *const end = fptu_end(pt);
     const char *prev_payload = (const char *)end;
-    unsigned last_ct = fptu_limit;
+    unsigned prev_ct = 0;
 
     unsigned state = 0;
     for (const fptu_field *pf = end; --pf >= begin;) {
-        if (pf->ct < last_ct)
-            state |= fptu_unsorted;
-        last_ct = pf->ct;
+        if (pf->ct < prev_ct)
+            state |= fptu_unordered;
+        prev_ct = pf->ct;
 
         if (ct_is_dead(pf->ct)) {
             state |= (fptu_get_type(pf->ct) > fptu_uint16)
@@ -50,9 +50,10 @@ static unsigned fptu_state(const fptu_rw *pt)
             prev_payload = payload;
         }
         if (state ==
-            (fptu_unsorted | fptu_junk_header | fptu_junk_data | fptu_mesh))
+            (fptu_unordered | fptu_junk_header | fptu_junk_data | fptu_mesh))
             break;
     }
+    assert(fptu_is_ordered(begin, end) == ((state & fptu_unordered) == 0));
     return state;
 }
 
@@ -63,8 +64,8 @@ void fptu_shrink(fptu_rw *pt)
         return;
 
     if (state & fptu_mesh) {
-        // TODO: support for sorted tuples;
-        assert(0 && "sorted/mesh tuples NOT yet supported");
+        // TODO: support for ordered tuples;
+        assert(0 && "ordered/mesh tuples NOT yet supported");
     }
 
     fptu_field *begin = &pt->units[pt->head].field;

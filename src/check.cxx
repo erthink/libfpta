@@ -52,8 +52,8 @@ fptu_field_check(const fptu_field *pf, const char *pivot, const char *detent,
         return "field.varlen > detent";
 
     if (unlikely((const char *)payload < prev_payload))
-        return "field.payload < previous.payload (sorted and mesh tuples NOT "
-               "yet supported)";
+        return "field.payload < previous.payload (ordered or mesh tuples "
+               "NOT yet supported)";
 
     if (type == fptu_string) {
         // length is'nt stored, but zero terminated
@@ -118,7 +118,7 @@ const char *fptu_check_ro(fptu_ro ro)
         return "tuple.pivot > tuple.end";
 
     if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
-        // TODO: support for sorted tuples
+        // TODO: support for ordered tuples
     }
 
     size_t payload_total_bytes = 0;
