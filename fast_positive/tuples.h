@@ -118,7 +118,7 @@ enum fptu_bits {
     fptu_co_bits = fptu_bits - fptu_typeid_bits - fptu_ct_reserve_bits,
     // маска для получения типа из идентификатора поля/колонки
     fptu_ty_mask = ((size_t)1 << fptu_typeid_bits) - 1,
-    // маска ресервных битов в идентификаторе поля/колонки
+    // маска резервных битов в идентификаторе поля/колонки
     fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1)
                    << fptu_typeid_bits,
 
