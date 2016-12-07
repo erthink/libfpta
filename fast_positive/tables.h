@@ -20,6 +20,17 @@
 /*
  * libfpta = { Fast Positive Tables, aka Позитивные Таблицы }
  * Please see README.md
+ *
+ * "Позитивные таблицы" предназначены для построения высокоскоростных
+ * локальных хранилищ структурированных данных в разделяемой памяти,
+ * с целевой производительностью от 100К до 1000К простых SQL-подобных
+ * запросов в секунду на каждом ядре процессора.
+ *
+ * The Future will Positive. Всё будет хорошо.
+ *
+ * "Positive Tables" is designed to build high-speed local storage of
+ * structured data in shared memory, with target performance from 100K
+ * to 1000K simple SQL-like requests per second on each CPU core.
  */
 
 #pragma once
@@ -29,6 +40,8 @@
 #include "fast_positive/defs.h"
 #include "fast_positive/tuples.h"
 
+#include <errno.h>   // for error codes
+#include <string.h>  // for strlen
 #include <sys/uio.h> // for struct iovec
 
 #ifdef __cplusplus
@@ -38,14 +51,35 @@ extern "C" {
 //----------------------------------------------------------------------------
 /* Общие перечисления и структуры */
 
-typedef struct iovec fpta_io;
-
+/* Основные ограничения, константы и их производные. */
 enum fpta_bits {
-    fpta_tables_max = 1000,
-    fpta_name_len_min = 1,
-    fpta_name_len_max = 42,
+    /* Максимальное кол-во таблиц */
+    fpta_tables_max = 1024,
+    /* Максимальное кол-во колонок (порядка 1000) */
     fpta_max_cols = fptu_max_cols,
 
+    /* Максимальная длина ключа и/или индексируемого поля. Ограничение
+     * актуально только для строк и бинарных данных переменной длины.
+     *
+     * При превышении заданной величины в индекс попадет только
+     * помещающаяся часть ключа, с дополнением 64-битным хэшем остатка.
+     *
+     * Для эффективного индексирования значений, у которых наиболее значимая
+     * часть находится в конце (например доменных имен), предусмотрен
+     * специальный тип реверсивных индексов. При этом ограничение сохраняется,
+     * но ключи обрабатываются и сравниваются с конца.
+     *
+     * Ограничение можно немного "подвинуть" за счет производительности,
+     * но нельзя убрать полностью. Также будет рассмотрен вариант перехода
+     * на 128-битный хэш. */
+    fpta_max_keylen = 64 * 1 - 8,
+
+    /* Минимальная длина имени/идентификатора */
+    fpta_name_len_min = 1,
+    /* Максимальная длина имени/идентификатора */
+    fpta_name_len_max = 42,
+
+    /* Далее внутренние технические делали. */
     fpta_schema_id_bits = 64,
 
     fpta_column_typeid_bits = fptu_typeid_bits,
@@ -86,6 +120,35 @@ typedef struct fpta_txn fpta_txn;
  * соответственно через fpta_cursor_close(). */
 typedef struct fpta_cursor fpta_cursor;
 
+//----------------------------------------------------------------------------
+
+/* Представление времени.
+ *
+ * В формате фиксированной точки 32-dot-32:
+ *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
+ *     но без знака. Это отодвигает проблему 2038-го года на 2106,
+ *     требуя взамен аккуратности при вычитании.
+ *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
+ *
+ * Эта форма унифицирована с Positive Hyper100r и одновременно достаточно
+ * удобна в использовании. Поэтому настоятельно рекомендуется использовать
+ * именно её, особенно для хранения и передачи данных. */
+typedef union fpta_time {
+    uint64_t fixedpoint;
+    struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        uint32_t fractional;
+        uint32_t utc;
+#else
+        uint32_t utc;
+        uint32_t fractional;
+#endif
+    };
+} fpta_time;
+
+/* Возвращает текущее время в правильной форме. */
+fpta_time fpta_now();
+
 /* Типы данных для ключей (проиндексированных полей) и значений
  * для сравнения в условиях фильтров больше/меньше/равно/не-равно. */
 typedef enum fpta_value_type {
@@ -93,16 +156,17 @@ typedef enum fpta_value_type {
                       * или отсутствия колонки/поля в строке. */
     fpta_signed_int, /* Integer со знаком, задается в int64_t */
     fpta_unsigned_int, /* Беззнаковый integer, задается в uint64_t */
+    fpta_datetime, /* Время в форме fpta_time */
     fpta_float_point, /* Плавающая точка, задается в double */
     fpta_string, /* Строка, задается в const char* */
-    fpta_binary, /* Бинарные данные, задается в fpta_io */
-
-    fpta_begin, /* Псевдо-тип, всегда меньше любого значения.
-                 * Используется при открытии курсора для выборки
-                 * первой записи посредством range_from. */
-    fpta_end,   /* Псевдо-тип, всегда больше любого значения.
-                 * Используется при открытии курсора для выборки
-                 * последней записи посредством range_to. */
+    fpta_binary, /* Бинарные данные, задается адресом и длинной */
+    fpta_shoved, /* Преобразованный длинный ключ из индекса. */
+    fpta_begin,  /* Псевдо-тип, всегда меньше любого значения.
+                  * Используется при открытии курсора для выборки
+                  * первой записи посредством range_from. */
+    fpta_end,    /* Псевдо-тип, всегда больше любого значения.
+                  * Используется при открытии курсора для выборки
+                  * последней записи посредством range_to. */
 } fpta_value_type;
 
 /* Структура для представления значений.
@@ -111,20 +175,107 @@ typedef enum fpta_value_type {
  * и значений для сравнения в условия больше/меньше/равно/не-равно. */
 typedef struct fpta_value {
     fpta_value_type type;
+    unsigned binary_length;
     union {
         int64_t sint;
         uint64_t uint;
         double fp;
         const char *cstr;
-        struct {
-            void *data;
-            unsigned length;
-        } binary;
+        void *binary_data;
     };
+#ifdef __cplusplus
+// TODO: constructors from basic types.
+#endif
 } fpta_value;
 
+/* Конструктор value с целочисленным значением. */
+static __inline fpta_value fpta_value_sint(int64_t value)
+{
+    fpta_value r;
+    r.type = fpta_signed_int;
+    r.sint = value;
+    return r;
+}
+
+/* Конструктор value с беззнаковым целочисленным значением. */
+static __inline fpta_value fpta_value_uint(uint64_t value)
+{
+    fpta_value r;
+    r.type = fpta_unsigned_int;
+    r.uint = value;
+    return r;
+}
+
+/* Конструктор value с плавающей точкой. */
+static __inline fpta_value fpta_value_float(double value)
+{
+    fpta_value r;
+    r.type = fpta_float_point;
+    r.fp = value;
+    return r;
+}
+
+/* Конструктор value со строковым значением,
+ * строка не копируется и не хранится внутри. */
+static __inline fpta_value fpta_value_str(const char *value)
+{
+    fpta_value r;
+    r.type = fpta_string;
+    r.cstr = value;
+    r.binary_length = value ? strlen(value) : 0;
+    return r;
+}
+
+/* Конструктор value с void/null значением. */
+static __inline fpta_value fpta_value_null()
+{
+    fpta_value r;
+    r.type = fpta_null;
+    return r;
+}
+
+/* Конструктор value с псевдо-значением "начало". */
+static __inline fpta_value fpta_value_begin(void)
+{
+    fpta_value r;
+    r.type = fpta_begin;
+    return r;
+}
+
+/* Конструктор value с псевдо-значением "конец". */
+static __inline fpta_value fpta_value_end(void)
+{
+    fpta_value r;
+    r.type = fpta_end;
+    return r;
+}
+
+//----------------------------------------------------------------------------
+
+/* Коды ошибок.
+ * Список будет пополнен, а описания уточнены. */
 enum fpta_error {
     FPTA_SUCCESS = 0,
+    FPTA_OK = FPTA_SUCCESS,
+    FPTA_ERRROR_BASE = 4242,
+
+    FPTA_EOOPS /* Internal unexpected Oops */,
+    FPTA_SCHEMA_CORRUPTED /* */,
+    FPTA_ETYPE /* Type mismatch */,
+    FPTA_DATALEN_MISMATCH,
+    FPTA_ROW_MISMATCH /* Row schema is mismatch */,
+    FPTA_INDEX_CORRUPTED,
+    FPTA_ETXNOUT /* Transaction should be restared */,
+    FPTA_ECURSOR /* Cursor not positioned */,
+
+    FPTA_EINVAL = EINVAL,
+    FPTA_ENOFIELD = ENOENT,
+    FPTA_ENOMEM = ENOMEM,
+    FPTA_EVALUE = EDOM /* Numeric value out of range*/,
+    FPTA_NODATA = -1 /* EOF */,
+    FPTA_ENOIMP = ENOSYS,
+
+    FPTA_DEADBEEF = 0xDeadBeef
 };
 
 /* Возвращает краткое описание ошибки по её коду.
@@ -139,7 +290,7 @@ const char *fpta_strerror(int error);
 /* Потоко-безопасный вариант fpta_strerror().
  *
  * Функция потоко-безопасна в том числе в случае системной ошибки, так
- * как при этом вызывается потоко--безопасная системная strerror_r(). */
+ * как при этом вызывается потоко-безопасная системная strerror_r(). */
 int fpta_strerror_r(int errnum, char *buf, size_t buflen);
 
 //----------------------------------------------------------------------------
@@ -228,8 +379,9 @@ int fpta_db_close(fpta_db **db);
 //----------------------------------------------------------------------------
 /* Инициация и завершение транзакций. */
 
-/* Уровень доступа к данным из транзации. */
+/* Уровень доступа к данным из транзакции. */
 typedef enum fpta_level {
+
     fpta_read = 1, /* Только чтение.
                     * Одновременно бесконфликтно могут выполняться
                     * несколько транзакций в режиме чтения. При
@@ -244,7 +396,7 @@ typedef enum fpta_level {
                     * При старте каждая читающая транзакция получает
                     * в свое распоряжение консистентный MVCC снимок
                     * всей БД, который видит до своего завершения.
-                    * Другими словами, читаюшая транзакция не видит
+                    * Другими словами, читающая транзакция не видит
                     * изменений в данных, которые произошли после
                     * её старта.
                     *
@@ -329,7 +481,6 @@ int fpta_transaction_end(fpta_txn *txn, bool abort);
 int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
 
 //----------------------------------------------------------------------------
-
 /* Управление схемой:
  *  - Изменение схемы происходит в рамках "пишущей" транзакции
  *    уровня fpta_schema.
@@ -355,53 +506,111 @@ int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
  *    или среди её колонок есть дубликат.
  */
 
-/* Режим индексирования для колонки таблицы. */
+/* Режимы индексирования для колонок таблиц.
+ *
+ * Вторичные индексы возможны только при уникальности ключей в первичном
+ * индексе. При невозможности обеспечить уникальность по какому-либо полю
+ * следует добавить еще одну колонку, заполняя её при вставке текущим
+ * временем получаемым от fpta_now().
+ *
+ * Неупорядоченные индексы:
+ *   - fpta_primary_unique_unordered, fpta_primary_withdups_unordered;
+ *   - fpta_secondary_unique_unordered, fpta_secondary_withdups_unordered.
+ *
+ *   Строятся посредством хеширования значений ключа. Такой bндекс позволяет
+ *   искать данные только по конкретному значению ключа. Основной бонус при
+ *   этом в минимизации накладных расходов, так как внутри БД все ключи
+ *   становятся одинакового фиксированного размера.
+ *
+ * Индексы со сравнением ключей с конца:
+ *   - fpta_primary_unique_reversed, fpta_primary_withdups_reversed;
+ *   - fpta_secondary_unique_reversed, fpta_secondary_withdups_reversed.
+ *
+ *   Индексы этого типа применимы только для строк и бинарных данных (типы
+ *   fptu_96..fptu_256, fptu_string и fptu_opaque При этом значения ключей
+ *   сравниваются в обратном порядке байт. Не от первых к последним,
+ *   а от последних к первым. Не следует пусть с обратным порядком сортировки
+ *   или упорядочения величин.
+ */
 enum fpta_index_type {
-    fpta_index_none =
-        /* Колонка НЕ индексируется. Комбинирование с другими флажками не
-           допустимо. */
-    0 << fpta_column_index_shift,
+    /* служебные флажки/битики для комбинаций */
+    fpta_index_funique = 1 << fpta_column_index_shift,
+    fpta_index_fordered = 2 << fpta_column_index_shift,
+    fpta_index_fobverse = 4 << fpta_column_index_shift,
+    fpta_index_fsecondary = 8 << fpta_column_index_shift,
 
-    fpta_primary =
-        /* Колонка будет использована как первичный ключ таблицы. При создании
-        таблицы такая колонка должна быть задана одна, и только одна. Допустимо
-        комбинирование с fpta_index_msb, fpta_index_lsb и fpta_index_uniq. */
-    1 << fpta_column_index_shift,
+    /* Колонка НЕ индексируется и в последствии не может быть указана
+     * при открытии курсора как опорная. */
+    fpta_index_none = 0,
 
-    fpta_secondary =
-        /* Для колонки будет поддерживаться вторичный
-        индекс, т.е. будет создана дополнительная
-        служебная таблица с key-value проекцией на
-        основной ключ. Поэтому каждый вторичный
-        индекс линейно увеличивает стоимость
-        операций обновления данных.
-        Допустимо комбинирование с fpta_index_msb,
-        fpta_index_lsb и fpta_index_uniq. */
-    2 << fpta_column_index_shift,
+    /* Первичный ключ/индекс.
+     *
+     * Колонка будет использована как первичный ключ таблицы. При создании
+     * таблицы такая колонка должна быть задана одна, и только одна. Вторичные
+     * ключи/индексы допустимы только при уникальности по первичному ключу. */
 
-    /* Флажки для выбора режим сравнения при построении индексов
-    для не-числовых типов: fptu_96..fptu_256 и fptu_string, fptu_nested
-    и всех массивов: */
+    /* с повторами */
+    fpta_primary_withdups = fpta_index_fordered + fpta_index_fobverse,
 
-    fpta_index_msb =
-        /* в прямом порядке байт, как memcmp() */
-    0 << fpta_column_index_shift,
+    /* с контролем уникальности */
+    fpta_primary_unique = fpta_primary_withdups + fpta_index_funique,
 
-    fpta_index_lsb =
-        /* в обратном, начиная с последнего байта. */
-    4 << fpta_column_index_shift,
+    /* неупорядоченный, с контролем уникальности */
+    fpta_primary_unique_unordered = fpta_primary_unique - fpta_index_fordered,
 
-    fpta_index_uniq =
-        /* Флажок для требования уникальности ключей, т.е. запрета на
-           дубликаты. */
-    8 << fpta_column_index_shift,
+    /* неупорядоченный с повторами */
+    fpta_primary_withdups_unordered =
+        fpta_primary_withdups - fpta_index_fordered,
+
+    /* строки и binary сравниваются с конца, с контролем уникальности */
+    fpta_primary_unique_reversed = fpta_primary_unique - fpta_index_fobverse,
+
+    /* строки и binary сравниваются с конца, с повторами */
+    fpta_primary_withdups_reversed =
+        fpta_primary_withdups - fpta_index_fobverse,
+
+    /* базовый вариант для основного индекса */
+    fpta_primary = fpta_primary_unique,
+
+    /* Вторичный ключ/индекс.
+     *
+     * Для колонки будет поддерживаться вторичный индекс, т.е. будет создана
+     * дополнительная служебная таблица с key-value проекцией на первичный
+     * ключ. Поэтому каждый вторичный индекс линейно увеличивает стоимость
+     * операций обновления данных. Вторичные ключи/индексы допустимы только
+     * при уникальности по первичному ключу. */
+
+    /* с повторами */
+    fpta_secondary_withdups = fpta_primary_withdups + fpta_index_fsecondary,
+
+    /* с контролем уникальности */
+    fpta_secondary_unique = fpta_secondary_withdups + fpta_index_funique,
+
+    /* неупорядоченный, с контролем уникальности */
+    fpta_secondary_unique_unordered =
+        fpta_secondary_unique - fpta_index_fordered,
+
+    /* неупорядоченный с повторами */
+    fpta_secondary_withdups_unordered =
+        fpta_secondary_withdups - fpta_index_fordered,
+
+    /* строки и binary сравниваются с конца, с контролем уникальности */
+    fpta_secondary_unique_reversed =
+        fpta_secondary_unique - fpta_index_fobverse,
+
+    /* строки и binary сравниваются с конца, с повторами */
+    fpta_secondary_withdups_reversed =
+        fpta_secondary_withdups - fpta_index_fobverse,
+
+    /* базовый вариант для вторичных индексов */
+    fpta_secondary = fpta_secondary_withdups,
 };
 
 /* Набор колонок для создания таблицы */
 typedef struct fpta_column_set {
-    // Счетчик заполненных описателей.
+    /* Счетчик заполненных описателей. */
     unsigned count;
-    // Упакованное внутреннее описание колонок.
+    /* Упакованное внутреннее описание колонок. */
     uint64_t internal[fpta_max_cols];
 } fpta_column_set;
 
@@ -413,17 +622,18 @@ bool fpta_name_validate(const char *name);
  * Добавляет описание колонки в column_set.
  * Аргумент column_name задает имя колонки. Для совместимости в именах
  * таблиц и колонок допускаются символы: 0-9 A-Z a-z _
- * Начинаться имя должно с буквы.
+ * Начинаться имя должно с буквы. Регистр символов не различается.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_column_describe(const char *column_name, enum fptu_type data_type,
-                         int index_type, fpta_column_set *column_set);
+                         fpta_index_type index_type,
+                         fpta_column_set *column_set);
 
 /* Инициализирует column_set перед заполнением посредством
  * fpta_column_describe(). */
 void fpta_column_set_init(fpta_column_set *column_set);
 
-/* Cоздание таблицы.
+/* Создание таблицы.
  *
  * Аргумент table_name задает имя таблицы. Для совместимости в именах
  * таблиц и колонок допускаются символы: 0-9 A-Z a-z _
@@ -451,7 +661,6 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
 int fpta_table_drop(fpta_txn *txn, const char *table_name);
 
 //----------------------------------------------------------------------------
-
 /* Отслеживание версий схемы,
  * Идентификаторы таблиц/колонок и их кэширование:
  *
@@ -495,22 +704,22 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
 
 /* Операционный идентификатор таблицы или колонки. */
 typedef struct fpta_schema_id {
-    size_t version; // Версия схемы для кэширования.
-    uint64_t internal; // Упакованное имя, внутренние данные.
+    size_t version; /* версия схемы для кэширования. */
+    uint64_t internal; /* хэш имени и внутренние данные. */
     union {
-        // для таблицы
+        /* для таблицы */
         struct {
             unsigned dbi;
             unsigned pk;
         } table;
 
-        // для колонки
+        /* для колонки */
         struct {
-            int order;           // Номер поля в кортеже.
-            enum fptu_type type; // Тип поля в кортеже.
+            int order;           /* номер поля в кортеже. */
+            enum fptu_type type; /* тип поля в кортеже. */
         } column;
     };
-    void *handle; // Внутренний дескриптор
+    void *handle; /* внутренний дескриптор. */
 } fpta_schema_id;
 
 /* Получение и актуализация идентификаторов таблицы и колонки.
@@ -522,7 +731,7 @@ typedef struct fpta_schema_id {
  * быть инициализирован посредством fpta_schema_init().
  *
  * Аргумент column_id может быть нулевым. В этом случае он
- * игнорируется, и обратывается только table_id.
+ * игнорируется, и обрабатывается только table_id.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_schema_refresh(fpta_txn *txn, fpta_schema_id *table_id,
@@ -533,16 +742,15 @@ enum fpta_schema_item { fpta_table, fpta_column };
 /* Инициализирует операционный идентификатор.
  *
  * Подготавливает идентификатор к последующему использованию.
- * Агрумент schema_item определяет тип объекта, который будет
+ * Аргумент schema_item определяет тип объекта, который будет
  * идентифицироваться.
  *
  * Следует считать, что стоимость операции сопоставима с вычислением
- * MD5 для переданного имени.
+ * дайджеста MD5 для переданного имени.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_schema_init(fpta_schema_id *id, const char *name,
                      enum fpta_schema_item schema_item);
-
 void fpta_schema_destroy(fpta_schema_id *id);
 
 //----------------------------------------------------------------------------
@@ -605,12 +813,10 @@ typedef struct fpta_filter {
         struct {
             /* идентификатор колонки */
             const fpta_schema_id *left_id;
-
             /* значение для сравнения */
             fpta_value right_value;
         } node_cmp;
     };
-
 } fpta_filter;
 
 /* Проверка соответствия кортежа условию фильтра.
@@ -621,6 +827,24 @@ bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
 
 //----------------------------------------------------------------------------
 /* Управление курсорами. */
+
+/* Порядок по индексной колонке для строк видимых через курсор. */
+typedef enum fpta_cursor_options {
+    /* Без обязательного порядка. Требуется для неупорядоченных индексов,
+     * для упорядоченных равносилен fpta_ascending */
+    fpta_unordered = 0,
+
+    /* По-возрастанию */
+    fpta_ascending = 1,
+
+    /* По-убыванию */
+    fpta_descending = 2,
+
+    /* Дополнительный флаг, предотвращающий чтение и поиск/фильтрацию
+     * данных при открытии курсора. Позволяет избежать лишних операций,
+     * если известно, что сразу после открытия курсор будет перемещен. */
+    fpta_dont_fetch = 4
+} fpta_cursor_options;
 
 /* Создает и открывает курсор для доступа к строкам таблицы,
  * включая их модификацию и удаление. Открытый курсор должен быть
@@ -637,19 +861,19 @@ bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
  * Для успешного открытия курсора соответствующая таблица должна быть
  * предварительно создана, а указанная колонка должна иметь индекс.
  *
- * Успешное открытие курсора не означает наличие данных,
- * удовлетворяющих критерию выборки. Для такой проверки можно
- * использовать функции fpta_cursor_eof(), fpta_cursor_count() и
- * fpta_cursor_get().
+ * Если курсор открывается без флага fpta_dont_fetch, то при открытии будет
+ * произведено позиционирование с поиском и фильтрацией данных. При этом,
+ * в случает отсутствия данных удовлетворяющих критерию выборки, будет
+ * возвращена ошибка.
  *
  * Фильтр, использованный при открытии курсора, должен существовать и
  * не изменяться до закрытия курсора и всех его клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_open(fpta_txn *txn, const fpta_schema_id *table_id,
-                     const fpta_schema_id *column_id, fpta_value range_from,
+int fpta_cursor_open(fpta_txn *txn, fpta_schema_id *table_id,
+                     fpta_schema_id *column_id, fpta_value range_from,
                      fpta_value range_to, fpta_filter *filter,
-                     fpta_cursor **cursor);
+                     fpta_cursor_options op, fpta_cursor **cursor);
 int fpta_cursor_close(fpta_cursor *cursor);
 
 /* Проверяет наличие за курсором данных.
@@ -658,7 +882,8 @@ int fpta_cursor_close(fpta_cursor *cursor);
  * или удалить, но не исключает возможности вставки и/или добавления
  * новых данных.
  *
- * При наличии данных возвращает 0, при отсутствии EOF, иначе код ошибки.
+ * При наличии данных возвращает 0. При отсутствии данных или неустановленном
+ * курсоре FPTA_NODATA (EOF). Иначе код ошибки.
  */
 int fpta_cursor_eof(fpta_cursor *cursor);
 
@@ -672,90 +897,92 @@ int fpta_cursor_eof(fpta_cursor *cursor);
  * клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_clone(fpta_cursor *cursor, fpta_cursor *clone);
-
-/* Перематывает курсор.
- *
- * В действительности переоткрывает его с учетом ранее заданных
- * параметров, но без ряда лишних действий.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_rewind(fpta_cursor *cursor);
+int fpta_cursor_clone(fpta_cursor *cursor, fpta_cursor **clone);
 
 /* Считает и возвращает количество строк за курсором.
  *
- * Операция затратна, стоимость порядка O(log N). Производится
- * итеративный подсчет строк посредством временной копии курсора.
+ * Производится итеративный подсчет строк посредством временной копии курсора.
+ * Операция затратна, стоимость порядка O(log(M) + N), где M это общее кол-во
+ * строк в таблице, а N количество строк попадающее под критерий выборки.
+ *
+ * Аргумент limit задает границу, при достижении которой подсчет прекращается.
+ * Если limit равен 0, то поиск производится до первой подходящей строки.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_count(fpta_cursor *cursor, size_t *count);
+int fpta_cursor_count(fpta_cursor *cursor, size_t *count, size_t limit);
 
 /* Считает и возвращает количество дубликатов для ключа в текущей
  * позиции курсора, БЕЗ учета фильтра заданного при открытии курсора.
  *
  * За курсором должна быть текущая запись. Под дубликатами понимаются
  * запись с одинаковым значением ключевой колонки, что допустимо если
- * соответствующий индекс был БЕЗ флага fpta_index_uniq.
+ * соответствующий индекс не требует уникальности.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_cursor_dups(fpta_cursor *cursor, size_t *dups);
 
-/* Получает строку таблицы, на которой стоит курсор.
- *
+/* Возвращает строку таблицы, на которой стоит курсор.
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_get(fpta_cursor *cursor, fpta_value *key, fptu_ro *tuple);
+int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *tuple);
 
 /* Варианты перемещения курсора. */
 typedef enum fpta_seek_operations {
-    /* Перемещение по значению ключа в диапазоне заданном
-     * при открытии курсора. */
-    fpta_range_first,
-    fpta_range_last,
-    fpta_range_next,
-    fpta_range_prev,
+    /* Перемещение по диапазону строк за курсором. */
+    fpta_first,
+    fpta_last,
+    fpta_next,
+    fpta_prev,
 
-    /* Перемещение по дубликатам значения ключа, в случае если
-     * соответствующий индекс был БЕЗ флага fpta_index_uniq */
+    /* Перемещение по дубликатам текущего значения ключа, т.е.
+     * по набору строк, у которых значение ключевого поля совпадает
+     * с текущей строкой. */
     fpta_dup_first,
     fpta_dup_last,
     fpta_dup_next,
     fpta_dup_prev,
 
-    /* Перемещение по значению ключа без учета диапазона заданного
-     * при открытии курсора. */
-
-    /* Перемещение к значению заданному аргументом key */
-    fpta_exact_key,
-
-    /* Перемещение к ближайшей позиции, ключ в которой больше или равен
-     * значению заданному аргументом key */
-    fpta_nearest_key,
-
-    /* TODO: Нет понимания насколько нужны эти режимы, пока оставил. */
-    fpta_key_first,
-    fpta_key_last,
+    /* Перемещение с пропуском дубликатов, т.е.
+     * переход осуществляется к строке со значением ключевого поля
+     * отличным от текущего. */
     fpta_key_next,
-    fpta_key_prev,
+    fpta_key_prev
 } fpta_seek_operations;
 
-/* Перемещение курсора.
+/* Относительное перемещение курсора.
  *
  * Курсор перемещается к соответствующей строке в пределах диапазона и
  * с учетом фильтра, заданных при открытии курсора.
  *
- * При успешном перемещении и ненулевых значениях аргументов key и tuple,
- * в них будут сохранены значения проиндексированной колонки и строки
- * таблицы в форме кортежа.
- * При нулевых значениях аргументов key и tuple, после успешного
- * перемещения данные могут получены посредством fpta_cursor_get().
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
+
+/* Перемещение курсора к заданному ключу и/или строке.
  *
- * Для режимов fpta_exact_key и fpta_nearest_key ключ должен быть задан.
- * Более того, эти режимы игнорируют диапазон изначально заданный
- * при открытии курсора аргументами range_from и range_to.
+ * Курсор перемещается к соответствующей строке в пределах диапазона и
+ * с учетом фильтра, заданных при открытии курсора.
+ *
+ * Аргументы key или row адресуют строку, которую необходимо найти. Должен
+ * быть задан (не равен nullptr) один и только один из них. Стоит обратить
+ * внимание, что курсор при этом не увидит (и не найдет) строк вне диапазонна,
+ * заданного при открытии курсора.
+ *
+ * Аргумент exactly определяет требуется ли поиск именно заданного значения,
+ * либо курсор необходимо переместить к ближайшей позиции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_seek(fpta_cursor *cursor, fpta_seek_operations op,
-                     fpta_value *key, fptu_ro *tuple);
+int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
+                       const fpta_value *key, const fptu_ro *row);
+
+/* Возвращает внутреннее значение ключа, которое соответствует
+ * текущей позиции курсора.
+ *
+ * Функцию следует считать вспомогательно-отладочной. Возвращаемое значение
+ * может не соответствовать значению в соответствующей колонки строки.
+ * Так например, вместо длинной строки будет возвращено обрезанное бинарное
+ * значение с хэшем в конце.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
 
 //----------------------------------------------------------------------------
 /* Манипуляция данными. */
@@ -764,42 +991,54 @@ int fpta_cursor_seek(fpta_cursor *cursor, fpta_seek_operations op,
 typedef enum fpta_put_options {
     /* Вставить новую запись, т.е. не обновлять существующую.
      * Будет возвращена ошибка, если указанный ключ уже присутствует в
-     * таблице и соответствующий индекс был с флагом fpta_index_uniq. */
+     * таблице и соответствующий индекс требует уникальности. */
     fpta_insert,
-    fpta_nooverwrite = fpta_insert,
+    fpta_not_overwrite = fpta_insert,
 
     /* Не добавлять новую запись, а обновить текущую запись.
-     * За курсором должна быть текущая запись, а ключ передаваемый
-     * в аргументе key должен совпадать со значением
-     * в текущей позиции курсора. Иначе будет возвращена ошибка. */
+     *
+     * При обновлении посредством fpta_cursor_update() за курсором должна
+     * быть текущая запись, а в новом значении строки ключевое поле должно
+     * совпадать со значением в текущей позиции курсора, иначе будет
+     * возвращена ошибка. */
     fpta_update,
     fpta_overwrite = fpta_update,
 
     /* Обновить существующую запись, либо вставить новую. Опция допустима
-     * только если соответствующий индекс был с флагом fpta_index_uniq.
-     * Иначе будет возвращена ошибка. */
+     * только если соответствующий индекс требует уникальности, иначе будет
+     * возвращена ошибка. */
     fpta_upsert
 } fpta_put_options;
 
-/* Помещает данные в таблицу.
+/* Обновляет строку в текущей позиции курсора.
  *
- * Для заданного ключа будет выполнена вставка или обновление значения,
- * в зависимости от режима заданного аргументом op. Для деталей
- * см описание fpta_put_options.
+ * При обновлении не допускается изменение значения ключевой колонки,
+ * которая была задана посредством column_id при открытии курсора.
+ *
+ * В противном случае возникает ряд вопросов по состоянию и дальнейшему
+ * поведению курсора, в частности:
+ *  - на какую запись должен указывать курсор после такого обновления?
+ *  - должен ли курсор следовать за измененным ключом?
+ *    если да, то как он должен вести себя при последующих перемещениях?
+ *  - должен ли курсор переходить на следующую запись?
+ *    если да, то каким должно быть поведение без изменения ключевого поля?
+ *    в какой момент и как сообщать об отсутствии "следующей" записи?
+ *  - должен ли курсор повторно прочитать обновленную запись, если она была
+ *    перемещена "вперед" в пределах текущей выборки.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_put(fpta_cursor *cursor, fpta_put_options op, fpta_value key,
-                    fptu_ro value);
+int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row_value);
 
 /* Удаляет из таблицы строку соответствующую текущей позиции курсора.
+ * После удаления курсор перемещается к следующей записи.
  *
  * За курсором должна быть текущая запись, иначе будет возвращена ошибка.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_del(fpta_cursor *cursor);
+int fpta_cursor_delete(fpta_cursor *cursor, bool all_dups);
 
 /* Конвертирует поле кортежа в более унифицированное значение. */
-fpta_value_type fpta_field2value(const fptu_field *pf);
+fpta_value fpta_field2value(const fptu_field *pf);
 
 /* Обновляет или добавляет в кортеж значение колонки.
  *
@@ -807,8 +1046,61 @@ fpta_value_type fpta_field2value(const fptu_field *pf);
  * предварительно подготовлен посредством fpta_schema_refresh().
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_row_upsert(const fptu_rw *pt, const fpta_schema_id *column_id,
-                    fpta_value_type value);
+int fpta_upsert_column(fptu_rw *pt, const fpta_schema_id *column_id,
+                       fpta_value value);
+
+/* Базовая функция для вставки и обновления строк таблицы.
+ *
+ * В зависимости от fpta_put_options выполняет вставку, либо обновление.
+ * Для наглядности рекомендуется использовать функции-обертки определенные
+ * ниже.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_put(fpta_txn *txn, fpta_schema_id *table_id, fptu_ro row_value,
+             fpta_put_options op);
+
+/* Обновляет существующую строку таблицы.
+ *
+ * Для колонок индексируемых с контролем уникальности наличие дубликатов не
+ * допускается. Кроме этого, в любом случае, не допускается наличие полностью
+ * идентичных строк.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_update_row(fpta_txn *txn, fpta_schema_id *table_id,
+                                    fptu_ro row_value)
+{
+    return fpta_put(txn, table_id, row_value, fpta_update);
+}
+
+/* Вставляет в таблицу новую строку.
+ *
+ * Для колонок индексируемых с контролем уникальности вставка дубликатов не
+ * допускается. Кроме этого, в любом случае, не допускается вставка полностью
+ * идентичных строк.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_insert_row(fpta_txn *txn, fpta_schema_id *table_id,
+                                    fptu_ro row_value)
+{
+    return fpta_put(txn, table_id, row_value, fpta_insert);
+}
+
+/* Обновляет существующую строку таблицы, либо вставляет новую.
+ *
+ * Для колонок индексируемых с контролем уникальности наличие дубликатов не
+ * допускается. Кроме этого, в любом случае, не допускается наличие полностью
+ * идентичных строк.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_upsert_row(fpta_txn *txn, fpta_schema_id *table_id,
+                                    fptu_ro row_value)
+{
+    return fpta_put(txn, table_id, row_value, fpta_upsert);
+}
+
+/* Удаляет указанную строку таблицы.
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_delete(fpta_txn *txn, fpta_schema_id *table_id, fptu_ro row_value);
 
 #ifdef __cplusplus
 }
