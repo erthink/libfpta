@@ -3,6 +3,17 @@ libfpta
 Fast Positive Tables, aka "Позитивные Таблицы"
 by [Positive Technologies](https://www.ptsecurity.ru).
 
+"Позитивные таблицы" предназначены для построения высокоскоростных
+локальных хранилищ структурированных данных в разделяемой памяти,
+с целевой производительностью от 100К до 1000К простых SQL-подобных
+запросов в секунду на каждом ядре процессора.
+
+"Positive Tables" is designed to build high-speed local storage of
+structured data in shared memory, with target performance from 100K
+to 1000K simple SQL-like requests per second on each CPU core.
+
+*The Future will Positive. Всё будет хорошо.*
+
 
 ## Кратко
 
@@ -50,3 +61,7 @@ by [Positive Technologies](https://www.ptsecurity.ru).
  * В запросах требуется обращаться одновременно к нескольким таблицам.
  * Объем данных превышает RAM, либо сценарии использования предполагают
    наличие WAL (Write Ahead Log) или журнала транзакций.
+
+=============================================================================
+
+Более подробная информация пока доступна только в виде [заголовочного файла API](fast_positive/tables.h).
