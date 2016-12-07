@@ -51,7 +51,7 @@ to 1000K simple SQL-like requests per second on each CPU core.
 
 "Позитивные Таблицы" опираются на [libfptu](https://github.com/leo-yuriev/libfptu) (aka "Позитивные Кортежи")
 для представления данных и на [libmdbx](https://github.com/ReOpen/libmdbx) (aka "eXtended LDMB")
-для их хранения.
+для их хранения, а также используют [t1ha](https://github.com/PositiveTechnologies/t1ha) (aka "Позитивный Хэш").
 
 Однако, "Позитивные Таблицы" не являются серебряной пулей и вероятно не
 подойдут, если:
