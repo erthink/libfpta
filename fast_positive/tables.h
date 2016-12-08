@@ -80,7 +80,7 @@ enum fpta_bits {
     fpta_name_len_max = 42,
 
     /* Далее внутренние технические делали. */
-    fpta_schema_id_bits = 64,
+    fpta_id_bits = 64,
 
     fpta_column_typeid_bits = fptu_typeid_bits,
     fpta_column_typeid_shift = 0,
@@ -92,30 +92,34 @@ enum fpta_bits {
                              << fpta_column_index_shift,
 
     fpta_column_flag_bits = 4,
-    fpta_name_hash_bits = fpta_schema_id_bits - fpta_column_typeid_bits -
-                          fpta_column_index_bits,
+    fpta_name_hash_bits =
+        fpta_id_bits - fpta_column_typeid_bits - fpta_column_index_bits,
     fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits
 };
 
-/* Экземпляр базы.
+/* Экземпляр БД.
  *
  * Базу следует открыть посредством fpta_db_open(), а по завершении всех
  * манипуляций закрыть через fpta_db_close().
  * Открытие и закрытие базы относительно дорогие операции. */
 typedef struct fpta_db fpta_db;
 
-/* Транзакция в базе.
+/* Транзакция.
  *
  * Чтение и изменение данных всегда происходят в контексте транзакции.
+ * В fpta есть три вида (уровня) транзакций: только для чтения, для
+ * чтение-записи, для изменения схемы БД.
+ *
  * Транзакции инициируются посредством fpta_transaction_begin()
  * и завершается через fpta_transaction_end(). */
 typedef struct fpta_txn fpta_txn;
 
 /* Курсор для чтения и изменения данных.
  *
- * Курсор связан с диапазоном записей, которые выбираются по
- * задаваемому индексу и опционально фильтруются (если задан фильтр).
- * Курсор позволяет "ходить" по записям, обновлять их и удалять.
+ * Курсор связан с диапазоном записей, которые выбираются в порядке одного
+ * из индексов и опционально фильтруются (если задан фильтр). Курсор
+ * позволяет "ходить" по записям, обновлять их и удалять.
+ *
  * Открывается курсов посредством fpta_cursor_open(), а закрывается
  * соответственно через fpta_cursor_close(). */
 typedef struct fpta_cursor fpta_cursor;
@@ -626,7 +630,7 @@ bool fpta_name_validate(const char *name);
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_column_describe(const char *column_name, enum fptu_type data_type,
-                         fpta_index_type index_type,
+                         enum fpta_index_type index_type,
                          fpta_column_set *column_set);
 
 /* Инициализирует column_set перед заполнением посредством
@@ -664,18 +668,21 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
 /* Отслеживание версий схемы,
  * Идентификаторы таблиц/колонок и их кэширование:
  *
- *  - Следует учитывать что схема и все данные могут быть полностью
+ *  - Следует учитывать что схема и все данные в БД могут быть полностью
  *    изменены сторонним процессом. Такое изменение всегда происходит
  *    в контексте "пишущей" транзакции, т.е. изолированно от уже
  *    выполняющихся транзакций чтения.
+ *
  *    Другими словами, следует считать, что вне контекста транзакции,
  *    схема и данные волатильны и обновляются асинхронно.
  *
  *  - Таким образом, по-хорошему, трансляция имен таблиц и колонок в
  *    их идентификаторы и фактические типы данных, должна выполняться
  *    в контексте транзакции, т.е. после её инициации.
+ *
  *    Однако, изменение схемы происходит редко и не рационально
  *    выполнять такую трансляцию при каждом запросе.
+ *
  *    Более того, такая трансляция не может быть эффективно реализована
  *    для всех сценариев получения и обновления данных без введения
  *    некого языка запросов и его интерпретатора.
@@ -684,17 +691,17 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  *    имен в идентификаторы переложена на пользователя, см далее.
  *
  *  - При выполнении запросов идентификация таблиц и колонок
- *    производится посредством полей структуры fpta_schema_id.
+ *    производится посредством полей структуры fpta_name.
  *
- *    В свою очередь, каждый экземпляр fpta_schema_id:
- *     1) инициализируется посредством fpta_schema_init(),
+ *    В свою очередь, каждый экземпляр fpta_name:
+ *     1) инициализируется посредством fpta_name_init(),
  *        которая на вход получает имя таблицы или колонки.
- *     2) перед использованием обновляется в fpta_schema_refresh(),
+ *     2) перед использованием обновляется в fpta_name_refresh(),
  *        которая выполняется в контексте конкретной транзакции.
  *
- *  - Функция fpta_schema_refresh(), при обновлении fpta_schema_id,
+ *  - Функция fpta_name_refresh(), при обновлении fpta_name,
  *    сравнивает версию схемы в текущей транзакции со значением
- *    внутри fpta_schema_id, и при их совпадении не производит
+ *    внутри fpta_name, и при их совпадении не производит
  *    каких-либо действий.
  *
  *  - Таким образом, пользователю предоставляются средства для
@@ -703,7 +710,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  */
 
 /* Операционный идентификатор таблицы или колонки. */
-typedef struct fpta_schema_id {
+typedef struct fpta_name {
     size_t version; /* версия схемы для кэширования. */
     uint64_t internal; /* хэш имени и внутренние данные. */
     union {
@@ -720,7 +727,7 @@ typedef struct fpta_schema_id {
         } column;
     };
     void *handle; /* внутренний дескриптор. */
-} fpta_schema_id;
+} fpta_name;
 
 /* Получение и актуализация идентификаторов таблицы и колонки.
  *
@@ -728,14 +735,14 @@ typedef struct fpta_schema_id {
  * схемы.
  *
  * Перед первым обращением table_id и column_id должны
- * быть инициализирован посредством fpta_schema_init().
+ * быть инициализирован посредством fpta_name_init().
  *
  * Аргумент column_id может быть нулевым. В этом случае он
  * игнорируется, и обрабатывается только table_id.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_schema_refresh(fpta_txn *txn, fpta_schema_id *table_id,
-                        fpta_schema_id *column_id);
+int fpta_name_refresh(fpta_txn *txn, fpta_name *table_id,
+                      fpta_name *column_id);
 
 enum fpta_schema_item { fpta_table, fpta_column };
 
@@ -749,9 +756,9 @@ enum fpta_schema_item { fpta_table, fpta_column };
  * дайджеста MD5 для переданного имени.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_schema_init(fpta_schema_id *id, const char *name,
-                     enum fpta_schema_item schema_item);
-void fpta_schema_destroy(fpta_schema_id *id);
+int fpta_name_init(fpta_name *id, const char *name,
+                   enum fpta_schema_item schema_item);
+void fpta_name_destroy(fpta_name *id);
 
 //----------------------------------------------------------------------------
 /* Управление фильтрами. */
@@ -794,7 +801,7 @@ typedef struct fpta_filter {
         /* параметры для вызова функтора/предиката. */
         struct {
             /* идентификатор колонки */
-            const fpta_schema_id *column_id;
+            const fpta_name *column_id;
             /* функция-предикат, получает указатель на найденное поле,
              * или nullptr если такового нет. А также опциональные
              * параметры context и arg.
@@ -802,7 +809,7 @@ typedef struct fpta_filter {
              * удовлетворяет критерию фильтрации.
              */
             bool (*predicate)(const fptu_field *field,
-                              const fpta_schema_id *column_id, void *context,
+                              const fpta_name *column_id, void *context,
                               void *arg);
             /* дополнительные аргументы для функции-предиката */
             void *context;
@@ -812,7 +819,7 @@ typedef struct fpta_filter {
         /* параметры для условия больше/меньше/равно/не-равно. */
         struct {
             /* идентификатор колонки */
-            const fpta_schema_id *left_id;
+            const fpta_name *left_id;
             /* значение для сравнения */
             fpta_value right_value;
         } node_cmp;
@@ -843,7 +850,11 @@ typedef enum fpta_cursor_options {
     /* Дополнительный флаг, предотвращающий чтение и поиск/фильтрацию
      * данных при открытии курсора. Позволяет избежать лишних операций,
      * если известно, что сразу после открытия курсор будет перемещен. */
-    fpta_dont_fetch = 4
+    fpta_dont_fetch = 4,
+
+    fpta_unordered_dont_fetch = fpta_unordered | fpta_dont_fetch,
+    fpta_ascending_dont_fetch = fpta_ascending | fpta_dont_fetch,
+    fpta_descending_dont_fetch = fpta_descending | fpta_dont_fetch,
 } fpta_cursor_options;
 
 /* Создает и открывает курсор для доступа к строкам таблицы,
@@ -851,8 +862,8 @@ typedef enum fpta_cursor_options {
  * закрыт до завершения транзакции посредством fpta_cursor_close().
  *
  * Аргументы table_id и column_id перед первым использованием должны
- * быть инициализированы посредством fpta_schema_init(). Предварительный
- * вызов fpta_schema_refresh() не обязателен.
+ * быть инициализированы посредством fpta_name_init(). Предварительный
+ * вызов fpta_name_refresh() не обязателен.
  *
  * Аргументы range_from и range_to задают диапазон выборки по значению
  * ключевой колонки. При необходимости могут быть заданы значения
@@ -870,10 +881,10 @@ typedef enum fpta_cursor_options {
  * не изменяться до закрытия курсора и всех его клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_open(fpta_txn *txn, fpta_schema_id *table_id,
-                     fpta_schema_id *column_id, fpta_value range_from,
-                     fpta_value range_to, fpta_filter *filter,
-                     fpta_cursor_options op, fpta_cursor **cursor);
+int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
+                     fpta_value range_from, fpta_value range_to,
+                     fpta_filter *filter, fpta_cursor_options op,
+                     fpta_cursor **cursor);
 int fpta_cursor_close(fpta_cursor *cursor);
 
 /* Проверяет наличие за курсором данных.
@@ -887,23 +898,14 @@ int fpta_cursor_close(fpta_cursor *cursor);
  */
 int fpta_cursor_eof(fpta_cursor *cursor);
 
-/* Делает копию курсора, т.е. клонирует его.
+/* Возвращает количество строк попадающих в условие выборки курсора.
  *
- * Получение копии курсора можно рассматривать как способ сохранить
- * и повторно использовать его текущую позицию. Копия курсора должна
- * быть закрыта то завершения транзакции.
- * Использованный при открытии курсора фильтр должен существовать и
- * не изменяться до закрытия как исходного курсора, так и всех его
- * клонов/копий.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_clone(fpta_cursor *cursor, fpta_cursor **clone);
-
-/* Считает и возвращает количество строк за курсором.
- *
- * Производится итеративный подсчет строк посредством временной копии курсора.
+ * Подсчет производится путем перестановки и пошагового движения курсора.
  * Операция затратна, стоимость порядка O(log(M) + N), где M это общее кол-во
  * строк в таблице, а N количество строк попадающее под критерий выборки.
+ *
+ * Текущая позиция курсора не используется и сбрасывается перед возвратом,
+ * как если бы курсор был открыл с опцией fpta_dont_fetch.
  *
  * Аргумент limit задает границу, при достижении которой подсчет прекращается.
  * Если limit равен 0, то поиск производится до первой подходящей строки.
@@ -1043,10 +1045,10 @@ fpta_value fpta_field2value(const fptu_field *pf);
 /* Обновляет или добавляет в кортеж значение колонки.
  *
  * Аргумент column_id идентифицирует колонку и должен быть
- * предварительно подготовлен посредством fpta_schema_refresh().
+ * предварительно подготовлен посредством fpta_name_refresh().
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_upsert_column(fptu_rw *pt, const fpta_schema_id *column_id,
+int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
                        fpta_value value);
 
 /* Базовая функция для вставки и обновления строк таблицы.
@@ -1056,7 +1058,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_schema_id *column_id,
  * ниже.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_put(fpta_txn *txn, fpta_schema_id *table_id, fptu_ro row_value,
+int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
              fpta_put_options op);
 
 /* Обновляет существующую строку таблицы.
@@ -1066,7 +1068,7 @@ int fpta_put(fpta_txn *txn, fpta_schema_id *table_id, fptu_ro row_value,
  * идентичных строк.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_update_row(fpta_txn *txn, fpta_schema_id *table_id,
+static __inline int fpta_update_row(fpta_txn *txn, fpta_name *table_id,
                                     fptu_ro row_value)
 {
     return fpta_put(txn, table_id, row_value, fpta_update);
@@ -1079,7 +1081,7 @@ static __inline int fpta_update_row(fpta_txn *txn, fpta_schema_id *table_id,
  * идентичных строк.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_insert_row(fpta_txn *txn, fpta_schema_id *table_id,
+static __inline int fpta_insert_row(fpta_txn *txn, fpta_name *table_id,
                                     fptu_ro row_value)
 {
     return fpta_put(txn, table_id, row_value, fpta_insert);
@@ -1092,7 +1094,7 @@ static __inline int fpta_insert_row(fpta_txn *txn, fpta_schema_id *table_id,
  * идентичных строк.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_upsert_row(fpta_txn *txn, fpta_schema_id *table_id,
+static __inline int fpta_upsert_row(fpta_txn *txn, fpta_name *table_id,
                                     fptu_ro row_value)
 {
     return fpta_put(txn, table_id, row_value, fpta_upsert);
@@ -1100,7 +1102,7 @@ static __inline int fpta_upsert_row(fpta_txn *txn, fpta_schema_id *table_id,
 
 /* Удаляет указанную строку таблицы.
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_delete(fpta_txn *txn, fpta_schema_id *table_id, fptu_ro row_value);
+int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
 
 #ifdef __cplusplus
 }
