@@ -19,6 +19,7 @@
 
 #include "fast_positive/tuples_internal.h"
 #include <algorithm>
+#include <functional>
 
 bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end)
 {
