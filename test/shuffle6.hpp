@@ -4,7 +4,7 @@ unsigned gray_code(unsigned n) { return n ^ (n >> 1); }
 // итерирующий генератор перестановок из 6 элементов
 class shuffle6
 {
-    // элементы для перестановок в виде 4-х битовых групп
+    // набор элементов для перестановок в виде 4-х битовых групп
     static const unsigned item_set = 0x543210;
 
     // оставшиеся элементы в виде битовой строки
@@ -20,18 +20,21 @@ class shuffle6
     unsigned cutout(unsigned n)
     {
         assert(n < 6);
-        unsigned s = 4 * n;
-        unsigned g = (element_bits >> s) & 15;
-        unsigned h = element_bits & (-16 << s);
-        unsigned l = element_bits & ~(-1 << s);
-        element_bits = l | (h >> 4);
-        return g;
+        const unsigned all1 = ~0u;
+        const unsigned shift = 4 * n;
+        const unsigned group = (element_bits >> shift) & 15;
+        const unsigned higher = element_bits & ((all1 << 4) << shift);
+        const unsigned lower = element_bits & ~(all1 << shift);
+        element_bits = lower | (higher >> 4);
+        return group;
     }
 
   public:
     // количество перестановок из 6 элементов
     static const unsigned factorial = 1 * 2 * 3 * 4 * 5 * 6;
 
+    // инициализирует генератор для выдачи последовательности с заданным
+    // номером
     shuffle6(unsigned shuffle_order = 0) { setup(shuffle_order); }
 
     void setup(unsigned shuffle_order)
@@ -53,6 +56,7 @@ class shuffle6
 
     bool empty() const { return left == 0; }
 
+    // тест посредством полного перебора комбинаций
     static bool selftest()
     {
         for (unsigned n = 0; n < factorial; ++n) {
