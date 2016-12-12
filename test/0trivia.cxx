@@ -127,6 +127,46 @@ TEST(Trivia, ColType)
     EXPECT_EQ(fptu_string | fptu_farray, fptu_get_type(ct));
 }
 
+TEST(Trivia, cmp2int)
+{
+    EXPECT_EQ(0, fptu_cmp2int(41, 41));
+    EXPECT_EQ(1, fptu_cmp2int(42, 41));
+    EXPECT_EQ(-1, fptu_cmp2int(41, 42));
+
+    EXPECT_EQ(0, fptu_cmp2int(-41, -41));
+    EXPECT_EQ(1, fptu_cmp2int(0, -41));
+    EXPECT_EQ(-1, fptu_cmp2int(-41, 0));
+
+    EXPECT_EQ(1, fptu_cmp2int(42, -42));
+    EXPECT_EQ(-1, fptu_cmp2int(-42, 42));
+}
+
+TEST(Trivia, cmp2lge)
+{
+    EXPECT_EQ(fptu_eq, fptu_cmp2lge(41, 41));
+    EXPECT_EQ(fptu_gt, fptu_cmp2lge(42, 41));
+    EXPECT_EQ(fptu_lt, fptu_cmp2lge(41, 42));
+
+    EXPECT_EQ(fptu_eq, fptu_cmp2lge(-41, -41));
+    EXPECT_EQ(fptu_gt, fptu_cmp2lge(0, -41));
+    EXPECT_EQ(fptu_lt, fptu_cmp2lge(-41, 0));
+
+    EXPECT_EQ(fptu_gt, fptu_cmp2lge(42, -42));
+    EXPECT_EQ(fptu_lt, fptu_cmp2lge(-42, 42));
+}
+
+TEST(Trivia, diff2lge)
+{
+    EXPECT_EQ(fptu_eq, fptu_diff2lge(0));
+    EXPECT_EQ(fptu_gt, fptu_diff2lge(1));
+    EXPECT_EQ(fptu_gt, fptu_diff2lge(INT_MAX));
+    EXPECT_EQ(fptu_gt, fptu_diff2lge(LONG_MAX));
+    EXPECT_EQ(fptu_gt, fptu_diff2lge(ULONG_MAX));
+    EXPECT_EQ(fptu_lt, fptu_diff2lge(-1));
+    EXPECT_EQ(fptu_lt, fptu_diff2lge(INT_MIN));
+    EXPECT_EQ(fptu_lt, fptu_diff2lge(LONG_MIN));
+}
+
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
