@@ -20,23 +20,23 @@
 #include "fast_positive/tuples_internal.h"
 #include <algorithm>
 
-static __inline fptu_cmp cmpbin(const void *a, const void *b, size_t bytes)
+static __inline fptu_lge cmpbin(const void *a, const void *b, size_t bytes)
 {
-    return fptu_int2cmp(memcmp(a, b, bytes));
+    return fptu_diff2lge(memcmp(a, b, bytes));
 }
 
-fptu_cmp __hot fptu_cmp_binary(const void *left_data, size_t left_len,
+fptu_lge __hot fptu_cmp_binary(const void *left_data, size_t left_len,
                                const void *right_data, size_t right_len)
 {
     int diff = memcmp(left_data, right_data, std::min(left_len, right_len));
     if (diff == 0)
-        diff = fptu_diff2int(left_len, right_len);
-    return fptu_int2cmp(diff);
+        diff = fptu_cmp2int(left_len, right_len);
+    return fptu_diff2lge(diff);
 }
 
 //----------------------------------------------------------------------------
 
-fptu_cmp fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -48,7 +48,7 @@ fptu_cmp fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
     return cmpbin(fptu_field_payload(pf)->fixbin, value, 12);
 }
 
-fptu_cmp fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -60,7 +60,7 @@ fptu_cmp fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
     return cmpbin(fptu_field_payload(pf)->fixbin, value, 16);
 }
 
-fptu_cmp fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -72,7 +72,7 @@ fptu_cmp fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
     return cmpbin(fptu_field_payload(pf)->fixbin, value, 20);
 }
 
-fptu_cmp fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -84,7 +84,7 @@ fptu_cmp fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
     return cmpbin(fptu_field_payload(pf)->fixbin, value, 24);
 }
 
-fptu_cmp fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
+fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
 {
     if (unlikely(value == nullptr))
         return fptu_ic;
@@ -98,7 +98,7 @@ fptu_cmp fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
 
 //----------------------------------------------------------------------------
 
-fptu_cmp fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
+fptu_lge fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
                          size_t bytes)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_opaque);
@@ -109,7 +109,7 @@ fptu_cmp fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
     return fptu_cmp_binary(iov.iov_base, iov.iov_len, value, bytes);
 }
 
-fptu_cmp fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
+fptu_lge fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
                              const struct iovec value)
 {
     return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
@@ -117,7 +117,7 @@ fptu_cmp fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
 
 //----------------------------------------------------------------------------
 
-static fptu_cmp fptu_cmp_fields_same_type(const fptu_field *left,
+static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
                                           const fptu_field *right)
 {
     assert(left != nullptr && right != nullptr);
@@ -131,21 +131,21 @@ static fptu_cmp fptu_cmp_fields_same_type(const fptu_field *left,
         return fptu_eq;
 
     case fptu_uint16:
-        return fptu_int2cmp(left->get_payload_uint16(),
+        return fptu_cmp2lge(left->get_payload_uint16(),
                             right->get_payload_uint16());
     case fptu_int32:
-        return fptu_int2cmp(payload_left->i32, payload_right->i32);
+        return fptu_cmp2lge(payload_left->i32, payload_right->i32);
     case fptu_uint32:
-        return fptu_int2cmp(payload_left->u32, payload_right->u32);
+        return fptu_cmp2lge(payload_left->u32, payload_right->u32);
     case fptu_fp32:
-        return fptu_int2cmp(payload_left->fp32, payload_right->fp32);
+        return fptu_cmp2lge(payload_left->fp32, payload_right->fp32);
 
     case fptu_int64:
-        return fptu_int2cmp(payload_left->i64, payload_right->i64);
+        return fptu_cmp2lge(payload_left->i64, payload_right->i64);
     case fptu_uint64:
-        return fptu_int2cmp(payload_left->u64, payload_right->u64);
+        return fptu_cmp2lge(payload_left->u64, payload_right->u64);
     case fptu_fp64:
-        return fptu_int2cmp(payload_left->fp64, payload_right->fp64);
+        return fptu_cmp2lge(payload_left->fp64, payload_right->fp64);
 
     case fptu_96:
         return cmpbin(payload_left->fixbin, payload_right->fixbin, 12);
@@ -159,7 +159,7 @@ static fptu_cmp fptu_cmp_fields_same_type(const fptu_field *left,
         return cmpbin(payload_left->fixbin, payload_right->fixbin, 32);
 
     case fptu_string:
-        return fptu_int2cmp(strcmp(payload_left->cstr, payload_right->cstr));
+        return fptu_diff2lge(strcmp(payload_left->cstr, payload_right->cstr));
 
     case fptu_opaque:
         return fptu_cmp_binary(payload_left->other.data,
@@ -178,7 +178,7 @@ static fptu_cmp fptu_cmp_fields_same_type(const fptu_field *left,
     }
 }
 
-fptu_cmp fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
+fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
 {
     if (unlikely(left == nullptr))
         return right ? fptu_lt : fptu_eq;
@@ -194,7 +194,7 @@ fptu_cmp fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
 
 //----------------------------------------------------------------------------
 
-fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
+fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right)
 {
     // начало и конец дескрипторов слева
     auto l_begin = fptu_begin_ro(left);
@@ -239,7 +239,7 @@ fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
 
         // если слева и справа разные теги
         if (*tags_l != *tags_r)
-            return fptu_int2cmp(*tags_l, *tags_r);
+            return fptu_cmp2lge(*tags_l, *tags_r);
 
         // сканируем все поля с текущим тегом, их может быть несколько
         // (коллекции)
@@ -259,7 +259,7 @@ fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right)
 
         for (;;) {
             // сравниваем найденые экземпляры
-            fptu_cmp cmp = fptu_cmp_fields_same_type(field_l, field_r);
+            fptu_lge cmp = fptu_cmp_fields_same_type(field_l, field_r);
             if (cmp != fptu_eq)
                 return cmp;
 

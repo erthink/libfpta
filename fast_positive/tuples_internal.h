@@ -311,19 +311,22 @@ static __inline const void *fptu_detent(const fptu_rw *rw)
 fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct);
 
 template <typename type>
-static __inline fptu_cmp fptu_int2cmp(type left, type right)
+static __inline fptu_lge fptu_cmp2lge(type left, type right)
 {
     if (left == right)
         return fptu_eq;
     return (left < right) ? fptu_lt : fptu_gt;
 }
 
-static __inline fptu_cmp fptu_int2cmp(int cmp)
+template <typename type> static __inline fptu_lge fptu_diff2lge(type diff)
 {
-    return fptu_int2cmp(cmp, 0);
+    return fptu_cmp2lge<type>(diff, 0);
 }
 
-static __inline fptu_cmp fptu_cmp_binary_str(const void *left_data,
+fptu_lge fptu_cmp2lge(fptu_lge left, fptu_lge right) = delete;
+fptu_lge fptu_diff2lge(fptu_lge diff) = delete;
+
+static __inline fptu_lge fptu_cmp_binary_str(const void *left_data,
                                              size_t left_len,
                                              const char *right_cstr)
 {
@@ -331,7 +334,7 @@ static __inline fptu_cmp fptu_cmp_binary_str(const void *left_data,
     return fptu_cmp_binary(left_data, left_len, right_cstr, right_len);
 }
 
-static __inline fptu_cmp fptu_cmp_str_binary(const char *left_cstr,
+static __inline fptu_lge fptu_cmp_str_binary(const char *left_cstr,
                                              const void *right_data,
                                              size_t right_len)
 {
@@ -340,7 +343,7 @@ static __inline fptu_cmp fptu_cmp_str_binary(const char *left_cstr,
 }
 
 template <typename type>
-static __inline int fptu_diff2int(type left, type right)
+static __inline int fptu_cmp2int(type left, type right)
 {
     return (right > left) ? -1 : left > right;
 }

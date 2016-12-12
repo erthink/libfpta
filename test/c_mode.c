@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     print_value("fptu_buffer_limit",
                 "предельный размер, превышение которого считается ошибкой",
                 fptu_buffer_limit);
-    printf("\n");
 
+    printf("\nno Windows, no Java, no Problems ;)\n");
     return 0;
 }

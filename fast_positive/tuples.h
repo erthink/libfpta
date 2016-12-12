@@ -530,31 +530,38 @@ typedef struct fptu_array {
 
 //----------------------------------------------------------------------------
 
-typedef enum fptu_cmp {
+typedef enum fptu_lge {
     fptu_ic = 1,                           // incomparable
     fptu_eq = 2,                           // left == right
     fptu_lt = 4,                           // left < right
     fptu_gt = 8,                           // left > right
     fptu_ne = fptu_lt | fptu_gt | fptu_ic, // left != right
     fptu_le = fptu_lt | fptu_eq,           // left <= right
-    fptu_ge = fptu_gt | fptu_eq,           // left >= right
-} fptu_cmp;
+    fptu_ge = fptu_gt | fptu_eq            // left >= right
+} fptu_lge;
 
-fptu_cmp fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_cmp fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_cmp fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_cmp fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_cmp fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_cmp fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
+#ifdef __cplusplus
+bool operator>(const fptu_lge &, const fptu_lge &) = delete;
+bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
+bool operator<(const fptu_lge &, const fptu_lge &) = delete;
+bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
+#endif // __cplusplus
+
+fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value);
+fptu_lge fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
                          size_t bytes);
-fptu_cmp fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
+fptu_lge fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
                              const struct iovec value);
 
-fptu_cmp fptu_cmp_binary(const void *left_data, size_t left_len,
+fptu_lge fptu_cmp_binary(const void *left_data, size_t left_len,
                          const void *right_data, size_t right_len);
 
-fptu_cmp fptu_cmp_fields(const fptu_field *left, const fptu_field *right);
-fptu_cmp fptu_cmp_tuples(fptu_ro left, fptu_ro right);
+fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right);
+fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 
 #ifdef __cplusplus
 }
