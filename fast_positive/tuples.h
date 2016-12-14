@@ -19,6 +19,9 @@
 
 /*
  * libfptu = { Fast Positive Tuples, aka Позитивные Кортежи }
+ *
+ * The Future will Positive. Всё будет хорошо.
+ *
  * Please see README.md
  */
 
