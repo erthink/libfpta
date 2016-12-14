@@ -57,45 +57,61 @@ TEST(Trivia, Apriory)
     ASSERT_GT(fptu_filter, fptu_ty_mask);
     ASSERT_EQ(fptu_filter, fptu_filter & fptu_any);
 
-    ASSERT_EQ(0, fptu_internal_map_t2b[fptu_null]);
-    ASSERT_EQ(0, fptu_internal_map_t2b[fptu_uint16]);
-    ASSERT_EQ(0, fptu_internal_map_t2b[fptu_16]);
+    ASSERT_EQ(0, ct_elem_size(fptu_null));
+    ASSERT_EQ(0, ct_elem_size(fptu_uint16));
+    ASSERT_EQ(0, ct_elem_size(fptu_16));
 
-    ASSERT_EQ(4, fptu_internal_map_t2b[fptu_int32]);
-    ASSERT_EQ(4, fptu_internal_map_t2b[fptu_uint32]);
-    ASSERT_EQ(4, fptu_internal_map_t2b[fptu_fp32]);
-    ASSERT_EQ(4, fptu_internal_map_t2b[fptu_32]);
+    ASSERT_EQ(4, ct_elem_size(fptu_int32));
+    ASSERT_EQ(4, ct_elem_size(fptu_uint32));
+    ASSERT_EQ(4, ct_elem_size(fptu_fp32));
+    ASSERT_EQ(4, ct_elem_size(fptu_32));
 
-    ASSERT_EQ(8, fptu_internal_map_t2b[fptu_int64]);
-    ASSERT_EQ(8, fptu_internal_map_t2b[fptu_uint64]);
-    ASSERT_EQ(8, fptu_internal_map_t2b[fptu_fp64]);
-    ASSERT_EQ(8, fptu_internal_map_t2b[fptu_64]);
+    ASSERT_EQ(8, ct_elem_size(fptu_int64));
+    ASSERT_EQ(8, ct_elem_size(fptu_uint64));
+    ASSERT_EQ(8, ct_elem_size(fptu_fp64));
+    ASSERT_EQ(8, ct_elem_size(fptu_64));
 
-    ASSERT_EQ(12, fptu_internal_map_t2b[fptu_96]);
-    ASSERT_EQ(16, fptu_internal_map_t2b[fptu_128]);
-    ASSERT_EQ(20, fptu_internal_map_t2b[fptu_160]);
-    ASSERT_EQ(24, fptu_internal_map_t2b[fptu_192]);
-    ASSERT_EQ(32, fptu_internal_map_t2b[fptu_256]);
+    ASSERT_EQ(12, ct_elem_size(fptu_96));
+    ASSERT_EQ(16, ct_elem_size(fptu_128));
+    ASSERT_EQ(20, ct_elem_size(fptu_160));
+    ASSERT_EQ(24, ct_elem_size(fptu_192));
+    ASSERT_EQ(32, ct_elem_size(fptu_256));
 
-    ASSERT_EQ(0, fptu_internal_map_t2u[fptu_null]);
-    ASSERT_EQ(0, fptu_internal_map_t2u[fptu_uint16]);
-    ASSERT_EQ(0, fptu_internal_map_t2u[fptu_16]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_null)),
+              fptu_internal_map_t2u[fptu_null]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_uint16)),
+              fptu_internal_map_t2u[fptu_uint16]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_16)),
+              fptu_internal_map_t2u[fptu_16]);
 
-    ASSERT_EQ(1, fptu_internal_map_t2u[fptu_int32]);
-    ASSERT_EQ(1, fptu_internal_map_t2u[fptu_uint32]);
-    ASSERT_EQ(1, fptu_internal_map_t2u[fptu_fp32]);
-    ASSERT_EQ(1, fptu_internal_map_t2u[fptu_32]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_int32)),
+              fptu_internal_map_t2u[fptu_int32]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_uint32)),
+              fptu_internal_map_t2u[fptu_uint32]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_fp32)),
+              fptu_internal_map_t2u[fptu_fp32]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_32)),
+              fptu_internal_map_t2u[fptu_32]);
 
-    ASSERT_EQ(2, fptu_internal_map_t2u[fptu_int64]);
-    ASSERT_EQ(2, fptu_internal_map_t2u[fptu_uint64]);
-    ASSERT_EQ(2, fptu_internal_map_t2u[fptu_fp64]);
-    ASSERT_EQ(2, fptu_internal_map_t2u[fptu_64]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_int64)),
+              fptu_internal_map_t2u[fptu_int64]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_uint64)),
+              fptu_internal_map_t2u[fptu_uint64]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_fp64)),
+              fptu_internal_map_t2u[fptu_fp64]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_64)),
+              fptu_internal_map_t2u[fptu_64]);
 
-    ASSERT_EQ(3, fptu_internal_map_t2u[fptu_96]);
-    ASSERT_EQ(4, fptu_internal_map_t2u[fptu_128]);
-    ASSERT_EQ(5, fptu_internal_map_t2u[fptu_160]);
-    ASSERT_EQ(6, fptu_internal_map_t2u[fptu_192]);
-    ASSERT_EQ(8, fptu_internal_map_t2u[fptu_256]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_96)),
+              fptu_internal_map_t2u[fptu_96]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_128)),
+              fptu_internal_map_t2u[fptu_128]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_160)),
+              fptu_internal_map_t2u[fptu_160]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_192)),
+              fptu_internal_map_t2u[fptu_192]);
+    ASSERT_EQ(bytes2units(ct_elem_size(fptu_256)),
+              fptu_internal_map_t2u[fptu_256]);
 
     ASSERT_EQ(4, sizeof(fptu_varlen));
     ASSERT_EQ(4, sizeof(fptu_field));
