@@ -1,7 +1,9 @@
 ﻿libfptu
-============================================
+==============================================
 Fast Positive Tuples, aka "Позитивные Кортежи"
 by [Positive Technologies](https://www.ptsecurity.ru).
+
+*The Future will Positive. Всё будет хорошо.*
 
 
 ## Кратко
