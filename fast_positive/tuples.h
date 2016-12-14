@@ -573,13 +573,6 @@ typedef enum fptu_lge {
     fptu_ge = fptu_gt | fptu_eq            // left >= right
 } fptu_lge;
 
-#ifdef __cplusplus
-bool operator>(const fptu_lge &, const fptu_lge &) = delete;
-bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
-bool operator<(const fptu_lge &, const fptu_lge &) = delete;
-bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
-#endif // __cplusplus
-
 fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
@@ -598,6 +591,23 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 
 #ifdef __cplusplus
 }
-#endif
+
+namespace std
+{
+string to_string(fptu_error);
+string to_string(const fptu_varlen &);
+string to_string(const fptu_unit &);
+string to_string(fptu_type);
+string to_string(const fptu_field &);
+string to_string(const fptu_rw &);
+string to_string(const fptu_ro &);
+string to_string(fptu_lge);
+}
+
+bool operator>(const fptu_lge &, const fptu_lge &) = delete;
+bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
+bool operator<(const fptu_lge &, const fptu_lge &) = delete;
+bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
+#endif // __cplusplus
 
 #endif /* FAST_POSITIVE_TUPLES_H */
