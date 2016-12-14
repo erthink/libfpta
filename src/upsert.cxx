@@ -124,11 +124,13 @@ static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, unsigned ct,
 }
 
 static __inline void fptu_cstrcpy(fptu_field *pf, size_t units,
-                                  const char *value, size_t bytes)
+                                  const char *text, size_t length)
 {
+    assert(units > 0);
+    assert(strnlen(text, length) == length);
     uint32_t *payload = (uint32_t *)fptu_field_payload(pf);
     payload[units - 1] = 0; // clean last unit
-    memcpy(payload, value, bytes);
+    memcpy(payload, text, length);
 }
 
 //============================================================================
@@ -315,25 +317,22 @@ int fptu_upsert_256(fptu_rw *pt, unsigned col, const void *data)
 
 //----------------------------------------------------------------------------
 
-int fptu_upsert_cstr(fptu_rw *pt, unsigned col, const char *value)
+int fptu_upsert_string(fptu_rw *pt, unsigned col, const char *text,
+                       size_t length)
 {
     if (unlikely(col > fptu_max_cols))
         return FPTU_EINVAL;
 
-    if (unlikely(value == nullptr))
-        value = "";
-
-    size_t bytes = strlen(value) + 1;
-    if (unlikely(bytes > fptu_max_field_bytes))
+    if (unlikely(length >= fptu_max_field_bytes))
         return FPTU_EINVAL;
 
-    size_t units = bytes2units(bytes);
+    size_t units = bytes2units(length + 1);
     fptu_field *pf =
         fptu_emplace(pt, fptu_pack_coltype(col, fptu_cstr), units);
     if (unlikely(pf == nullptr))
         return FPTU_ENOSPACE;
 
-    fptu_cstrcpy(pf, units, value, bytes);
+    fptu_cstrcpy(pf, units, text, length);
     return FPTU_SUCCESS;
 }
 
@@ -587,24 +586,21 @@ int fptu_update_256(fptu_rw *pt, unsigned col, const void *data)
 
 //----------------------------------------------------------------------------
 
-int fptu_update_cstr(fptu_rw *pt, unsigned col, const char *value)
+int fptu_update_string(fptu_rw *pt, unsigned col, const char *text,
+                       size_t length)
 {
     if (unlikely(col > fptu_max_cols))
         return FPTU_EINVAL;
 
-    if (unlikely(value == nullptr))
-        value = "";
-
-    size_t bytes = strlen(value) + 1;
-    if (unlikely(bytes > fptu_max_field_bytes))
+    if (unlikely(length >= fptu_max_field_bytes))
         return FPTU_EINVAL;
 
-    size_t units = bytes2units(bytes);
+    size_t units = bytes2units(length + 1);
     fptu_takeover_result result =
         fptu_takeover(pt, fptu_pack_coltype(col, fptu_cstr), units);
     if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
-        fptu_cstrcpy(result.pf, units, value, bytes);
+        fptu_cstrcpy(result.pf, units, text, length);
     }
     return result.error;
 }
@@ -836,25 +832,22 @@ int fptu_insert_256(fptu_rw *pt, unsigned col, const void *data)
 
 //----------------------------------------------------------------------------
 
-int fptu_insert_cstr(fptu_rw *pt, unsigned col, const char *value)
+int fptu_insert_string(fptu_rw *pt, unsigned col, const char *text,
+                       size_t length)
 {
     if (unlikely(col > fptu_max_cols))
         return FPTU_EINVAL;
 
-    if (unlikely(value == nullptr))
-        value = "";
-
-    size_t bytes = strlen(value) + 1;
-    if (unlikely(bytes > fptu_max_field_bytes))
+    if (unlikely(length >= fptu_max_field_bytes))
         return FPTU_EINVAL;
 
-    size_t units = bytes2units(bytes);
+    size_t units = bytes2units(length + 1);
     fptu_field *pf =
         fptu_append(pt, fptu_pack_coltype(col, fptu_cstr), units);
     if (unlikely(pf == nullptr))
         return FPTU_ENOSPACE;
 
-    fptu_cstrcpy(pf, units, value, bytes);
+    fptu_cstrcpy(pf, units, text, length);
     return FPTU_SUCCESS;
 }
 

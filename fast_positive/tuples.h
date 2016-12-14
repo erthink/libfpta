@@ -29,9 +29,12 @@
 #include "fast_positive/defs.h"
 
 #include <errno.h>   // for error codes
+#include <string.h>  // for strlen
 #include <sys/uio.h> // for struct iovec
 
 #ifdef __cplusplus
+#include <string> // for std::string
+
 extern "C" {
 #endif
 
@@ -330,7 +333,17 @@ int fptu_upsert_160(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_256(fptu_rw *pt, unsigned column, const void *data);
 
-int fptu_upsert_cstr(fptu_rw *pt, unsigned column, const char *value);
+int fptu_upsert_string(fptu_rw *pt, unsigned column, const char *text,
+                       size_t length);
+static __inline int fptu_upsert_cstr(fptu_rw *pt, unsigned col,
+                                     const char *value)
+{
+    if (value == nullptr)
+        value = "";
+
+    return fptu_upsert_string(pt, col, value, strlen(value));
+}
+
 int fptu_upsert_opaque(fptu_rw *pt, unsigned column, const void *value,
                        size_t bytes);
 int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
@@ -370,7 +383,17 @@ int fptu_insert_160(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_256(fptu_rw *pt, unsigned column, const void *data);
 
-int fptu_insert_cstr(fptu_rw *pt, unsigned column, const char *value);
+int fptu_insert_string(fptu_rw *pt, unsigned column, const char *text,
+                       size_t length);
+static __inline int fptu_insert_cstr(fptu_rw *pt, unsigned col,
+                                     const char *value)
+{
+    if (value == nullptr)
+        value = "";
+
+    return fptu_insert_string(pt, col, value, strlen(value));
+}
+
 int fptu_insert_opaque(fptu_rw *pt, unsigned column, const void *value,
                        size_t bytes);
 int fptu_insert_opaque_iov(fptu_rw *pt, unsigned column,
@@ -408,7 +431,17 @@ int fptu_update_160(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_256(fptu_rw *pt, unsigned column, const void *data);
 
-int fptu_update_cstr(fptu_rw *pt, unsigned column, const char *value);
+int fptu_update_string(fptu_rw *pt, unsigned column, const char *text,
+                       size_t length);
+static __inline int fptu_update_cstr(fptu_rw *pt, unsigned col,
+                                     const char *value)
+{
+    if (value == nullptr)
+        value = "";
+
+    return fptu_update_string(pt, col, value, strlen(value));
+}
+
 int fptu_update_opaque(fptu_rw *pt, unsigned column, const void *value,
                        size_t bytes);
 int fptu_update_opaque_iov(fptu_rw *pt, unsigned column,

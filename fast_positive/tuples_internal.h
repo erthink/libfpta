@@ -51,11 +51,6 @@
 #include <limits.h>
 #include <string.h>
 
-#if !defined(__cplusplus) || __cplusplus < 201103L
-#	define nullptr NULL
-#	define final
-#endif
-
 //----------------------------------------------------------------------------
 
 #ifndef __hot
