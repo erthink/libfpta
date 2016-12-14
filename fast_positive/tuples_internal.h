@@ -271,7 +271,7 @@ extern const uint8_t fptu_internal_map_t2u[];
 
 static __inline bool ct_is_fixedsize(unsigned ct)
 {
-    return fptu_get_type(ct) < fptu_string;
+    return fptu_get_type(ct) < fptu_cstr;
 }
 
 static __inline bool ct_is_dead(unsigned ct)
@@ -285,7 +285,7 @@ static __inline size_t ct_elem_size(unsigned ct)
     if (likely(ct_is_fixedsize(type)))
         return fptu_internal_map_t2b[type];
 
-    /* fptu_opaque, fptu_string or fptu_farray.
+    /* fptu_opaque, fptu_cstr or fptu_farray.
      * at least 4 bytes for length or '\0'. */
     return fptu_unit_size;
 }

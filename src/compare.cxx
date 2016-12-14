@@ -158,7 +158,7 @@ static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
     case fptu_256:
         return cmpbin(payload_left->fixbin, payload_right->fixbin, 32);
 
-    case fptu_string:
+    case fptu_cstr:
         return fptu_diff2lge(strcmp(payload_left->cstr, payload_right->cstr));
 
     case fptu_opaque:

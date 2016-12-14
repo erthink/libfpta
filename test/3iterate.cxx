@@ -211,7 +211,7 @@ TEST(Iterate, Filter)
         EXPECT_EQ((n == 9) ? 1 : 0, fptu_field_count(pt, n, fptu_int64));
         EXPECT_EQ((n == 9) ? 1 : 0, fptu_field_count(pt, n, fptu_fp32));
         EXPECT_EQ((n == 9) ? 1 : 0, fptu_field_count(pt, n, fptu_fp64));
-        EXPECT_EQ((n == 9) ? 1 : 0, fptu_field_count(pt, n, fptu_string));
+        EXPECT_EQ((n == 9) ? 1 : 0, fptu_field_count(pt, n, fptu_cstr));
 
         EXPECT_EQ((n == 9) ? 9 : 0, fptu_field_count(pt, n, fptu_any));
         EXPECT_EQ((n == 9) ? 2 : 0, fptu_field_count(pt, n, fptu_any_int));

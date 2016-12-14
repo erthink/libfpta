@@ -173,7 +173,7 @@ enum fptu_type {
     fptu_256 = 12, // opaque 32-bytes (sha256).
 
     // variable length, e.g. length and payload inside ex-data
-    fptu_string = 13, // utf-8 с-string, zero terminated
+    fptu_cstr = 13, // utf-8 с-string, zero terminated
 
     // with additional length
     fptu_opaque = 14, // opaque octet string
@@ -348,7 +348,7 @@ int fptu_upsert_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 // const int64_t* array_data);
 // int fptu_upsert_array_uint64(fptu_rw* pt, unsigned ct, size_t array_length,
 // const uint64_t* array_data);
-// int fptu_upsert_array_str(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_upsert_array_cstr(fptu_rw* pt, unsigned ct, size_t array_length,
 // const char* array_data[]);
 // int fptu_upsert_array_nested(fptu_rw* pt, unsigned ct, size_t array_length,
 // const char* array_data[]);
@@ -426,7 +426,7 @@ int fptu_update_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 // const int64_t* array_data);
 // int fptu_update_array_uint64(fptu_rw* pt, unsigned ct, size_t array_length,
 // const uint64_t* array_data);
-// int fptu_update_array_str(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_update_array_cstr(fptu_rw* pt, unsigned ct, size_t array_length,
 // const char* array_data[]);
 
 //----------------------------------------------------------------------------

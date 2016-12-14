@@ -120,11 +120,11 @@ TEST(Trivia, ColType)
     EXPECT_EQ(42, fptu_get_col(ct));
     EXPECT_EQ(fptu_int64, fptu_get_type(ct));
 
-    ct = fptu_pack_coltype(fptu_max_cols, fptu_string | fptu_farray);
+    ct = fptu_pack_coltype(fptu_max_cols, fptu_cstr | fptu_farray);
     ASSERT_NE(0, ct);
     ASSERT_GT(fptu_limit, ct);
     EXPECT_EQ(fptu_max_cols, fptu_get_col(ct));
-    EXPECT_EQ(fptu_string | fptu_farray, fptu_get_type(ct));
+    EXPECT_EQ(fptu_cstr | fptu_farray, fptu_get_type(ct));
 }
 
 TEST(Trivia, cmp2int)

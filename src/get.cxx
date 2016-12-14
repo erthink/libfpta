@@ -95,7 +95,7 @@ float fptu_field_fp32(const fptu_field *pf)
 
 const char *fptu_field_cstr(const fptu_field *pf)
 {
-    if (unlikely(fptu_field_type(pf) != fptu_string))
+    if (unlikely(fptu_field_type(pf) != fptu_cstr))
         return "";
 
     return fptu_field_payload(pf)->cstr;
@@ -163,7 +163,7 @@ struct iovec fptu_field_as_iovec(const fptu_field *pf)
     switch (type) {
     default:
         if (likely(type < fptu_farray)) {
-            assert(type < fptu_string);
+            assert(type < fptu_cstr);
             opaque.iov_len = fptu_internal_map_t2b[type];
             opaque.iov_base = (void *)fptu_field_payload(pf);
             break;
@@ -186,7 +186,7 @@ struct iovec fptu_field_as_iovec(const fptu_field *pf)
         opaque.iov_len = payload->other.varlen.opaque_bytes;
         opaque.iov_base = (void *)payload->other.data;
         break;
-    case fptu_string:
+    case fptu_cstr:
         payload = fptu_field_payload(pf);
         opaque.iov_len = strlen(payload->cstr) + 1;
         opaque.iov_base = (void *)payload->cstr;
@@ -318,7 +318,7 @@ const uint8_t *fptu_get_256(fptu_ro ro, unsigned column, int *error)
 
 const char *fptu_get_cstr(fptu_ro ro, unsigned column, int *error)
 {
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_string);
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_cstr);
     if (error)
         *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
     return fptu_field_cstr(pf);

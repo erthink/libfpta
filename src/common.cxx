@@ -19,7 +19,7 @@
 
 #include "fast_positive/tuples_internal.h"
 
-const uint8_t fptu_internal_map_t2b[fptu_string] = {
+const uint8_t fptu_internal_map_t2b[fptu_cstr] = {
     /* void */ 0,
     /* uint16 */ 0,
 
@@ -37,7 +37,7 @@ const uint8_t fptu_internal_map_t2b[fptu_string] = {
     /* 192 */ 24,
     /* 256 */ 32};
 
-const uint8_t fptu_internal_map_t2u[fptu_string] = {
+const uint8_t fptu_internal_map_t2u[fptu_cstr] = {
     /* void */ 0,
     /* uint16 */ 0,
 
@@ -58,14 +58,14 @@ const uint8_t fptu_internal_map_t2u[fptu_string] = {
 __hot size_t fptu_field_units(const fptu_field *pf)
 {
     unsigned type = fptu_get_type(pf->ct);
-    if (likely(type < fptu_string)) {
+    if (likely(type < fptu_cstr)) {
         // fixed length type
         return fptu_internal_map_t2u[type];
     }
 
     // variable length type
     const fptu_payload *payload = fptu_field_payload(pf);
-    if (type == fptu_string) {
+    if (type == fptu_cstr) {
         // length is not stored, but zero terminated
         return bytes2units(strlen(payload->cstr) + 1);
     }

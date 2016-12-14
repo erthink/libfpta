@@ -39,7 +39,7 @@ fptu_field_check(const fptu_field *pf, const char *pivot, const char *detent,
 
     size_t len;
     ptrdiff_t left = (char *)detent - (const char *)payload;
-    if (type < fptu_string) {
+    if (type < fptu_cstr) {
         // fixed length type
         payload_units = fptu_internal_map_t2u[type];
         len = fptu_internal_map_t2b[type];
@@ -55,7 +55,7 @@ fptu_field_check(const fptu_field *pf, const char *pivot, const char *detent,
         return "field.payload < previous.payload (ordered or mesh tuples "
                "NOT yet supported)";
 
-    if (type == fptu_string) {
+    if (type == fptu_cstr) {
         // length is'nt stored, but zero terminated
         len = strnlen((const char *)payload, left) + 1;
         payload_units = bytes2units(len);

@@ -965,7 +965,7 @@ TEST(Upsert, InsertUpdate)
     junk += 4 + 8;
     EXPECT_EQ(junk, fptu_junkspace(pt));
 
-    EXPECT_EQ(1, fptu_erase(pt, 0, fptu_string));
+    EXPECT_EQ(1, fptu_erase(pt, 0, fptu_cstr));
     junk += 4 + 8;
     EXPECT_EQ(junk, fptu_junkspace(pt));
 

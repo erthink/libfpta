@@ -329,7 +329,7 @@ int fptu_upsert_cstr(fptu_rw *pt, unsigned col, const char *value)
 
     size_t units = bytes2units(bytes);
     fptu_field *pf =
-        fptu_emplace(pt, fptu_pack_coltype(col, fptu_string), units);
+        fptu_emplace(pt, fptu_pack_coltype(col, fptu_cstr), units);
     if (unlikely(pf == nullptr))
         return FPTU_ENOSPACE;
 
@@ -601,7 +601,7 @@ int fptu_update_cstr(fptu_rw *pt, unsigned col, const char *value)
 
     size_t units = bytes2units(bytes);
     fptu_takeover_result result =
-        fptu_takeover(pt, fptu_pack_coltype(col, fptu_string), units);
+        fptu_takeover(pt, fptu_pack_coltype(col, fptu_cstr), units);
     if (likely(result.error == FPTU_SUCCESS)) {
         assert(result.pf != nullptr);
         fptu_cstrcpy(result.pf, units, value, bytes);
@@ -850,7 +850,7 @@ int fptu_insert_cstr(fptu_rw *pt, unsigned col, const char *value)
 
     size_t units = bytes2units(bytes);
     fptu_field *pf =
-        fptu_append(pt, fptu_pack_coltype(col, fptu_string), units);
+        fptu_append(pt, fptu_pack_coltype(col, fptu_cstr), units);
     if (unlikely(pf == nullptr))
         return FPTU_ENOSPACE;
 
