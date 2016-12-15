@@ -237,6 +237,10 @@ fptu_rw *fptu_init(void *buffer_space, size_t buffer_bytes,
  * использования. Либо nullptr при неверных параметрах или нехватке памяти. */
 fptu_rw *fptu_alloc(size_t items_limit, size_t data_bytes);
 
+/* Очищает ранее инициализированный кортеж.
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fptu_clear(fptu_rw *pt);
+
 /* Возвращает кол-во свободных слотов для добавления дескрипторов
  * полей в заголовок кортежа. */
 size_t fptu_space4items(const fptu_rw *pt);

@@ -50,6 +50,20 @@ fptu_rw *fptu_init(void *space, size_t buffer_bytes, size_t items_limit)
     return pt;
 }
 
+int fptu_clear(fptu_rw *pt)
+{
+    if (unlikely(pt == nullptr))
+        return FPTU_EINVAL;
+    if (unlikely(pt->pivot < 1 || pt->pivot > fptu_max_fields + 1 ||
+                 pt->pivot >= pt->end ||
+                 pt->end > bytes2units(fptu_buffer_limit)))
+        return FPTU_EINVAL;
+
+    pt->head = pt->tail = pt->pivot;
+    pt->junk = 0;
+    return FPTU_OK;
+}
+
 size_t fptu_space4items(const fptu_rw *pt)
 {
     return (pt->head > 0) ? pt->head - 1 : 0;
