@@ -17,6 +17,8 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 /* *INDENT-OFF* */
 /* clang-format off */
 #ifndef _ISOC99_SOURCE
