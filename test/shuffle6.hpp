@@ -1,7 +1,10 @@
 // https://en.wikipedia.org/wiki/Gray_code
 unsigned gray_code(unsigned n) { return n ^ (n >> 1); }
 
-// итерирующий генератор перестановок из 6 элементов
+/* Итерирующий генератор перестановок из 6 элементов.
+ *
+ * В отличии от std::next_permination() и std::next_permination()
+ * позволяет получить перестановку непосредственно по номеру. */
 class shuffle6
 {
     // набор элементов для перестановок в виде 4-х битовых групп
@@ -33,8 +36,8 @@ class shuffle6
     // количество перестановок из 6 элементов
     static const unsigned factorial = 1 * 2 * 3 * 4 * 5 * 6;
 
-    // инициализирует генератор для выдачи последовательности с заданным
-    // номером
+    /* инициализирует генератор для выдачи последовательности
+     * с заданным номером. */
     shuffle6(unsigned shuffle_order = 0) { setup(shuffle_order); }
 
     void setup(unsigned shuffle_order)
@@ -54,11 +57,22 @@ class shuffle6
         return cutout(n);
     }
 
+    unsigned operator()() { return next(); }
+
     bool empty() const { return left == 0; }
 
-    // тест посредством полного перебора комбинаций
     static bool selftest()
     {
+        // сначала проверяем порядок
+        shuffle6 first(0), last(factorial - 1);
+        for (unsigned n = 0; n < 6; n++) {
+            if (first.next() != n)
+                return false;
+            if (last.next() != 5 - n)
+                return false;
+        }
+
+        // теперь полный перебор комбинаций (6! = 720)
         for (unsigned n = 0; n < factorial; ++n) {
             shuffle6 here(n);
 
