@@ -193,8 +193,8 @@ enum fptu_type {
     fptu_any = -1, // match any type
     fptu_any_int = fptu_filter | (1 << fptu_int32) |
                    (1 << fptu_int64), // match int32/int64
-    fptu_any_uint = fptu_filter | (1 << fptu_uint32) |
-                    (1 << fptu_uint64), // match uin32/uin64
+    fptu_any_uint = fptu_filter | (1 << fptu_uint16) | (1 << fptu_uint32) |
+                    (1 << fptu_uint64), // match uint16/uint32/uint64
     fptu_any_fp =
         fptu_filter | (1 << fptu_fp32) | (1 << fptu_fp64), // match fp32/fp64
 
