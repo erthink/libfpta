@@ -542,6 +542,11 @@ int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
 uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
 double fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
 float fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
+
+int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);
+uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error);
+double fptu_get_fp(fptu_ro ro, unsigned column, int *error);
+
 const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_128(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_160(fptu_ro ro, unsigned column, int *error);

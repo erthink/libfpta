@@ -276,6 +276,72 @@ float fptu_get_fp32(fptu_ro ro, unsigned column, int *error)
     return fptu_field_fp32(pf);
 }
 
+//----------------------------------------------------------------------------
+
+int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error)
+{
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_any_int);
+    if (error)
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
+
+    if (likely(pf)) {
+        switch (fptu_get_type(pf->ct)) {
+        case fptu_int32:
+            return fptu_field_payload(pf)->i32;
+        case fptu_int64:
+            return fptu_field_payload(pf)->i64;
+        default:
+            __unreachable();
+            assert(false && "unexpected field type");
+        }
+    }
+    return 0;
+}
+
+uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error)
+{
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_any_uint);
+    if (error)
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
+
+    if (likely(pf)) {
+        switch (fptu_get_type(pf->ct)) {
+        case fptu_uint16:
+            return pf->get_payload_uint16();
+        case fptu_uint32:
+            return fptu_field_payload(pf)->u32;
+        case fptu_uint64:
+            return fptu_field_payload(pf)->u64;
+        default:
+            __unreachable();
+            assert(false && "unexpected field type");
+        }
+    }
+    return 0;
+}
+
+double fptu_get_fp(fptu_ro ro, unsigned column, int *error)
+{
+    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_any_fp);
+    if (error)
+        *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
+
+    if (likely(pf)) {
+        switch (fptu_get_type(pf->ct)) {
+        case fptu_fp32:
+            return fptu_field_payload(pf)->fp32;
+        case fptu_fp64:
+            return fptu_field_payload(pf)->fp64;
+        default:
+            __unreachable();
+            assert(false && "unexpected field type");
+        }
+    }
+    return 0;
+}
+
+//----------------------------------------------------------------------------
+
 const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error)
 {
     const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_96);
