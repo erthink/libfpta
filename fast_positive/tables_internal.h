@@ -283,13 +283,31 @@ static __inline bool fpta_txn_validate(fpta_txn *txn, fpta_level min_level)
     return true;
 }
 
-static __inline bool fpta_id_validate(const fpta_name *id)
+enum fpta_schema_item { fpta_table, fpta_column };
+
+static __inline bool fpta_id_validate(const fpta_name *id,
+                                      fpta_schema_item schema_item)
 {
     if (unlikely(id == nullptr))
         return false;
 
-    // TODO: ?
-    return true;
+    switch (schema_item) {
+    default:
+        return false;
+    case fpta_table:
+        if (unlikely(fpta_shove2index(id->internal) !=
+                     (fpta_index_type)fpta_flag_table))
+            return false;
+        // TODO: ?
+        return true;
+
+    case fpta_column:
+        if (unlikely(fpta_shove2index(id->internal) ==
+                     (fpta_index_type)fpta_flag_table))
+            return false;
+        // TODO: ?
+        return true;
+    }
 }
 
 static __inline bool fpta_index_is_unique(unsigned index)

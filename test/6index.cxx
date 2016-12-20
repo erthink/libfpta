@@ -152,12 +152,12 @@ template <fptu_type type, fpta_index_type index> void TestPrimary()
 
     // инициализируем идентификаторы колонок
     fpta_name table, col_pk, col_order, col_dup_id, col_t1ha;
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&table, "table", fpta_table));
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
     EXPECT_EQ(FPTA_OK,
-              fpta_name_init(&col_pk, pk_col_name.c_str(), fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_order, "order", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_dup_id, "dup_id", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_t1ha, "t1ha", fpta_column));
+              fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
 
     //------------------------------------------------------------------------
 

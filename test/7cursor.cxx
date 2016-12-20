@@ -352,14 +352,13 @@ class CursorPrimary
                                        : ", (invalid cursor case)"));
 
         // инициализируем идентификаторы колонок
-        ASSERT_EQ(FPTA_OK, fpta_name_init(&table, "table", fpta_table));
+        ASSERT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
         pk_col_name = "pk_" + std::to_string(type);
         ASSERT_EQ(FPTA_OK,
-                  fpta_name_init(&col_pk, pk_col_name.c_str(), fpta_column));
-        ASSERT_EQ(FPTA_OK, fpta_name_init(&col_order, "order", fpta_column));
-        ASSERT_EQ(FPTA_OK,
-                  fpta_name_init(&col_dup_id, "dup_id", fpta_column));
-        ASSERT_EQ(FPTA_OK, fpta_name_init(&col_t1ha, "t1ha", fpta_column));
+                  fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
+        ASSERT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
+        ASSERT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
+        ASSERT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
 
         // создаем четыре колонки: pk, order, t1ha и dup_id
         fpta_column_set def;

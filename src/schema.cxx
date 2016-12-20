@@ -455,8 +455,8 @@ static int fpta_schema_read(fpta_txn *txn, uint64_t shove,
 
 //----------------------------------------------------------------------------
 
-int fpta_name_init(fpta_name *id, const char *name,
-                   enum fpta_schema_item schema_item)
+static int fpta_name_init(fpta_name *id, const char *name,
+                          fpta_schema_item schema_item)
 {
     if (unlikely(id == nullptr))
         return FPTA_EINVAL;
@@ -491,6 +491,25 @@ int fpta_name_init(fpta_name *id, const char *name,
     return FPTA_SUCCESS;
 }
 
+int fpta_table_init(fpta_name *table_id, const char *name)
+{
+    return fpta_name_init(table_id, name, fpta_table);
+}
+
+int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
+                     const char *name)
+{
+    if (unlikely(!fpta_id_validate(table_id, fpta_table)))
+        return FPTA_EINVAL;
+
+    int rc = fpta_name_init(column_id, name, fpta_column);
+    if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
+
+    column_id->handle = (void *)table_id;
+    return FPTA_SUCCESS;
+}
+
 void fpta_name_destroy(fpta_name *id)
 {
     if (fpta_shove2index(id->internal) == (fpta_index_type)fpta_flag_table)
@@ -501,9 +520,9 @@ void fpta_name_destroy(fpta_name *id)
 int fpta_name_refresh(fpta_txn *txn, fpta_name *table_id,
                       fpta_name *column_id)
 {
-    if (unlikely(!fpta_id_validate(table_id)))
+    if (unlikely(!fpta_id_validate(table_id, fpta_table)))
         return FPTA_EINVAL;
-    if (column_id && unlikely(!fpta_id_validate(column_id)))
+    if (column_id && unlikely(!fpta_id_validate(column_id, fpta_column)))
         return FPTA_EINVAL;
     if (unlikely(!fpta_txn_validate(txn, fpta_read)))
         return FPTA_EINVAL;

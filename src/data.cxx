@@ -135,15 +135,10 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
 int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
                        fpta_value value)
 {
-    if (unlikely(!pt || !fpta_id_validate(column_id)))
-        return FPTA_EINVAL;
-
-    int index = fpta_shove2index(column_id->internal);
-    if (unlikely(index == fpta_flag_table))
+    if (unlikely(!pt || !fpta_id_validate(column_id, fpta_column)))
         return FPTA_EINVAL;
 
     fptu_type coltype = fpta_shove2type(column_id->internal);
-
     assert(column_id->column.num <= fptu_max_cols);
     unsigned col = column_id->column.num;
 

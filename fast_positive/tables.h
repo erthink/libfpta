@@ -768,8 +768,9 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  *    производится посредством полей структуры fpta_name.
  *
  *    В свою очередь, каждый экземпляр fpta_name:
- *     1) инициализируется посредством fpta_name_init(),
- *        которая на вход получает имя таблицы или колонки.
+ *     1) инициализируется посредством fpta_table_init(), либо
+ *        fpta_column_init(), которые на вход получают соответственно
+ *        имя таблицы или колонки.
  *     2) перед использованием обновляется в fpta_name_refresh(),
  *        которая выполняется в контексте конкретной транзакции.
  *
@@ -781,6 +782,9 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  *  - Таким образом, пользователю предоставляются средства для
  *    эффективного кэширования зависящей от схемы информации,
  *    а также её обновления по необходимости.
+ *
+ *  - Функция fpta_name_refresh() вызывается автоматически, поэтому
+ *    как правило в явном ручном вызове необходимости нет.
  */
 
 /* Операционный идентификатор таблицы или колонки. */
@@ -819,8 +823,8 @@ static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id)
  * Функция работает в семантике кэширования с отслеживанием версии
  * схемы.
  *
- * Перед первым обращением table_id и column_id должны
- * быть инициализирован посредством fpta_name_init().
+ * Перед первым обращением table_id и column_id должны быть
+ * инициализирован посредством fpta_table_init() и fpta_column_init().
  *
  * Аргумент column_id может быть нулевым. В этом случае он
  * игнорируется, и обрабатывается только table_id.
@@ -829,20 +833,31 @@ static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id)
 int fpta_name_refresh(fpta_txn *txn, fpta_name *table_id,
                       fpta_name *column_id);
 
-enum fpta_schema_item { fpta_table, fpta_column };
-
-/* Инициализирует операционный идентификатор.
+/* Инициализирует операционный идентификатор таблицы.
  *
- * Подготавливает идентификатор к последующему использованию.
- * Аргумент schema_item определяет тип объекта, который будет
- * идентифицироваться.
+ * Подготавливает идентификатор таблицы к последующему использованию.
  *
  * Следует считать, что стоимость операции сопоставима с вычислением
  * дайджеста MD5 для переданного имени.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_name_init(fpta_name *id, const char *name,
-                   enum fpta_schema_item schema_item);
+int fpta_table_init(fpta_name *table_id, const char *name);
+
+/* Инициализирует операционный идентификатор колонки.
+ *
+ * Подготавливает идентификатор колонки к последующему использованию,
+ * при этом связывает его с идентификатором таблицы задаваемым в table_id.
+ * В свою очередь table_id должен быть предварительно подготовлен
+ * посредством fpta_table_init().
+ *
+ * Следует считать, что стоимость операции сопоставима с вычислением
+ * дайджеста MD5 для переданного имени.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
+                     const char *name);
+
+/* Разрушает операционный идентификаторы таблиц и колонок. */
 void fpta_name_destroy(fpta_name *id);
 
 //----------------------------------------------------------------------------
@@ -947,8 +962,8 @@ typedef enum fpta_cursor_options {
  * закрыт до завершения транзакции посредством fpta_cursor_close().
  *
  * Аргументы table_id и column_id перед первым использованием должны
- * быть инициализированы посредством fpta_name_init(). Предварительный
- * вызов fpta_name_refresh() не обязателен.
+ * быть инициализированы посредством fpta_table_init() и fpta_column_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * Аргументы range_from и range_to задают диапазон выборки по значению
  * ключевой колонки. При необходимости могут быть заданы значения
@@ -1211,7 +1226,6 @@ string to_string(const fpta_txn *);
 string to_string(fpta_index_type);
 string to_string(const fpta_column_set &);
 string to_string(const fpta_name &);
-string to_string(fpta_schema_item);
 string to_string(fpta_filter_bits);
 string to_string(const fpta_filter &);
 string to_string(fpta_cursor_options);

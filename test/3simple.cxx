@@ -56,10 +56,10 @@ TEST(Simple, Base)
 
     // инициализируем идентификаторы таблицы и её колонок
     fpta_name table, col_pk, col_a, col_b;
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&table, "table_1", fpta_table));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_pk, "pk_str_uniq", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_a, "a_uint", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_b, "b_fp", fpta_column));
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_1"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, "pk_str_uniq"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_a, "a_uint"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_b, "b_fp"));
 
     // начинаем транзакцию для вставки данных
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));

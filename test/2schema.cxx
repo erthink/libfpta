@@ -121,11 +121,11 @@ TEST(Schema, Base)
 
     //------------------------------------------------------------------------
     fpta_name table, col_pk, col_a, col_b;
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&table, "tAbLe_1", fpta_table));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&table, "table_1", fpta_table));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_pk, "pk_str_uniq", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_a, "First_Uint", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_b, "second_FP", fpta_column));
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "tAbLe_1"));
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_1"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, "pk_str_uniq"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_a, "First_Uint"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_b, "second_FP"));
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
     ASSERT_NE(nullptr, txn);

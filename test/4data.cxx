@@ -225,21 +225,21 @@ TEST(Data, UpsertColumn)
         col_uint64, col_fp64, col_96, col_128, col_160, col_192, col_256,
         col_str, col_opaque;
 
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&table, "table", fpta_table));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_uint16, "uint16", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_uint32, "uint32", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_int32, "int32", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_fp32, "fp32", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_uint64, "uint64", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_int64, "int64", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_fp64, "fp64", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_96, "o96", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_128, "o128", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_160, "o160", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_192, "o192", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_256, "o256", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_str, "string", fpta_column));
-    EXPECT_EQ(FPTA_OK, fpta_name_init(&col_opaque, "opaque", fpta_column));
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_uint16, "uint16"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_uint32, "uint32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_int32, "int32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_fp32, "fp32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_uint64, "uint64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_int64, "int64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_fp64, "fp64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_96, "o96"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_128, "o128"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_160, "o160"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_192, "o192"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_256, "o256"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_str, "string"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_opaque, "opaque"));
     // TODO: fptu_nested
     // TODO: fptu_farray
 
