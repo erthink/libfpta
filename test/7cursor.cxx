@@ -442,16 +442,16 @@ class CursorPrimary
         fpta_cursor *cursor;
         if (valid_cursor_ops) {
             EXPECT_EQ(FPTA_OK,
-                      fpta_cursor_open(txn, &table, &col_pk,
-                                       fpta_value_begin(), fpta_value_end(),
-                                       nullptr, ordering, &cursor));
+                      fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
+                                       fpta_value_end(), nullptr, ordering,
+                                       &cursor));
             ASSERT_NE(nullptr, cursor);
             cursor_guard.reset(cursor);
         } else {
             EXPECT_EQ(FPTA_EINVAL,
-                      fpta_cursor_open(txn, &table, &col_pk,
-                                       fpta_value_begin(), fpta_value_end(),
-                                       nullptr, ordering, &cursor));
+                      fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
+                                       fpta_value_end(), nullptr, ordering,
+                                       &cursor));
             cursor_guard.reset(cursor);
             ASSERT_EQ(nullptr, cursor);
             return;

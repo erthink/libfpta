@@ -128,10 +128,9 @@ TEST(Simple, Base)
 
     // открываем простейщий курсор: на всю таблицу, без фильтра
     fpta_cursor *cursor;
-    EXPECT_EQ(FPTA_OK,
-              fpta_cursor_open(txn, &table, &col_pk, fpta_value_begin(),
-                               fpta_value_end(), nullptr,
-                               fpta_unsorted_dont_fetch, &cursor));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
     ASSERT_NE(nullptr, cursor);
 
     // узнам сколько записей за курсором (в таблице).

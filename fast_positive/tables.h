@@ -962,8 +962,8 @@ typedef enum fpta_cursor_options {
  * включая их модификацию и удаление. Открытый курсор должен быть
  * закрыт до завершения транзакции посредством fpta_cursor_close().
  *
- * Аргументы table_id и column_id перед первым использованием должны
- * быть инициализированы посредством fpta_table_init() и fpta_column_init().
+ * Аргумент column_id перед первым использованием должен
+ * быть инициализированы посредством fpta_column_init().
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * Аргументы range_from и range_to задают диапазон выборки по значению
@@ -982,7 +982,7 @@ typedef enum fpta_cursor_options {
  * не изменяться до закрытия курсора и всех его клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
+int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
                      fpta_value range_from, fpta_value range_to,
                      fpta_filter *filter, fpta_cursor_options op,
                      fpta_cursor **cursor);

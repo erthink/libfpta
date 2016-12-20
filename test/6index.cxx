@@ -269,13 +269,12 @@ template <fptu_type type, fpta_index_type index> void TestPrimary()
 
     scoped_cursor_guard cursor_guard;
     fpta_cursor *cursor;
-    EXPECT_EQ(FPTA_OK,
-              fpta_cursor_open(txn, &table, &col_pk, fpta_value_begin(),
-                               fpta_value_end(), nullptr,
-                               fpta_index_is_ordered(index)
-                                   ? fpta_ascending_dont_fetch
-                                   : fpta_unsorted_dont_fetch,
-                               &cursor));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_index_is_ordered(index)
+                                            ? fpta_ascending_dont_fetch
+                                            : fpta_unsorted_dont_fetch,
+                                        &cursor));
     ASSERT_NE(nullptr, cursor);
     cursor_guard.reset(cursor);
 

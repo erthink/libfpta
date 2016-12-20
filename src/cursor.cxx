@@ -39,7 +39,7 @@ int fpta_cursor_close(fpta_cursor *cursor)
     return FPTA_SUCCESS;
 }
 
-int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
+int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
                      fpta_value range_from, fpta_value range_to,
                      fpta_filter *filter, fpta_cursor_options op,
                      fpta_cursor **pcursor)
@@ -61,11 +61,12 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
         break;
     }
 
-    if (unlikely(column_id == nullptr))
+    if (unlikely(!fpta_id_validate(column_id, fpta_column)))
         return FPTA_EINVAL;
     if (unlikely(!fpta_filter_validate(filter)))
         return FPTA_EINVAL;
 
+    fpta_name *table_id = (fpta_name *)column_id->handle;
     int rc = fpta_name_refresh_couple(txn, table_id, column_id);
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
