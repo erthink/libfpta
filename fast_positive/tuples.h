@@ -158,7 +158,7 @@ enum fptu_bits {
     fptu_buffer_limit = fptu_max_tuple_bytes * 2
 };
 
-enum fptu_type {
+typedef enum fptu_type {
     // fixed length, without ex-data (descriptor only)
     fptu_null = 0,
     fptu_uint16 = 1,
@@ -213,7 +213,7 @@ enum fptu_type {
     fptu_sha1 = fptu_160,
     fptu_sha256 = fptu_256,
     fptu_wstring = fptu_opaque
-};
+} fptu_type;
 
 //----------------------------------------------------------------------------
 
