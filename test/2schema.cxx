@@ -130,9 +130,9 @@ TEST(Schema, Base)
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
     ASSERT_NE(nullptr, txn);
 
-    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_pk));
-    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_a));
-    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_b));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_a));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_b));
 
     EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.internal));
     EXPECT_EQ(fpta_primary_unique, fpta_name_colindex(&col_pk));

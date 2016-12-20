@@ -66,7 +66,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
     if (unlikely(!fpta_filter_validate(filter)))
         return FPTA_EINVAL;
 
-    int rc = fpta_name_refresh(txn, table_id, column_id);
+    int rc = fpta_name_refresh_couple(txn, table_id, column_id);
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 

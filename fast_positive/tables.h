@@ -823,15 +823,16 @@ static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id)
  * Функция работает в семантике кэширования с отслеживанием версии
  * схемы.
  *
- * Перед первым обращением table_id и column_id должны быть
- * инициализирован посредством fpta_table_init() и fpta_column_init().
+ * Перед первым обращением name_id должен быть инициализирован
+ * посредством fpta_table_init() или fpta_column_init().
  *
  * Аргумент column_id может быть нулевым. В этом случае он
  * игнорируется, и обрабатывается только table_id.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_name_refresh(fpta_txn *txn, fpta_name *table_id,
-                      fpta_name *column_id);
+int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id);
+int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
+                             fpta_name *column_id);
 
 /* Инициализирует операционный идентификатор таблицы.
  *

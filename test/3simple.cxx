@@ -65,9 +65,9 @@ TEST(Simple, Base)
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
     ASSERT_NE(nullptr, txn);
     // ради теста делаем привязку вручную
-    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_pk));
-    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_a));
-    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_b));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_a));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_b));
 
     // создаем кортеж, который станет первой записью в таблице
     fptu_rw *pt1 = fptu_alloc(3, 42);

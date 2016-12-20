@@ -517,8 +517,22 @@ void fpta_name_destroy(fpta_name *id)
     memset(id, 0, sizeof(fpta_name));
 }
 
-int fpta_name_refresh(fpta_txn *txn, fpta_name *table_id,
-                      fpta_name *column_id)
+int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id)
+{
+    if (unlikely(name_id == nullptr))
+        return FPTA_EINVAL;
+
+    bool is_table = fpta_shove2index(name_id->internal) ==
+                    (fpta_index_type)fpta_flag_table;
+    if (is_table)
+        return fpta_name_refresh_couple(txn, name_id, nullptr);
+
+    return fpta_name_refresh_couple(txn, (fpta_name *)name_id->handle,
+                                    name_id);
+}
+
+int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
+                             fpta_name *column_id)
 {
     if (unlikely(!fpta_id_validate(table_id, fpta_table)))
         return FPTA_EINVAL;

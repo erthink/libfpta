@@ -167,10 +167,10 @@ template <fptu_type type, fpta_index_type index> void TestPrimary()
     txn_guard.reset(txn);
 
     // связываем идентификаторы с ранее созданной схемой
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_pk));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_order));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_dup_id));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_t1ha));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_order));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_dup_id));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_t1ha));
 
     fptu_rw *row = fptu_alloc(4, fpta_max_keylen * 2 + 4 + 4);
     ASSERT_NE(nullptr, row);

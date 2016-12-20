@@ -248,20 +248,20 @@ TEST(Data, UpsertColumn)
     ASSERT_NE(nullptr, txn);
 
     // связываем идентификаторы с ранее созданной схемой
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_uint16));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_uint32));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_int32));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_fp32));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_uint64));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_int64));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_fp64));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_96));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_128));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_160));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_192));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_256));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_str));
-    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_opaque));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_uint16));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_uint32));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_int32));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_fp32));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_uint64));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_int64));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_fp64));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_96));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_128));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_160));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_192));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_256));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_str));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_opaque));
 
     // теперь формируем кортеж с полями всяческих типов
     fptu_rw *pt = fptu_alloc(15, 39 * 4 + sizeof(pattern));
