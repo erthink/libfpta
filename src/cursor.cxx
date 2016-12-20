@@ -89,8 +89,20 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
         return FPTA_ENOIMP;
     }
 
-    if (unlikely(table_id->table.dbi < 1)) {
-        rc = fpta_table_open(txn, table_id);
+    if (unlikely(table_id->mdbx_dbi < 1)) {
+        rc = fpta_table_open(txn, table_id, nullptr);
+        if (unlikely(rc != FPTA_SUCCESS))
+            return rc;
+    }
+
+    assert(column_id->handle == table_id);
+    if (fpta_index_is_primary(index)) {
+        assert(column_id->column.num == 0);
+        column_id->mdbx_dbi = table_id->mdbx_dbi;
+    } else if (unlikely(column_id->mdbx_dbi < 1)) {
+        assert(column_id->column.num > 0);
+        assert(fpta_index_is_secondary(index));
+        rc = fpta_table_open(txn, table_id, column_id);
         if (unlikely(rc != FPTA_SUCCESS))
             return rc;
     }
@@ -104,29 +116,29 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
     cursor->txn = txn;
     cursor->filter = filter;
     cursor->table_id = table_id;
-    cursor->index.type = column_id->internal &
-                         (fpta_column_typeid_mask | fpta_column_index_mask);
-    cursor->index.column_order = column_id->column.order;
-    cursor->index.dbi = 0;
+    cursor->index.shove = column_id->internal &
+                          (fpta_column_typeid_mask | fpta_column_index_mask);
+    cursor->index.column_order = column_id->column.num;
+    cursor->index.mdbx_dbi = column_id->mdbx_dbi;
 
     cursor->range_from_value = range_from;
     if (cursor->range_from_value.type != fpta_begin) {
-        rc =
-            fpta_index_value2key(cursor->index.type, cursor->range_from_value,
-                                 cursor->range_from_key, true);
+        rc = fpta_index_value2key(cursor->index.shove,
+                                  cursor->range_from_value,
+                                  cursor->range_from_key, true);
         if (unlikely(rc != FPTA_SUCCESS))
             goto bailout;
     }
 
     cursor->range_to_value = range_to;
     if (cursor->range_to_value.type != fpta_end) {
-        rc = fpta_index_value2key(cursor->index.type, cursor->range_to_value,
+        rc = fpta_index_value2key(cursor->index.shove, cursor->range_to_value,
                                   cursor->range_to_key, true);
         if (unlikely(rc != FPTA_SUCCESS))
             goto bailout;
     }
 
-    rc = mdbx_cursor_open(txn->mdbx_txn, table_id->table.dbi,
+    rc = mdbx_cursor_open(txn->mdbx_txn, cursor->index.mdbx_dbi,
                           &cursor->mdbx_cursor);
     if (unlikely(rc != MDB_SUCCESS))
         goto bailout;
@@ -164,12 +176,12 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                          &mdbx_data.sys, MDB_GET_CURRENT);
     while (rc == MDB_SUCCESS) {
         if (cursor->range_from_value.type != fpta_begin &&
-            mdbx_cmp(cursor->txn->mdbx_txn, cursor->table_id->table.dbi,
+            mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
                      &cursor->range_from_key.mdbx, &cursor->current) < 0)
             goto eof;
 
         if (cursor->range_to_value.type != fpta_end &&
-            mdbx_cmp(cursor->txn->mdbx_txn, cursor->table_id->table.dbi,
+            mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
                      &cursor->range_to_key.mdbx, &cursor->current) >= 0)
             goto eof;
 
@@ -266,7 +278,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op)
     case fpta_dup_first:
         if (unlikely(!cursor->is_filled()))
             return cursor->unladed_state();
-        if (unlikely(fpta_index_is_unique(cursor->index.type)))
+        if (unlikely(fpta_index_is_unique(cursor->index.shove)))
             return FPTA_SUCCESS;
         mdbx_seek_op = MDB_FIRST_DUP;
         mdbx_step_op = MDB_NEXT_DUP;
@@ -275,7 +287,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op)
     case fpta_dup_last:
         if (unlikely(!cursor->is_filled()))
             return cursor->unladed_state();
-        if (unlikely(fpta_index_is_unique(cursor->index.type)))
+        if (unlikely(fpta_index_is_unique(cursor->index.shove)))
             return FPTA_SUCCESS;
         mdbx_seek_op = MDB_LAST_DUP;
         mdbx_step_op = MDB_PREV_DUP;
@@ -284,7 +296,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op)
     case fpta_dup_next:
         if (unlikely(!cursor->is_filled()))
             return cursor->unladed_state();
-        if (unlikely(fpta_index_is_unique(cursor->index.type)))
+        if (unlikely(fpta_index_is_unique(cursor->index.shove)))
             return FPTA_NODATA;
         mdbx_seek_op = MDB_NEXT_DUP;
         mdbx_step_op = MDB_NEXT_DUP;
@@ -293,7 +305,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op)
     case fpta_dup_prev:
         if (unlikely(!cursor->is_filled()))
             return cursor->unladed_state();
-        if (unlikely(fpta_index_is_unique(cursor->index.type)))
+        if (unlikely(fpta_index_is_unique(cursor->index.shove)))
             return FPTA_NODATA;
         mdbx_seek_op = MDB_PREV_DUP;
         mdbx_step_op = MDB_PREV_DUP;
@@ -333,10 +345,10 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
     MDB_val *mdbx_seek_data;
     int rc;
     if (key) {
-        rc = fpta_index_value2key(cursor->index.type, *key, seek_key, false);
+        rc = fpta_index_value2key(cursor->index.shove, *key, seek_key, false);
         mdbx_seek_data = nullptr;
     } else {
-        rc = fpta_index_row2key(cursor->table_id->table.pk,
+        rc = fpta_index_row2key(cursor->index.shove,
                                 cursor->index.column_order, *row, seek_key,
                                 false);
         mdbx_seek_data = const_cast<MDB_val *>(&row->sys);
@@ -406,7 +418,7 @@ int fpta_cursor_dups(fpta_cursor *cursor, size_t *pdups)
         return FPTA_NODATA;
     }
 
-    if (fpta_index_is_unique(cursor->index.type)) {
+    if (fpta_index_is_unique(cursor->index.shove)) {
         *pdups = 1;
         return FPTA_SUCCESS;
     }
@@ -451,7 +463,7 @@ int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key)
     if (unlikely(!cursor->is_filled()))
         return cursor->unladed_state();
 
-    int rc = fpta_index_key2value(cursor->index.type, cursor->current, *key);
+    int rc = fpta_index_key2value(cursor->index.shove, cursor->current, *key);
     return rc;
 }
 
@@ -464,7 +476,7 @@ int fpta_cursor_delete(fpta_cursor *cursor, bool all_dups)
         return cursor->unladed_state();
 
     unsigned flags = 0;
-    if (all_dups && !fpta_index_is_unique(cursor->index.type))
+    if (all_dups && !fpta_index_is_unique(cursor->index.shove))
         flags |= MDB_NODUPDATA;
 
     int rc = mdbx_cursor_del(cursor->mdbx_cursor, flags);
@@ -484,12 +496,12 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row_value)
 
     fpta_key key;
     int rc =
-        fpta_index_row2key(cursor->table_id->table.pk,
-                           cursor->index.column_order, row_value, key, false);
+        fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
+                           row_value, key, false);
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 
-    if (mdbx_cmp(cursor->txn->mdbx_txn, cursor->table_id->table.dbi,
+    if (mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
                  &cursor->current, &key.mdbx) != 0)
         return FPTA_ROW_MISMATCH;
 

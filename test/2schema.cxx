@@ -27,7 +27,7 @@ TEST(Schema, Trivia)
 {
     fpta_column_set def;
     fpta_column_set_init(&def);
-    EXPECT_FALSE(fpta_column_set_validate(&def));
+    EXPECT_NE(FPTA_SUCCESS, fpta_column_set_validate(&def));
 
     EXPECT_EQ(FPTA_EINVAL,
               fpta_column_describe("", fptu_cstr, fpta_primary_unique, &def));
@@ -67,23 +67,23 @@ TEST(Schema, Trivia)
 
     EXPECT_EQ(FPTA_OK, fpta_column_describe("column_a", fptu_cstr,
                                             fpta_primary_unique, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     EXPECT_EQ(EEXIST, fpta_column_describe("column_b", fptu_cstr,
                                            fpta_primary_unique, &def));
     EXPECT_EQ(EEXIST, fpta_column_describe("column_a", fptu_cstr,
                                            fpta_secondary, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("column_b", fptu_cstr,
                                             fpta_secondary, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     EXPECT_EQ(EEXIST, fpta_column_describe("column_b", fptu_fp64,
                                            fpta_secondary, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("column_c", fptu_uint16,
                                             fpta_secondary, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 }
 
 TEST(Schema, Base)
@@ -105,7 +105,7 @@ TEST(Schema, Base)
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("second_fp", fptu_fp64,
                                             fpta_index_none, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     //------------------------------------------------------------------------
     fpta_txn *txn = (fpta_txn *)&txn;
@@ -135,19 +135,19 @@ TEST(Schema, Base)
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table, &col_b));
 
     EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.internal));
-    EXPECT_EQ(fpta_primary_unique, fpta_shove2index(col_pk.internal));
-    EXPECT_EQ(fptu_cstr, col_pk.column.type);
-    EXPECT_EQ(FPTA_OK, col_pk.column.order);
+    EXPECT_EQ(fpta_primary_unique, fpta_name_colindex(&col_pk));
+    EXPECT_EQ(fptu_cstr, fpta_name_coltype(&col_pk));
+    EXPECT_EQ(FPTA_OK, col_pk.column.num);
 
     EXPECT_EQ(fptu_uint64, fpta_shove2type(col_a.internal));
-    EXPECT_EQ(fpta_index_none, fpta_shove2index(col_a.internal));
-    EXPECT_EQ(fptu_uint64, col_a.column.type);
-    EXPECT_EQ(1, col_a.column.order);
+    EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_a));
+    EXPECT_EQ(fptu_uint64, fpta_name_coltype(&col_a));
+    EXPECT_EQ(1, col_a.column.num);
 
     EXPECT_EQ(fptu_fp64, fpta_shove2type(col_b.internal));
-    EXPECT_EQ(fpta_index_none, fpta_shove2index(col_b.internal));
-    EXPECT_EQ(fptu_fp64, col_b.column.type);
-    EXPECT_EQ(2, col_b.column.order);
+    EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_b));
+    EXPECT_EQ(fptu_fp64, fpta_name_coltype(&col_b));
+    EXPECT_EQ(2, col_b.column.num);
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
     txn = nullptr;

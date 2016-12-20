@@ -126,8 +126,8 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
     if (unlikely(column_id == nullptr || value == nullptr))
         return FPTA_EINVAL;
 
-    const fptu_field *field =
-        fptu_lookup_ro(row, column_id->column.order, column_id->column.type);
+    const fptu_field *field = fptu_lookup_ro(row, column_id->column.num,
+                                             fpta_name_coltype(column_id));
     *value = fpta_field2value(field);
     return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
@@ -144,8 +144,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 
     fptu_type coltype = fpta_shove2type(column_id->internal);
 
-    assert(column_id->column.order <= fptu_max_cols);
-    unsigned col = column_id->column.order;
+    assert(column_id->column.num <= fptu_max_cols);
+    unsigned col = column_id->column.num;
 
     switch (coltype) {
     default:
@@ -334,13 +334,13 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 
-    if (unlikely(table_id->table.dbi < 1)) {
-        rc = fpta_table_open(txn, table_id);
+    if (unlikely(table_id->mdbx_dbi < 1)) {
+        rc = fpta_table_open(txn, table_id, nullptr);
         if (unlikely(rc != FPTA_SUCCESS))
             return rc;
     }
 
-    rc = mdbx_put(txn->mdbx_txn, table_id->table.dbi, &key.mdbx,
+    rc = mdbx_put(txn->mdbx_txn, table_id->mdbx_dbi, &key.mdbx,
                   &row_value.sys, flags);
     return rc;
 }
@@ -356,13 +356,13 @@ int fpta_del(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value)
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 
-    if (unlikely(table_id->table.dbi < 1)) {
-        rc = fpta_table_open(txn, table_id);
+    if (unlikely(table_id->mdbx_dbi < 1)) {
+        rc = fpta_table_open(txn, table_id, nullptr);
         if (unlikely(rc != FPTA_SUCCESS))
             return rc;
     }
 
-    rc = mdbx_del(txn->mdbx_txn, table_id->table.dbi, &key.mdbx,
+    rc = mdbx_del(txn->mdbx_txn, table_id->mdbx_dbi, &key.mdbx,
                   &row_value.sys);
     return rc;
 }

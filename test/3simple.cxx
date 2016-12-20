@@ -44,7 +44,7 @@ TEST(Simple, Base)
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("b_fp", fptu_fp64, fpta_index_none, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // запускам транзакцию и создаем таблицу с обозначенным набором колонок
     fpta_txn *txn = (fpta_txn *)&txn;

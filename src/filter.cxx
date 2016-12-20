@@ -263,13 +263,13 @@ tail_recursion:
 
     case fpta_node_fn:
         return fn->node_fn.predicate(
-            fptu_lookup_ro(tuple, fn->node_fn.column_id->column.order,
+            fptu_lookup_ro(tuple, fn->node_fn.column_id->column.num,
                            fpta_id2type(fn->node_fn.column_id)),
             fn->node_fn.column_id, fn->node_fn.context, fn->node_fn.arg);
 
     default:
         int cmp_bits = fpta_filter_cmp(
-            fptu_lookup_ro(tuple, fn->node_cmp.left_id->column.order,
+            fptu_lookup_ro(tuple, fn->node_cmp.left_id->column.num,
                            fpta_id2type(fn->node_cmp.left_id)),
             fn->node_cmp.right_value);
 

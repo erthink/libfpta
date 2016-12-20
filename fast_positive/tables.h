@@ -97,7 +97,7 @@ enum fpta_bits {
     /* Максимальная длина имени/идентификатора */
     fpta_name_len_max = 42,
 
-    /* Далее внутренние технические делали. */
+    /* Далее внутренние технические детали. */
     fpta_id_bits = 64,
 
     fpta_column_typeid_bits = fptu_typeid_bits,
@@ -109,10 +109,12 @@ enum fpta_bits {
     fpta_column_index_mask = ((1 << fpta_column_index_bits) - 1)
                              << fpta_column_index_shift,
 
-    fpta_column_flag_bits = 4,
     fpta_name_hash_bits =
         fpta_id_bits - fpta_column_typeid_bits - fpta_column_index_bits,
-    fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits
+    fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits,
+
+    /* Максимальное кол-во индексов для одной таблице (порядка 500) */
+    fpta_max_indexes = (1 << (fpta_id_bits - fpta_name_hash_bits))
 };
 
 /* Экземпляр БД.
@@ -342,6 +344,7 @@ enum fpta_error {
     FPTA_INDEX_CORRUPTED,
     FPTA_ETXNOUT /* Transaction should be restared */,
     FPTA_ECURSOR /* Cursor not positioned */,
+    FPTA_TOOMANY /* Too many columns or indexes */,
 
     FPTA_EINVAL = EINVAL,
     FPTA_ENOFIELD = ENOENT,
@@ -607,7 +610,7 @@ int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
  *   а от последних к первым. Не следует пусть с обратным порядком сортировки
  *   или упорядочения величин.
  */
-enum fpta_index_type {
+typedef enum fpta_index_type {
     /* служебные флажки/битики для комбинаций */
     fpta_index_funique = 1 << fpta_column_index_shift,
     fpta_index_fordered = 2 << fpta_column_index_shift,
@@ -679,7 +682,7 @@ enum fpta_index_type {
 
     /* базовый вариант для вторичных индексов */
     fpta_secondary = fpta_secondary_withdups,
-};
+} fpta_index_type;
 
 /* Набор колонок для создания таблицы */
 typedef struct fpta_column_set {
@@ -784,21 +787,32 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
 typedef struct fpta_name {
     size_t version; /* версия схемы для кэширования. */
     uint64_t internal; /* хэш имени и внутренние данные. */
+    unsigned mdbx_dbi; /* дескриптор движка */
     union {
         /* для таблицы */
         struct {
-            unsigned dbi;
-            unsigned pk;
+            unsigned pk; /* вид индекса и тип данных для primary key */
         } table;
 
         /* для колонки */
         struct {
-            int order;           /* номер поля в кортеже. */
-            enum fptu_type type; /* тип поля в кортеже. */
+            int num; /* номер поля в кортеже. */
         } column;
     };
     void *handle; /* внутренний дескриптор. */
 } fpta_name;
+
+/* Возвращает тип данных колонки из дескриптора имени */
+static __inline fptu_type fpta_name_coltype(const fpta_name *column_id)
+{
+    return (fptu_type)(column_id->internal & fpta_column_typeid_mask);
+}
+
+/* Возвращает тип индекса колонки из дескриптора имени */
+static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id)
+{
+    return (fpta_index_type)(column_id->internal & fpta_column_index_mask);
+}
 
 /* Получение и актуализация идентификаторов таблицы и колонки.
  *

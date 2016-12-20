@@ -53,6 +53,31 @@ static constexpr unsigned NNN = 65521; // 1-2 минуты
 
 //----------------------------------------------------------------------------
 
+bool is_valid4pk(fptu_type type, fpta_index_type index)
+{
+    if (index == fpta_index_none || fpta_index_is_secondary(index))
+        return false;
+
+    if (type <= fptu_null || type >= fptu_farray)
+        return false;
+
+    if (fpta_index_is_reverse(index) && type < fptu_96)
+        return false;
+
+    return true;
+}
+
+bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor)
+{
+    if (index == fpta_index_none)
+        return false;
+
+    if (fpta_cursor_is_ordered(cursor) && !fpta_index_is_ordered(index))
+        return false;
+
+    return true;
+}
+
 template <typename container>
 bool is_properly_ordered(const container &probe, bool descending = false)
 {

@@ -62,31 +62,6 @@ TEST(Cursor, Invalid)
     // TODO
 }
 
-bool is_valid4pk(fptu_type type, fpta_index_type index)
-{
-    if (index == fpta_index_none || fpta_index_is_secondary(index))
-        return false;
-
-    if (type <= fptu_null || type >= fptu_farray)
-        return false;
-
-    if (fpta_index_is_reverse(index) && type < fptu_96)
-        return false;
-
-    return true;
-}
-
-bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor)
-{
-    if (index == fpta_index_none)
-        return false;
-
-    if (fpta_cursor_is_ordered(cursor) && !fpta_index_is_ordered(index))
-        return false;
-
-    return true;
-}
-
 /* карманный бильярд для закатки keygen-шаблонов в один не-шаблонный */
 class any_keygen
 {
@@ -280,19 +255,18 @@ class CursorPrimary
         SCOPED_TRACE("key: " + std::to_string(key.type) + ", length " +
                      std::to_string(key.binary_length));
 
-        auto tuple_order =
-            fptu_get_sint(tuple, col_order.column.order, &error);
+        auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
         ASSERT_EQ(FPTU_OK, error);
         ASSERT_EQ(expected_order, tuple_order);
 
         auto tuple_checksum =
-            fptu_get_uint(tuple, col_t1ha.column.order, &error);
+            fptu_get_uint(tuple, col_t1ha.column.num, &error);
         ASSERT_EQ(FPTU_OK, error);
         auto checksum = order_checksum(tuple_order, type, index).uint;
         ASSERT_EQ(checksum, tuple_checksum);
 
         auto tuple_dup_id =
-            fptu_get_uint(tuple, col_dup_id.column.order, &error);
+            fptu_get_uint(tuple, col_dup_id.column.num, &error);
         ASSERT_EQ(FPTU_OK, error);
         if (fpta_index_is_unique(index))
             ASSERT_EQ(42, tuple_dup_id);
@@ -396,7 +370,7 @@ class CursorPrimary
                                                         type, index, &def));
             EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
                                                     fpta_index_none, &def));
-            ASSERT_FALSE(fpta_column_set_validate(&def));
+            ASSERT_NE(FPTA_OK, fpta_column_set_validate(&def));
             return;
         }
 
@@ -408,7 +382,7 @@ class CursorPrimary
                                                 fpta_index_none, &def));
         EXPECT_EQ(FPTA_OK, fpta_column_describe("t1ha", fptu_uint64,
                                                 fpta_index_none, &def));
-        ASSERT_TRUE(fpta_column_set_validate(&def));
+        ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
         // чистим
         ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
@@ -494,10 +468,10 @@ class CursorPrimary
 
             int error;
             auto tuple_order =
-                fptu_get_sint(tuple, col_order.column.order, &error);
+                fptu_get_sint(tuple, col_order.column.num, &error);
             ASSERT_EQ(FPTU_OK, error);
             auto tuple_checksum =
-                fptu_get_uint(tuple, col_t1ha.column.order, &error);
+                fptu_get_uint(tuple, col_t1ha.column.num, &error);
             ASSERT_EQ(FPTU_OK, error);
 
             auto checksum = order_checksum(tuple_order, type, index).uint;

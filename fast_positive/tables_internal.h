@@ -43,14 +43,14 @@ void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask = 0);
 
 //----------------------------------------------------------------------------
 
-typedef struct fpta_table_schema {
+struct fpta_table_schema {
     uint64_t checksum;
     uint32_t signature;
     uint32_t count;
     uint64_t version;
     uint64_t shove;
     uint64_t columns[fpta_max_cols];
-} fpta_table_schema;
+};
 
 static __inline size_t fpta_table_schema_size(size_t cols)
 {
@@ -90,7 +90,7 @@ struct fpta_txn {
     uint64_t data_version;
 };
 
-typedef struct fpta_key {
+struct fpta_key {
     fpta_key()
     {
 #ifndef NDEBUG
@@ -117,7 +117,7 @@ typedef struct fpta_key {
             uint64_t tail[fpta_max_keylen / sizeof(uint64_t)];
         } longkey_lsb;
     } place;
-} fpta_key;
+};
 
 struct fpta_cursor {
     fpta_cursor(const fpta_cursor &) = delete;
@@ -166,9 +166,9 @@ struct fpta_cursor {
 
     fpta_name *table_id;
     struct {
-        unsigned type;
+        unsigned shove;
         unsigned column_order;
-        unsigned dbi;
+        unsigned mdbx_dbi;
     } index;
 
     fpta_value range_from_value;
@@ -247,16 +247,7 @@ int fpta_index_row2key(uint64_t shove, unsigned column, const fptu_ro &row,
 //----------------------------------------------------------------------------
 
 uint64_t fpta_txn_version(fpta_txn *txn);
-
-int fpta_schema_read(fpta_txn *txn, uint64_t shove,
-                     const fpta_table_schema **def);
-
-int fpta_table_open(fpta_txn *txn, uint64_t shove, unsigned flags,
-                    MDB_dbi *handle);
-int fpta_table_open(fpta_txn *txn, fpta_name *table_id);
-
-int fpta_schema_dup(const MDB_val data, const fpta_table_schema **def);
-void fpta_schema_free(fpta_table_schema *def);
+int fpta_table_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id);
 
 //----------------------------------------------------------------------------
 
@@ -269,7 +260,7 @@ fptu_lge fpta_filter_cmp(const fptu_field *pf, const fpta_value &right);
 bool fpta_filter_validate(const fpta_filter *filter);
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
 bool fpta_name_validate(const char *name);
-bool fpta_column_set_validate(fpta_column_set *column_set);
+int fpta_column_set_validate(fpta_column_set *column_set);
 bool fpta_schema_validate(const MDB_val def);
 
 static __inline bool fpta_db_validate(fpta_db *db)

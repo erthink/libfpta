@@ -210,7 +210,7 @@ TEST(Data, UpsertColumn)
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_EINVAL, fpta_column_describe("farray", fptu_farray,
                                                 fpta_index_none, &def));
-    EXPECT_TRUE(fpta_column_set_validate(&def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // создаем таблицу
     fpta_txn *txn = (fpta_txn *)&txn;
@@ -513,37 +513,37 @@ TEST(Data, UpsertColumn)
     // теперь сравниваем значения всех колонок
     int error = -1;
     EXPECT_EQ(1354824703,
-              fptu_get_uint32(row, col_uint32.column.order, &error));
+              fptu_get_uint32(row, col_uint32.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
-    EXPECT_EQ(-8782211, fptu_get_int32(row, col_int32.column.order, &error));
+    EXPECT_EQ(-8782211, fptu_get_int32(row, col_int32.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
     EXPECT_EQ((float)-2.7182818284590452354,
-              fptu_get_fp32(row, col_fp32.column.order, &error));
+              fptu_get_fp32(row, col_fp32.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
 
     EXPECT_EQ(15047220096467327,
-              fptu_get_uint64(row, col_uint64.column.order, &error));
+              fptu_get_uint64(row, col_uint64.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
     EXPECT_EQ(-60585001468255361,
-              fptu_get_int64(row, col_int64.column.order, &error));
+              fptu_get_int64(row, col_int64.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
     EXPECT_EQ(3.14159265358979323846,
-              fptu_get_fp64(row, col_fp64.column.order, &error));
+              fptu_get_fp64(row, col_fp64.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
 
-    EXPECT_EQ(0x8001, fptu_get_uint16(row, col_uint16.column.order, &error));
+    EXPECT_EQ(0x8001, fptu_get_uint16(row, col_uint16.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
     EXPECT_STREQ("xyz-string",
-                 fptu_get_cstr(row, col_str.column.order, &error));
+                 fptu_get_cstr(row, col_str.column.num, &error));
     EXPECT_EQ(FPTU_OK, error);
 
-    EXPECT_EQ(fptu_eq, fptu_cmp_opaque(row, col_opaque.column.order, pattern,
+    EXPECT_EQ(fptu_eq, fptu_cmp_opaque(row, col_opaque.column.num, pattern,
                                        sizeof(pattern)));
-    EXPECT_EQ(fptu_eq, fptu_cmp_96(row, col_96.column.order, _96));
-    EXPECT_EQ(fptu_eq, fptu_cmp_128(row, col_128.column.order, _128));
-    EXPECT_EQ(fptu_eq, fptu_cmp_160(row, col_160.column.order, _160));
-    EXPECT_EQ(fptu_eq, fptu_cmp_192(row, col_192.column.order, _192));
-    EXPECT_EQ(fptu_eq, fptu_cmp_256(row, col_256.column.order, _256));
+    EXPECT_EQ(fptu_eq, fptu_cmp_96(row, col_96.column.num, _96));
+    EXPECT_EQ(fptu_eq, fptu_cmp_128(row, col_128.column.num, _128));
+    EXPECT_EQ(fptu_eq, fptu_cmp_160(row, col_160.column.num, _160));
+    EXPECT_EQ(fptu_eq, fptu_cmp_192(row, col_192.column.num, _192));
+    EXPECT_EQ(fptu_eq, fptu_cmp_256(row, col_256.column.num, _256));
 
     // TODO: fptu_nested
     // TODO: fptu_farray

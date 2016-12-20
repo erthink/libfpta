@@ -310,7 +310,7 @@ unsigned fpta_index_shove2dbiflags(unsigned shove)
     else if (fpta_index_is_reverse(index))
         dbi_flags |= MDB_REVERSEKEY;
 
-    return dbi_flags;
+    return dbi_flags | MDB_CREATE;
 }
 
 bool fpta_index_ordered_is_compat(fptu_type data_type,
