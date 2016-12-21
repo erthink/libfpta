@@ -179,7 +179,7 @@ TEST(Simple, Base)
     pt2 = nullptr;
 
     // удяляем текущую запись через курсор
-    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor, true));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
     // считаем сколько записей теперь, должа быть одна
     EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
     EXPECT_EQ(1, dups);
@@ -191,12 +191,13 @@ TEST(Simple, Base)
     // переходим к первой записи
     EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
     // еще раз удаляем запись
-    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor, true));
-// теперь должно быть пусто
+    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
+    // теперь должно быть пусто
     EXPECT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor, &dups));
     EXPECT_EQ(0, dups);
 #else
+    // курсор должен стать неустановленным
     EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
     EXPECT_EQ(FPTA_DEADBEEF, dups);
 #endif

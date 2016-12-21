@@ -468,7 +468,7 @@ int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key)
     return rc;
 }
 
-int fpta_cursor_delete(fpta_cursor *cursor, bool all_dups)
+int fpta_cursor_delete(fpta_cursor *cursor)
 {
     if (unlikely(!fpta_cursor_validate(cursor, fpta_write)))
         return FPTA_EINVAL;
@@ -476,11 +476,7 @@ int fpta_cursor_delete(fpta_cursor *cursor, bool all_dups)
     if (unlikely(!cursor->is_filled()))
         return cursor->unladed_state();
 
-    unsigned flags = 0;
-    if (all_dups && !fpta_index_is_unique(cursor->index.shove))
-        flags |= MDB_NODUPDATA;
-
-    int rc = mdbx_cursor_del(cursor->mdbx_cursor, flags);
+    int rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
     if (rc == MDB_SUCCESS && mdbx_cursor_eof(cursor->mdbx_cursor) == 1)
         cursor->set_eof(fpta_cursor::after_last);
 

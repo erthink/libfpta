@@ -1185,7 +1185,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row_value);
  * За курсором должна быть текущая запись, иначе будет возвращена ошибка.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_delete(fpta_cursor *cursor, bool all_dups);
+int fpta_cursor_delete(fpta_cursor *cursor);
 
 /* Конвертирует поле кортежа в более унифицированное значение. */
 fpta_value fpta_field2value(const fptu_field *pf);
