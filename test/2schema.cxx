@@ -134,17 +134,17 @@ TEST(Schema, Base)
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_a));
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_b));
 
-    EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.internal));
+    EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.shove));
     EXPECT_EQ(fpta_primary_unique, fpta_name_colindex(&col_pk));
     EXPECT_EQ(fptu_cstr, fpta_name_coltype(&col_pk));
     EXPECT_EQ(FPTA_OK, col_pk.column.num);
 
-    EXPECT_EQ(fptu_uint64, fpta_shove2type(col_a.internal));
+    EXPECT_EQ(fptu_uint64, fpta_shove2type(col_a.shove));
     EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_a));
     EXPECT_EQ(fptu_uint64, fpta_name_coltype(&col_a));
     EXPECT_EQ(1, col_a.column.num);
 
-    EXPECT_EQ(fptu_fp64, fpta_shove2type(col_b.internal));
+    EXPECT_EQ(fptu_fp64, fpta_shove2type(col_b.shove));
     EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_b));
     EXPECT_EQ(fptu_fp64, fpta_name_coltype(&col_b));
     EXPECT_EQ(2, col_b.column.num);

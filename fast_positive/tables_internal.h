@@ -223,12 +223,12 @@ static __inline fpta_index_type fpta_shove2index(unsigned shove)
 
 static __inline fptu_type fpta_id2type(const fpta_name *id)
 {
-    return fpta_shove2type(id->internal);
+    return fpta_shove2type(id->shove);
 }
 
 static __inline fpta_index_type fpta_id2index(const fpta_name *id)
 {
-    return fpta_shove2index(id->internal);
+    return fpta_shove2index(id->shove);
 }
 
 MDB_cmp_func *fpta_index_shove2comparator(unsigned shove);
@@ -295,14 +295,14 @@ static __inline bool fpta_id_validate(const fpta_name *id,
     default:
         return false;
     case fpta_table:
-        if (unlikely(fpta_shove2index(id->internal) !=
+        if (unlikely(fpta_shove2index(id->shove) !=
                      (fpta_index_type)fpta_flag_table))
             return false;
         // TODO: ?
         return true;
 
     case fpta_column:
-        if (unlikely(fpta_shove2index(id->internal) ==
+        if (unlikely(fpta_shove2index(id->shove) ==
                      (fpta_index_type)fpta_flag_table))
             return false;
         // TODO: ?

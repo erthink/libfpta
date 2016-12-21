@@ -730,7 +730,7 @@ typedef struct fpta_column_set {
     /* Счетчик заполненных описателей. */
     unsigned count;
     /* Упакованное внутреннее описание колонок. */
-    uint64_t internal[fpta_max_cols];
+    uint64_t shoves[fpta_max_cols];
 } fpta_column_set;
 
 /* Вспомогательная функция, проверяет корректность имени */
@@ -828,35 +828,39 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  *    как правило в явном ручном вызове необходимости нет.
  */
 
+/* Внутренний тип */
+struct fpta_table_schema;
+
 /* Операционный идентификатор таблицы или колонки. */
 typedef struct fpta_name {
     size_t version; /* версия схемы для кэширования. */
-    uint64_t internal; /* хэш имени и внутренние данные. */
-    unsigned mdbx_dbi; /* дескриптор движка */
+    uint64_t shove; /* хэш имени и внутренние данные. */
     union {
         /* для таблицы */
         struct {
+            struct fpta_table_schema *def;
             unsigned pk; /* вид индекса и тип данных для primary key */
         } table;
 
         /* для колонки */
         struct {
+            struct fpta_name *table;
             int num; /* номер поля в кортеже. */
         } column;
     };
-    void *handle; /* внутренний дескриптор. */
+    unsigned mdbx_dbi; /* дескриптор движка */
 } fpta_name;
 
 /* Возвращает тип данных колонки из дескриптора имени */
 static __inline fptu_type fpta_name_coltype(const fpta_name *column_id)
 {
-    return (fptu_type)(column_id->internal & fpta_column_typeid_mask);
+    return (fptu_type)(column_id->shove & fpta_column_typeid_mask);
 }
 
 /* Возвращает тип индекса колонки из дескриптора имени */
 static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id)
 {
-    return (fpta_index_type)(column_id->internal & fpta_column_index_mask);
+    return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
 }
 
 /* Получение и актуализация идентификаторов таблицы и колонки.

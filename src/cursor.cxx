@@ -66,20 +66,20 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
     if (unlikely(!fpta_filter_validate(filter)))
         return FPTA_EINVAL;
 
-    fpta_name *table_id = (fpta_name *)column_id->handle;
+    fpta_name *table_id = column_id->column.table;
     int rc = fpta_name_refresh_couple(txn, table_id, column_id);
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 
-    fpta_index_type index = fpta_shove2index(column_id->internal);
+    fpta_index_type index = fpta_shove2index(column_id->shove);
     if (unlikely(index == fpta_index_none))
         return FPTA_EINVAL;
 
     if (!fpta_index_is_ordered(index) && fpta_cursor_is_ordered(op))
         return FPTA_EINVAL;
 
-    if (unlikely(!fpta_index_is_compat(column_id->internal, range_from) ||
-                 !fpta_index_is_compat(column_id->internal, range_to)))
+    if (unlikely(!fpta_index_is_compat(column_id->shove, range_from) ||
+                 !fpta_index_is_compat(column_id->shove, range_to)))
         return FPTA_ETYPE;
 
     if (unlikely(range_from.type == fpta_end || range_to.type == fpta_begin))
@@ -96,7 +96,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
             return rc;
     }
 
-    assert(column_id->handle == table_id);
+    assert(column_id->column.table == table_id);
     if (fpta_index_is_primary(index)) {
         assert(column_id->column.num == 0);
         column_id->mdbx_dbi = table_id->mdbx_dbi;
@@ -117,8 +117,8 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
     cursor->txn = txn;
     cursor->filter = filter;
     cursor->table_id = table_id;
-    cursor->index.shove = column_id->internal &
-                          (fpta_column_typeid_mask | fpta_column_index_mask);
+    cursor->index.shove =
+        column_id->shove & (fpta_column_typeid_mask | fpta_column_index_mask);
     cursor->index.column_order = column_id->column.num;
     cursor->index.mdbx_dbi = column_id->mdbx_dbi;
 

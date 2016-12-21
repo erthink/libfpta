@@ -138,7 +138,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     if (unlikely(!pt || !fpta_id_validate(column_id, fpta_column)))
         return FPTA_EINVAL;
 
-    fptu_type coltype = fpta_shove2type(column_id->internal);
+    fptu_type coltype = fpta_shove2type(column_id->shove);
     assert(column_id->column.num <= fptu_max_cols);
     unsigned col = column_id->column.num;
 
