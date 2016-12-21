@@ -244,10 +244,20 @@ int fpta_index_key2value(uint64_t shove, const MDB_val &mdbx_key,
 int fpta_index_row2key(uint64_t shove, unsigned column, const fptu_ro &row,
                        fpta_key &key, bool copy = false);
 
+int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
+                          fpta_key &pk_key, const fptu_ro &row_old,
+                          const fptu_ro &row_new);
+
+int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id,
+                          fpta_key &pk_key, const fptu_ro &row_old);
+
 //----------------------------------------------------------------------------
 
 uint64_t fpta_txn_version(fpta_txn *txn);
-int fpta_table_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id);
+int fpta_open_column(fpta_txn *txn, fpta_name *column_id);
+int fpta_open_table(fpta_txn *txn, fpta_name *table_id);
+int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
+                          MDB_dbi *dbi_array);
 
 //----------------------------------------------------------------------------
 
@@ -262,6 +272,13 @@ bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
 bool fpta_name_validate(const char *name);
 int fpta_column_set_validate(fpta_column_set *column_set);
 bool fpta_schema_validate(const MDB_val def);
+
+static __inline bool fpta_table_has_secondary(const fpta_name *table_id)
+{
+    return table_id->table.def->count > 1 &&
+           fpta_index_none !=
+               fpta_shove2index(table_id->table.def->columns[1]);
+}
 
 static __inline bool fpta_db_validate(fpta_db *db)
 {

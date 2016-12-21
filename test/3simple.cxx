@@ -39,7 +39,7 @@ TEST(Simple, Base)
     fpta_column_set_init(&def);
 
     EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
-                                            fpta_primary_unique, &def));
+                                            fpta_primary, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("a_uint", fptu_uint64,
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK,

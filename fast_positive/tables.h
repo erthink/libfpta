@@ -1177,7 +1177,7 @@ typedef enum fpta_put_options {
  *    перемещена "вперед" в пределах текущей выборки.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row_value);
+int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row);
 
 /* Удаляет из таблицы строку соответствующую текущей позиции курсора.
  * После удаления курсор перемещается к следующей записи.

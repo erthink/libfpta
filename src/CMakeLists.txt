@@ -7,6 +7,7 @@ add_library(fpta STATIC
    schema.cxx
    index.cxx
    data.cxx
+   secondary.cxx
    misc.cxx
 )
 
