@@ -19,6 +19,12 @@
 
 #include "fast_positive/tables_internal.h"
 
+static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b)
+{
+    return a.iov_len == b.iov_len &&
+           memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
+}
+
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level)
 {
     if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr ||
@@ -73,10 +79,10 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
 
     fpta_index_type index = fpta_shove2index(column_id->shove);
     if (unlikely(index == fpta_index_none))
-        return FPTA_EINVAL;
+        return FPTA_NO_INDEX;
 
     if (!fpta_index_is_ordered(index) && fpta_cursor_is_ordered(op))
-        return FPTA_EINVAL;
+        return FPTA_NO_INDEX;
 
     if (unlikely(!fpta_index_is_compat(column_id->shove, range_from) ||
                  !fpta_index_is_compat(column_id->shove, range_to)))
@@ -168,6 +174,17 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
             mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
                      &cursor->range_to_key.mdbx, &cursor->current) >= 0)
             goto eof;
+
+        if (!cursor->filter)
+            return FPTA_SUCCESS;
+
+        if (fpta_index_is_secondary(cursor->index.shove)) {
+            MDB_val pk_key = mdbx_data.sys;
+            rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                          &pk_key, &mdbx_data.sys);
+            if (unlikely(rc != MDB_SUCCESS))
+                return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+        }
 
         if (fpta_filter_match(cursor->filter, mdbx_data))
             return FPTA_SUCCESS;
@@ -327,6 +344,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
 
     fpta_key seek_key;
     MDB_val *mdbx_seek_data;
+    fpta_key pk_key;
     int rc;
     if (key) {
         rc = fpta_index_value2key(cursor->index.shove, *key, seek_key, false);
@@ -336,6 +354,14 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
                                 cursor->index.column_order, *row, seek_key,
                                 false);
         mdbx_seek_data = const_cast<MDB_val *>(&row->sys);
+
+        if (fpta_index_is_secondary(cursor->index.shove)) {
+            if (unlikely(rc != FPTA_SUCCESS))
+                return rc;
+            rc = fpta_index_row2key(cursor->table_id->table.pk, 0, *row,
+                                    pk_key, false);
+            mdbx_seek_data = &pk_key.mdbx;
+        }
     }
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
@@ -432,9 +458,19 @@ int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *row)
     if (unlikely(!cursor->is_filled()))
         return cursor->unladed_state();
 
-    int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &row->sys,
+    if (fpta_index_is_primary(cursor->index.shove))
+        return mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                               &row->sys, MDB_GET_CURRENT);
+
+    MDB_val pk_key;
+    int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
                              MDB_GET_CURRENT);
-    return rc;
+    if (unlikely(rc != MDB_SUCCESS))
+        return rc;
+
+    rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi, &pk_key,
+                  &row->sys);
+    return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 }
 
 int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key)
@@ -459,21 +495,45 @@ int fpta_cursor_delete(fpta_cursor *cursor)
     if (unlikely(!cursor->is_filled()))
         return cursor->unladed_state();
 
-    fptu_ro row;
-    fpta_key key;
-    if (fpta_table_has_secondary(cursor->table_id)) {
-        int rc = mdbx_cursor_get(cursor->mdbx_cursor, &key.mdbx, &row.sys,
-                                 MDB_GET_CURRENT);
+    if (!fpta_table_has_secondary(cursor->table_id)) {
+        int rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
+        if (unlikely(rc != FPTA_SUCCESS))
+            return rc;
+    } else {
+        MDB_val pk_key;
+        int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                                 &pk_key, MDB_GET_CURRENT);
         if (unlikely(rc != MDB_SUCCESS))
             return rc;
-    }
 
-    int rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
-    if (unlikely(rc != MDB_SUCCESS))
-        return rc;
+        fptu_ro old;
+#ifdef NDEBUG
+        const constexpr size_t likely_enough = 64 * 42;
+#else
+        const size_t likely_enough = (time(nullptr) & 1) ? 11 : 64 * 42;
+#endif /* NDEBUG */
+        void *buffer = alloca(likely_enough);
+        old.sys.iov_base = buffer;
+        old.sys.iov_len = likely_enough;
 
-    if (fpta_table_has_secondary(cursor->table_id)) {
-        rc = fpta_secondary_remove(cursor->txn, cursor->table_id, key, row);
+        rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                          &pk_key, nullptr, &old.sys, MDB_CURRENT);
+        if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
+            old.sys.iov_len > likely_enough) {
+            old.sys.iov_base = alloca(old.sys.iov_len);
+            rc = mdbx_replace(cursor->txn->mdbx_txn,
+                              cursor->table_id->mdbx_dbi, &pk_key, nullptr,
+                              &old.sys, MDB_CURRENT);
+        }
+        if (unlikely(rc != MDB_SUCCESS))
+            return rc;
+
+        rc = fpta_secondary_remove(cursor->txn, cursor->table_id, pk_key, old,
+                                   cursor->index.column_order);
+        if (unlikely(rc != MDB_SUCCESS))
+            return fpta_inconsistent_abort(cursor->txn, rc);
+
+        rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
         if (unlikely(rc != MDB_SUCCESS))
             return fpta_inconsistent_abort(cursor->txn, rc);
     }
@@ -491,35 +551,65 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row)
     if (unlikely(!cursor->is_filled()))
         return cursor->unladed_state();
 
-    fpta_key key;
-    int rc = fpta_index_row2key(cursor->index.shove,
-                                cursor->index.column_order, row, key, false);
+    fpta_key column_key;
+    int rc =
+        fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
+                           row, column_key, false);
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 
-    if (mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->current, &key.mdbx) != 0)
+    if (!fpta_is_same(cursor->current, column_key.mdbx))
         return FPTA_ROW_MISMATCH;
 
-    fptu_ro old;
-    if (fpta_table_has_secondary(cursor->table_id)) {
-        rc = mdbx_cursor_get(cursor->mdbx_cursor, &key.mdbx, &old.sys,
-                             MDB_GET_CURRENT);
-        if (unlikely(rc != MDB_SUCCESS))
-            return rc;
-    }
+    if (!fpta_table_has_secondary(cursor->table_id))
+        return mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
+                               &row.sys, MDB_CURRENT | MDB_NODUPDATA);
 
-    rc = mdbx_cursor_put(cursor->mdbx_cursor, &key.mdbx, &row.sys,
-                         MDB_CURRENT | MDB_NODUPDATA);
+    fptu_ro old;
+    MDB_val old_pk_key;
+    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &old_pk_key,
+                         MDB_GET_CURRENT);
     if (unlikely(rc != MDB_SUCCESS))
         return rc;
 
-    if (fpta_table_has_secondary(cursor->table_id)) {
-        rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, key, old,
-                                   row);
+    rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                  &old_pk_key, &old.sys);
+    if (unlikely(rc != MDB_SUCCESS))
+        return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+
+    fpta_key new_pk_key;
+    rc = fpta_index_row2key(cursor->table_id->table.pk, 0, row, new_pk_key,
+                            false);
+    if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
+
+    rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, old_pk_key, old,
+                               new_pk_key.mdbx, row,
+                               cursor->index.column_order);
+    if (unlikely(rc != MDB_SUCCESS))
+        return fpta_inconsistent_abort(cursor->txn, rc);
+
+    const bool pk_changed = fpta_is_same(old_pk_key, new_pk_key.mdbx);
+    if (pk_changed) {
+        rc = mdbx_del(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                      &old_pk_key, nullptr);
         if (unlikely(rc != MDB_SUCCESS))
             return fpta_inconsistent_abort(cursor->txn, rc);
+        rc = mdbx_put(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                      &new_pk_key.mdbx, &row.sys,
+                      MDB_CURRENT | MDB_NODUPDATA | MDB_NOOVERWRITE);
+    } else {
+        rc =
+            mdbx_put(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                     &new_pk_key.mdbx, &row.sys, MDB_CURRENT | MDB_NODUPDATA);
     }
+    if (unlikely(rc != MDB_SUCCESS))
+        return fpta_inconsistent_abort(cursor->txn, rc);
+
+    rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
+                         &new_pk_key.mdbx, MDB_CURRENT | MDB_NODUPDATA);
+    if (unlikely(rc != MDB_SUCCESS))
+        return fpta_inconsistent_abort(cursor->txn, rc);
 
     return FPTA_SUCCESS;
 }

@@ -324,8 +324,8 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
         break;
     }
 
-    fpta_key key;
-    rc = fpta_index_row2key(table_id->table.pk, 0, row, key, false);
+    fpta_key pk_key;
+    rc = fpta_index_row2key(table_id->table.pk, 0, row, pk_key, false);
     if (unlikely(rc != FPTA_SUCCESS))
         return rc;
 
@@ -335,36 +335,35 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
             return rc;
     }
 
-    if (!fpta_table_has_secondary(table_id)) {
-        rc = mdbx_put(txn->mdbx_txn, table_id->mdbx_dbi, &key.mdbx, &row.sys,
-                      flags);
-        if (unlikely(rc != MDB_SUCCESS))
-            return rc;
-    } else {
-        fptu_ro old;
-#ifdef NDEBUG
-        const constexpr size_t likely_enough = 64 * 42;
-#else
-        const size_t likely_enough = (time(nullptr) & 1) ? 11 : 64 * 42;
-#endif /* NDEBUG */
-        void *buffer = alloca(likely_enough);
-        old.sys.iov_base = buffer;
-        old.sys.iov_len = likely_enough;
-        rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &key.mdbx,
-                          &row.sys, &old.sys, flags);
-        if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
-            old.sys.iov_len > likely_enough) {
-            old.sys.iov_base = alloca(old.sys.iov_len);
-            rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &key.mdbx,
-                              &row.sys, &old.sys, flags);
-        }
-        if (unlikely(rc != MDB_SUCCESS))
-            return rc;
+    if (!fpta_table_has_secondary(table_id))
+        return mdbx_put(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
+                        &row.sys, flags);
 
-        rc = fpta_secondary_upsert(txn, table_id, key, old, row);
-        if (unlikely(rc != MDB_SUCCESS))
-            return fpta_inconsistent_abort(txn, rc);
+    fptu_ro old;
+#ifdef NDEBUG
+    const constexpr size_t likely_enough = 64 * 42;
+#else
+    const size_t likely_enough = (time(nullptr) & 1) ? 11 : 64 * 42;
+#endif /* NDEBUG */
+    void *buffer = alloca(likely_enough);
+    old.sys.iov_base = buffer;
+    old.sys.iov_len = likely_enough;
+
+    rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
+                      &row.sys, &old.sys, flags);
+    if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
+        old.sys.iov_len > likely_enough) {
+        old.sys.iov_base = alloca(old.sys.iov_len);
+        rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
+                          &row.sys, &old.sys, flags);
     }
+    if (unlikely(rc != MDB_SUCCESS))
+        return rc;
+
+    rc = fpta_secondary_upsert(txn, table_id, pk_key.mdbx, old, pk_key.mdbx,
+                               row, 0);
+    if (unlikely(rc != MDB_SUCCESS))
+        return fpta_inconsistent_abort(txn, rc);
 
     return FPTA_SUCCESS;
 }
@@ -391,7 +390,7 @@ int fpta_del(fpta_txn *txn, fpta_name *table_id, fptu_ro row)
         return rc;
 
     if (fpta_table_has_secondary(table_id)) {
-        rc = fpta_secondary_remove(txn, table_id, key, row);
+        rc = fpta_secondary_remove(txn, table_id, key.mdbx, row, 0);
         if (unlikely(rc != MDB_SUCCESS))
             return fpta_inconsistent_abort(txn, rc);
     }

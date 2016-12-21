@@ -689,8 +689,6 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
         if (index == fpta_index_none)
             break;
         assert(i < fpta_max_indexes);
-        if (fpta_index_is_secondary(index))
-            return FPTA_ENOIMP;
         int err = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), &dbi[i]);
         if (err != MDB_NOTFOUND)
             return EEXIST;

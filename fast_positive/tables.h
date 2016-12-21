@@ -370,6 +370,7 @@ enum fpta_error {
     FPTA_DATALEN_MISMATCH,
     FPTA_ROW_MISMATCH /* Row schema is mismatch */,
     FPTA_INDEX_CORRUPTED,
+    FPTA_NO_INDEX,
     FPTA_ETXNOUT /* Transaction should be restared */,
     FPTA_ECURSOR /* Cursor not positioned */,
     FPTA_TOOMANY /* Too many columns or indexes */,

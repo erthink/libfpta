@@ -245,11 +245,17 @@ int fpta_index_row2key(uint64_t shove, unsigned column, const fptu_ro &row,
                        fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
-                          fpta_key &pk_key, const fptu_ro &row_old,
-                          const fptu_ro &row_new);
+                          MDB_val &pk_key_old, const fptu_ro &row_old,
+                          MDB_val &pk_key_new, const fptu_ro &row_new,
+                          unsigned overstep);
 
-int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id,
-                          fpta_key &pk_key, const fptu_ro &row_old);
+int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
+                           MDB_val &pk_key_old, const fptu_ro &row_old,
+                           MDB_val &pk_key_new, const fptu_ro &row_new,
+                           unsigned overstep);
+
+int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
+                          const fptu_ro &row_old, unsigned overstep);
 
 //----------------------------------------------------------------------------
 

@@ -448,7 +448,7 @@ class CursorPrimary
             ASSERT_NE(nullptr, cursor);
             cursor_guard.reset(cursor);
         } else {
-            EXPECT_EQ(FPTA_EINVAL,
+            EXPECT_EQ(FPTA_NO_INDEX,
                       fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
                                        fpta_value_end(), nullptr, ordering,
                                        &cursor));
