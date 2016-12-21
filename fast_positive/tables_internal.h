@@ -354,3 +354,5 @@ static __inline bool fpta_cursor_is_ascending(fpta_cursor_options op)
 {
     return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
 }
+
+int fpta_inconsistent_abort(fpta_txn *txn, int err);

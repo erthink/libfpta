@@ -301,3 +301,34 @@ int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema)
         *schema = txn->schema_version;
     return FPTA_SUCCESS;
 }
+
+//----------------------------------------------------------------------------
+
+int
+#if defined(__GNUC__) || __has_attribute(weak)
+    __attribute__((weak))
+#endif
+    fpta_panic(int err, int fatal)
+{
+    (void)err;
+    (void)fatal;
+    return (FPTA_ENABLE_ABORT_ON_PANIC) ? 0 : -1;
+}
+
+int fpta_inconsistent_abort(fpta_txn *txn, int err)
+{
+    /* Некоторые ошибки (например переполнение БД) могут происходить когда
+     * мы выполнили лишь часть операций. В таких случаях можно лишь
+     * прервать/откатить всю транзакцию, что и делает эта функция.
+     *
+     * Однако, могут быть ошибки отката транзакции, что потенциально является
+     * более серьезной проблемой. */
+
+    int rc = mdbx_txn_abort(txn->mdbx_txn);
+    if (unlikely(rc != MDB_SUCCESS)) {
+        if (!fpta_panic(err, rc))
+            abort();
+    }
+    txn->mdbx_txn = nullptr;
+    return FPTA_WANNA_DIE;
+}

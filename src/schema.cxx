@@ -689,11 +689,8 @@ bailout:
     for (size_t i = 0; i < fpta_max_indexes && dbi[i] > 0; ++i) {
         fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
         int err = mdbx_drop(txn->mdbx_txn, dbi[i], 1);
-        if (err != MDB_SUCCESS) {
-            mdbx_txn_abort(txn->mdbx_txn);
-            txn->mdbx_txn = nullptr;
-            break;
-        }
+        if (unlikely(err != MDB_SUCCESS))
+            return fpta_inconsistent_abort(txn, err);
     }
     return rc;
 }
@@ -745,11 +742,8 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name)
     for (size_t i = 0; i < fpta_max_indexes && dbi[i] > 0; ++i) {
         fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
         int err = mdbx_drop(txn->mdbx_txn, dbi[i], 1);
-        if (err != MDB_SUCCESS) {
-            mdbx_txn_abort(txn->mdbx_txn);
-            txn->mdbx_txn = nullptr;
-            break;
-        }
+        if (unlikely(err != MDB_SUCCESS))
+            return fpta_inconsistent_abort(txn, err);
     }
 
     return rc;
