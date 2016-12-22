@@ -111,7 +111,7 @@ TEST(Simple, Base)
     EXPECT_EQ(MDB_KEYEXIST,
               fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
 
-    // аналогичто со второй записью
+    // аналогично со второй записью
     EXPECT_EQ(MDB_NOTFOUND,
               fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
     EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
