@@ -244,9 +244,8 @@ TEST(Simple, Secondary)
 
     EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
                                             fpta_primary, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe(
-                           "a_uint", fptu_uint64,
-                           fpta_secondary_unique /*fpta_secondary*/, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("a_uint", fptu_uint64,
+                                            fpta_secondary, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("b_fp", fptu_fp64, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -355,8 +354,8 @@ TEST(Simple, Secondary)
     EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
     EXPECT_EQ(2, count);
 
-    // переходим к последней записи
-    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
+    // переходим к первой записи
+    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
     // ради проверки убеждаемся что за курсором есть данные
     EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
 
@@ -365,11 +364,20 @@ TEST(Simple, Secondary)
     EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
     ASSERT_EQ(1, dups);
 
+    // переходим к последней записи
+    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
+    // ради проверки убеждаемся что за курсором есть данные
+    EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+
     // получаем текущую строку, она должна совпадать со вторым кортежем
     fptu_ro row2;
     EXPECT_EQ(FPTA_OK, fpta_cursor_get(cursor, &row2));
     ASSERT_STREQ(nullptr, fptu_check_ro(row2));
     EXPECT_EQ(fptu_eq, fptu_cmp_tuples(fptu_take_noshrink(pt2), row2));
+
+    // считаем повторы, их не должно быть
+    EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+    ASSERT_EQ(1, dups);
 
     // позиционируем курсор на конкретное значение ключевого поля
     fpta_value pk = fpta_value_uint(34);

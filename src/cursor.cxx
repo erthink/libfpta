@@ -428,18 +428,9 @@ int fpta_cursor_dups(fpta_cursor *cursor, size_t *pdups)
         return FPTA_NODATA;
     }
 
-    if (fpta_index_is_unique(cursor->index.shove)) {
-        *pdups = 1;
-        return FPTA_SUCCESS;
-    }
-
-    size_t dups = 0;
-    int rc = mdbx_cursor_count(cursor->mdbx_cursor, &dups);
-    if (rc == MDB_NOTFOUND) {
-        *pdups = dups;
-        rc = FPTA_SUCCESS;
-    }
-    return rc;
+    *pdups = 0;
+    int rc = mdbx_cursor_count(cursor->mdbx_cursor, pdups);
+    return (rc == MDB_NOTFOUND) ? (int)FPTA_NODATA : rc;
 }
 
 //----------------------------------------------------------------------------
