@@ -397,3 +397,55 @@ int fpta_del(fpta_txn *txn, fpta_name *table_id, fptu_ro row)
 
     return FPTA_SUCCESS;
 }
+
+int fpta_get(fpta_txn *txn, fpta_name *column_id,
+             const fpta_value *column_value, fptu_ro *row)
+{
+    if (unlikely(row == nullptr))
+        return FPTA_EINVAL;
+
+    row->units = nullptr;
+    row->total_bytes = 0;
+
+    if (unlikely(column_value == nullptr))
+        return FPTA_EINVAL;
+    if (unlikely(!fpta_id_validate(column_id, fpta_column)))
+        return FPTA_EINVAL;
+
+    fpta_name *table_id = column_id->column.table;
+    int rc = fpta_name_refresh_couple(txn, table_id, column_id);
+    if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
+
+    fpta_index_type index = fpta_shove2index(column_id->shove);
+    if (unlikely(index == fpta_index_none || !fpta_index_is_unique(index)))
+        return FPTA_NO_INDEX;
+
+    fpta_key column_key;
+    rc = fpta_index_value2key(column_id->shove, *column_value, column_key,
+                              false);
+    if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
+
+    if (unlikely(column_id->mdbx_dbi < 1)) {
+        rc = fpta_open_column(txn, column_id);
+        if (unlikely(rc != FPTA_SUCCESS))
+            return rc;
+    }
+
+    if (fpta_index_is_primary(index))
+        return mdbx_get(txn->mdbx_txn, column_id->mdbx_dbi, &column_key.mdbx,
+                        &row->sys);
+
+    MDB_val pk_key;
+    rc = mdbx_get(txn->mdbx_txn, column_id->mdbx_dbi, &column_key.mdbx,
+                  &pk_key);
+    if (unlikely(rc != MDB_SUCCESS))
+        return rc;
+
+    rc = mdbx_get(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key, &row->sys);
+    if (unlikely(rc == MDB_NOTFOUND))
+        return FPTA_INDEX_CORRUPTED;
+
+    return rc;
+}
