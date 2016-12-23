@@ -20,10 +20,10 @@
 #include "fast_positive/tables_internal.h"
 #include <gtest/gtest.h>
 
-static const char testdb_name[] = "ut_simple.fpta";
-static const char testdb_name_lck[] = "ut_simple.fpta-lock";
+static const char testdb_name[] = "ut_smoke.fpta";
+static const char testdb_name_lck[] = "ut_smoke.fpta-lock";
 
-TEST(Simple, Base)
+TEST(Smoke, Primary)
 {
     ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
     ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
@@ -227,7 +227,7 @@ TEST(Simple, Base)
     }
 }
 
-TEST(Simple, Secondary)
+TEST(Smoke, Secondary)
 {
     ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
     ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
