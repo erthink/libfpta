@@ -4,6 +4,7 @@ Fast Positive Tuples, aka "Позитивные Кортежи"
 by [Positive Technologies](https://www.ptsecurity.ru).
 
 *The Future will Positive. Всё будет хорошо.*
+[![Build Status](https://travis-ci.org/leo-yuriev/libfptu.svg?branch=devel)](https://travis-ci.org/leo-yuriev/libfptu)
 
 
 ## Кратко
