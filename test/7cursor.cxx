@@ -81,105 +81,105 @@ class any_keygen
             return fpta_value_end();
         }
 
-        void stub(fptu_type type, fpta_index_type index)
+        void stub(fptu_type _type, fpta_index_type _index)
         {
-            this->type = type;
-            this->index = index;
+            type = _type;
+            index = _index;
             order_from = order_to = 0;
             maker = end;
         }
 
-        template <fpta_index_type index, fptu_type type> void glue()
+        template <fpta_index_type _index, fptu_type _type> void glue()
         {
-            this->type = type;
-            this->index = index;
-            order_from = keygen<index, type>::order_from;
-            order_to = keygen<index, type>::order_to;
-            maker = keygen<index, type>::make;
+            type = _type;
+            index = _index;
+            order_from = keygen<_index, _type>::order_from;
+            order_to = keygen<_index, _type>::order_to;
+            maker = keygen<_index, _type>::make;
         }
 
-        template <fpta_index_type index> void unroll(fptu_type type)
+        template <fpta_index_type _index> void unroll(fptu_type _type)
         {
-            switch (type) {
+            switch (_type) {
             default /* arrays */:
             case fptu_null:
                 assert(false && "wrong type");
-                return stub(type, index);
+                return stub(_type, _index);
             case fptu_uint16:
-                return glue<index, fptu_uint16>();
+                return glue<_index, fptu_uint16>();
             case fptu_int32:
-                return glue<index, fptu_int32>();
+                return glue<_index, fptu_int32>();
             case fptu_uint32:
-                return glue<index, fptu_uint32>();
+                return glue<_index, fptu_uint32>();
             case fptu_fp32:
-                return glue<index, fptu_fp32>();
+                return glue<_index, fptu_fp32>();
             case fptu_int64:
-                return glue<index, fptu_int64>();
+                return glue<_index, fptu_int64>();
             case fptu_uint64:
-                return glue<index, fptu_uint64>();
+                return glue<_index, fptu_uint64>();
             case fptu_fp64:
-                return glue<index, fptu_fp64>();
+                return glue<_index, fptu_fp64>();
             case fptu_96:
-                return glue<index, fptu_96>();
+                return glue<_index, fptu_96>();
             case fptu_128:
-                return glue<index, fptu_128>();
+                return glue<_index, fptu_128>();
             case fptu_160:
-                return glue<index, fptu_160>();
+                return glue<_index, fptu_160>();
             case fptu_192:
-                return glue<index, fptu_192>();
+                return glue<_index, fptu_192>();
             case fptu_256:
-                return glue<index, fptu_256>();
+                return glue<_index, fptu_256>();
             case fptu_cstr:
-                return glue<index, fptu_cstr>();
+                return glue<_index, fptu_cstr>();
             case fptu_opaque:
-                return glue<index, fptu_opaque>();
+                return glue<_index, fptu_opaque>();
             case fptu_nested:
-                return glue<index, fptu_nested>();
+                return glue<_index, fptu_nested>();
             }
         }
 
-        init_tier(fptu_type type, fpta_index_type index)
+        init_tier(fptu_type _type, fpta_index_type _index)
         {
-            switch (index) {
+            switch (_index) {
             default:
                 assert(false && "wrong index");
-                stub(type, index);
+                stub(_type, _index);
                 break;
             case fpta_primary_withdups:
-                unroll<fpta_primary_withdups>(type);
+                unroll<fpta_primary_withdups>(_type);
                 break;
             case fpta_primary_unique:
-                unroll<fpta_primary_unique>(type);
+                unroll<fpta_primary_unique>(_type);
                 break;
             case fpta_primary_withdups_unordered:
-                unroll<fpta_primary_withdups_unordered>(type);
+                unroll<fpta_primary_withdups_unordered>(_type);
                 break;
             case fpta_primary_unique_unordered:
-                unroll<fpta_primary_unique_unordered>(type);
+                unroll<fpta_primary_unique_unordered>(_type);
                 break;
             case fpta_primary_withdups_reversed:
-                unroll<fpta_primary_withdups_reversed>(type);
+                unroll<fpta_primary_withdups_reversed>(_type);
                 break;
             case fpta_primary_unique_reversed:
-                unroll<fpta_primary_unique_reversed>(type);
+                unroll<fpta_primary_unique_reversed>(_type);
                 break;
             case fpta_secondary_withdups:
-                unroll<fpta_secondary_withdups>(type);
+                unroll<fpta_secondary_withdups>(_type);
                 break;
             case fpta_secondary_unique:
-                unroll<fpta_secondary_unique>(type);
+                unroll<fpta_secondary_unique>(_type);
                 break;
             case fpta_secondary_withdups_unordered:
-                unroll<fpta_secondary_withdups_unordered>(type);
+                unroll<fpta_secondary_withdups_unordered>(_type);
                 break;
             case fpta_secondary_unique_unordered:
-                unroll<fpta_primary_withdups>(type);
+                unroll<fpta_primary_withdups>(_type);
                 break;
             case fpta_secondary_withdups_reversed:
-                unroll<fpta_secondary_withdups_reversed>(type);
+                unroll<fpta_secondary_withdups_reversed>(_type);
                 break;
             case fpta_secondary_unique_reversed:
-                unroll<fpta_secondary_unique_reversed>(type);
+                unroll<fpta_secondary_unique_reversed>(_type);
                 break;
             }
         }
