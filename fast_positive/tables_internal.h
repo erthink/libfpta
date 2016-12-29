@@ -39,6 +39,11 @@
 #include <cmath>  // for fabs()
 #include <functional>
 
+#if defined(__cland__) && !__CLANG_PREREQ(3, 8)
+// LY: workaround for https://llvm.org/bugs/show_bug.cgi?id=18402
+extern "C" char *gets(char *);
+#endif
+
 void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask = 0);
 
 //----------------------------------------------------------------------------
