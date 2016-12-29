@@ -14,6 +14,7 @@ to 1000K simple SQL-like requests per second on each CPU core.
 
 *The Future will Positive. Всё будет хорошо.*
 
+[![Build Status](https://travis-ci.org/leo-yuriev/libfpta.svg?branch=devel)](https://travis-ci.org/leo-yuriev/libfpta)
 
 ## Кратко
 
