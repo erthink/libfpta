@@ -7,11 +7,39 @@ if (NOT (CMAKE_C_COMPILER_ID STREQUAL CMAKE_CXX_COMPILER_ID))
                     "The final binary may be unusable.")
 endif()
 
+# We support building with Clang and gcc. First check
+# what we're using for build.
+#
+if (CMAKE_C_COMPILER_ID STREQUAL Clang)
+    set(CMAKE_COMPILER_IS_CLANG  ON)
+    set(CMAKE_COMPILER_IS_GNUCC  OFF)
+    set(CMAKE_COMPILER_IS_GNUCXX OFF)
+endif()
+
+#
+# Hard coding the compiler version is ugly from cmake POV, but
+# at least gives user a friendly error message. The most critical
+# demand for C++ compiler is support of C++11 lambdas, added
+# only in version 4.5 https://gcc.gnu.org/projects/cxx0x.html
+#
+if (CMAKE_COMPILER_IS_GNUCC)
+# cmake 2.8.9 and earlier doesn't support CMAKE_CXX_COMPILER_VERSION
+       if (NOT CMAKE_CXX_COMPILER_VERSION)
+               execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+                               OUTPUT_VARIABLE CMAKE_CXX_COMPILER_VERSION)
+       endif()
+       if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
+               message(FATAL_ERROR "
+               Your GCC version is ${CMAKE_CXX_COMPILER_VERSION}, please update
+                       ")
+       endif()
+endif()
+
 #
 # Check supported standards
 #
 if((NOT HAVE_STD_C11 AND NOT HAVE_STD_GNU99) OR
-   (NOT HAVE_STD_CXX14 AND NOT HAVE_STD_GNUXX14))
+   (NOT HAVE_STD_CXX11 AND NOT HAVE_STD_GNUXX0X))
     set(CMAKE_REQUIRED_FLAGS "-std=c11")
     check_c_source_compiles("
     /*
@@ -23,18 +51,18 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_GNU99) OR
     " HAVE_STD_C11)
     set(CMAKE_REQUIRED_FLAGS "-std=gnu99")
     check_c_source_compiles("int main(void) { return 0; }" HAVE_STD_GNU99)
-    set(CMAKE_REQUIRED_FLAGS "-std=c++14")
-    check_cxx_source_compiles("int main(void) { return 0; }" HAVE_STD_CXX14)
-    set(CMAKE_REQUIRED_FLAGS "-std=gnu++14")
-    check_cxx_source_compiles("int main(void) { return 0; }" HAVE_STD_GNUXX14)
+    set(CMAKE_REQUIRED_FLAGS "-std=c++11")
+    check_cxx_source_compiles("int main(void) { return 0; }" HAVE_STD_CXX11)
+    set(CMAKE_REQUIRED_FLAGS "-std=gnu++0x")
+    check_cxx_source_compiles("int main(void) { return 0; }" HAVE_STD_GNUXX0X)
     set(CMAKE_REQUIRED_FLAGS "")
 endif()
 if((NOT HAVE_STD_C11 AND NOT HAVE_STD_GNU99) OR
-   (NOT HAVE_STD_CXX14 AND NOT HAVE_STD_GNUXX14))
+   (NOT HAVE_STD_CXX11 AND NOT HAVE_STD_GNUXX0X))
     message (FATAL_ERROR
         "${CMAKE_C_COMPILER} should support -std=c11 or -std=gnu99. "
-        "${CMAKE_CXX_COMPILER} should support -std=c++14 or -std=gnu++14. "
-        "Please consider upgrade to gcc 5+ or clang 3.6+")
+        "${CMAKE_CXX_COMPILER} should support -std=c++11 or -std=gnu++0x. "
+        "Please consider upgrade to gcc 4.5+ or clang 3.2+.")
 endif()
 
 #
@@ -187,10 +215,11 @@ macro(setup_compile_flags)
         add_compile_flags("C" "-std=gnu99")
     endif()
 
-    if (HAVE_STD_CXX14)
-        add_compile_flags("CXX" "-std=c++14")
+    if (HAVE_STD_CXX11)
+        add_compile_flags("CXX" "-std=c++11")
     else()
-        add_compile_flags("CXX" "-std=gnu++14")
+        add_compile_flags("CXX" "-std=gnu++0x")
+        add_definitions("-Doverride=")
     endif()
 
     add_compile_flags("C;CXX"
@@ -211,6 +240,11 @@ macro(setup_compile_flags)
         )
     endif()
 
+    if (CMAKE_COMPILER_IS_GNUCC)
+        # A workaround for Redhat Developer Toolset 2.x on RHEL/CentOS 5.x
+        add_compile_flags("C" "-fno-gnu89-inline")
+    endif()
+
     add_definitions("-D__STDC_FORMAT_MACROS=1")
     add_definitions("-D__STDC_LIMIT_MACROS=1")
     add_definitions("-D__STDC_CONSTANT_MACROS=1")
@@ -218,7 +252,7 @@ macro(setup_compile_flags)
     # Only add -Werror if it's a debug build, done by developers.
     # Release builds should not cause extra trouble.
     if ((${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-        AND HAVE_STD_C11 AND HAVE_STD_CXX14)
+        AND HAVE_STD_C11 AND HAVE_STD_CXX11)
         add_compile_flags("C;CXX" "-Werror")
     endif()
 endmacro(setup_compile_flags)

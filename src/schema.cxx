@@ -408,7 +408,7 @@ int fpta_column_set_validate(fpta_column_set *column_set)
     /* сортируем описание колонок, так чтобы неиндексируемые были в конце */
     std::stable_sort(
         column_set->shoves + 1, column_set->shoves + column_set->count,
-        [](auto &left, auto &right) {
+        [](const fpta_shove_t &left, const fpta_shove_t &right) {
             return fpta_shove2index(left) > fpta_shove2index(right);
         });
 

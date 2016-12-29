@@ -82,17 +82,21 @@ template <typename container>
 bool is_properly_ordered(const container &probe, bool descending = false)
 {
     if (!descending) {
-        return std::is_sorted(probe.begin(), probe.end(),
-                              [](auto &left, auto &right) {
-                                  EXPECT_GT(left.second, right.second);
-                                  return left.second < right.second;
-                              });
+        return std::is_sorted(
+            probe.begin(), probe.end(),
+            [](const typename container::value_type &left,
+               const typename container::value_type &right) {
+                EXPECT_GT(left.second, right.second);
+                return left.second < right.second;
+            });
     } else {
-        return std::is_sorted(probe.begin(), probe.end(),
-                              [](auto &left, auto &right) {
-                                  EXPECT_LT(left.second, right.second);
-                                  return left.second > right.second;
-                              });
+        return std::is_sorted(
+            probe.begin(), probe.end(),
+            [](const typename container::value_type &left,
+               const typename container::value_type &right) {
+                EXPECT_LT(left.second, right.second);
+                return left.second > right.second;
+            });
     }
 }
 
@@ -356,6 +360,7 @@ struct scalar_range_stepper {
                                       std::numeric_limits<type>::has_infinity;
     static constexpr int order_to =
         prime + std::numeric_limits<type>::has_infinity;
+    typedef std::map<type, int> container4test;
 
     static type value(int order)
     {
@@ -389,7 +394,7 @@ struct scalar_range_stepper {
                      ::testing::internal::GetTypeName<type>() + ", N=" +
                      std::to_string(N));
 
-        std::map<type, int> probe;
+        container4test probe;
 
         unsigned n = 0;
         for (auto i = order_from; i <= order_to; ++i) {
@@ -398,7 +403,9 @@ struct scalar_range_stepper {
         }
 
         bool is_properly_ordered = std::is_sorted(
-            probe.begin(), probe.end(), [](auto &left, auto &right) {
+            probe.begin(), probe.end(),
+            [](const typename container4test::value_type &left,
+               const typename container4test::value_type &right) {
                 return left.second < right.second;
             });
 
