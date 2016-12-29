@@ -641,6 +641,7 @@ TEST_P(CursorPrimary, basicMoves)
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
 }
 
+#if GTEST_HAS_COMBINE
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorPrimary,
     ::testing::Combine(
@@ -655,6 +656,9 @@ INSTANTIATE_TEST_CASE_P(
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
+#else
+TEST(CursorPrimary, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
+#endif /* GTEST_HAS_COMBINE */
 
 //----------------------------------------------------------------------------
 
