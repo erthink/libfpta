@@ -12,5 +12,5 @@ add_library(fpta STATIC
 )
 
 target_link_libraries(fpta
-    fptu mdbx t1ha
+    fptu mdbx t1ha ${CMAKE_THREAD_LIBS_INIT}
 )

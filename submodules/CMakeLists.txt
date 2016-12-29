@@ -12,6 +12,7 @@ add_library(mdbx STATIC
 )
 
 set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG")
+target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(mdbx_chk libmdbx/mdb_chk.c)
 target_link_libraries(mdbx_chk mdbx)
