@@ -27,14 +27,6 @@ static __hot bool fpta_is_column_changed(const fptu_ro &row_old,
     auto filed_new = fptu_lookup_ro(row_new, column, fptu_any);
     return fptu_cmp_fields(filed_old, filed_new) != fptu_eq;
 }
-static __inline bool fpta_pk_changed(const fpta_table_schema *def,
-                                     const fptu_ro &row_old,
-                                     const fptu_ro &row_new)
-{
-    assert(def->count > 0);
-    assert(fpta_index_is_primary(fpta_shove2index(def->columns[0])));
-    return fpta_is_column_changed(row_old, row_new, 0);
-}
 
 static __inline bool fpta_fk_changed(const fpta_table_schema *def,
                                      const fptu_ro &row_old,
