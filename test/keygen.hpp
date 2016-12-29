@@ -18,6 +18,7 @@
  */
 
 #include "fast_positive/tables_internal.h"
+#include <gtest/gtest.h>
 
 #include <array>
 #include <cmath>
@@ -391,8 +392,8 @@ struct scalar_range_stepper {
     static void test()
     {
         SCOPED_TRACE(std::string("scalar_range_stepper: ") +
-                     ::testing::internal::GetTypeName<type>() + ", N=" +
-                     std::to_string(N));
+                     std::string(::testing::internal::GetTypeName<type>()) +
+                     ", N=" + std::to_string(N));
 
         container4test probe;
 
@@ -473,8 +474,8 @@ struct keygen : public keygen_base<index, type> {
     static fpta_value make(int order)
     {
         SCOPED_TRACE("FIXME: make(), type " + std::to_string(type) +
-                     ", index " + std::to_string(index) + ", " __FILE__ ": " +
-                     FPT_STRINGIFY(__LINE__));
+                     ", index " + std::to_string(index) +
+                     ", " __FILE__ ": " FPT_STRINGIFY(__LINE__));
         (void)order;
         ADD_FAILURE();
         return fpta_value_end();
