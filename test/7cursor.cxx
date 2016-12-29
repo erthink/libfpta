@@ -208,7 +208,11 @@ class any_keygen
 
 class CursorPrimary
     : public ::testing::TestWithParam<
+#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
+          std::tr1::tuple<fptu_type, fpta_index_type, fpta_cursor_options>>
+#else
           std::tuple<fptu_type, fpta_index_type, fpta_cursor_options>>
+#endif
 {
   public:
     fptu_type type;
@@ -335,9 +339,15 @@ class CursorPrimary
 
     virtual void SetUp()
     {
+#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
+        type = std::tr1::get<0>(GetParam());
+        index = std::tr1::get<1>(GetParam());
+        ordering = std::tr1::get<2>(GetParam());
+#else
         type = std::get<0>(GetParam());
         index = std::get<1>(GetParam());
         ordering = std::get<2>(GetParam());
+#endif
         valid_index_ops = is_valid4pk(type, index);
         valid_cursor_ops = is_valid4cursor(index, ordering);
 
