@@ -725,12 +725,15 @@ typedef enum fpta_index_type {
     fpta_secondary = fpta_secondary_withdups,
 } fpta_index_type;
 
+/* Внутренний тип для сжатых описаний идентификаторов. */
+typedef uint64_t fpta_shove_t;
+
 /* Набор колонок для создания таблицы */
 typedef struct fpta_column_set {
     /* Счетчик заполненных описателей. */
     unsigned count;
     /* Упакованное внутреннее описание колонок. */
-    uint64_t shoves[fpta_max_cols];
+    fpta_shove_t shoves[fpta_max_cols];
 } fpta_column_set;
 
 /* Вспомогательная функция, проверяет корректность имени */
@@ -834,7 +837,7 @@ struct fpta_table_schema;
 /* Операционный идентификатор таблицы или колонки. */
 typedef struct fpta_name {
     size_t version; /* версия схемы для кэширования. */
-    uint64_t shove; /* хэш имени и внутренние данные. */
+    fpta_shove_t shove; /* хэш имени и внутренние данные. */
     union {
         /* для таблицы */
         struct {

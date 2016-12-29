@@ -105,7 +105,7 @@ fpta_value order_checksum(int order, fptu_type type, fpta_index_type index)
 template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
     fpta_key key;
 
-    static uint64_t shove()
+    static fpta_shove_t shove()
     {
         return fpta_column_shove(0, data_type, index_type);
     }

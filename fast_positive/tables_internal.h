@@ -48,15 +48,15 @@ struct fpta_table_schema {
     uint32_t signature;
     uint32_t count;
     uint64_t version;
-    uint64_t shove;
-    uint64_t columns[fpta_max_cols];
+    fpta_shove_t shove;
+    fpta_shove_t columns[fpta_max_cols];
 };
 
 static __inline size_t fpta_table_schema_size(size_t cols)
 {
     assert(cols <= fpta_max_cols);
     return sizeof(fpta_table_schema) -
-           sizeof(uint64_t) * (fpta_max_cols - cols);
+           sizeof(fpta_shove_t) * (fpta_max_cols - cols);
 }
 
 enum fpta_internals {
@@ -77,7 +77,7 @@ struct fpta_db {
     MDB_dbi schema_dbi;
 
     pthread_mutex_t dbi_mutex;
-    uint64_t dbi_shoves[fpta_dbi_cache_size];
+    fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
     MDB_dbi dbi_handles[fpta_dbi_cache_size];
 };
 
@@ -184,9 +184,9 @@ struct fpta_cursor {
 
 //----------------------------------------------------------------------------
 
-static __inline uint64_t fpta_column_shove(uint64_t shove,
-                                           fptu_type data_type,
-                                           fpta_index_type index_type)
+static __inline fpta_shove_t fpta_column_shove(fpta_shove_t shove,
+                                               fptu_type data_type,
+                                               fpta_index_type index_type)
 {
     assert((data_type & ~fpta_column_typeid_mask) == 0);
     assert((index_type & ~fpta_column_index_mask) == 0);
@@ -194,7 +194,7 @@ static __inline uint64_t fpta_column_shove(uint64_t shove,
     return shove | data_type | index_type;
 }
 
-static __inline bool fpta_shove_eq(uint64_t a, uint64_t b)
+static __inline bool fpta_shove_eq(fpta_shove_t a, fpta_shove_t b)
 {
     static_assert(fpta_name_hash_shift > 0, "expect hash/shove is shifted");
     /* A равно B, если отличия только в бладших битах */
@@ -234,15 +234,15 @@ static __inline fpta_index_type fpta_id2index(const fpta_name *id)
 MDB_cmp_func *fpta_index_shove2comparator(unsigned shove);
 unsigned fpta_index_shove2dbiflags(unsigned shove);
 
-bool fpta_index_is_compat(uint64_t shove, const fpta_value &value);
+bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value);
 
-int fpta_index_value2key(uint64_t shove, const fpta_value &value,
+int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
                          fpta_key &key, bool copy = false);
-int fpta_index_key2value(uint64_t shove, const MDB_val &mdbx_key,
+int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx_key,
                          fpta_value &key_value);
 
-int fpta_index_row2key(uint64_t shove, unsigned column, const fptu_ro &row,
-                       fpta_key &key, bool copy = false);
+int fpta_index_row2key(fpta_shove_t shove, unsigned column,
+                       const fptu_ro &row, fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val &pk_key_old, const fptu_ro &row_old,

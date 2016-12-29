@@ -235,7 +235,7 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(unsigned shove)
     }
 }
 
-static int fpta_normalize_key(uint64_t shove, fpta_key &key, bool copy)
+static int fpta_normalize_key(fpta_shove_t shove, fpta_key &key, bool copy)
 {
     static_assert(fpta_max_keylen % sizeof(uint64_t) == 0,
                   "wrong fpta_max_keylen");
@@ -404,7 +404,7 @@ bool fpta_index_unordered_is_compat(fptu_type data_type,
     return (bits[value_type] & (1 << data_type)) != 0;
 }
 
-bool fpta_index_is_compat(uint64_t shove, const fpta_value &value)
+bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value)
 {
     fptu_type type = fpta_shove2type(shove);
     fpta_index_type index = fpta_shove2index(shove);
@@ -417,7 +417,7 @@ bool fpta_index_is_compat(uint64_t shove, const fpta_value &value)
 
 //----------------------------------------------------------------------------
 
-int fpta_index_value2key(uint64_t shove, const fpta_value &value,
+int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
                          fpta_key &key, bool copy)
 {
     if (unlikely(value.type == fpta_begin || value.type == fpta_end ||
@@ -629,7 +629,7 @@ int fpta_index_value2key(uint64_t shove, const fpta_value &value,
 
 //----------------------------------------------------------------------------
 
-int fpta_index_key2value(uint64_t shove, const MDB_val &mdbx,
+int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
                          fpta_value &value)
 {
     fptu_type type = fpta_shove2type(shove);
@@ -772,8 +772,8 @@ int fpta_index_key2value(uint64_t shove, const MDB_val &mdbx,
 
 //----------------------------------------------------------------------------
 
-int fpta_index_row2key(uint64_t shove, unsigned column, const fptu_ro &row,
-                       fpta_key &key, bool copy)
+int fpta_index_row2key(fpta_shove_t shove, unsigned column,
+                       const fptu_ro &row, fpta_key &key, bool copy)
 {
 #ifndef NDEBUG
     fpta_pollute(&key, sizeof(key));
