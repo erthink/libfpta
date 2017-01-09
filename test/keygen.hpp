@@ -346,40 +346,48 @@ void string_keygen_test(const size_t keylen_min, const size_t keylen_max)
 //----------------------------------------------------------------------------
 
 template <typename type, unsigned N>
-/* Позволяет примерно за N шагов "простучать" весь диапазон значений type,
+/* Позволяет за N шагов "простучать" весь диапазон значений type,
  * явно включая крайние точки, нуль и бесконечности (при наличии). */
 struct scalar_range_stepper {
-    static constexpr long prime = std::is_signed<type>() ? (N / 2 + 1) : N;
-    static constexpr int order_from = (std::is_signed<type>() ? -prime : 0) -
-                                      std::numeric_limits<type>::has_infinity;
-    static constexpr int order_to =
-        prime + std::numeric_limits<type>::has_infinity;
+    static constexpr long scope =
+        (std::is_signed<type>() ? (N - 1) / 2 : (N - 1)) -
+        std::numeric_limits<type>::has_infinity;
+    static_assert(!std::is_signed<type>() ||
+                      std::numeric_limits<type>::lowest() < 0,
+                  "expected lowest() < 0 for signed types");
+    static_assert(std::numeric_limits<type>::max() > scope,
+                  "seems N is too big");
+
+    static constexpr int order_from = 0;
+    static constexpr int order_to = N - 1;
     typedef std::map<type, int> container4test;
 
     static type value(int order)
     {
-        static constexpr long square = prime * prime;
-        if (order < 0) {
-            if (order > -prime) {
-                if (std::numeric_limits<type>::lowest() > (type)-square)
-                    return order;
-                return std::numeric_limits<type>::lowest() / prime * -order;
+        if (std::is_signed<type>()) {
+            if (std::numeric_limits<type>::has_infinity && order-- == 0)
+                return -std::numeric_limits<type>::infinity();
+            if (order < scope) {
+                type offset =
+                    (std::numeric_limits<type>::max() < INT_MAX)
+                        ? std::numeric_limits<type>::lowest() * order / scope
+                        : std::numeric_limits<type>::lowest() / scope * order;
+
+                return std::numeric_limits<type>::lowest() - offset;
             }
-            if (order == -prime)
-                return std::numeric_limits<type>::lowest();
-            return -std::numeric_limits<type>::infinity();
+            order -= scope;
         }
-        if (order > 0) {
-            if (order < prime) {
-                if (std::numeric_limits<type>::max() < square)
-                    return order;
-                return std::numeric_limits<type>::max() / prime * order;
-            }
-            if (order == prime)
-                return std::numeric_limits<type>::max();
+
+        if (order == 0)
+            return type(0);
+
+        if (std::numeric_limits<type>::has_infinity && order > scope)
             return std::numeric_limits<type>::infinity();
-        }
-        return 0;
+        if (order == scope)
+            return std::numeric_limits<type>::max();
+        return (std::numeric_limits<type>::max() < INT_MAX)
+                   ? std::numeric_limits<type>::max() * order / scope
+                   : std::numeric_limits<type>::max() / scope * order;
     }
 
     static void test()
@@ -405,17 +413,14 @@ struct scalar_range_stepper {
 
         EXPECT_TRUE(is_properly_ordered);
         if (std::numeric_limits<type>::has_infinity) {
-            EXPECT_EQ(N + 4 /* min, max, -inf/+inf */, n);
             EXPECT_EQ(1, probe.count(-std::numeric_limits<type>::infinity()));
             EXPECT_EQ(1, probe.count(std::numeric_limits<type>::infinity()));
-        } else if (std::is_signed<type>()) {
-            EXPECT_EQ(N + 2 /* min, max */, n);
-        } else {
-            EXPECT_EQ(N + 1 /* max */, n);
         }
+        EXPECT_EQ(N, n);
         EXPECT_EQ(n, probe.size());
         EXPECT_EQ(1, probe.count(type(0)));
         EXPECT_EQ(1, probe.count(std::numeric_limits<type>::max()));
+        // EXPECT_EQ(1, probe.count(std::numeric_limits<type>::min()));
         EXPECT_EQ(1, probe.count(std::numeric_limits<type>::lowest()));
     }
 };
@@ -478,9 +483,9 @@ struct keygen : public keygen_base<index, type> {
 //----------------------------------------------------------------------------
 
 template <unsigned keylen, unsigned N> struct fixbin_stepper {
-    static constexpr long prime = N;
+    static constexpr long scope = N - 2;
     static constexpr int order_from = 0;
-    static constexpr int order_to = N;
+    static constexpr int order_to = N - 1;
     typedef std::array<uint8_t, keylen> fixbin_type;
 
     static fpta_value make(int order, bool reverse)
@@ -490,11 +495,11 @@ template <unsigned keylen, unsigned N> struct fixbin_stepper {
 
         if (order == 0)
             memset(&holder, 0, keylen);
-        else if (order == prime)
+        else if (order > scope)
             memset(&holder, ~0, keylen);
         else {
             bool key_is_too_short = string_keygen<false>(
-                keylen, INT32_MAX / prime * order, holder.begin());
+                keylen, INT32_MAX / scope * (order - 1), holder.begin());
             EXPECT_FALSE(key_is_too_short);
         }
 
@@ -519,7 +524,7 @@ template <unsigned keylen, unsigned N> struct fixbin_stepper {
         }
 
         EXPECT_TRUE(is_properly_ordered(probe));
-        EXPECT_EQ(N + 1 /* all ones */, n);
+        EXPECT_EQ(N, n);
         EXPECT_EQ(n, probe.size());
 
         fixbin_type value;
@@ -545,9 +550,9 @@ fpta_value fpta_value_binstr(const void *pattern, size_t length)
 }
 
 template <fptu_type data_type, unsigned N> struct varbin_stepper {
-    static constexpr long prime = N;
-    static constexpr int order_from = -1;
-    static constexpr int order_to = N + 1;
+    static constexpr long scope = N - 2;
+    static constexpr int order_from = 0;
+    static constexpr int order_to = N - 1;
     static constexpr size_t keylen_max = fpta_max_keylen * 3 / 2;
     typedef std::array<uint8_t, keylen_max> varbin_type;
 
@@ -556,18 +561,18 @@ template <fptu_type data_type, unsigned N> struct varbin_stepper {
         /* нужен static, ибо внутри fpta_value только указатель на данные */
         static varbin_type holder;
 
-        if (order < 0)
+        if (order == 0)
             return fpta_value_binstr<data_type>(nullptr, 0);
 
-        if (order > prime) {
+        if (order > scope) {
             memset(&holder, ~0, keylen_max);
             return fpta_value_binstr<data_type>(holder.begin(), keylen_max);
         }
 
-        unsigned keylen = 1 + (order % 37) * (keylen_max - 1) / 37;
+        unsigned keylen = 1 + ((order - 1) % 37) * (keylen_max - 1) / 37;
         while (keylen <= keylen_max) {
             bool key_is_too_short = string_keygen<data_type == fptu_cstr>(
-                keylen, INT32_MAX / prime * order, holder.begin());
+                keylen, INT32_MAX / scope * (order - 1), holder.begin());
             if (!key_is_too_short)
                 break;
             keylen++;
@@ -596,7 +601,7 @@ template <fptu_type data_type, unsigned N> struct varbin_stepper {
         }
 
         EXPECT_TRUE(is_properly_ordered(probe));
-        EXPECT_EQ(N + 3 /* empty, last, all ones */, n);
+        EXPECT_EQ(N, n);
         EXPECT_EQ(n, probe.size());
 
         std::vector<uint8_t> value;
@@ -614,47 +619,57 @@ template <fptu_type data_type, unsigned N> struct varbin_stepper {
 //----------------------------------------------------------------------------
 
 template <fpta_index_type index, unsigned N>
-struct keygen<index, fptu_uint16, N> : public scalar_range_stepper<uint16_t, N> {
+struct keygen<index, fptu_uint16, N>
+    : public scalar_range_stepper<uint16_t, N> {
     static constexpr fptu_type type = fptu_uint16;
     static fpta_value make(int order)
     {
-        return fpta_value_uint(scalar_range_stepper<uint16_t, N>::value(order));
+        return fpta_value_uint(
+            scalar_range_stepper<uint16_t, N>::value(order));
     }
 };
 
 template <fpta_index_type index, unsigned N>
-struct keygen<index, fptu_uint32, N> : public scalar_range_stepper<uint32_t, N> {
+struct keygen<index, fptu_uint32, N>
+    : public scalar_range_stepper<uint32_t, N> {
     static constexpr fptu_type type = fptu_uint32;
     static fpta_value make(int order)
     {
-        return fpta_value_uint(scalar_range_stepper<uint32_t, N>::value(order));
+        return fpta_value_uint(
+            scalar_range_stepper<uint32_t, N>::value(order));
     }
 };
 
 template <fpta_index_type index, unsigned N>
-struct keygen<index, fptu_uint64, N> : public scalar_range_stepper<uint64_t, N> {
+struct keygen<index, fptu_uint64, N>
+    : public scalar_range_stepper<uint64_t, N> {
     static constexpr fptu_type type = fptu_uint64;
     static fpta_value make(int order)
     {
-        return fpta_value_uint(scalar_range_stepper<uint64_t, N>::value(order));
+        return fpta_value_uint(
+            scalar_range_stepper<uint64_t, N>::value(order));
     }
 };
 
 template <fpta_index_type index, unsigned N>
-struct keygen<index, fptu_int32, N> : public scalar_range_stepper<int32_t, N> {
+struct keygen<index, fptu_int32, N>
+    : public scalar_range_stepper<int32_t, N> {
     static constexpr fptu_type type = fptu_int32;
     static fpta_value make(int order)
     {
-        return fpta_value_sint(scalar_range_stepper<int32_t, N>::value(order));
+        return fpta_value_sint(
+            scalar_range_stepper<int32_t, N>::value(order));
     }
 };
 
 template <fpta_index_type index, unsigned N>
-struct keygen<index, fptu_int64, N> : public scalar_range_stepper<int64_t, N> {
+struct keygen<index, fptu_int64, N>
+    : public scalar_range_stepper<int64_t, N> {
     static constexpr fptu_type type = fptu_int64;
     static fpta_value make(int order)
     {
-        return fpta_value_sint(scalar_range_stepper<int64_t, N>::value(order));
+        return fpta_value_sint(
+            scalar_range_stepper<int64_t, N>::value(order));
     }
 };
 
@@ -672,17 +687,19 @@ struct keygen<index, fptu_fp64, N> : public scalar_range_stepper<double, N> {
     static constexpr fptu_type type = fptu_fp64;
     static fpta_value make(int order)
     {
-        return fpta_value_float(scalar_range_stepper<double, N>::value(order));
+        return fpta_value_float(
+            scalar_range_stepper<double, N>::value(order));
     }
 };
 
 template <fpta_index_type index, unsigned N>
 struct keygen<index, fptu_96, N> : public fixbin_stepper<96 / 8, N>,
-                                keygen_base<index, fptu_96> {
+                                   keygen_base<index, fptu_96> {
     static constexpr fptu_type type = fptu_96;
     static fpta_value make(int order)
     {
-        return fixbin_stepper<96 / 8, N>::make(order, fpta_index_is_reverse(index));
+        return fixbin_stepper<96 / 8, N>::make(order,
+                                               fpta_index_is_reverse(index));
     }
 };
 
@@ -691,7 +708,8 @@ struct keygen<index, fptu_128, N> : public fixbin_stepper<128 / 8, N> {
     static constexpr fptu_type type = fptu_128;
     static fpta_value make(int order)
     {
-        return fixbin_stepper<128 / 8, N>::make(order, fpta_index_is_reverse(index));
+        return fixbin_stepper<128 / 8, N>::make(order,
+                                                fpta_index_is_reverse(index));
     }
 };
 
@@ -700,7 +718,8 @@ struct keygen<index, fptu_160, N> : public fixbin_stepper<160 / 8, N> {
     static constexpr fptu_type type = fptu_160;
     static fpta_value make(int order)
     {
-        return fixbin_stepper<160 / 8, N>::make(order, fpta_index_is_reverse(index));
+        return fixbin_stepper<160 / 8, N>::make(order,
+                                                fpta_index_is_reverse(index));
     }
 };
 
@@ -709,7 +728,8 @@ struct keygen<index, fptu_192, N> : public fixbin_stepper<192 / 8, N> {
     static constexpr fptu_type type = fptu_192;
     static fpta_value make(int order)
     {
-        return fixbin_stepper<192 / 8, N>::make(order, fpta_index_is_reverse(index));
+        return fixbin_stepper<192 / 8, N>::make(order,
+                                                fpta_index_is_reverse(index));
     }
 };
 
@@ -718,7 +738,8 @@ struct keygen<index, fptu_256, N> : public fixbin_stepper<256 / 8, N> {
     static constexpr fptu_type type = fptu_256;
     static fpta_value make(int order)
     {
-        return fixbin_stepper<256 / 8, N>::make(order, fpta_index_is_reverse(index));
+        return fixbin_stepper<256 / 8, N>::make(order,
+                                                fpta_index_is_reverse(index));
     }
 };
 
@@ -727,7 +748,8 @@ struct keygen<index, fptu_cstr, N> : public varbin_stepper<fptu_cstr, N> {
     static constexpr fptu_type type = fptu_cstr;
     static fpta_value make(int order)
     {
-        return varbin_stepper<fptu_cstr, N>::make(order, fpta_index_is_reverse(index));
+        return varbin_stepper<fptu_cstr, N>::make(
+            order, fpta_index_is_reverse(index));
     }
 };
 
@@ -736,6 +758,7 @@ struct keygen<index, fptu_opaque, N> : public varbin_stepper<fptu_opaque, N> {
     static constexpr fptu_type type = fptu_opaque;
     static fpta_value make(int order)
     {
-        return varbin_stepper<fptu_opaque, N>::make(order, fpta_index_is_reverse(index));
+        return varbin_stepper<fptu_opaque, N>::make(
+            order, fpta_index_is_reverse(index));
     }
 };
