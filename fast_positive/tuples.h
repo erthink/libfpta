@@ -295,8 +295,19 @@ size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
                                       unsigned more_payload,
                                       const char **error);
 
-/* Производит дефрагментацию модифицируемой формы кортежа. */
-void fptu_shrink(fptu_rw *pt);
+/* Производит дефрагментацию модифицируемой формы кортежа.
+ * Возвращает true если была произведена дефрагментация, что можно
+ * использовать как признак инвалидации итераторов. */
+bool fptu_shrink(fptu_rw *pt);
+
+/* Производит дефрагментацию модифицируемой формы кортежа при наличии
+ * пустот/мусора после удаления полей.
+ * Возвращает true если была произведена дефрагментация, что можно
+ * использовать как признак инвалидации итераторов. */
+static __inline bool fptu_cond_shrink(fptu_rw *pt)
+{
+    return pt->junk != 0 && fptu_shrink(pt);
+}
 
 /* Возвращает сериализованную форму кортежа, которая находится внутри
  * модифицируемой. При необходимости автоматически производится
@@ -305,8 +316,7 @@ void fptu_shrink(fptu_rw *pt);
  * модифицируемой формы кортежа. */
 static __inline fptu_ro fptu_take(fptu_rw *pt)
 {
-    if (pt->junk)
-        fptu_shrink(pt);
+    fptu_cond_shrink(pt);
     return fptu_take_noshrink(pt);
 }
 

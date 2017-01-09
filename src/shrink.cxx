@@ -57,11 +57,13 @@ static unsigned fptu_state(const fptu_rw *pt)
     return state;
 }
 
-void fptu_shrink(fptu_rw *pt)
+bool fptu_shrink(fptu_rw *pt)
 {
     unsigned state = fptu_state(pt);
-    if ((state & (fptu_junk_header | fptu_junk_data)) == 0)
-        return;
+    if ((state & (fptu_junk_header | fptu_junk_data)) == 0) {
+        assert(pt->junk == 0);
+        return false;
+    }
 
     if (state & fptu_mesh) {
         // TODO: support for ordered tuples;
@@ -101,4 +103,5 @@ void fptu_shrink(fptu_rw *pt)
     pt->head += shift;
     pt->tail = t - &pt->units[0].data;
     pt->junk = 0;
+    return true;
 }
