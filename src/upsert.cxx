@@ -77,9 +77,6 @@ static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct,
         if (unlikely(fresh == nullptr)) {
             // undo erase
             // TODO: unit test for this case
-            /* yes this is a badly hack,
-             * but on the other hand,
-             * it is reasonably and easy decision. */
             pf->ct = ct;
             assert(pt->head >= save_head);
             assert(pt->tail <= save_tail);

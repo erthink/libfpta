@@ -3,7 +3,7 @@ unsigned gray_code(unsigned n) { return n ^ (n >> 1); }
 
 /* Итерирующий генератор перестановок из 6 элементов.
  *
- * В отличии от std::next_permination() и std::next_permination()
+ * В отличии от std::next_permination() и std::prev_permination()
  * позволяет получить перестановку непосредственно по номеру. */
 class shuffle6
 {
