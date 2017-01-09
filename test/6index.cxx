@@ -30,6 +30,8 @@ static constexpr unsigned NNN = 65521; // около минуты в /dev/shm/
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
+#define TEST_DB_DIR "/dev/shm/"
+
 struct db_deleter : public std::unary_function<void, fpta_db *> {
     void operator()(fpta_db *db) const
     {
@@ -58,8 +60,8 @@ typedef std::unique_ptr<fpta_db, db_deleter> scoped_db_guard;
 typedef std::unique_ptr<fpta_txn, txn_deleter> scoped_txn_guard;
 typedef std::unique_ptr<fpta_cursor, cursor_deleter> scoped_cursor_guard;
 
-static const char testdb_name[] = "ut_index.fpta";
-static const char testdb_name_lck[] = "ut_index.fpta-lock";
+static const char testdb_name[] = TEST_DB_DIR "ut_index.fpta";
+static const char testdb_name_lck[] = TEST_DB_DIR "ut_index.fpta-lock";
 
 TEST(Index, keygen)
 {
