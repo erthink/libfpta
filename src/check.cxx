@@ -144,7 +144,7 @@ const char *fptu_check_ro(fptu_ro ro)
     return nullptr;
 }
 
-const char *fptu_check(fptu_rw *pt)
+const char *fptu_check(const fptu_rw *pt)
 {
     if (unlikely(pt == nullptr))
         return "tuple.is_nullptr";

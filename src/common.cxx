@@ -143,7 +143,7 @@ __hot fptu_field *fptu_lookup(fptu_rw *pt, unsigned column,
 
 //----------------------------------------------------------------------------
 
-__hot fptu_ro fptu_take_noshrink(fptu_rw *pt)
+__hot fptu_ro fptu_take_noshrink(const fptu_rw *pt)
 {
     fptu_ro tuple;
 
