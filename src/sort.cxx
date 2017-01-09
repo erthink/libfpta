@@ -21,9 +21,9 @@
 #include <algorithm>
 #include <functional>
 
-bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end)
+bool __hot fptu_is_ordered(const fptu_field *begin, const fptu_field *end)
 {
-    if (likely(end - begin > 1)) {
+    if (likely(end > begin + 1)) {
         /* При формировании кортежа дескрипторы полей физически размещаются
          * в обратном порядке. Считаем что они в правильном порядке, когда
          * сначала добавляются поля с меньшими номерами. Соответственно,
@@ -72,12 +72,12 @@ bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end)
  *    - по старшему биту получаем верхний предел для размера битовой карты.
  */
 
-static uint16_t *fptu_tags_slowpath(uint16_t *const first, uint16_t *tail,
-                                    const fptu_field *const pos,
-                                    const fptu_field *const end,
-                                    unsigned have)
+static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
+                                               uint16_t *tail,
+                                               const fptu_field *const pos,
+                                               const fptu_field *const end,
+                                               unsigned have)
 {
-    assert(std::is_sorted(first, tail));
     assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
 
     /* собираем в маску оставшиеся значения */
@@ -159,7 +159,6 @@ uint16_t *fptu_tags(uint16_t *const first, const fptu_field *const begin,
                 }
             }
         }
-        assert(std::is_sorted(first, tail));
         assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
     }
     return tail;

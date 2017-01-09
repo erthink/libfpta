@@ -348,3 +348,16 @@ static __inline int fptu_cmp2int(type left, type right)
 bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end);
 uint16_t *fptu_tags(uint16_t *const first, const fptu_field *const begin,
                     const fptu_field *const end);
+
+template <typename iterator>
+static __inline fptu_lge
+fptu_depleted2lge(const iterator &left_pos, const iterator &left_end,
+                  const iterator &right_pos, const iterator &right_end)
+{
+    bool left_depleted = (left_pos >= left_end);
+    bool right_depleted = (right_pos >= right_end);
+
+    if (left_depleted == right_depleted)
+        return fptu_eq;
+    return left_depleted ? fptu_lt : fptu_gt;
+}

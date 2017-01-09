@@ -196,15 +196,26 @@ fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
 
 fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right)
 {
+#ifdef NDEBUG /* только при выключенной отладке, ради тестирования */
+    // fastpath если кортежи полностью равны "как есть"
+    if (left.sys.iov_len == right.sys.iov_len &&
+        memcmp(left.sys.iov_base, right.sys.iov_base, left.sys.iov_len) == 0)
+        return fptu_eq;
+#endif /* NDEBUG */
+
     // начало и конец дескрипторов слева
-    auto l_begin = fptu_begin_ro(left);
-    auto l_end = fptu_end_ro(left);
-    auto l_size = l_end - l_begin;
+    const auto l_begin = fptu_begin_ro(left);
+    const auto l_end = fptu_end_ro(left);
+    const auto l_size = l_end - l_begin;
 
     // начало и конец дескрипторов справа
-    auto r_begin = fptu_begin_ro(right);
-    auto r_end = fptu_end_ro(right);
-    auto r_size = r_end - r_begin;
+    const auto r_begin = fptu_begin_ro(right);
+    const auto r_end = fptu_end_ro(right);
+    const auto r_size = r_end - r_begin;
+
+    // fastpath если хотя-бы один из кортежей пуст
+    if (l_size == 0 || r_size == 0)
+        return fptu_cmp2lge(l_size, r_size);
 
     if (likely(fptu_is_ordered(l_begin, l_end) &&
                fptu_is_ordered(r_begin, r_end))) {
@@ -230,54 +241,84 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right)
     auto tags_l = tags_l_begin, tags_r = tags_r_begin;
     for (;;) {
         // если уперлись в конец слева или справа
-        if (tags_l == tags_l_end) {
-            if (tags_r == tags_r_end)
-                return fptu_eq;
-            return fptu_lt;
-        } else if (tags_r == tags_r_end)
-            return fptu_gt;
+        const bool left_depleted = (tags_l == tags_l_end);
+        const bool right_depleted = (tags_r == tags_r_end);
+        if (left_depleted | right_depleted)
+            return fptu_cmp2lge(!left_depleted, !right_depleted);
 
         // если слева и справа разные теги
         if (*tags_l != *tags_r)
             return fptu_cmp2lge(*tags_l, *tags_r);
 
-        // сканируем все поля с текущим тегом, их может быть несколько
-        // (коллекции)
+        /* сканируем и сравниваем все поля с текущим тегом, в каждом кортеже
+         * таких полей может быть несколько, ибо поддерживаются коллекции.
+         *
+         * ВАЖНО:
+         *  - для сравнения коллекций (нескольких полей с одинаковыми тегами)
+         *    требуется перебор их элементов, в устойчивом/воспроизводимом
+         *    порядке;
+         *  - в качестве такого порядка (критерия) можно использовать только
+         *    физический порядок расположения полей в кортеже, ибо нет
+         *    каких-либо других атрибутов;
+         *  - однако, в общем случае, физический порядок расположения полей
+         *    зависит от истории изменения кортежа (так как вставка новых
+         *    полей может производиться в "дыры" образовавшиеся в результате
+         *    предыдущих удалений);
+         *  - таким образом, нет способа стабильно сравнивать кортежи
+         *    содержащие коллекции (повторы), без частичной утраты
+         *    эффективности при модификации кортежей.
+         *
+         * ПОЭТОМУ:
+         *  - сравниваем коллекции опираясь на физический порядок полей, т.е.
+         *    результат сравнения может зависеть от истории изменений кортежа;
+         *  - элементы добавленные первыми считаются наиболее значимыми, при
+         *    этом для предотвращения неоднозначности есть несколько
+         *    вариантов:
+         *      1) Не создавать коллекции, т.е. не использовать функции
+         *         вида fptu_insert_xyz(), либо использовать массивы.
+         *      2) Перед fptu_insert_xyz() вызывать fptu_cond_shrink(),
+         *         в результате чего физический порядок полей и элементов
+         *         коллекций будет определяться порядком их добавления.
+         *      3) Реализовать и использовать свою функцию сравнения.
+         */
         const uint16_t tag = *tags_l;
 
         // ищем первое вхождение слева, оно обязано быть
-        const fptu_field *field_l = l_begin;
-        while (field_l->ct != tag)
-            field_l++;
-        assert(field_l < l_end);
+        const fptu_field *field_l = l_end;
+        do
+            --field_l;
+        while (field_l->ct != tag);
+        assert(field_l >= l_begin);
 
         // ищем первое вхождение справа, оно обязано быть
-        const fptu_field *field_r = r_begin;
-        while (field_r->ct != tag)
-            field_r++;
-        assert(field_r < r_end);
+        const fptu_field *field_r = r_end;
+        do
+            --field_r;
+        while (field_r->ct != tag);
+        assert(field_r >= r_begin);
 
         for (;;) {
-            // сравниваем найденые экземпляры
+            // сравниваем найденные экземпляры
             fptu_lge cmp = fptu_cmp_fields_same_type(field_l, field_r);
             if (cmp != fptu_eq)
                 return cmp;
 
             // ищем следующее слева
-            while (++field_l < l_end && field_l->ct != tag)
+            while (--field_l >= l_begin && field_l->ct != tag)
                 ;
 
             // ищем следующее справа
-            while (++field_r < r_end && field_r->ct != tag)
+            while (--field_r >= r_begin && field_r->ct != tag)
                 ;
 
             // если дошли до конца слева или справа
-            if (field_l == l_end) {
-                if (field_r == r_end)
-                    return fptu_eq;
-                return fptu_lt;
-            } else if (field_r == r_end)
-                return fptu_gt;
+            const bool left_depleted = (field_l < l_begin);
+            const bool right_depleted = (field_r < r_begin);
+            if (left_depleted | right_depleted) {
+                if (left_depleted != right_depleted)
+                    return left_depleted ? fptu_lt : fptu_gt;
+                break;
+            }
         }
 
         tags_l++;
