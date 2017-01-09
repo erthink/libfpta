@@ -7,6 +7,7 @@ add_ut(fptu3_iterate TIMEOUT 1 SOURCE 3iterate.cxx LIBRARY fptu)
 add_ut(fptu4_fetch TIMEOUT 1 SOURCE 4fetch.cxx LIBRARY fptu)
 add_ut(fptu5_remove TIMEOUT 5 SOURCE 5remove.cxx shuffle6.hpp LIBRARY fptu)
 add_ut(fptu6_shrink TIMEOUT 10 SOURCE 6shrink.cxx shuffle6.hpp LIBRARY fptu)
+add_ut(fptu7_compare TIMEOUT 10 SOURCE 7compare.cxx shuffle6.hpp LIBRARY fptu)
 
 # add_perf_test(abc_perf TIMEOUT 60 LIBRARY fptu)
 # add_long_test(xyz_long TIMEOUT 600 LIBRARY fptu)
