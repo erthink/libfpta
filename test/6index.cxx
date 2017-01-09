@@ -21,8 +21,14 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#define FPTA_QUICK_INDEX_UT
 #include "keygen.hpp"
+
+/* кол-во проверочных точек в диапазонах значений индексируемых типов */
+#ifdef FPTA_INDEX_UT_LONG
+static constexpr unsigned NNN = 65521; // около минуты в /dev/shm/
+#else
+static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
+#endif
 
 struct db_deleter : public std::unary_function<void, fpta_db *> {
     void operator()(fpta_db *db) const
@@ -71,7 +77,7 @@ TEST(Index, keygen)
     string_keygen_test<false>(8, 8);
     string_keygen_test<true>(8, 8);
 
-    fixbin_stepper<11>::test();
+    fixbin_stepper<11, 43>::test();
     varbin_stepper<fptu_cstr, 421>::test();
     varbin_stepper<fptu_opaque, 421>::test();
 }
@@ -124,15 +130,15 @@ template <fptu_type type, fpta_index_type index> void TestPrimary()
     ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
     ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
-// пытаемся обойтись меньшей базой, но для строк потребуется больше места
-#ifdef FPTA_QUICK_INDEX_UT
-    const unsigned megabytes = 1;
-#else
+#ifdef FPTA_INDEX_UT_LONG
+    // пытаемся обойтись меньшей базой, но для строк потребуется больше места
     unsigned megabytes = 16;
     if (type > fptu_128)
         megabytes = 20;
     if (type > fptu_256)
         megabytes = 32;
+#else
+    const unsigned megabytes = 1;
 #endif
 
     fpta_db *db = nullptr;
@@ -177,10 +183,10 @@ template <fptu_type type, fpta_index_type index> void TestPrimary()
     ASSERT_STREQ(nullptr, fptu_check(row));
 
     unsigned n = 0;
-    for (int order = keygen<index, type>::order_from;
-         order <= keygen<index, type>::order_to; ++order) {
+    for (int order = keygen<index, type, NNN>::order_from;
+         order <= keygen<index, type, NNN>::order_to; ++order) {
         SCOPED_TRACE("order " + std::to_string(order));
-        fpta_value value_pk = keygen<index, type>::make(order);
+        fpta_value value_pk = keygen<index, type, NNN>::make(order);
         if (value_pk.type == fpta_end)
             break;
         if (value_pk.type == fpta_begin)
@@ -290,7 +296,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary()
         EXPECT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_first));
     }
 
-    int order = keygen<index, type>::order_from;
+    int order = keygen<index, type, NNN>::order_from;
     for (unsigned i = 0; i < n;) {
         SCOPED_TRACE(std::to_string(i) + " of " + std::to_string(n) +
                      ", order " + std::to_string(order));

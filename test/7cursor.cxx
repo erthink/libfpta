@@ -23,8 +23,14 @@
 #include <tuple>
 #include <unordered_map>
 
-#define FPTA_QUICK_INDEX_UT
 #include "keygen.hpp"
+
+/* кол-во проверочных точек в диапазонах значений индексируемых типов */
+#ifdef FPTA_CURSOR_UT_LONG
+static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/shm/
+#else
+static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
+#endif
 
 struct db_deleter : public std::unary_function<void, fpta_db *> {
     void operator()(fpta_db *db) const
@@ -93,9 +99,9 @@ class any_keygen
         {
             type = _type;
             index = _index;
-            order_from = keygen<_index, _type>::order_from;
-            order_to = keygen<_index, _type>::order_to;
-            maker = keygen<_index, _type>::make;
+            order_from = keygen<_index, _type, NNN>::order_from;
+            order_to = keygen<_index, _type, NNN>::order_to;
+            maker = keygen<_index, _type, NNN>::make;
         }
 
         template <fpta_index_type _index> void unroll(fptu_type _type)
@@ -397,15 +403,15 @@ class CursorPrimary
         ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
         ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
-// пытаемся обойтись меньшей базой, но для строк потребуется больше места
-#ifdef FPTA_QUICK_INDEX_UT
-        const unsigned megabytes = 1;
-#else
-        unsigned megabytes = 16;
-        if (type > fptu_128)
-            megabytes = 20;
+#ifdef FPTA_CURSOR_UT_LONG
+        // пытаемся обойтись меньшей базой, но для строк потребуется больше места
+        unsigned megabytes = 32;
+        if (type > fptu_96)
+            megabytes = 56;
         if (type > fptu_256)
-            megabytes = 32;
+            megabytes = 64;
+#else
+        const unsigned megabytes = 1;
 #endif
 
         fpta_db *db = nullptr;
