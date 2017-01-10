@@ -156,14 +156,23 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                             MDB_val *mdbx_seek_key, MDB_val *mdbx_seek_data)
 {
     assert(mdbx_seek_key != &cursor->current);
-    int rc = mdbx_cursor_get(cursor->mdbx_cursor, mdbx_seek_key,
-                             mdbx_seek_data, mdbx_seek_op);
-    if (unlikely(rc != MDB_SUCCESS))
-        goto bailout;
-
     fptu_ro mdbx_data;
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                         &mdbx_data.sys, MDB_GET_CURRENT);
+    int rc;
+
+    if (likely(mdbx_seek_key == NULL)) {
+        assert(mdbx_seek_data == NULL);
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                             &mdbx_data.sys, mdbx_seek_op);
+    } else {
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, mdbx_seek_key,
+                             mdbx_seek_data, mdbx_seek_op);
+        if (unlikely(rc != MDB_SUCCESS))
+            goto bailout;
+
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                             &mdbx_data.sys, MDB_GET_CURRENT);
+    }
+
     while (rc == MDB_SUCCESS) {
         if (cursor->range_from_value.type != fpta_begin &&
             mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
