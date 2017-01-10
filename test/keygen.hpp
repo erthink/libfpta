@@ -47,7 +47,7 @@ static_assert(flt_pos_over >= FLT_MAX, "unexpected precision loss");
 
 //----------------------------------------------------------------------------
 
-bool is_valid4pk(fptu_type type, fpta_index_type index)
+bool is_valid4primary(fptu_type type, fpta_index_type index)
 {
     if (index == fpta_index_none || fpta_index_is_secondary(index))
         return false;
@@ -67,6 +67,25 @@ bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor)
         return false;
 
     if (fpta_cursor_is_ordered(cursor) && !fpta_index_is_ordered(index))
+        return false;
+
+    return true;
+}
+
+bool is_valid4secondary(fptu_type pk_type, fpta_index_type pk_index,
+                        fptu_type se_type, fpta_index_type se_index)
+{
+    (void)pk_type;
+    if (!fpta_index_is_unique(pk_index))
+        return false;
+
+    if (se_index == fpta_index_none || fpta_index_is_primary(se_index))
+        return false;
+
+    if (se_type <= fptu_null || se_type >= fptu_farray)
+        return false;
+
+    if (fpta_index_is_reverse(se_index) && se_type < fptu_96)
         return false;
 
     return true;

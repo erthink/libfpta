@@ -367,7 +367,7 @@ class CursorPrimary
         index = std::get<1>(GetParam());
         ordering = std::get<2>(GetParam());
 #endif
-        valid_index_ops = is_valid4pk(type, index);
+        valid_index_ops = is_valid4primary(type, index);
         valid_cursor_ops = is_valid4cursor(index, ordering);
 
         SCOPED_TRACE("type " + std::to_string(type) + ", index " +

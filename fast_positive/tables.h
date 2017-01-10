@@ -670,9 +670,11 @@ typedef enum fpta_index_type {
 
     /* с повторами */
     fpta_primary_withdups = fpta_index_fordered + fpta_index_fobverse,
+    fpta_primary_withdups_obverse = fpta_primary_withdups,
 
     /* с контролем уникальности */
     fpta_primary_unique = fpta_primary_withdups + fpta_index_funique,
+    fpta_primary_unique_obverse = fpta_primary_unique,
 
     /* неупорядоченный, с контролем уникальности */
     fpta_primary_unique_unordered = fpta_primary_unique - fpta_index_fordered,
@@ -689,7 +691,7 @@ typedef enum fpta_index_type {
         fpta_primary_withdups - fpta_index_fobverse,
 
     /* базовый вариант для основного индекса */
-    fpta_primary = fpta_primary_unique,
+    fpta_primary = fpta_primary_unique_obverse,
 
     /* Вторичный ключ/индекс.
      *
@@ -701,9 +703,11 @@ typedef enum fpta_index_type {
 
     /* с повторами */
     fpta_secondary_withdups = fpta_primary_withdups + fpta_index_fsecondary,
+    fpta_secondary_withdups_obverse = fpta_secondary_withdups,
 
     /* с контролем уникальности */
     fpta_secondary_unique = fpta_secondary_withdups + fpta_index_funique,
+    fpta_secondary_unique_obverse = fpta_secondary_unique,
 
     /* неупорядоченный, с контролем уникальности */
     fpta_secondary_unique_unordered =
@@ -722,7 +726,7 @@ typedef enum fpta_index_type {
         fpta_secondary_withdups - fpta_index_fobverse,
 
     /* базовый вариант для вторичных индексов */
-    fpta_secondary = fpta_secondary_withdups,
+    fpta_secondary = fpta_secondary_withdups_obverse,
 } fpta_index_type;
 
 /* Внутренний тип для сжатых описаний идентификаторов. */
