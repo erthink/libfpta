@@ -297,7 +297,7 @@ static int fpta_normalize_key(fpta_shove_t shove, fpta_key &key, bool copy)
 
 //----------------------------------------------------------------------------
 
-unsigned fpta_index_shove2dbiflags(unsigned shove)
+static __inline unsigned shove2dbiflags(unsigned shove)
 {
     fptu_type type = fpta_shove2type(shove);
     fpta_index_type index = fpta_shove2index(shove);
@@ -311,6 +311,32 @@ unsigned fpta_index_shove2dbiflags(unsigned shove)
         dbi_flags |= MDB_REVERSEKEY;
 
     return dbi_flags | MDB_CREATE;
+}
+
+unsigned fpta_index_shove2primary_dbiflags(unsigned shove)
+{
+    assert(fpta_index_is_primary(fpta_shove2index(shove)));
+    return shove2dbiflags(shove);
+}
+
+unsigned fpta_index_shove2secondary_dbiflags(unsigned pk_shove,
+                                             unsigned shove)
+{
+    assert(fpta_index_is_primary(fpta_shove2index(pk_shove)));
+    assert(fpta_index_is_secondary(fpta_shove2index(shove)));
+
+    fptu_type pk_type = fpta_shove2type(pk_shove);
+    fpta_index_type pk_index = fpta_shove2index(pk_shove);
+    unsigned dbi_flags = shove2dbiflags(shove);
+    if (dbi_flags & MDB_DUPSORT) {
+        if (pk_type < fptu_cstr)
+            dbi_flags |= MDB_DUPFIXED;
+        if (pk_type < fptu_96 || !fpta_index_is_ordered(pk_index))
+            dbi_flags |= MDB_INTEGERDUP;
+        else if (fpta_index_is_reverse(pk_index))
+            dbi_flags |= MDB_REVERSEDUP;
+    }
+    return dbi_flags;
 }
 
 bool fpta_index_ordered_is_compat(fptu_type data_type,

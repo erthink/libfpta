@@ -699,7 +699,11 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
         auto index = fpta_shove2index(column_set->shoves[i]);
         if (index == fpta_index_none)
             break;
-        unsigned dbi_flags = fpta_index_shove2dbiflags(column_set->shoves[i]);
+        unsigned dbi_flags =
+            (i == 0)
+                ? fpta_index_shove2primary_dbiflags(column_set->shoves[0])
+                : fpta_index_shove2secondary_dbiflags(column_set->shoves[0],
+                                                      column_set->shoves[i]);
         rc = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), &dbi[i],
                            dbi_flags);
         if (rc != MDB_SUCCESS)

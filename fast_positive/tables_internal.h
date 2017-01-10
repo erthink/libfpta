@@ -237,7 +237,9 @@ static __inline fpta_index_type fpta_id2index(const fpta_name *id)
 }
 
 MDB_cmp_func *fpta_index_shove2comparator(unsigned shove);
-unsigned fpta_index_shove2dbiflags(unsigned shove);
+unsigned fpta_index_shove2primary_dbiflags(unsigned shove);
+unsigned fpta_index_shove2secondary_dbiflags(unsigned pk_shove,
+                                             unsigned shove);
 
 bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value);
 
