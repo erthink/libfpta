@@ -330,6 +330,9 @@ int fpta_column_describe(const char *column_name, enum fptu_type data_type,
         if (column_set->count < 1)
             column_set->count = 1;
     } else {
+        if (index_type != fpta_index_none && column_set->shoves[0] &&
+            !fpta_index_is_unique(column_set->shoves[0]))
+            return FPTA_EINVAL;
         size_t place = (column_set->count > 0) ? column_set->count : 1;
         column_set->shoves[place] = shove;
         column_set->count = place + 1;
