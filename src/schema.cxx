@@ -219,6 +219,10 @@ int fpta_open_column(fpta_txn *txn, fpta_name *column_id)
     }
 
     assert(column_id->mdbx_dbi > 0);
+    rc = mdbx_set_dupsort(txn->mdbx_txn, column_id->mdbx_dbi,
+                          fpta_index_shove2comparator(table_id->table.pk));
+    if (unlikely(rc != MDB_SUCCESS))
+        return rc;
     return mdbx_set_compare(txn->mdbx_txn, column_id->mdbx_dbi,
                             fpta_index_shove2comparator(column_id->shove));
 }
@@ -241,9 +245,14 @@ int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
             return rc;
 
         assert(dbi_array[i] > 0);
+        rc =
+            mdbx_set_dupsort(txn->mdbx_txn, dbi_array[i],
+                             fpta_index_shove2comparator(table_id->table.pk));
+        if (unlikely(rc != MDB_SUCCESS))
+            return rc;
         rc = mdbx_set_compare(txn->mdbx_txn, dbi_array[i],
                               fpta_index_shove2comparator(index_shove));
-        if (unlikely(rc != FPTA_SUCCESS))
+        if (unlikely(rc != MDB_SUCCESS))
             return rc;
     }
 
