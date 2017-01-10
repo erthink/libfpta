@@ -345,8 +345,8 @@ bool fpta_index_ordered_is_compat(fptu_type data_type,
     /* Критерий сравнимости:
      *  - все индексы коротких типов (использующие MDB_INTEGERKEY) могут быть
      *    использованы только со значениями РАВНОГО фиксированного размера.
-     *  - НЕ допускается смешивать signed и unsigned, тем более integer и
-     * float.
+     *  - НЕ допускается смешивать signed и unsigned,
+     *    тем более integer и float.
      *  - shoved допустим только при возможности больших ключей.
      */
     static int32_t bits[fpta_end + 1] = {

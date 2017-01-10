@@ -189,7 +189,7 @@ template <fptu_type data_type> struct probe_triplet {
             reverse.emplace(std::piecewise_construct,
                             std::forward_as_tuple(key),
                             std::forward_as_tuple(order));
-            // повторяем для проверки сравнения (эти вставка не должна
+            // повторяем для проверки сравнения (эта вставка не должна
             // произойти)
             reverse.emplace(std::piecewise_construct,
                             std::forward_as_tuple(key),
