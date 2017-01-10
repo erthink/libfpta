@@ -236,8 +236,19 @@ class CursorPrimary
     std::string pk_col_name;
     fpta_name table, col_pk, col_order, col_dup_id, col_t1ha;
     int order_from, order_to;
+    static constexpr int n_dups = 5;
     unsigned n;
     std::unordered_map<int, int> reorder;
+
+    int first_dup_id()
+    {
+        return (ordering & fpta_descending) ? n_dups - 1 : 0;
+    }
+
+    int last_dup_id()
+    {
+        return (ordering & fpta_descending) ? 0 : n_dups - 1;
+    }
 
     void CheckPosition(int linear, int dup)
     {
@@ -328,7 +339,7 @@ class CursorPrimary
                                                    fptu_take_noshrink(row)));
                 ++n;
             } else {
-                for (unsigned dup_id = 0; dup_id < 5; ++dup_id) {
+                for (unsigned dup_id = 0; dup_id < n_dups; ++dup_id) {
                     ASSERT_EQ(FPTA_OK,
                               fpta_upsert_column(row, &col_dup_id,
                                                  fpta_value_uint(dup_id)));
@@ -406,7 +417,8 @@ class CursorPrimary
         ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
 #ifdef FPTA_CURSOR_UT_LONG
-        // пытаемся обойтись меньшей базой, но для строк потребуется больше места
+        // пытаемся обойтись меньшей базой,
+        // но для строк потребуется больше места
         unsigned megabytes = 32;
         if (type > fptu_96)
             megabytes = 56;
@@ -540,27 +552,33 @@ class CursorPrimary
 
 TEST_P(CursorPrimary, basicMoves)
 {
+    if (!valid_index_ops || !valid_cursor_ops)
+        return;
+
     SCOPED_TRACE("type " + std::to_string(type) + ", index " +
                  std::to_string(index) +
                  (valid_index_ops ? ", (valid case)" : ", (invalid case)"));
-    if (!valid_index_ops || !valid_cursor_ops)
-        return;
+
+    SCOPED_TRACE("ordering " + std::to_string(ordering) + ", index " +
+                 std::to_string(index) +
+                 (valid_cursor_ops ? ", (valid cursor case)"
+                                   : ", (invalid cursor case)"));
 
     ASSERT_GT(n, 5);
     fpta_cursor *const cursor = cursor_guard.get();
     ASSERT_NE(nullptr, cursor);
 
-    // переходим туда-сюда и к первой записи
+    // переходим туда-сюда и к первой строке
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(reorder.size() - 1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
 
-    // пробуем уйти дальше последней
+    // пробуем уйти дальше последней строки
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(reorder.size() - 1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_next));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
@@ -583,9 +601,9 @@ TEST_P(CursorPrimary, basicMoves)
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
 #endif
 
-    // пробуем выйти за первую
+    // пробуем выйти за первую строку
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_prev));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
@@ -610,11 +628,11 @@ TEST_P(CursorPrimary, basicMoves)
 
     // идем в конец и проверяем назад/вперед
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, first_dup_id()));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_next));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
@@ -622,24 +640,24 @@ TEST_P(CursorPrimary, basicMoves)
     ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_prev));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
 #endif
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, first_dup_id()));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_next));
 
     // идем в начало и проверяем назад/вперед
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(1, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, last_dup_id()));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
@@ -647,15 +665,15 @@ TEST_P(CursorPrimary, basicMoves)
     ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_next));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
 #endif
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(1, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(2, first_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(1, last_dup_id()));
     ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
+    ASSERT_NO_FATAL_FAILURE(CheckPosition(0, last_dup_id()));
     ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
 }
 
