@@ -349,13 +349,17 @@ template <typename type, unsigned N>
 /* Позволяет за N шагов "простучать" весь диапазон значений type,
  * явно включая крайние точки, нуль и бесконечности (при наличии). */
 struct scalar_range_stepper {
-    static constexpr long scope =
-        (std::is_signed<type>() ? (N - 1) / 2 : (N - 1)) -
-        std::numeric_limits<type>::has_infinity;
+    static constexpr long scope_neg =
+        std::is_signed<type>()
+            ? (N - 1) / 2 - std::numeric_limits<type>::has_infinity
+            : 0;
+    static constexpr long scope_pos =
+        N - scope_neg - 1 - std::numeric_limits<type>::has_infinity * 2;
     static_assert(!std::is_signed<type>() ||
                       std::numeric_limits<type>::lowest() < 0,
                   "expected lowest() < 0 for signed types");
-    static_assert(std::numeric_limits<type>::max() > scope,
+    static_assert(scope_pos > 1, "seems N is too small");
+    static_assert(std::numeric_limits<type>::max() > scope_pos,
                   "seems N is too big");
 
     static constexpr int order_from = 0;
@@ -367,27 +371,28 @@ struct scalar_range_stepper {
         if (std::is_signed<type>()) {
             if (std::numeric_limits<type>::has_infinity && order-- == 0)
                 return -std::numeric_limits<type>::infinity();
-            if (order < scope) {
-                type offset =
-                    (std::numeric_limits<type>::max() < INT_MAX)
-                        ? std::numeric_limits<type>::lowest() * order / scope
-                        : std::numeric_limits<type>::lowest() / scope * order;
+            if (order < scope_neg) {
+                type offset = (std::numeric_limits<type>::max() < INT_MAX)
+                                  ? std::numeric_limits<type>::lowest() *
+                                        order / scope_neg
+                                  : std::numeric_limits<type>::lowest() /
+                                        scope_neg * order;
 
                 return std::numeric_limits<type>::lowest() - offset;
             }
-            order -= scope;
+            order -= scope_neg;
         }
 
         if (order == 0)
             return type(0);
 
-        if (std::numeric_limits<type>::has_infinity && order > scope)
+        if (std::numeric_limits<type>::has_infinity && order > scope_pos)
             return std::numeric_limits<type>::infinity();
-        if (order == scope)
+        if (order == scope_pos)
             return std::numeric_limits<type>::max();
         return (std::numeric_limits<type>::max() < INT_MAX)
-                   ? std::numeric_limits<type>::max() * order / scope
-                   : std::numeric_limits<type>::max() / scope * order;
+                   ? std::numeric_limits<type>::max() * order / scope_pos
+                   : std::numeric_limits<type>::max() / scope_pos * order;
     }
 
     static void test()

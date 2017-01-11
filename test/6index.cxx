@@ -65,11 +65,17 @@ static const char testdb_name_lck[] = TEST_DB_DIR "ut_index.fpta-lock";
 
 TEST(Index, keygen)
 {
+    scalar_range_stepper<float, 42>::test();
     scalar_range_stepper<float, 43>::test();
+    scalar_range_stepper<double, 42>::test();
     scalar_range_stepper<double, 43>::test();
+    scalar_range_stepper<uint16_t, 42>::test();
     scalar_range_stepper<uint16_t, 43>::test();
+    scalar_range_stepper<uint32_t, 42>::test();
     scalar_range_stepper<uint32_t, 43>::test();
+    scalar_range_stepper<int32_t, 42>::test();
     scalar_range_stepper<int32_t, 43>::test();
+    scalar_range_stepper<int64_t, 42>::test();
     scalar_range_stepper<int64_t, 43>::test();
 
     string_keygen_test<false>(1, 3);
@@ -79,9 +85,12 @@ TEST(Index, keygen)
     string_keygen_test<false>(8, 8);
     string_keygen_test<true>(8, 8);
 
+    fixbin_stepper<11, 42>::test();
     fixbin_stepper<11, 43>::test();
     varbin_stepper<fptu_cstr, 421>::test();
+    varbin_stepper<fptu_cstr, 512>::test();
     varbin_stepper<fptu_opaque, 421>::test();
+    varbin_stepper<fptu_opaque, 512>::test();
 }
 
 TEST(Index, Invalid)
