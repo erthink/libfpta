@@ -1,7 +1,7 @@
 /*
  * Copyright 2016 libfptu AUTHORS: please see AUTHORS file.
  *
- * This file is part of libfptu, aka "Positive Tuples".
+ * This file is part of libfptu, aka "Fast Positive Tuples".
  *
  * libfptu is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
