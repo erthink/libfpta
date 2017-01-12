@@ -19,269 +19,260 @@
 
 #include "fast_positive/tables_internal.h"
 
-static __hot fptu_lge fpta_cmp_null(const fptu_field *left)
-{
-    auto payload = fptu_field_payload(left);
+static __hot fptu_lge fpta_cmp_null(const fptu_field *left) {
+  auto payload = fptu_field_payload(left);
 
-    switch (fptu_get_type(left->ct)) {
-    case fptu_null:
-        return fptu_eq;
-    case fptu_opaque:
-        if (payload->other.varlen.opaque_bytes == 0)
-            return fptu_eq;
-    default:
-        return fptu_ic;
-    }
+  switch (fptu_get_type(left->ct)) {
+  case fptu_null:
+    return fptu_eq;
+  case fptu_opaque:
+    if (payload->other.varlen.opaque_bytes == 0)
+      return fptu_eq;
+  default:
+    return fptu_ic;
+  }
 }
 
-static __hot fptu_lge fpta_cmp_sint(const fptu_field *left, int64_t right)
-{
-    auto payload = fptu_field_payload(left);
+static __hot fptu_lge fpta_cmp_sint(const fptu_field *left, int64_t right) {
+  auto payload = fptu_field_payload(left);
 
-    switch (fptu_get_type(left->ct)) {
-    case fptu_uint16:
-        return fptu_cmp2lge<int64_t>(left->get_payload_uint16(), right);
+  switch (fptu_get_type(left->ct)) {
+  case fptu_uint16:
+    return fptu_cmp2lge<int64_t>(left->get_payload_uint16(), right);
 
-    case fptu_uint32:
-        return fptu_cmp2lge<int64_t>(payload->u32, right);
+  case fptu_uint32:
+    return fptu_cmp2lge<int64_t>(payload->u32, right);
 
-    case fptu_int32:
-        return fptu_cmp2lge<int64_t>(payload->i32, right);
+  case fptu_int32:
+    return fptu_cmp2lge<int64_t>(payload->i32, right);
 
-    case fptu_uint64:
-        if (right < 0)
-            return fptu_gt;
-        return fptu_cmp2lge(payload->u64, (uint64_t)right);
+  case fptu_uint64:
+    if (right < 0)
+      return fptu_gt;
+    return fptu_cmp2lge(payload->u64, (uint64_t)right);
 
-    case fptu_int64:
-        return fptu_cmp2lge(payload->i64, right);
+  case fptu_int64:
+    return fptu_cmp2lge(payload->i64, right);
 
-    case fptu_fp32:
-        return fptu_cmp2lge<double>(payload->fp32, right);
+  case fptu_fp32:
+    return fptu_cmp2lge<double>(payload->fp32, right);
 
-    case fptu_fp64:
-        return fptu_cmp2lge<double>(payload->fp64, right);
+  case fptu_fp64:
+    return fptu_cmp2lge<double>(payload->fp64, right);
 
-    default:
-        return fptu_ic;
-    }
+  default:
+    return fptu_ic;
+  }
 }
 
-static __hot fptu_lge fpta_cmp_uint(const fptu_field *left, uint64_t right)
-{
-    auto payload = fptu_field_payload(left);
+static __hot fptu_lge fpta_cmp_uint(const fptu_field *left, uint64_t right) {
+  auto payload = fptu_field_payload(left);
 
-    switch (fptu_get_type(left->ct)) {
-    case fptu_uint16:
-        return fptu_cmp2lge<uint64_t>(left->get_payload_uint16(), right);
+  switch (fptu_get_type(left->ct)) {
+  case fptu_uint16:
+    return fptu_cmp2lge<uint64_t>(left->get_payload_uint16(), right);
 
-    case fptu_int32:
-        if (payload->i32 < 0)
-            return fptu_lt;
-    case fptu_uint32:
-        return fptu_cmp2lge<uint64_t>(payload->u32, right);
+  case fptu_int32:
+    if (payload->i32 < 0)
+      return fptu_lt;
+  case fptu_uint32:
+    return fptu_cmp2lge<uint64_t>(payload->u32, right);
 
-    case fptu_int64:
-        if (payload->i64 < 0)
-            return fptu_lt;
-    case fptu_uint64:
-        return fptu_cmp2lge(payload->u64, right);
+  case fptu_int64:
+    if (payload->i64 < 0)
+      return fptu_lt;
+  case fptu_uint64:
+    return fptu_cmp2lge(payload->u64, right);
 
-    case fptu_fp32:
-        return fptu_cmp2lge<double>(payload->fp32, right);
+  case fptu_fp32:
+    return fptu_cmp2lge<double>(payload->fp32, right);
 
-    case fptu_fp64:
-        return fptu_cmp2lge<double>(payload->fp64, right);
+  case fptu_fp64:
+    return fptu_cmp2lge<double>(payload->fp64, right);
 
-    default:
-        return fptu_ic;
-    }
+  default:
+    return fptu_ic;
+  }
 }
 
-static __hot fptu_lge fpta_cmp_fp(const fptu_field *left, double right)
-{
-    auto payload = fptu_field_payload(left);
+static __hot fptu_lge fpta_cmp_fp(const fptu_field *left, double right) {
+  auto payload = fptu_field_payload(left);
 
-    switch (fptu_get_type(left->ct)) {
-    case fptu_uint16:
-        return fptu_cmp2lge<double>(left->get_payload_uint16(), right);
+  switch (fptu_get_type(left->ct)) {
+  case fptu_uint16:
+    return fptu_cmp2lge<double>(left->get_payload_uint16(), right);
 
-    case fptu_int32:
-        return fptu_cmp2lge<double>(payload->i32, right);
+  case fptu_int32:
+    return fptu_cmp2lge<double>(payload->i32, right);
 
-    case fptu_uint32:
-        return fptu_cmp2lge<double>(payload->u32, right);
+  case fptu_uint32:
+    return fptu_cmp2lge<double>(payload->u32, right);
 
-    case fptu_int64:
-        return fptu_cmp2lge<double>(payload->i64, right);
+  case fptu_int64:
+    return fptu_cmp2lge<double>(payload->i64, right);
 
-    case fptu_uint64:
-        return fptu_cmp2lge<double>(payload->u64, right);
+  case fptu_uint64:
+    return fptu_cmp2lge<double>(payload->u64, right);
 
-    case fptu_fp32:
-        return fptu_cmp2lge<double>(payload->fp32, right);
+  case fptu_fp32:
+    return fptu_cmp2lge<double>(payload->fp32, right);
 
-    case fptu_fp64:
-        return fptu_cmp2lge(payload->fp64, right);
+  case fptu_fp64:
+    return fptu_cmp2lge(payload->fp64, right);
 
-    default:
-        return fptu_ic;
-    }
+  default:
+    return fptu_ic;
+  }
 }
 
 static __hot fptu_lge fpta_cmp_string(const fptu_field *left,
-                                      const char *right, size_t length)
-{
-    auto payload = fptu_field_payload(left);
+                                      const char *right, size_t length) {
+  auto payload = fptu_field_payload(left);
 
-    switch (fptu_get_type(left->ct)) {
-    default:
-        return fptu_ic;
+  switch (fptu_get_type(left->ct)) {
+  default:
+    return fptu_ic;
 
-    case fptu_cstr:
-        return fptu_cmp_str_binary(payload->cstr, right, length);
+  case fptu_cstr:
+    return fptu_cmp_str_binary(payload->cstr, right, length);
 
-    case fptu_opaque:
-        return fptu_cmp_binary(payload->other.data,
-                               payload->other.varlen.opaque_bytes, right,
-                               length);
-    }
+  case fptu_opaque:
+    return fptu_cmp_binary(payload->other.data,
+                           payload->other.varlen.opaque_bytes, right, length);
+  }
 }
 
 static __hot fptu_lge fpta_cmp_binary(const fptu_field *left,
                                       const void *right_data,
-                                      size_t right_len)
-{
-    auto payload = fptu_field_payload(left);
-    const void *left_data = payload->fixbin;
-    size_t left_len;
+                                      size_t right_len) {
+  auto payload = fptu_field_payload(left);
+  const void *left_data = payload->fixbin;
+  size_t left_len;
 
-    switch (fptu_get_type(left->ct)) {
-    case fptu_null:
-        return (right_len == 0) ? fptu_eq : fptu_ic;
+  switch (fptu_get_type(left->ct)) {
+  case fptu_null:
+    return (right_len == 0) ? fptu_eq : fptu_ic;
 
-    case fptu_uint16:
-    case fptu_uint32:
-    case fptu_int32:
-    case fptu_fp32:
-    case fptu_uint64:
-    case fptu_int64:
-    case fptu_fp64:
-        return fptu_ic;
+  case fptu_uint16:
+  case fptu_uint32:
+  case fptu_int32:
+  case fptu_fp32:
+  case fptu_uint64:
+  case fptu_int64:
+  case fptu_fp64:
+    return fptu_ic;
 
-    case fptu_96:
-        left_len = 12;
-        break;
-    case fptu_128:
-        left_len = 16;
-        break;
-    case fptu_160:
-        left_len = 20;
-        break;
-    case fptu_192:
-        left_len = 24;
-        break;
-    case fptu_256:
-        left_len = 32;
-        break;
+  case fptu_96:
+    left_len = 12;
+    break;
+  case fptu_128:
+    left_len = 16;
+    break;
+  case fptu_160:
+    left_len = 20;
+    break;
+  case fptu_192:
+    left_len = 24;
+    break;
+  case fptu_256:
+    left_len = 32;
+    break;
 
-    case fptu_cstr:
-        return fptu_cmp_str_binary(payload->cstr, right_data, right_len);
+  case fptu_cstr:
+    return fptu_cmp_str_binary(payload->cstr, right_data, right_len);
 
-    case fptu_opaque:
-        left_len = payload->other.varlen.opaque_bytes;
-        left_data = payload->other.data;
-        break;
+  case fptu_opaque:
+    left_len = payload->other.varlen.opaque_bytes;
+    left_data = payload->other.data;
+    break;
 
-    case fptu_nested:
-    default: /* fptu_farray */
-        left_len = units2bytes(payload->other.varlen.brutto);
-        left_data = payload->other.data;
-        break;
-    }
+  case fptu_nested:
+  default: /* fptu_farray */
+    left_len = units2bytes(payload->other.varlen.brutto);
+    left_data = payload->other.data;
+    break;
+  }
 
-    return fptu_cmp_binary(left_data, left_len, right_data, right_len);
+  return fptu_cmp_binary(left_data, left_len, right_data, right_len);
 }
 
 //----------------------------------------------------------------------------
 
-__hot fptu_lge fpta_filter_cmp(const fptu_field *pf, const fpta_value &right)
-{
-    if ((unlikely(pf == nullptr)))
-        return (right.type == fpta_null) ? fptu_eq : fptu_ic;
+__hot fptu_lge fpta_filter_cmp(const fptu_field *pf,
+                               const fpta_value &right) {
+  if ((unlikely(pf == nullptr)))
+    return (right.type == fpta_null) ? fptu_eq : fptu_ic;
 
-    switch (right.type) {
-    case fpta_null:
-        return fpta_cmp_null(pf);
+  switch (right.type) {
+  case fpta_null:
+    return fpta_cmp_null(pf);
 
-    case fpta_signed_int:
-        return fpta_cmp_sint(pf, right.sint);
+  case fpta_signed_int:
+    return fpta_cmp_sint(pf, right.sint);
 
-    case fpta_unsigned_int:
-        return fpta_cmp_uint(pf, right.uint);
+  case fpta_unsigned_int:
+    return fpta_cmp_uint(pf, right.uint);
 
-    case fpta_float_point:
-        return fpta_cmp_fp(pf, right.fp);
+  case fpta_float_point:
+    return fpta_cmp_fp(pf, right.fp);
 
-    case fpta_string:
-        return fpta_cmp_string(pf, right.str, right.binary_length);
+  case fpta_string:
+    return fpta_cmp_string(pf, right.str, right.binary_length);
 
-    case fpta_binary:
-    case fpta_shoved:
-        return fpta_cmp_binary(pf, right.binary_data, right.binary_length);
+  case fpta_binary:
+  case fpta_shoved:
+    return fpta_cmp_binary(pf, right.binary_data, right.binary_length);
 
-    default:
-        assert(false);
-        return fptu_ic;
-    }
+  default:
+    assert(false);
+    return fptu_ic;
+  }
 }
 
-__hot bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple)
-{
+__hot bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple) {
 
 tail_recursion:
 
-    if (unlikely(fn == nullptr))
-        // empty filter
-        return true;
+  if (unlikely(fn == nullptr))
+    // empty filter
+    return true;
 
-    switch (fn->type) {
-    case fpta_node_not:
-        return !fpta_filter_match(fn->node_not, tuple);
+  switch (fn->type) {
+  case fpta_node_not:
+    return !fpta_filter_match(fn->node_not, tuple);
 
-    case fpta_node_or:
-        if (fpta_filter_match(fn->node_or.a, tuple))
-            return true;
-        fn = fn->node_or.b;
-        goto tail_recursion;
+  case fpta_node_or:
+    if (fpta_filter_match(fn->node_or.a, tuple))
+      return true;
+    fn = fn->node_or.b;
+    goto tail_recursion;
 
-    case fpta_node_and:
-        if (!fpta_filter_match(fn->node_and.a, tuple))
-            return false;
-        fn = fn->node_and.b;
-        goto tail_recursion;
+  case fpta_node_and:
+    if (!fpta_filter_match(fn->node_and.a, tuple))
+      return false;
+    fn = fn->node_and.b;
+    goto tail_recursion;
 
-    case fpta_node_fn:
-        return fn->node_fn.predicate(
-            fptu_lookup_ro(tuple, fn->node_fn.column_id->column.num,
-                           fpta_id2type(fn->node_fn.column_id)),
-            fn->node_fn.column_id, fn->node_fn.context, fn->node_fn.arg);
+  case fpta_node_fn:
+    return fn->node_fn.predicate(
+        fptu_lookup_ro(tuple, fn->node_fn.column_id->column.num,
+                       fpta_id2type(fn->node_fn.column_id)),
+        fn->node_fn.column_id, fn->node_fn.context, fn->node_fn.arg);
 
-    default:
-        int cmp_bits = fpta_filter_cmp(
-            fptu_lookup_ro(tuple, fn->node_cmp.left_id->column.num,
-                           fpta_id2type(fn->node_cmp.left_id)),
-            fn->node_cmp.right_value);
+  default:
+    int cmp_bits = fpta_filter_cmp(
+        fptu_lookup_ro(tuple, fn->node_cmp.left_id->column.num,
+                       fpta_id2type(fn->node_cmp.left_id)),
+        fn->node_cmp.right_value);
 
-        return (cmp_bits & fn->type) != 0;
-    }
+    return (cmp_bits & fn->type) != 0;
+  }
 }
 
 //----------------------------------------------------------------------------
 
-bool fpta_filter_validate(const fpta_filter *filter)
-{
-    (void)filter;
-    // TODO
-    return true;
+bool fpta_filter_validate(const fpta_filter *filter) {
+  (void)filter;
+  // TODO
+  return true;
 }

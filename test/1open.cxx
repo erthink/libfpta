@@ -23,49 +23,47 @@
 static const char testdb_name[] = "ut_create.fpta";
 static const char testdb_name_lck[] = "ut_create.fpta-lock";
 
-TEST(Open, Trivia)
-{
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+TEST(Open, Trivia) {
+  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
-    fpta_db *db = (fpta_db *)&db;
-    EXPECT_EQ(ENOENT,
-              fpta_db_open(testdb_name, fpta_readonly, 0644, 1, false, &db));
-    EXPECT_EQ(nullptr, db);
-    ASSERT_TRUE(unlink(testdb_name) != 0 && errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) != 0 && errno == ENOENT);
+  fpta_db *db = (fpta_db *)&db;
+  EXPECT_EQ(ENOENT,
+            fpta_db_open(testdb_name, fpta_readonly, 0644, 1, false, &db));
+  EXPECT_EQ(nullptr, db);
+  ASSERT_TRUE(unlink(testdb_name) != 0 && errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) != 0 && errno == ENOENT);
 
-    EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_sync, 0644, 1, false, &db));
-    EXPECT_NE(nullptr, db);
-    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, false, &db));
+  EXPECT_NE(nullptr, db);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(unlink(testdb_name) == 0);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0);
 
-    EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_sync, 0644, 1, false, &db));
-    EXPECT_NE(nullptr, db);
-    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, false, &db));
+  EXPECT_NE(nullptr, db);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(unlink(testdb_name) == 0);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0);
 
-    EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_lazy, 0644, 1, false, &db));
-    EXPECT_NE(nullptr, db);
-    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_lazy, 0644, 1, false, &db));
+  EXPECT_NE(nullptr, db);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(unlink(testdb_name) == 0);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0);
 
-    EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
-    EXPECT_NE(nullptr, db);
-    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
+  EXPECT_NE(nullptr, db);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(unlink(testdb_name) == 0);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0);
 }
 
-int main(int argc, char **argv)
-{
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }

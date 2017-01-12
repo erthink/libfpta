@@ -21,11 +21,10 @@
 #include <fast_positive/tables.h>
 #include <stdio.h>
 
-int main(int argc, char *argv[])
-{
-    (void)argc;
-    (void)argv;
+int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
 
-    printf("\nno Windows, no Java, no Problems ;)\n");
-    return 0;
+  printf("\nno Windows, no Java, no Problems ;)\n");
+  return 0;
 }

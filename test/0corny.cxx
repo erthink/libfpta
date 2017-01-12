@@ -20,28 +20,26 @@
 #include "fast_positive/tables_internal.h"
 #include <gtest/gtest.h>
 
-TEST(Name, Validate)
-{
-    EXPECT_TRUE(fpta_name_validate("valid"));
-    EXPECT_TRUE(fpta_name_validate("valid_valid"));
-    EXPECT_TRUE(fpta_name_validate("valid_42"));
+TEST(Name, Validate) {
+  EXPECT_TRUE(fpta_name_validate("valid"));
+  EXPECT_TRUE(fpta_name_validate("valid_valid"));
+  EXPECT_TRUE(fpta_name_validate("valid_42"));
 
-    EXPECT_FALSE(fpta_name_validate(""));
-    EXPECT_FALSE(fpta_name_validate(nullptr));
-    EXPECT_FALSE(fpta_name_validate("a_very_long_long_long_long_long_long_"
-                                    "long_long_long_long_long_long_name"));
+  EXPECT_FALSE(fpta_name_validate(""));
+  EXPECT_FALSE(fpta_name_validate(nullptr));
+  EXPECT_FALSE(fpta_name_validate("a_very_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_name"));
 
-    EXPECT_FALSE(fpta_name_validate("no valid"));
-    EXPECT_FALSE(fpta_name_validate("1nvalid"));
-    EXPECT_FALSE(fpta_name_validate("inval.d"));
-    EXPECT_FALSE(fpta_name_validate("_1nvalid"));
-    EXPECT_FALSE(fpta_name_validate("invalid#"));
-    EXPECT_FALSE(fpta_name_validate("invalid/"));
-    EXPECT_FALSE(fpta_name_validate("invalid_ещераз"));
+  EXPECT_FALSE(fpta_name_validate("no valid"));
+  EXPECT_FALSE(fpta_name_validate("1nvalid"));
+  EXPECT_FALSE(fpta_name_validate("inval.d"));
+  EXPECT_FALSE(fpta_name_validate("_1nvalid"));
+  EXPECT_FALSE(fpta_name_validate("invalid#"));
+  EXPECT_FALSE(fpta_name_validate("invalid/"));
+  EXPECT_FALSE(fpta_name_validate("invalid_ещераз"));
 }
 
-int main(int argc, char **argv)
-{
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
