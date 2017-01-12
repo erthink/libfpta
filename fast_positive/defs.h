@@ -1,7 +1,7 @@
 /*
  * Copyright 2016 libfptu AUTHORS: please see AUTHORS file.
  *
- * This file is part of libfptu, aka "Positive Tuples".
+ * This file is part of libfptu, aka "Fast Positive Tuples".
  *
  * libfptu is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,6 +71,11 @@
 #	ifndef false
 #		define false (0)
 #	endif
+#endif
+
+#if !defined(__cplusplus) || __cplusplus < 201103L
+#	define nullptr NULL
+#	define final
 #endif
 
 //----------------------------------------------------------------------------
