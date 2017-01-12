@@ -20,308 +20,294 @@
 #include "fast_positive/tuples_internal.h"
 #include <algorithm>
 
-static __inline fptu_lge cmpbin(const void *a, const void *b, size_t bytes)
-{
-    return fptu_diff2lge(memcmp(a, b, bytes));
+static __inline fptu_lge cmpbin(const void *a, const void *b, size_t bytes) {
+  return fptu_diff2lge(memcmp(a, b, bytes));
 }
 
 fptu_lge __hot fptu_cmp_binary(const void *left_data, size_t left_len,
-                               const void *right_data, size_t right_len)
-{
-    int diff = memcmp(left_data, right_data, std::min(left_len, right_len));
-    if (diff == 0)
-        diff = fptu_cmp2int(left_len, right_len);
-    return fptu_diff2lge(diff);
+                               const void *right_data, size_t right_len) {
+  int diff = memcmp(left_data, right_data, std::min(left_len, right_len));
+  if (diff == 0)
+    diff = fptu_cmp2int(left_len, right_len);
+  return fptu_diff2lge(diff);
 }
 
 //----------------------------------------------------------------------------
 
-fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value)
-{
-    if (unlikely(value == nullptr))
-        return fptu_ic;
+fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value) {
+  if (unlikely(value == nullptr))
+    return fptu_ic;
 
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_96);
-    if (unlikely(pf == nullptr))
-        return fptu_ic;
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_96);
+  if (unlikely(pf == nullptr))
+    return fptu_ic;
 
-    return cmpbin(fptu_field_payload(pf)->fixbin, value, 12);
+  return cmpbin(fptu_field_payload(pf)->fixbin, value, 12);
 }
 
-fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value)
-{
-    if (unlikely(value == nullptr))
-        return fptu_ic;
+fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value) {
+  if (unlikely(value == nullptr))
+    return fptu_ic;
 
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_128);
-    if (unlikely(pf == nullptr))
-        return fptu_ic;
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_128);
+  if (unlikely(pf == nullptr))
+    return fptu_ic;
 
-    return cmpbin(fptu_field_payload(pf)->fixbin, value, 16);
+  return cmpbin(fptu_field_payload(pf)->fixbin, value, 16);
 }
 
-fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value)
-{
-    if (unlikely(value == nullptr))
-        return fptu_ic;
+fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value) {
+  if (unlikely(value == nullptr))
+    return fptu_ic;
 
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_160);
-    if (unlikely(pf == nullptr))
-        return fptu_ic;
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_160);
+  if (unlikely(pf == nullptr))
+    return fptu_ic;
 
-    return cmpbin(fptu_field_payload(pf)->fixbin, value, 20);
+  return cmpbin(fptu_field_payload(pf)->fixbin, value, 20);
 }
 
-fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value)
-{
-    if (unlikely(value == nullptr))
-        return fptu_ic;
+fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value) {
+  if (unlikely(value == nullptr))
+    return fptu_ic;
 
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_192);
-    if (unlikely(pf == nullptr))
-        return fptu_ic;
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_192);
+  if (unlikely(pf == nullptr))
+    return fptu_ic;
 
-    return cmpbin(fptu_field_payload(pf)->fixbin, value, 24);
+  return cmpbin(fptu_field_payload(pf)->fixbin, value, 24);
 }
 
-fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value)
-{
-    if (unlikely(value == nullptr))
-        return fptu_ic;
+fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value) {
+  if (unlikely(value == nullptr))
+    return fptu_ic;
 
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_256);
-    if (unlikely(pf == nullptr))
-        return fptu_ic;
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_256);
+  if (unlikely(pf == nullptr))
+    return fptu_ic;
 
-    return cmpbin(fptu_field_payload(pf)->fixbin, value, 32);
+  return cmpbin(fptu_field_payload(pf)->fixbin, value, 32);
 }
 
 //----------------------------------------------------------------------------
 
 fptu_lge fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
-                         size_t bytes)
-{
-    const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_opaque);
-    if (pf == nullptr)
-        return bytes ? fptu_ic : fptu_eq;
+                         size_t bytes) {
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_opaque);
+  if (pf == nullptr)
+    return bytes ? fptu_ic : fptu_eq;
 
-    const struct iovec iov = fptu_field_opaque(pf);
-    return fptu_cmp_binary(iov.iov_base, iov.iov_len, value, bytes);
+  const struct iovec iov = fptu_field_opaque(pf);
+  return fptu_cmp_binary(iov.iov_base, iov.iov_len, value, bytes);
 }
 
 fptu_lge fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
-                             const struct iovec value)
-{
-    return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
+                             const struct iovec value) {
+  return fptu_cmp_opaque(ro, column, value.iov_base, value.iov_len);
 }
 
 //----------------------------------------------------------------------------
 
 static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
-                                          const fptu_field *right)
-{
-    assert(left != nullptr && right != nullptr);
-    assert(fptu_get_type(left->ct) == fptu_get_type(right->ct));
+                                          const fptu_field *right) {
+  assert(left != nullptr && right != nullptr);
+  assert(fptu_get_type(left->ct) == fptu_get_type(right->ct));
 
-    auto payload_left = fptu_field_payload(left);
-    auto payload_right = fptu_field_payload(right);
+  auto payload_left = fptu_field_payload(left);
+  auto payload_right = fptu_field_payload(right);
 
-    switch (fptu_get_type(left->ct)) {
-    case fptu_null:
-        return fptu_eq;
+  switch (fptu_get_type(left->ct)) {
+  case fptu_null:
+    return fptu_eq;
 
-    case fptu_uint16:
-        return fptu_cmp2lge(left->get_payload_uint16(),
-                            right->get_payload_uint16());
-    case fptu_int32:
-        return fptu_cmp2lge(payload_left->i32, payload_right->i32);
-    case fptu_uint32:
-        return fptu_cmp2lge(payload_left->u32, payload_right->u32);
-    case fptu_fp32:
-        return fptu_cmp2lge(payload_left->fp32, payload_right->fp32);
+  case fptu_uint16:
+    return fptu_cmp2lge(left->get_payload_uint16(),
+                        right->get_payload_uint16());
+  case fptu_int32:
+    return fptu_cmp2lge(payload_left->i32, payload_right->i32);
+  case fptu_uint32:
+    return fptu_cmp2lge(payload_left->u32, payload_right->u32);
+  case fptu_fp32:
+    return fptu_cmp2lge(payload_left->fp32, payload_right->fp32);
 
-    case fptu_int64:
-        return fptu_cmp2lge(payload_left->i64, payload_right->i64);
-    case fptu_uint64:
-        return fptu_cmp2lge(payload_left->u64, payload_right->u64);
-    case fptu_fp64:
-        return fptu_cmp2lge(payload_left->fp64, payload_right->fp64);
+  case fptu_int64:
+    return fptu_cmp2lge(payload_left->i64, payload_right->i64);
+  case fptu_uint64:
+    return fptu_cmp2lge(payload_left->u64, payload_right->u64);
+  case fptu_fp64:
+    return fptu_cmp2lge(payload_left->fp64, payload_right->fp64);
 
-    case fptu_96:
-        return cmpbin(payload_left->fixbin, payload_right->fixbin, 12);
-    case fptu_128:
-        return cmpbin(payload_left->fixbin, payload_right->fixbin, 16);
-    case fptu_160:
-        return cmpbin(payload_left->fixbin, payload_right->fixbin, 20);
-    case fptu_192:
-        return cmpbin(payload_left->fixbin, payload_right->fixbin, 24);
-    case fptu_256:
-        return cmpbin(payload_left->fixbin, payload_right->fixbin, 32);
+  case fptu_96:
+    return cmpbin(payload_left->fixbin, payload_right->fixbin, 12);
+  case fptu_128:
+    return cmpbin(payload_left->fixbin, payload_right->fixbin, 16);
+  case fptu_160:
+    return cmpbin(payload_left->fixbin, payload_right->fixbin, 20);
+  case fptu_192:
+    return cmpbin(payload_left->fixbin, payload_right->fixbin, 24);
+  case fptu_256:
+    return cmpbin(payload_left->fixbin, payload_right->fixbin, 32);
 
-    case fptu_cstr:
-        return fptu_diff2lge(strcmp(payload_left->cstr, payload_right->cstr));
+  case fptu_cstr:
+    return fptu_diff2lge(strcmp(payload_left->cstr, payload_right->cstr));
 
-    case fptu_opaque:
-        return fptu_cmp_binary(payload_left->other.data,
-                               payload_left->other.varlen.opaque_bytes,
-                               payload_right->other.data,
-                               payload_right->other.varlen.opaque_bytes);
+  case fptu_opaque:
+    return fptu_cmp_binary(
+        payload_left->other.data, payload_left->other.varlen.opaque_bytes,
+        payload_right->other.data, payload_right->other.varlen.opaque_bytes);
 
-    case fptu_nested:
-        return fptu_cmp_tuples(fptu_field_nested(left),
-                               fptu_field_nested(right));
+  case fptu_nested:
+    return fptu_cmp_tuples(fptu_field_nested(left), fptu_field_nested(right));
 
-    default:
-        /* fptu_farray */
-        // TODO: лексикографическое сравнение
-        return fptu_ic;
-    }
+  default:
+    /* fptu_farray */
+    // TODO: лексикографическое сравнение
+    return fptu_ic;
+  }
 }
 
-fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right)
-{
-    if (unlikely(left == nullptr))
-        return right ? fptu_lt : fptu_eq;
-    if (unlikely(right == nullptr))
-        return fptu_gt;
+fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right) {
+  if (unlikely(left == nullptr))
+    return right ? fptu_lt : fptu_eq;
+  if (unlikely(right == nullptr))
+    return fptu_gt;
 
-    if (likely(fptu_get_type(left->ct) == fptu_get_type(right->ct)))
-        return fptu_cmp_fields_same_type(left, right);
+  if (likely(fptu_get_type(left->ct) == fptu_get_type(right->ct)))
+    return fptu_cmp_fields_same_type(left, right);
 
-    // TODO: сравнение с кастингом?
-    return fptu_ic;
+  // TODO: сравнение с кастингом?
+  return fptu_ic;
 }
 
 //----------------------------------------------------------------------------
 
-fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right)
-{
+fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
 #ifdef NDEBUG /* только при выключенной отладке, ради тестирования */
-    // fastpath если кортежи полностью равны "как есть"
-    if (left.sys.iov_len == right.sys.iov_len &&
-        memcmp(left.sys.iov_base, right.sys.iov_base, left.sys.iov_len) == 0)
-        return fptu_eq;
+  // fastpath если кортежи полностью равны "как есть"
+  if (left.sys.iov_len == right.sys.iov_len &&
+      memcmp(left.sys.iov_base, right.sys.iov_base, left.sys.iov_len) == 0)
+    return fptu_eq;
 #endif /* NDEBUG */
 
-    // начало и конец дескрипторов слева
-    const auto l_begin = fptu_begin_ro(left);
-    const auto l_end = fptu_end_ro(left);
-    const auto l_size = l_end - l_begin;
+  // начало и конец дескрипторов слева
+  const auto l_begin = fptu_begin_ro(left);
+  const auto l_end = fptu_end_ro(left);
+  const auto l_size = l_end - l_begin;
 
-    // начало и конец дескрипторов справа
-    const auto r_begin = fptu_begin_ro(right);
-    const auto r_end = fptu_end_ro(right);
-    const auto r_size = r_end - r_begin;
+  // начало и конец дескрипторов справа
+  const auto r_begin = fptu_begin_ro(right);
+  const auto r_end = fptu_end_ro(right);
+  const auto r_size = r_end - r_begin;
 
-    // fastpath если хотя-бы один из кортежей пуст
-    if (l_size == 0 || r_size == 0)
-        return fptu_cmp2lge(l_size, r_size);
+  // fastpath если хотя-бы один из кортежей пуст
+  if (l_size == 0 || r_size == 0)
+    return fptu_cmp2lge(l_size, r_size);
 
-    if (likely(fptu_is_ordered(l_begin, l_end) &&
-               fptu_is_ordered(r_begin, r_end))) {
-        // TODO: fastpath если оба кортежа уже упорядоченные.
-    } else {
-        // TODO: account perfomance penalty.
-    }
+  if (likely(fptu_is_ordered(l_begin, l_end) &&
+             fptu_is_ordered(r_begin, r_end))) {
+    // TODO: fastpath если оба кортежа уже упорядоченные.
+  } else {
+    // TODO: account perfomance penalty.
+  }
 
-    // буфер на стеке под сортированные теги полей
-    uint16_t buffer[l_size + r_size];
+  // буфер на стеке под сортированные теги полей
+  uint16_t buffer[l_size + r_size];
 
-    // получаем отсортированные теги слева
-    uint16_t *const tags_l_begin = buffer;
-    uint16_t *const tags_l_end = fptu_tags(tags_l_begin, l_begin, l_end);
-    assert(tags_l_end >= tags_l_begin && tags_l_end <= tags_l_end + l_size);
+  // получаем отсортированные теги слева
+  uint16_t *const tags_l_begin = buffer;
+  uint16_t *const tags_l_end = fptu_tags(tags_l_begin, l_begin, l_end);
+  assert(tags_l_end >= tags_l_begin && tags_l_end <= tags_l_end + l_size);
 
-    // получаем отсортированные теги справа
-    uint16_t *const tags_r_begin = tags_l_end;
-    uint16_t *const tags_r_end = fptu_tags(tags_r_begin, r_begin, r_end);
-    assert(tags_r_end >= tags_r_begin && tags_r_end <= tags_r_end + r_size);
+  // получаем отсортированные теги справа
+  uint16_t *const tags_r_begin = tags_l_end;
+  uint16_t *const tags_r_end = fptu_tags(tags_r_begin, r_begin, r_end);
+  assert(tags_r_end >= tags_r_begin && tags_r_end <= tags_r_end + r_size);
 
-    // идем по отсортированным тегам
-    auto tags_l = tags_l_begin, tags_r = tags_r_begin;
+  // идем по отсортированным тегам
+  auto tags_l = tags_l_begin, tags_r = tags_r_begin;
+  for (;;) {
+    // если уперлись в конец слева или справа
+    const bool left_depleted = (tags_l == tags_l_end);
+    const bool right_depleted = (tags_r == tags_r_end);
+    if (left_depleted | right_depleted)
+      return fptu_cmp2lge(!left_depleted, !right_depleted);
+
+    // если слева и справа разные теги
+    if (*tags_l != *tags_r)
+      return fptu_cmp2lge(*tags_l, *tags_r);
+
+    /* сканируем и сравниваем все поля с текущим тегом, в каждом кортеже
+     * таких полей может быть несколько, ибо поддерживаются коллекции.
+     *
+     * ВАЖНО:
+     *  - для сравнения коллекций (нескольких полей с одинаковыми тегами)
+     *    требуется перебор их элементов, в устойчивом/воспроизводимом
+     *    порядке;
+     *  - в качестве такого порядка (критерия) можно использовать только
+     *    физический порядок расположения полей в кортеже, ибо нет
+     *    каких-либо других атрибутов;
+     *  - однако, в общем случае, физический порядок расположения полей
+     *    зависит от истории изменения кортежа (так как вставка новых
+     *    полей может производиться в "дыры" образовавшиеся в результате
+     *    предыдущих удалений);
+     *  - таким образом, нет способа стабильно сравнивать кортежи
+     *    содержащие коллекции (повторы), без частичной утраты
+     *    эффективности при модификации кортежей.
+     *
+     * ПОЭТОМУ:
+     *  - сравниваем коллекции опираясь на физический порядок полей, т.е.
+     *    результат сравнения может зависеть от истории изменений кортежа;
+     *  - элементы добавленные первыми считаются наиболее значимыми, при
+     *    этом для предотвращения неоднозначности есть несколько
+     *    вариантов:
+     *      1) Не создавать коллекции, т.е. не использовать функции
+     *         вида fptu_insert_xyz(), либо использовать массивы.
+     *      2) Перед fptu_insert_xyz() вызывать fptu_cond_shrink(),
+     *         в результате чего физический порядок полей и элементов
+     *         коллекций будет определяться порядком их добавления.
+     *      3) Реализовать и использовать свою функцию сравнения.
+     */
+    const uint16_t tag = *tags_l;
+
+    // ищем первое вхождение слева, оно обязано быть
+    const fptu_field *field_l = l_end;
+    do
+      --field_l;
+    while (field_l->ct != tag);
+    assert(field_l >= l_begin);
+
+    // ищем первое вхождение справа, оно обязано быть
+    const fptu_field *field_r = r_end;
+    do
+      --field_r;
+    while (field_r->ct != tag);
+    assert(field_r >= r_begin);
+
     for (;;) {
-        // если уперлись в конец слева или справа
-        const bool left_depleted = (tags_l == tags_l_end);
-        const bool right_depleted = (tags_r == tags_r_end);
-        if (left_depleted | right_depleted)
-            return fptu_cmp2lge(!left_depleted, !right_depleted);
+      // сравниваем найденные экземпляры
+      fptu_lge cmp = fptu_cmp_fields_same_type(field_l, field_r);
+      if (cmp != fptu_eq)
+        return cmp;
 
-        // если слева и справа разные теги
-        if (*tags_l != *tags_r)
-            return fptu_cmp2lge(*tags_l, *tags_r);
+      // ищем следующее слева
+      while (--field_l >= l_begin && field_l->ct != tag)
+        ;
 
-        /* сканируем и сравниваем все поля с текущим тегом, в каждом кортеже
-         * таких полей может быть несколько, ибо поддерживаются коллекции.
-         *
-         * ВАЖНО:
-         *  - для сравнения коллекций (нескольких полей с одинаковыми тегами)
-         *    требуется перебор их элементов, в устойчивом/воспроизводимом
-         *    порядке;
-         *  - в качестве такого порядка (критерия) можно использовать только
-         *    физический порядок расположения полей в кортеже, ибо нет
-         *    каких-либо других атрибутов;
-         *  - однако, в общем случае, физический порядок расположения полей
-         *    зависит от истории изменения кортежа (так как вставка новых
-         *    полей может производиться в "дыры" образовавшиеся в результате
-         *    предыдущих удалений);
-         *  - таким образом, нет способа стабильно сравнивать кортежи
-         *    содержащие коллекции (повторы), без частичной утраты
-         *    эффективности при модификации кортежей.
-         *
-         * ПОЭТОМУ:
-         *  - сравниваем коллекции опираясь на физический порядок полей, т.е.
-         *    результат сравнения может зависеть от истории изменений кортежа;
-         *  - элементы добавленные первыми считаются наиболее значимыми, при
-         *    этом для предотвращения неоднозначности есть несколько
-         *    вариантов:
-         *      1) Не создавать коллекции, т.е. не использовать функции
-         *         вида fptu_insert_xyz(), либо использовать массивы.
-         *      2) Перед fptu_insert_xyz() вызывать fptu_cond_shrink(),
-         *         в результате чего физический порядок полей и элементов
-         *         коллекций будет определяться порядком их добавления.
-         *      3) Реализовать и использовать свою функцию сравнения.
-         */
-        const uint16_t tag = *tags_l;
+      // ищем следующее справа
+      while (--field_r >= r_begin && field_r->ct != tag)
+        ;
 
-        // ищем первое вхождение слева, оно обязано быть
-        const fptu_field *field_l = l_end;
-        do
-            --field_l;
-        while (field_l->ct != tag);
-        assert(field_l >= l_begin);
-
-        // ищем первое вхождение справа, оно обязано быть
-        const fptu_field *field_r = r_end;
-        do
-            --field_r;
-        while (field_r->ct != tag);
-        assert(field_r >= r_begin);
-
-        for (;;) {
-            // сравниваем найденные экземпляры
-            fptu_lge cmp = fptu_cmp_fields_same_type(field_l, field_r);
-            if (cmp != fptu_eq)
-                return cmp;
-
-            // ищем следующее слева
-            while (--field_l >= l_begin && field_l->ct != tag)
-                ;
-
-            // ищем следующее справа
-            while (--field_r >= r_begin && field_r->ct != tag)
-                ;
-
-            // если дошли до конца слева или справа
-            const bool left_depleted = (field_l < l_begin);
-            const bool right_depleted = (field_r < r_begin);
-            if (left_depleted | right_depleted) {
-                if (left_depleted != right_depleted)
-                    return left_depleted ? fptu_lt : fptu_gt;
-                break;
-            }
-        }
-
-        tags_l++;
-        tags_r++;
+      // если дошли до конца слева или справа
+      const bool left_depleted = (field_l < l_begin);
+      const bool right_depleted = (field_r < r_begin);
+      if (left_depleted | right_depleted) {
+        if (left_depleted != right_depleted)
+          return left_depleted ? fptu_lt : fptu_gt;
+        break;
+      }
     }
+
+    tags_l++;
+    tags_r++;
+  }
 }

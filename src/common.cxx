@@ -55,105 +55,100 @@ const uint8_t fptu_internal_map_t2u[fptu_cstr] = {
     /* 192 */ 6,
     /* 256 */ 8};
 
-__hot size_t fptu_field_units(const fptu_field *pf)
-{
-    unsigned type = fptu_get_type(pf->ct);
-    if (likely(type < fptu_cstr)) {
-        // fixed length type
-        return fptu_internal_map_t2u[type];
-    }
+__hot size_t fptu_field_units(const fptu_field *pf) {
+  unsigned type = fptu_get_type(pf->ct);
+  if (likely(type < fptu_cstr)) {
+    // fixed length type
+    return fptu_internal_map_t2u[type];
+  }
 
-    // variable length type
-    const fptu_payload *payload = fptu_field_payload(pf);
-    if (type == fptu_cstr) {
-        // length is not stored, but zero terminated
-        return bytes2units(strlen(payload->cstr) + 1);
-    }
+  // variable length type
+  const fptu_payload *payload = fptu_field_payload(pf);
+  if (type == fptu_cstr) {
+    // length is not stored, but zero terminated
+    return bytes2units(strlen(payload->cstr) + 1);
+  }
 
-    // length is stored
-    return payload->other.varlen.brutto + (size_t)1;
+  // length is stored
+  return payload->other.varlen.brutto + (size_t)1;
 }
 
 //----------------------------------------------------------------------------
 
 __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
-                                       int type_or_filter)
-{
-    if (unlikely(ro.total_bytes < fptu_unit_size))
-        return nullptr;
-    if (unlikely(ro.total_bytes !=
-                 fptu_unit_size +
-                     fptu_unit_size * (size_t)ro.units[0].varlen.brutto))
-        return nullptr;
-    if (unlikely(column > fptu_max_cols))
-        return nullptr;
-
-    unsigned items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
-    const fptu_field *begin = &ro.units[1].field;
-    const fptu_field *end = begin + items;
-
-    if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
-        // TODO: support for ordered tuples
-    }
-
-    if (type_or_filter & fptu_filter) {
-        for (const fptu_field *pf = begin; pf < end; ++pf) {
-            if (fptu_ct_match(pf, column, type_or_filter))
-                return pf;
-        }
-    } else {
-        unsigned ct = fptu_pack_coltype(column, type_or_filter);
-        for (const fptu_field *pf = begin; pf < end; ++pf) {
-            if (pf->ct == ct)
-                return pf;
-        }
-    }
+                                       int type_or_filter) {
+  if (unlikely(ro.total_bytes < fptu_unit_size))
     return nullptr;
+  if (unlikely(ro.total_bytes !=
+               fptu_unit_size +
+                   fptu_unit_size * (size_t)ro.units[0].varlen.brutto))
+    return nullptr;
+  if (unlikely(column > fptu_max_cols))
+    return nullptr;
+
+  unsigned items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  const fptu_field *begin = &ro.units[1].field;
+  const fptu_field *end = begin + items;
+
+  if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
+    // TODO: support for ordered tuples
+  }
+
+  if (type_or_filter & fptu_filter) {
+    for (const fptu_field *pf = begin; pf < end; ++pf) {
+      if (fptu_ct_match(pf, column, type_or_filter))
+        return pf;
+    }
+  } else {
+    unsigned ct = fptu_pack_coltype(column, type_or_filter);
+    for (const fptu_field *pf = begin; pf < end; ++pf) {
+      if (pf->ct == ct)
+        return pf;
+    }
+  }
+  return nullptr;
 }
 
-__hot fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct)
-{
-    const fptu_field *begin = &pt->units[pt->head].field;
-    const fptu_field *pivot = &pt->units[pt->pivot].field;
-    for (const fptu_field *pf = begin; pf < pivot; ++pf) {
-        if (pf->ct == ct)
-            return (fptu_field *)pf;
-    }
-    return nullptr;
+__hot fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct) {
+  const fptu_field *begin = &pt->units[pt->head].field;
+  const fptu_field *pivot = &pt->units[pt->pivot].field;
+  for (const fptu_field *pf = begin; pf < pivot; ++pf) {
+    if (pf->ct == ct)
+      return (fptu_field *)pf;
+  }
+  return nullptr;
 }
 
 __hot fptu_field *fptu_lookup(fptu_rw *pt, unsigned column,
-                              int type_or_filter)
-{
-    if (unlikely(column > fptu_max_cols))
-        return nullptr;
+                              int type_or_filter) {
+  if (unlikely(column > fptu_max_cols))
+    return nullptr;
 
-    if (type_or_filter & fptu_filter) {
-        const fptu_field *begin = &pt->units[pt->head].field;
-        const fptu_field *pivot = &pt->units[pt->pivot].field;
-        for (const fptu_field *pf = begin; pf < pivot; ++pf) {
-            if (fptu_ct_match(pf, column, type_or_filter))
-                return (fptu_field *)pf;
-        }
-        return nullptr;
+  if (type_or_filter & fptu_filter) {
+    const fptu_field *begin = &pt->units[pt->head].field;
+    const fptu_field *pivot = &pt->units[pt->pivot].field;
+    for (const fptu_field *pf = begin; pf < pivot; ++pf) {
+      if (fptu_ct_match(pf, column, type_or_filter))
+        return (fptu_field *)pf;
     }
+    return nullptr;
+  }
 
-    return fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
+  return fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
 }
 
 //----------------------------------------------------------------------------
 
-__hot fptu_ro fptu_take_noshrink(const fptu_rw *pt)
-{
-    fptu_ro tuple;
+__hot fptu_ro fptu_take_noshrink(const fptu_rw *pt) {
+  fptu_ro tuple;
 
-    assert(pt->head > 0);
-    ptrdiff_t items = pt->pivot - pt->head;
-    fptu_payload *payload = (fptu_payload *)&pt->units[pt->head - 1];
-    payload->other.varlen.brutto = pt->tail - pt->head;
-    payload->other.varlen.tuple_items = items;
-    // TODO: support for ordered tuples
-    tuple.units = (const fptu_unit *)payload;
-    tuple.total_bytes = (char *)&pt->units[pt->tail] - (char *)payload;
-    return tuple;
+  assert(pt->head > 0);
+  ptrdiff_t items = pt->pivot - pt->head;
+  fptu_payload *payload = (fptu_payload *)&pt->units[pt->head - 1];
+  payload->other.varlen.brutto = pt->tail - pt->head;
+  payload->other.varlen.tuple_items = items;
+  // TODO: support for ordered tuples
+  tuple.units = (const fptu_unit *)payload;
+  tuple.total_bytes = (char *)&pt->units[pt->tail] - (char *)payload;
+  return tuple;
 }

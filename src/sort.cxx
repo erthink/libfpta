@@ -21,29 +21,28 @@
 #include <algorithm>
 #include <functional>
 
-bool __hot fptu_is_ordered(const fptu_field *begin, const fptu_field *end)
-{
-    if (likely(end > begin + 1)) {
-        /* При формировании кортежа дескрипторы полей физически размещаются
-         * в обратном порядке. Считаем что они в правильном порядке, когда
-         * сначала добавляются поля с меньшими номерами. Соответственно,
-         * при движении от begin к end, при правильном порядке номера полей
-         * будут уменьшаться.
-         *
-         * Сканируем дескрипторы в направлении от begin к end, от недавно
-         * добавленных к первым, ибо предположительно порядок чаще будет
-         * нарушаться в результате последних изменений. */
-        --end;
-        auto scan = begin;
-        do {
-            auto next = scan;
-            ++next;
-            if (scan->ct < next->ct)
-                return false;
-            scan = next;
-        } while (scan < end);
-    }
-    return true;
+bool __hot fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
+  if (likely(end > begin + 1)) {
+    /* При формировании кортежа дескрипторы полей физически размещаются
+     * в обратном порядке. Считаем что они в правильном порядке, когда
+     * сначала добавляются поля с меньшими номерами. Соответственно,
+     * при движении от begin к end, при правильном порядке номера полей
+     * будут уменьшаться.
+     *
+     * Сканируем дескрипторы в направлении от begin к end, от недавно
+     * добавленных к первым, ибо предположительно порядок чаще будет
+     * нарушаться в результате последних изменений. */
+    --end;
+    auto scan = begin;
+    do {
+      auto next = scan;
+      ++next;
+      if (scan->ct < next->ct)
+        return false;
+      scan = next;
+    } while (scan < end);
+  }
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -76,90 +75,87 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
                                                uint16_t *tail,
                                                const fptu_field *const pos,
                                                const fptu_field *const end,
-                                               unsigned have)
-{
-    assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
+                                               unsigned have) {
+  assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
 
-    /* собираем в маску оставшиеся значения */
-    for (auto i = pos; i < end; ++i)
-        have |= i->ct;
+  /* собираем в маску оставшиеся значения */
+  for (auto i = pos; i < end; ++i)
+    have |= i->ct;
 
-    /* вполне вероятно, что резерный бит всегда нулевой, также возможно что
-     * нет массивов, тогда размер карты можно сократить в 4 раза. */
-    const unsigned blank =
-        (have & fptu_fr_mask) ? 0 : fptu_ct_reserve_bits +
-                                        ((have & fptu_farray) ? 0 : 1);
-    const unsigned lo_part =
-        (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
-    const auto hi_part = (uint16_t)~lo_part;
-    assert((lo_part >> blank) >= (have & lo_part));
-    const auto top = (have & lo_part) + ((have & hi_part) >> blank) + 1;
-    const auto word_bits = sizeof(size_t) * 8;
+  /* вполне вероятно, что резерный бит всегда нулевой, также возможно что
+   * нет массивов, тогда размер карты можно сократить в 4 раза. */
+  const unsigned blank =
+      (have & fptu_fr_mask) ? 0 : fptu_ct_reserve_bits +
+                                      ((have & fptu_farray) ? 0 : 1);
+  const unsigned lo_part =
+      (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
+  const auto hi_part = (uint16_t)~lo_part;
+  assert((lo_part >> blank) >= (have & lo_part));
+  const auto top = (have & lo_part) + ((have & hi_part) >> blank) + 1;
+  const auto word_bits = sizeof(size_t) * 8;
 
-    /* std::bitset прекрасен, но требует инстанцирования под максимальный
-     * размер. При этом на стеке будет выделено и заполнено нулями 4K,
-     * в итоге расходы превысят экономию. */
-    size_t bm[(top + word_bits - 1) / word_bits];
-    memset(bm, 0, sizeof(bm));
+  /* std::bitset прекрасен, но требует инстанцирования под максимальный
+   * размер. При этом на стеке будет выделено и заполнено нулями 4K,
+   * в итоге расходы превысят экономию. */
+  size_t bm[(top + word_bits - 1) / word_bits];
+  memset(bm, 0, sizeof(bm));
 
-    /* отмечаем обработанное */
-    for (auto i = first; i < tail; ++i) {
-        unsigned n = *i;
-        assert((lo_part >> blank) >= (n & lo_part));
-        n = (n & lo_part) + ((n & hi_part) >> blank);
-        assert(n < top);
+  /* отмечаем обработанное */
+  for (auto i = first; i < tail; ++i) {
+    unsigned n = *i;
+    assert((lo_part >> blank) >= (n & lo_part));
+    n = (n & lo_part) + ((n & hi_part) >> blank);
+    assert(n < top);
 
-        bm[n / word_bits] |= 1 << n % word_bits;
+    bm[n / word_bits] |= 1 << n % word_bits;
+  }
+
+  /* обрабатываем неупорядоченный остаток */
+  for (auto i = pos; i < end; ++i) {
+    unsigned n = i->ct;
+    assert((lo_part >> blank) >= (n & lo_part));
+    n = (n & lo_part) + ((n & hi_part) >> blank);
+    assert(n < top);
+
+    if ((bm[n / word_bits] & (1 << n % word_bits)) == 0) {
+      bm[n / word_bits] |= 1 << n % word_bits;
+      *tail++ = i->ct;
     }
+  }
 
-    /* обрабатываем неупорядоченный остаток */
-    for (auto i = pos; i < end; ++i) {
-        unsigned n = i->ct;
-        assert((lo_part >> blank) >= (n & lo_part));
-        n = (n & lo_part) + ((n & hi_part) >> blank);
-        assert(n < top);
-
-        if ((bm[n / word_bits] & (1 << n % word_bits)) == 0) {
-            bm[n / word_bits] |= 1 << n % word_bits;
-            *tail++ = i->ct;
-        }
-    }
-
-    std::sort(first, tail);
-    assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
-    return tail;
+  std::sort(first, tail);
+  assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
+  return tail;
 }
 
 uint16_t *fptu_tags(uint16_t *const first, const fptu_field *const begin,
-                    const fptu_field *const end)
-{
-    /* Формирует в буфере упорядоченный список тегов полей без дубликатов. */
-    uint16_t *tail = first;
-    if (end > begin) {
-        const fptu_field *i;
-        unsigned have = 0;
+                    const fptu_field *const end) {
+  /* Формирует в буфере упорядоченный список тегов полей без дубликатов. */
+  uint16_t *tail = first;
+  if (end > begin) {
+    const fptu_field *i;
+    unsigned have = 0;
 
-        /* Пытаемся угадать текущий порядок и переливаем в буфер
-         * пропуская дубликаты. */
-        if (begin->ct >= end[-1].ct) {
-            for (i = end - 1, *tail++ = i->ct; --i >= begin;) {
-                if (i->ct != tail[-1]) {
-                    if (unlikely(i->ct < tail[-1]))
-                        return fptu_tags_slowpath(first, tail, begin, i + 1,
-                                                  have);
-                    have |= (*tail++ = i->ct);
-                }
-            }
-        } else {
-            for (i = begin, *tail++ = i->ct; ++i < end;) {
-                if (i->ct != tail[-1]) {
-                    if (unlikely(i->ct < tail[-1]))
-                        return fptu_tags_slowpath(first, tail, i, end, have);
-                    have |= (*tail++ = i->ct);
-                }
-            }
+    /* Пытаемся угадать текущий порядок и переливаем в буфер
+     * пропуская дубликаты. */
+    if (begin->ct >= end[-1].ct) {
+      for (i = end - 1, *tail++ = i->ct; --i >= begin;) {
+        if (i->ct != tail[-1]) {
+          if (unlikely(i->ct < tail[-1]))
+            return fptu_tags_slowpath(first, tail, begin, i + 1, have);
+          have |= (*tail++ = i->ct);
         }
-        assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
+      }
+    } else {
+      for (i = begin, *tail++ = i->ct; ++i < end;) {
+        if (i->ct != tail[-1]) {
+          if (unlikely(i->ct < tail[-1]))
+            return fptu_tags_slowpath(first, tail, i, end, have);
+          have |= (*tail++ = i->ct);
+        }
+      }
     }
-    return tail;
+    assert(std::is_sorted(first, tail, std::less_equal<uint16_t>()));
+  }
+  return tail;
 }

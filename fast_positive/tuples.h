@@ -55,179 +55,179 @@ extern "C" {
 /* Коды ошибок.
  * Список будет пополнен, а описания уточнены. */
 enum fptu_error {
-    FPTU_SUCCESS = 0,
-    FPTU_OK = FPTU_SUCCESS,
-    FPTU_ENOFIELD = ENOENT,
-    FPTU_EINVAL = EINVAL,
-    FPTU_ENOSPACE = ENOSPC,
+  FPTU_SUCCESS = 0,
+  FPTU_OK = FPTU_SUCCESS,
+  FPTU_ENOFIELD = ENOENT,
+  FPTU_EINVAL = EINVAL,
+  FPTU_ENOSPACE = ENOSPC,
 };
 
 /* Внутренний тип для хранения размера полей переменной длины */
 typedef union fptu_varlen {
-    struct __packed {
-        uint16_t brutto;
-        union {
-            uint16_t opaque_bytes;
-            uint16_t array_length;
-            uint16_t tuple_items;
-        };
+  struct __packed {
+    uint16_t brutto;
+    union {
+      uint16_t opaque_bytes;
+      uint16_t array_length;
+      uint16_t tuple_items;
     };
-    uint32_t flat;
+  };
+  uint32_t flat;
 } fptu_varlen;
 
 typedef union fptu_field {
-    struct __packed {
-        uint16_t ct;
-        uint16_t offset;
-    };
-    uint32_t header;
-    uint32_t body[1];
+  struct __packed {
+    uint16_t ct;
+    uint16_t offset;
+  };
+  uint32_t header;
+  uint32_t body[1];
 
 #ifdef __cplusplus
-    uint16_t get_payload_uint16() const { return offset; }
+  uint16_t get_payload_uint16() const { return offset; }
 #endif
 } fptu_field;
 
 typedef union fptu_unit {
-    fptu_field field;
-    fptu_varlen varlen;
-    uint32_t data;
+  fptu_field field;
+  fptu_varlen varlen;
+  uint32_t data;
 } fptu_unit;
 
 typedef union fptu_ro {
-    struct {
-        const fptu_unit *units;
-        size_t total_bytes;
-    };
-    struct iovec sys;
+  struct {
+    const fptu_unit *units;
+    size_t total_bytes;
+  };
+  struct iovec sys;
 } fptu_ro;
 
 typedef struct fptu_rw {
-    unsigned head;  /* Индекс дозаписи дескрипторов, растет к началу буфера,
-                       указывает на первый занятый элемент. */
-    unsigned tail;  /* Индекс для дозаписи данных, растет к концу буфера,
-                       указываент на первый не занятый элемент. */
-    unsigned junk;  /* Счетчик мусорных 32-битных элементов, которые
-                       образовались при удалении/обновлении. */
-    unsigned pivot; /* Индекс опорной точки, от которой растут "голова" и
-                       "хвоcт", указывает на терминатор заголовка. */
-    unsigned end;   /* Конец выделенного буфера, т.е. units[end] не наше. */
-    fptu_unit units[1];
+  unsigned head;  /* Индекс дозаписи дескрипторов, растет к началу буфера,
+                     указывает на первый занятый элемент. */
+  unsigned tail;  /* Индекс для дозаписи данных, растет к концу буфера,
+                     указываент на первый не занятый элемент. */
+  unsigned junk;  /* Счетчик мусорных 32-битных элементов, которые
+                     образовались при удалении/обновлении. */
+  unsigned pivot; /* Индекс опорной точки, от которой растут "голова" и
+                     "хвоcт", указывает на терминатор заголовка. */
+  unsigned end;   /* Конец выделенного буфера, т.е. units[end] не наше. */
+  fptu_unit units[1];
 } fptu_rw;
 
 /* Основные ограничения, константы и их производные. */
 enum fptu_bits {
-    // базовые лимиты и параметры
-    fptu_bits = 16, // ширина счетчиков
-    fptu_typeid_bits = 5, // ширина типа в идентификаторе поля
-    fptu_ct_reserve_bits = 1, // резерв в идентификаторе поля
-    fptu_unit_size = 4, // размер одного юнита
-    // количество служебных (зарезервированных) бит в заголовке кортежа,
-    // для признаков сортированности и отсутствия повторяющихся полей
-    fptu_lx_bits = 2,
+  // базовые лимиты и параметры
+  fptu_bits = 16, // ширина счетчиков
+  fptu_typeid_bits = 5, // ширина типа в идентификаторе поля
+  fptu_ct_reserve_bits = 1, // резерв в идентификаторе поля
+  fptu_unit_size = 4,       // размер одного юнита
+  // количество служебных (зарезервированных) бит в заголовке кортежа,
+  // для признаков сортированности и отсутствия повторяющихся полей
+  fptu_lx_bits = 2,
 
-    // производные константы и параметры
-    // log2(fptu_unit_size)
-    fptu_unit_shift = 2,
+  // производные константы и параметры
+  // log2(fptu_unit_size)
+  fptu_unit_shift = 2,
 
-    // базовый лимит значений
-    fptu_limit = ((size_t)1 << fptu_bits) - 1,
-    // максимальный суммарный размер сериализованного представления кортежа,
-    fptu_max_tuple_bytes = fptu_limit * fptu_unit_size,
+  // базовый лимит значений
+  fptu_limit = ((size_t)1 << fptu_bits) - 1,
+  // максимальный суммарный размер сериализованного представления кортежа,
+  fptu_max_tuple_bytes = fptu_limit * fptu_unit_size,
 
-    // ширина тега-номера поля/колонки
-    fptu_co_bits = fptu_bits - fptu_typeid_bits - fptu_ct_reserve_bits,
-    // маска для получения типа из идентификатора поля/колонки
-    fptu_ty_mask = ((size_t)1 << fptu_typeid_bits) - 1,
-    // маска резервных битов в идентификаторе поля/колонки
-    fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1)
-                   << fptu_typeid_bits,
+  // ширина тега-номера поля/колонки
+  fptu_co_bits = fptu_bits - fptu_typeid_bits - fptu_ct_reserve_bits,
+  // маска для получения типа из идентификатора поля/колонки
+  fptu_ty_mask = ((size_t)1 << fptu_typeid_bits) - 1,
+  // маска резервных битов в идентификаторе поля/колонки
+  fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1)
+                 << fptu_typeid_bits,
 
-    // сдвиг для получения тега-номера из идентификатора поля/колонки
-    fptu_co_shift = fptu_typeid_bits + fptu_ct_reserve_bits,
-    // значение тега-номера для удаленных полей/колонок
-    fptu_co_dead = ((size_t)1 << fptu_co_bits) - 1,
-    // максимальный тег-номер поля/колонки
-    fptu_max_cols = fptu_co_dead - 1,
+  // сдвиг для получения тега-номера из идентификатора поля/колонки
+  fptu_co_shift = fptu_typeid_bits + fptu_ct_reserve_bits,
+  // значение тега-номера для удаленных полей/колонок
+  fptu_co_dead = ((size_t)1 << fptu_co_bits) - 1,
+  // максимальный тег-номер поля/колонки
+  fptu_max_cols = fptu_co_dead - 1,
 
-    // кол-во бит доступных для хранения размера массива дескрипторов полей
-    fptu_lt_bits = fptu_bits - fptu_lx_bits,
-    // маска для выделения служебных бит из заголовка кортежа
-    fptu_lx_mask = (((size_t)1 << fptu_lx_bits) - 1) << fptu_lt_bits,
-    // маска для получения размера массива дескрипторов из заголовка кортежа
-    fptu_lt_mask = ((size_t)1 << fptu_lt_bits) - 1,
-    // максимальное кол-во полей/колонок в одном кортеже
-    fptu_max_fields = fptu_lt_mask,
+  // кол-во бит доступных для хранения размера массива дескрипторов полей
+  fptu_lt_bits = fptu_bits - fptu_lx_bits,
+  // маска для выделения служебных бит из заголовка кортежа
+  fptu_lx_mask = (((size_t)1 << fptu_lx_bits) - 1) << fptu_lt_bits,
+  // маска для получения размера массива дескрипторов из заголовка кортежа
+  fptu_lt_mask = ((size_t)1 << fptu_lt_bits) - 1,
+  // максимальное кол-во полей/колонок в одном кортеже
+  fptu_max_fields = fptu_lt_mask,
 
-    // максимальный размер поля/колонки
-    fptu_max_field_bytes = fptu_limit,
-    // максимальный размер произвольной последовательности байт
-    fptu_max_opaque_bytes = fptu_max_field_bytes - fptu_unit_size,
-    // максимальное кол-во элементов в массиве,
-    // так чтобы при любом базовом типе не превышались другие лимиты
-    fptu_max_array = fptu_max_opaque_bytes / 32,
-    // буфер достаточного размера для любого кортежа
-    fptu_buffer_enought = sizeof(fptu_rw) + fptu_max_tuple_bytes +
-                          fptu_max_fields * fptu_unit_size,
-    // предельный размер, превышение которого считается ошибкой
-    fptu_buffer_limit = fptu_max_tuple_bytes * 2
+  // максимальный размер поля/колонки
+  fptu_max_field_bytes = fptu_limit,
+  // максимальный размер произвольной последовательности байт
+  fptu_max_opaque_bytes = fptu_max_field_bytes - fptu_unit_size,
+  // максимальное кол-во элементов в массиве,
+  // так чтобы при любом базовом типе не превышались другие лимиты
+  fptu_max_array = fptu_max_opaque_bytes / 32,
+  // буфер достаточного размера для любого кортежа
+  fptu_buffer_enought = sizeof(fptu_rw) + fptu_max_tuple_bytes +
+                        fptu_max_fields * fptu_unit_size,
+  // предельный размер, превышение которого считается ошибкой
+  fptu_buffer_limit = fptu_max_tuple_bytes * 2
 };
 
 typedef enum fptu_type {
-    // fixed length, without ex-data (descriptor only)
-    fptu_null = 0,
-    fptu_uint16 = 1,
+  // fixed length, without ex-data (descriptor only)
+  fptu_null = 0,
+  fptu_uint16 = 1,
 
-    // fixed length with ex-data (at least 4 byte after the pivot)
-    fptu_int32 = 2,
-    fptu_uint32 = 3,
-    fptu_fp32 = 4,
+  // fixed length with ex-data (at least 4 byte after the pivot)
+  fptu_int32 = 2,
+  fptu_uint32 = 3,
+  fptu_fp32 = 4,
 
-    fptu_int64 = 5,
-    fptu_uint64 = 6,
-    fptu_fp64 = 7,
+  fptu_int64 = 5,
+  fptu_uint64 = 6,
+  fptu_fp64 = 7,
 
-    fptu_96 = 8,   // opaque 12-bytes.
-    fptu_128 = 9,  // opaque 16-bytes (uuid, ipv6, etc).
-    fptu_160 = 10, // opaque 20-bytes (sha1).
-    fptu_192 = 11, // opaque 24-bytes
-    fptu_256 = 12, // opaque 32-bytes (sha256).
+  fptu_96 = 8,   // opaque 12-bytes.
+  fptu_128 = 9,  // opaque 16-bytes (uuid, ipv6, etc).
+  fptu_160 = 10, // opaque 20-bytes (sha1).
+  fptu_192 = 11, // opaque 24-bytes
+  fptu_256 = 12, // opaque 32-bytes (sha256).
 
-    // variable length, e.g. length and payload inside ex-data
-    fptu_cstr = 13, // utf-8 с-string, zero terminated
+  // variable length, e.g. length and payload inside ex-data
+  fptu_cstr = 13, // utf-8 с-string, zero terminated
 
-    // with additional length
-    fptu_opaque = 14, // opaque octet string
-    fptu_nested = 15, // nested tuple
-    fptu_farray = 16, // flag
+  // with additional length
+  fptu_opaque = 14, // opaque octet string
+  fptu_nested = 15, // nested tuple
+  fptu_farray = 16, // flag
 
-    fptu_typeid_max = (1 << fptu_typeid_bits) - 1,
+  fptu_typeid_max = (1 << fptu_typeid_bits) - 1,
 
-    // pseudo types for lookup and filtering
-    fptu_filter = 1 << (fptu_null | fptu_farray),
-    fptu_any = -1, // match any type
-    fptu_any_int = fptu_filter | (1 << fptu_int32) |
-                   (1 << fptu_int64), // match int32/int64
-    fptu_any_uint = fptu_filter | (1 << fptu_uint16) | (1 << fptu_uint32) |
-                    (1 << fptu_uint64), // match uint16/uint32/uint64
-    fptu_any_fp =
-        fptu_filter | (1 << fptu_fp32) | (1 << fptu_fp64), // match fp32/fp64
+  // pseudo types for lookup and filtering
+  fptu_filter = 1 << (fptu_null | fptu_farray),
+  fptu_any = -1, // match any type
+  fptu_any_int = fptu_filter | (1 << fptu_int32) |
+                 (1 << fptu_int64), // match int32/int64
+  fptu_any_uint = fptu_filter | (1 << fptu_uint16) | (1 << fptu_uint32) |
+                  (1 << fptu_uint64), // match uint16/uint32/uint64
+  fptu_any_fp =
+      fptu_filter | (1 << fptu_fp32) | (1 << fptu_fp64), // match fp32/fp64
 
-    // aliases
-    fptu_16 = fptu_uint16,
-    fptu_32 = fptu_uint32,
-    fptu_64 = fptu_uint64,
-    fptu_bool = fptu_uint16,
-    fptu_enum = fptu_uint16,
-    fptu_char = fptu_uint16,
-    fptu_wchar = fptu_uint16,
-    fptu_ipv4 = fptu_uint32,
-    fptu_uuid = fptu_128,
-    fptu_ipv6 = fptu_128,
-    fptu_md5 = fptu_128,
-    fptu_sha1 = fptu_160,
-    fptu_sha256 = fptu_256,
-    fptu_wstring = fptu_opaque
+  // aliases
+  fptu_16 = fptu_uint16,
+  fptu_32 = fptu_uint32,
+  fptu_64 = fptu_uint64,
+  fptu_bool = fptu_uint16,
+  fptu_enum = fptu_uint16,
+  fptu_char = fptu_uint16,
+  fptu_wchar = fptu_uint16,
+  fptu_ipv4 = fptu_uint32,
+  fptu_uuid = fptu_128,
+  fptu_ipv6 = fptu_128,
+  fptu_md5 = fptu_128,
+  fptu_sha1 = fptu_160,
+  fptu_sha256 = fptu_256,
+  fptu_wstring = fptu_opaque
 } fptu_type;
 
 //----------------------------------------------------------------------------
@@ -319,9 +319,8 @@ bool fptu_shrink(fptu_rw *pt);
  * пустот/мусора после удаления полей.
  * Возвращает true если была произведена дефрагментация, что можно
  * использовать как признак инвалидации итераторов. */
-static __inline bool fptu_cond_shrink(fptu_rw *pt)
-{
-    return pt->junk != 0 && fptu_shrink(pt);
+static __inline bool fptu_cond_shrink(fptu_rw *pt) {
+  return pt->junk != 0 && fptu_shrink(pt);
 }
 
 /* Возвращает сериализованную форму кортежа, которая находится внутри
@@ -329,10 +328,9 @@ static __inline bool fptu_cond_shrink(fptu_rw *pt)
  * дефрагментация.
  * Возвращаемый результат валиден до изменения или разрушения исходной
  * модифицируемой формы кортежа. */
-static __inline fptu_ro fptu_take(fptu_rw *pt)
-{
-    fptu_cond_shrink(pt);
-    return fptu_take_noshrink(pt);
+static __inline fptu_ro fptu_take(fptu_rw *pt) {
+  fptu_cond_shrink(pt);
+  return fptu_take_noshrink(pt);
 }
 
 /* Если в аргументе type_or_filter взведен бит fptu_filter,
@@ -368,12 +366,11 @@ int fptu_upsert_256(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_string(fptu_rw *pt, unsigned column, const char *text,
                        size_t length);
 static __inline int fptu_upsert_cstr(fptu_rw *pt, unsigned col,
-                                     const char *value)
-{
-    if (value == nullptr)
-        value = "";
+                                     const char *value) {
+  if (value == nullptr)
+    value = "";
 
-    return fptu_upsert_string(pt, col, value, strlen(value));
+  return fptu_upsert_string(pt, col, value, strlen(value));
 }
 
 int fptu_upsert_opaque(fptu_rw *pt, unsigned column, const void *value,
@@ -418,12 +415,11 @@ int fptu_insert_256(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_string(fptu_rw *pt, unsigned column, const char *text,
                        size_t length);
 static __inline int fptu_insert_cstr(fptu_rw *pt, unsigned col,
-                                     const char *value)
-{
-    if (value == nullptr)
-        value = "";
+                                     const char *value) {
+  if (value == nullptr)
+    value = "";
 
-    return fptu_insert_string(pt, col, value, strlen(value));
+  return fptu_insert_string(pt, col, value, strlen(value));
 }
 
 int fptu_insert_opaque(fptu_rw *pt, unsigned column, const void *value,
@@ -466,12 +462,11 @@ int fptu_update_256(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_string(fptu_rw *pt, unsigned column, const char *text,
                        size_t length);
 static __inline int fptu_update_cstr(fptu_rw *pt, unsigned col,
-                                     const char *value)
-{
-    if (value == nullptr)
-        value = "";
+                                     const char *value) {
+  if (value == nullptr)
+    value = "";
 
-    return fptu_update_string(pt, col, value, strlen(value));
+  return fptu_update_string(pt, col, value, strlen(value));
 }
 
 int fptu_update_opaque(fptu_rw *pt, unsigned column, const void *value,
@@ -583,31 +578,31 @@ fptu_ro fptu_get_nested(fptu_ro ro, unsigned column, int *error);
 
 // TODO: fptu_field_array(), fptu_get_array()
 typedef struct fptu_array {
-    size_t size;
-    union {
-        uint16_t uint16[2];
-        int32_t int32[1];
-        uint32_t uint32[1];
-        int64_t int64[1];
-        uint64_t uint64[1];
-        double fp64[1];
-        float fp32[1];
-        const char *cstr[1];
-        fptu_ro nested[1];
-        struct iovec opaque[1];
-    };
+  size_t size;
+  union {
+    uint16_t uint16[2];
+    int32_t int32[1];
+    uint32_t uint32[1];
+    int64_t int64[1];
+    uint64_t uint64[1];
+    double fp64[1];
+    float fp32[1];
+    const char *cstr[1];
+    fptu_ro nested[1];
+    struct iovec opaque[1];
+  };
 } fptu_array;
 
 //----------------------------------------------------------------------------
 
 typedef enum fptu_lge {
-    fptu_ic = 1,                           // incomparable
-    fptu_eq = 2,                           // left == right
-    fptu_lt = 4,                           // left < right
-    fptu_gt = 8,                           // left > right
-    fptu_ne = fptu_lt | fptu_gt | fptu_ic, // left != right
-    fptu_le = fptu_lt | fptu_eq,           // left <= right
-    fptu_ge = fptu_gt | fptu_eq            // left >= right
+  fptu_ic = 1,                           // incomparable
+  fptu_eq = 2,                           // left == right
+  fptu_lt = 4,                           // left < right
+  fptu_gt = 8,                           // left > right
+  fptu_ne = fptu_lt | fptu_gt | fptu_ic, // left != right
+  fptu_le = fptu_lt | fptu_eq,           // left <= right
+  fptu_ge = fptu_gt | fptu_eq            // left >= right
 } fptu_lge;
 
 fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
@@ -629,8 +624,7 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 #ifdef __cplusplus
 }
 
-namespace std
-{
+namespace std {
 string to_string(fptu_error);
 string to_string(const fptu_varlen &);
 string to_string(const fptu_unit &);
