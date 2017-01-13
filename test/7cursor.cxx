@@ -25,8 +25,16 @@
 
 #include "keygen.hpp"
 
-/* кол-во проверочных точек в диапазонах значений индексируемых типов */
-#ifdef FPTA_CURSOR_UT_LONG
+/* Кол-во проверочных точек в диапазонах значений индексируемых типов.
+ *
+ * Значение не может быть больше чем 65536, так как это предел кол-ва
+ * уникальных значений для fptu_uint16.
+ *
+ * Использовать тут большие значения смысла нет. Время работы тестов
+ * растет примерно линейно (чуть быстрее), тогда как вероятность
+ * проявления каких-либо ошибок растет в лучшем случае как Log(NNN),
+ * а скорее даже как SquareRoot(Log(NNN)). */
+#if FPTA_CURSOR_UT_LONG
 static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/shm/
 #else
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
@@ -66,141 +74,6 @@ TEST(Cursor, Invalid) {
   // TODO
 }
 
-/* карманный бильярд для закатки keygen-шаблонов в один не-шаблонный */
-class any_keygen {
-  typedef fpta_value (*maker_type)(int order);
-  const maker_type maker;
-
-  struct init_tier {
-    fptu_type type;
-    fpta_index_type index;
-    int order_from;
-    int order_to;
-    maker_type maker;
-
-    static fpta_value end(int order) {
-      (void)order;
-      return fpta_value_end();
-    }
-
-    void stub(fptu_type _type, fpta_index_type _index) {
-      type = _type;
-      index = _index;
-      order_from = order_to = 0;
-      maker = end;
-    }
-
-    template <fpta_index_type _index, fptu_type _type> void glue() {
-      type = _type;
-      index = _index;
-      order_from = keygen<_index, _type, NNN>::order_from;
-      order_to = keygen<_index, _type, NNN>::order_to;
-      maker = keygen<_index, _type, NNN>::make;
-    }
-
-    template <fpta_index_type _index> void unroll(fptu_type _type) {
-      switch (_type) {
-      default /* arrays */:
-      case fptu_null:
-        assert(false && "wrong type");
-        return stub(_type, _index);
-      case fptu_uint16:
-        return glue<_index, fptu_uint16>();
-      case fptu_int32:
-        return glue<_index, fptu_int32>();
-      case fptu_uint32:
-        return glue<_index, fptu_uint32>();
-      case fptu_fp32:
-        return glue<_index, fptu_fp32>();
-      case fptu_int64:
-        return glue<_index, fptu_int64>();
-      case fptu_uint64:
-        return glue<_index, fptu_uint64>();
-      case fptu_fp64:
-        return glue<_index, fptu_fp64>();
-      case fptu_96:
-        return glue<_index, fptu_96>();
-      case fptu_128:
-        return glue<_index, fptu_128>();
-      case fptu_160:
-        return glue<_index, fptu_160>();
-      case fptu_192:
-        return glue<_index, fptu_192>();
-      case fptu_256:
-        return glue<_index, fptu_256>();
-      case fptu_cstr:
-        return glue<_index, fptu_cstr>();
-      case fptu_opaque:
-        return glue<_index, fptu_opaque>();
-      case fptu_nested:
-        return glue<_index, fptu_nested>();
-      }
-    }
-
-    init_tier(fptu_type _type, fpta_index_type _index) {
-      switch (_index) {
-      default:
-        assert(false && "wrong index");
-        stub(_type, _index);
-        break;
-      case fpta_primary_withdups:
-        unroll<fpta_primary_withdups>(_type);
-        break;
-      case fpta_primary_unique:
-        unroll<fpta_primary_unique>(_type);
-        break;
-      case fpta_primary_withdups_unordered:
-        unroll<fpta_primary_withdups_unordered>(_type);
-        break;
-      case fpta_primary_unique_unordered:
-        unroll<fpta_primary_unique_unordered>(_type);
-        break;
-      case fpta_primary_withdups_reversed:
-        unroll<fpta_primary_withdups_reversed>(_type);
-        break;
-      case fpta_primary_unique_reversed:
-        unroll<fpta_primary_unique_reversed>(_type);
-        break;
-      case fpta_secondary_withdups:
-        unroll<fpta_secondary_withdups>(_type);
-        break;
-      case fpta_secondary_unique:
-        unroll<fpta_secondary_unique>(_type);
-        break;
-      case fpta_secondary_withdups_unordered:
-        unroll<fpta_secondary_withdups_unordered>(_type);
-        break;
-      case fpta_secondary_unique_unordered:
-        unroll<fpta_primary_withdups>(_type);
-        break;
-      case fpta_secondary_withdups_reversed:
-        unroll<fpta_secondary_withdups_reversed>(_type);
-        break;
-      case fpta_secondary_unique_reversed:
-        unroll<fpta_secondary_unique_reversed>(_type);
-        break;
-      }
-    }
-  };
-
-  any_keygen(const init_tier &init, fptu_type type, fpta_index_type index)
-      : maker(init.maker), order_from(init.order_from),
-        order_to(init.order_to) {
-    // страховка от опечаток в параметрах при инстанцировании шаблонов.
-    assert(init.type == type);
-    assert(init.index == index);
-  }
-
-public:
-  const int order_from;
-  const int order_to;
-
-  any_keygen(fptu_type type, fpta_index_type index)
-      : any_keygen(init_tier(type, index), type, index) {}
-
-  fpta_value make(int order) const { return maker(order); }
-};
-
 class CursorPrimary
     : public ::testing::TestWithParam<
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
@@ -222,7 +95,6 @@ public:
 
   std::string pk_col_name;
   fpta_name table, col_pk, col_order, col_dup_id, col_t1ha;
-  int order_from, order_to;
   static constexpr int n_dups = 5;
   unsigned n;
   std::unordered_map<int, int> reorder;
@@ -243,8 +115,7 @@ public:
     const auto expected_order = reorder[linear];
 
     SCOPED_TRACE("logical-order " + std::to_string(expected_order) + " [" +
-                 std::to_string(order_from) + "..." +
-                 std::to_string(order_to) + "]");
+                 std::to_string(0) + "..." + std::to_string(NNN) + "]");
 
     ASSERT_EQ(0, fpta_cursor_eof(cursor_guard.get()));
 
@@ -282,12 +153,10 @@ public:
     fpta_txn *const txn = txn_guard.get();
 
     any_keygen keygen(type, index);
-    order_from = keygen.order_from;
-    order_to = keygen.order_to;
     n = 0;
-    for (int order = order_from; order <= order_to; ++order) {
+    for (unsigned order = 0; order < NNN; ++order) {
       SCOPED_TRACE("order " + std::to_string(order));
-      fpta_value value_pk = keygen.make(order);
+      fpta_value value_pk = keygen.make(order, NNN);
       if (value_pk.type == fpta_end)
         break;
       if (value_pk.type == fpta_begin)
@@ -462,7 +331,7 @@ public:
 
     // формируем линейную карту, чтобы проще проверять переходы
     reorder.clear();
-    reorder.reserve(order_to - order_from + 1);
+    reorder.reserve(NNN);
     for (int linear = 0; fpta_cursor_eof(cursor) == FPTA_OK; ++linear) {
       fptu_ro tuple;
       EXPECT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
@@ -485,7 +354,7 @@ public:
       ASSERT_EQ(FPTA_SUCCESS, error);
     }
 
-    ASSERT_EQ(order_to - order_from + 1, reorder.size());
+    ASSERT_EQ(NNN, reorder.size());
 
     if (fpta_cursor_is_ordered(ordering)) {
       std::map<int, int> probe;

@@ -23,9 +23,16 @@
 
 #include "keygen.hpp"
 
-/* кол-во проверочных точек в диапазонах значений индексируемых типов */
-#ifdef FPTA_INDEX_UT_LONG
-static constexpr unsigned NNN = 32749;
+/* Кол-во проверочных точек в диапазонах значений индексируемых типов.
+ *
+ * Значение не может быть больше чем 65536, так как это предел кол-ва
+ * уникальных значений для fptu_uint16.
+ *
+ * Но для парного генератора не может быть больше 32768,
+ * так как для не-уникальных вторичных индексов нам требуются дубликаты,
+ * что требует больше уникальных значений для первичного ключа. */
+#if FPTA_INDEX_UT_LONG
+static constexpr unsigned NNN = 32749; // около 1-2 минуты в /dev/shm/
 #else
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
@@ -61,28 +68,6 @@ static const char testdb_name[] = TEST_DB_DIR "ut_index_secondary.fpta";
 static const char testdb_name_lck[] =
     TEST_DB_DIR "ut_index_secondary.fpta-lock";
 
-TEST(SecondaryIndex, keygen) {
-  scalar_range_stepper<float, 42>::test();
-  scalar_range_stepper<float, 43>::test();
-  scalar_range_stepper<double, NNN>::test();
-  scalar_range_stepper<double, NNN * 2>::test();
-  scalar_range_stepper<uint16_t, 43>::test();
-  scalar_range_stepper<uint32_t, 43>::test();
-  scalar_range_stepper<int32_t, 43>::test();
-  scalar_range_stepper<int64_t, 43>::test();
-
-  string_keygen_test<false>(1, 3);
-  string_keygen_test<true>(1, 3);
-  string_keygen_test<false>(1, fpta_max_keylen);
-  string_keygen_test<true>(1, fpta_max_keylen);
-  string_keygen_test<false>(8, 8);
-  string_keygen_test<true>(8, 8);
-
-  fixbin_stepper<11, 43>::test();
-  varbin_stepper<fptu_cstr, 421>::test();
-  varbin_stepper<fptu_opaque, 421>::test();
-}
-
 TEST(SecondaryIndex, Invalid) {
   // TODO
   //    static const fpta_index_type index_cases[] = {
@@ -92,38 +77,6 @@ TEST(SecondaryIndex, Invalid) {
   //        /* clang-format on */
   //    };
 }
-
-//----------------------------------------------------------------------------
-
-/* */
-template <fpta_index_type pk_index, fptu_type pk_type,
-          fpta_index_type se_index, fptu_type se_type, unsigned N>
-struct coupled_keygen {
-  const int order_from = 0;
-  const int order_to = N - 1;
-
-  fpta_value make_primary(int order) {
-    if (fpta_index_is_unique(se_index))
-      return keygen<pk_index, pk_type, N>::make(order);
-
-    if (order % 3)
-      return keygen<pk_index, pk_type, N * 2>::make(order * 2);
-    return keygen<pk_index, pk_type, N * 2>::make(order * 2 + 1);
-  }
-
-  fpta_value make_primary_4dup(int order) {
-    if (fpta_index_is_unique(se_index))
-      fpta_value_null();
-
-    if (order % 3)
-      return keygen<pk_index, pk_type, N * 2>::make(order * 2 + 1);
-    return keygen<pk_index, pk_type, N * 2>::make(order * 2);
-  }
-
-  fpta_value make_secondary(int order) {
-    return keygen<se_index, se_type, N>::make(order);
-  }
-};
 
 //----------------------------------------------------------------------------
 
@@ -140,8 +93,8 @@ void TestSecondary() {
       "pk_type " + std::to_string(pk_type) + ", pk_index " +
       std::to_string(pk_index) + ", se_type " + std::to_string(se_type) +
       ", se_index " + std::to_string(se_index) +
-
       (valid_se && valid_pk ? ", (valid case)" : ", (invalid case)"));
+
   // создаем пять колонок: primary_key, secondary_key, order, t1ha и dup_id
   fpta_column_set def;
   fpta_column_set_init(&def);
@@ -228,15 +181,15 @@ void TestSecondary() {
   ASSERT_NE(nullptr, row);
   ASSERT_STREQ(nullptr, fptu_check(row));
 
-  coupled_keygen<pk_index, pk_type, se_index, se_type, NNN> pg;
+  coupled_keygen pg(pk_index, pk_type, se_index, se_type);
   unsigned n = 0;
-  for (int order = pg.order_from; order <= pg.order_to; ++order) {
+  for (unsigned order = 0; order < NNN; ++order) {
     SCOPED_TRACE("order " + std::to_string(order));
 
     // теперь формируем кортеж
     ASSERT_EQ(FPTU_OK, fptu_clear(row));
     ASSERT_STREQ(nullptr, fptu_check(row));
-    fpta_value value_pk = pg.make_primary(order);
+    fpta_value value_pk = pg.make_primary(order, NNN);
     ASSERT_EQ(FPTA_OK,
               fpta_upsert_column(row, &col_order, fpta_value_sint(order)));
     ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
@@ -245,7 +198,7 @@ void TestSecondary() {
     // secondary может повредить значение primary.
     // поэтому primary поле нужно добавить в кортеж до генерации
     // secondary.
-    fpta_value value_se = pg.make_secondary(order);
+    fpta_value value_se = pg.make_secondary(order, NNN);
     ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
     // t1ha как "checksum" для order
     ASSERT_EQ(FPTA_OK,
@@ -301,7 +254,7 @@ void TestSecondary() {
 
       // теперь обновляем primary key и вставляем дубль по вторичному
       // ключу
-      value_pk = pg.make_primary_4dup(order);
+      value_pk = pg.make_primary_4dup(order, NNN);
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
       ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take(row)));
       n++;
@@ -346,7 +299,7 @@ void TestSecondary() {
     EXPECT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_first));
   }
 
-  int order = pg.order_from;
+  int order = 0;
   for (unsigned i = 0; i < n;) {
     SCOPED_TRACE(std::to_string(i) + " of " + std::to_string(n) + ", order " +
                  std::to_string(order));

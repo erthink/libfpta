@@ -23,9 +23,17 @@
 
 #include "keygen.hpp"
 
-/* кол-во проверочных точек в диапазонах значений индексируемых типов */
-#ifdef FPTA_INDEX_UT_LONG
-static constexpr unsigned NNN = 65521; // около минуты в /dev/shm/
+/* Кол-во проверочных точек в диапазонах значений индексируемых типов.
+ *
+ * Значение не может быть больше чем 65536, так как это предел кол-ва
+ * уникальных значений для fptu_uint16.
+ *
+ * Использовать тут большие значения смысла нет. Время работы тестов
+ * растет примерно линейно (чуть быстрее), тогда как вероятность
+ * проявления каких-либо ошибок растет в лучшем случае как Log(NNN),
+ * а скорее даже как SquareRoot(Log(NNN)). */
+#if FPTA_INDEX_UT_LONG
+static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/shm/
 #else
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
@@ -60,35 +68,6 @@ typedef std::unique_ptr<fpta_cursor, cursor_deleter> scoped_cursor_guard;
 static const char testdb_name[] = TEST_DB_DIR "ut_index_primary.fpta";
 static const char testdb_name_lck[] =
     TEST_DB_DIR "ut_index_primary.fpta-lock";
-
-TEST(PrimaryIndex, keygen) {
-  scalar_range_stepper<float, 42>::test();
-  scalar_range_stepper<float, 43>::test();
-  scalar_range_stepper<double, 42>::test();
-  scalar_range_stepper<double, 43>::test();
-  scalar_range_stepper<uint16_t, 42>::test();
-  scalar_range_stepper<uint16_t, 43>::test();
-  scalar_range_stepper<uint32_t, 42>::test();
-  scalar_range_stepper<uint32_t, 43>::test();
-  scalar_range_stepper<int32_t, 42>::test();
-  scalar_range_stepper<int32_t, 43>::test();
-  scalar_range_stepper<int64_t, 42>::test();
-  scalar_range_stepper<int64_t, 43>::test();
-
-  string_keygen_test<false>(1, 3);
-  string_keygen_test<true>(1, 3);
-  string_keygen_test<false>(1, fpta_max_keylen);
-  string_keygen_test<true>(1, fpta_max_keylen);
-  string_keygen_test<false>(8, 8);
-  string_keygen_test<true>(8, 8);
-
-  fixbin_stepper<11, 42>::test();
-  fixbin_stepper<11, 43>::test();
-  varbin_stepper<fptu_cstr, 421>::test();
-  varbin_stepper<fptu_cstr, 512>::test();
-  varbin_stepper<fptu_opaque, 421>::test();
-  varbin_stepper<fptu_opaque, 512>::test();
-}
 
 TEST(PrimaryIndex, Invalid) {
   // TODO
@@ -187,11 +166,11 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   ASSERT_NE(nullptr, row);
   ASSERT_STREQ(nullptr, fptu_check(row));
 
+  any_keygen keygen(type, index);
   unsigned n = 0;
-  for (int order = keygen<index, type, NNN>::order_from;
-       order <= keygen<index, type, NNN>::order_to; ++order) {
+  for (unsigned order = 0; order < NNN; ++order) {
     SCOPED_TRACE("order " + std::to_string(order));
-    fpta_value value_pk = keygen<index, type, NNN>::make(order);
+    fpta_value value_pk = keygen.make(order, NNN);
     if (value_pk.type == fpta_end)
       break;
     if (value_pk.type == fpta_begin)
@@ -303,7 +282,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     EXPECT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_first));
   }
 
-  int order = keygen<index, type, NNN>::order_from;
+  int order = 0;
   for (unsigned i = 0; i < n;) {
     SCOPED_TRACE(std::to_string(i) + " of " + std::to_string(n) + ", order " +
                  std::to_string(order));

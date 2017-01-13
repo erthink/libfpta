@@ -20,7 +20,9 @@
 #include "fast_positive/tables_internal.h"
 #include <gtest/gtest.h>
 
-TEST(Name, Validate) {
+#include "keygen.hpp"
+
+TEST(Corny, NameValidate) {
   EXPECT_TRUE(fpta_name_validate("valid"));
   EXPECT_TRUE(fpta_name_validate("valid_valid"));
   EXPECT_TRUE(fpta_name_validate("valid_42"));
@@ -37,6 +39,35 @@ TEST(Name, Validate) {
   EXPECT_FALSE(fpta_name_validate("invalid#"));
   EXPECT_FALSE(fpta_name_validate("invalid/"));
   EXPECT_FALSE(fpta_name_validate("invalid_ещераз"));
+}
+
+TEST(Corny, KeyGenerator) {
+  scalar_range_stepper<float>::test(42);
+  scalar_range_stepper<float>::test(43);
+  scalar_range_stepper<double>::test(42);
+  scalar_range_stepper<double>::test(43);
+  scalar_range_stepper<uint16_t>::test(42);
+  scalar_range_stepper<uint16_t>::test(43);
+  scalar_range_stepper<uint32_t>::test(42);
+  scalar_range_stepper<uint32_t>::test(43);
+  scalar_range_stepper<int32_t>::test(42);
+  scalar_range_stepper<int32_t>::test(43);
+  scalar_range_stepper<int64_t>::test(42);
+  scalar_range_stepper<int64_t>::test(43);
+
+  string_keygen_test<false>(1, 3);
+  string_keygen_test<true>(1, 3);
+  string_keygen_test<false>(1, fpta_max_keylen);
+  string_keygen_test<true>(1, fpta_max_keylen);
+  string_keygen_test<false>(8, 8);
+  string_keygen_test<true>(8, 8);
+
+  fixbin_stepper<11>::test(42);
+  fixbin_stepper<11>::test(43);
+  varbin_stepper<fptu_cstr>::test(421);
+  varbin_stepper<fptu_cstr>::test(512);
+  varbin_stepper<fptu_opaque>::test(421);
+  varbin_stepper<fptu_opaque>::test(512);
 }
 
 int main(int argc, char **argv) {
