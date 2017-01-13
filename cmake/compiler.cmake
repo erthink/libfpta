@@ -245,6 +245,10 @@ macro(setup_compile_flags)
         add_compile_flags("C" "-fno-gnu89-inline")
     endif()
 
+    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+        add_compile_flags("C;CXX" "-march=native")
+    endif()
+
     add_definitions("-D__STDC_FORMAT_MACROS=1")
     add_definitions("-D__STDC_LIMIT_MACROS=1")
     add_definitions("-D__STDC_CONSTANT_MACROS=1")
