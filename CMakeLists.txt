@@ -146,6 +146,7 @@ elseif(IS_DIRECTORY .git AND GIT)
     )
 endif()
 
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 setup_compile_flags()
 
 #
