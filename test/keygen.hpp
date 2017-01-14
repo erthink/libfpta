@@ -74,7 +74,7 @@ inline bool is_valid4cursor(fpta_index_type index,
 inline bool is_valid4secondary(fptu_type pk_type, fpta_index_type pk_index,
                                fptu_type se_type, fpta_index_type se_index) {
   (void)pk_type;
-  if (!fpta_index_is_unique(pk_index))
+  if (pk_index == fpta_index_none || !fpta_index_is_unique(pk_index))
     return false;
 
   if (se_index == fpta_index_none || fpta_index_is_primary(se_index))

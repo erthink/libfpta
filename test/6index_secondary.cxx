@@ -80,14 +80,277 @@ TEST(SecondaryIndex, Invalid) {
 
 //----------------------------------------------------------------------------
 
-template <fptu_type pk_type, fpta_index_type pk_index, fptu_type se_type,
-          fpta_index_type se_index>
-void TestSecondary() {
-  const bool valid_pk = is_valid4primary(pk_type, pk_index);
-  const bool valid_se =
-      is_valid4secondary(pk_type, pk_index, se_type, se_index);
+class IndexSecondary : public ::testing::TestWithParam<
+#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
+                           std::tr1::tuple<fpta_index_type, fptu_type,
+                                           fpta_index_type, fptu_type>>
+#else
+                           std::tuple<fpta_index_type, fptu_type,
+                                      fpta_index_type, fptu_type>>
+#endif
+{
+public:
+  fptu_type pk_type;
+  fpta_index_type pk_index;
+  fptu_type se_type;
+  fpta_index_type se_index;
+
+  bool valid_pk;
+  bool valid_se;
   scoped_db_guard db_quard;
   scoped_txn_guard txn_guard;
+  scoped_cursor_guard cursor_guard;
+  std::string pk_col_name;
+  std::string se_col_name;
+  fpta_name table, col_pk, col_se, col_order, col_dup_id, col_t1ha;
+  unsigned n;
+
+  void Fill() {
+    fptu_rw *row = fptu_alloc(6, fpta_max_keylen * 42);
+    ASSERT_NE(nullptr, row);
+    ASSERT_STREQ(nullptr, fptu_check(row));
+    fpta_txn *const txn = txn_guard.get();
+
+    coupled_keygen pg(pk_index, pk_type, se_index, se_type);
+    n = 0;
+    for (unsigned order = 0; order < NNN; ++order) {
+      SCOPED_TRACE("order " + std::to_string(order));
+
+      // теперь формируем кортеж
+      ASSERT_EQ(FPTU_OK, fptu_clear(row));
+      ASSERT_STREQ(nullptr, fptu_check(row));
+      fpta_value value_pk = pg.make_primary(order, NNN);
+      ASSERT_EQ(FPTA_OK,
+                fpta_upsert_column(row, &col_order, fpta_value_sint(order)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
+      // тут важно помнить, что генераторы ключей для не-числовых типов
+      // используют статический буфер, поэтому генерация значения для
+      // secondary может повредить значение primary.
+      // поэтому primary поле нужно добавить в кортеж до генерации
+      // secondary.
+      fpta_value value_se = pg.make_secondary(order, NNN);
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
+      // t1ha как "checksum" для order
+      ASSERT_EQ(FPTA_OK,
+                fpta_upsert_column(row, &col_t1ha,
+                                   order_checksum(order, se_type, se_index)));
+
+      // пытаемся обновить несуществующую запись
+      ASSERT_EQ(MDB_NOTFOUND,
+                fpta_update_row(txn, &table, fptu_take_noshrink(row)));
+
+      if (fpta_index_is_unique(se_index)) {
+        // вставляем
+        ASSERT_EQ(FPTA_OK,
+                  fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+        n++;
+        // проверяем что полный дубликат не вставляется
+        ASSERT_EQ(MDB_KEYEXIST,
+                  fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+
+        // обновляем dup_id и проверям что дубликат по ключу не проходит
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
+        ASSERT_EQ(MDB_KEYEXIST,
+                  fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+
+        // проверяем что upsert и update работают,
+        // сначала upsert с текущим dup_id = 1
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
+        // теперь update c dup_id = 42, должен остаться только этот
+        // вариант
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_dup_id, fpta_value_uint(42)));
+        ASSERT_EQ(FPTA_OK,
+                  fpta_update_row(txn, &table, fptu_take_noshrink(row)));
+      } else {
+        // вставляем c dup_id = 0
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_dup_id, fpta_value_uint(0)));
+        ASSERT_EQ(FPTA_OK,
+                  fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+        n++;
+        // проверяем что полный дубликат не вставляется
+        ASSERT_EQ(MDB_KEYEXIST,
+                  fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+
+        // обновляем dup_id и вставляем дубль по ключу
+        // без обновления primary, такой дубликат также
+        // НЕ должен вставится
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
+        ASSERT_EQ(MDB_KEYEXIST, fpta_insert_row(txn, &table, fptu_take(row)));
+
+        // теперь обновляем primary key и вставляем дубль по вторичному
+        // ключу
+        value_pk = pg.make_primary_4dup(order, NNN);
+        ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
+        ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take(row)));
+        n++;
+      }
+    }
+
+    // разрушаем кортеж
+    ASSERT_STREQ(nullptr, fptu_check(row));
+    free(row);
+  }
+
+  virtual void SetUp() {
+#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
+    pk_index = std::tr1::get<0>(GetParam());
+    pk_type = std::tr1::get<1>(GetParam());
+    se_index = std::tr1::get<2>(GetParam());
+    se_type = std::tr1::get<3>(GetParam());
+#else
+    pk_index = std::get<0>(GetParam());
+    pk_type = std::get<1>(GetParam());
+    se_index = std::get<2>(GetParam());
+    se_type = std::get<3>(GetParam());
+#endif
+
+    valid_pk = is_valid4primary(pk_type, pk_index);
+    valid_se = is_valid4secondary(pk_type, pk_index, se_type, se_index);
+
+    SCOPED_TRACE(
+        "pk_type " + std::to_string(pk_type) + ", pk_index " +
+        std::to_string(pk_index) + ", se_type " + std::to_string(se_type) +
+        ", se_index " + std::to_string(se_index) +
+        (valid_se && valid_pk ? ", (valid case)" : ", (invalid case)"));
+
+    // создаем пять колонок: primary_key, secondary_key, order, t1ha и dup_id
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+
+    pk_col_name = "pk_" + std::to_string(pk_type);
+    se_col_name = "se_" + std::to_string(se_type);
+    if (!valid_pk) {
+      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(),
+                                                  pk_type, pk_index, &def));
+      return;
+    }
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
+                                            pk_index, &def));
+    if (!valid_se) {
+      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(),
+                                                  se_type, se_index, &def));
+      return;
+    }
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
+                                            se_index, &def));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
+                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
+                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("t1ha", fptu_uint64,
+                                            fpta_index_none, &def));
+    ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // чистим
+    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+
+#ifdef FPTA_INDEX_UT_LONG
+    // пытаемся обойтись меньшей базой, но для строк потребуется больше места
+    unsigned megabytes = 32;
+    if (type > fptu_128)
+      megabytes = 40;
+    if (type > fptu_256)
+      megabytes = 56;
+#else
+    const unsigned megabytes = 1;
+#endif
+
+    fpta_db *db = nullptr;
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
+                                         megabytes, false, &db));
+    ASSERT_NE(nullptr, db);
+    db_quard.reset(db);
+
+    // создаем таблицу
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+    ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
+    ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
+    txn = nullptr;
+
+    // инициализируем идентификаторы колонок
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_init(&table, &col_se, se_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
+
+    //------------------------------------------------------------------------
+
+    // начинаем транзакцию записи
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+
+    // связываем идентификаторы с ранее созданной схемой
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_se));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_order));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_dup_id));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_t1ha));
+
+    ASSERT_NO_FATAL_FAILURE(Fill());
+
+    // завершаем транзакцию
+    ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
+    txn = nullptr;
+
+    //------------------------------------------------------------------------
+
+    // начинаем транзакцию чтения
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_se, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_index_is_ordered(se_index)
+                                            ? fpta_ascending_dont_fetch
+                                            : fpta_unsorted_dont_fetch,
+                                        &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+  }
+
+  virtual void TearDown() {
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&table);
+    fpta_name_destroy(&col_pk);
+    fpta_name_destroy(&col_se);
+    fpta_name_destroy(&col_order);
+    fpta_name_destroy(&col_dup_id);
+    fpta_name_destroy(&col_t1ha);
+
+    // закрываем курсор и завершаем транзакцию
+    if (cursor_guard)
+      EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    if (txn_guard)
+      ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    if (db_quard) {
+      // закрываем и удаляем базу
+      ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
+      ASSERT_TRUE(unlink(testdb_name) == 0);
+      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    }
+  }
+};
+
+TEST_P(IndexSecondary, basic) {
+  if (!valid_pk || !valid_se)
+    return;
 
   SCOPED_TRACE(
       "pk_type " + std::to_string(pk_type) + ", pk_index " +
@@ -95,197 +358,7 @@ void TestSecondary() {
       ", se_index " + std::to_string(se_index) +
       (valid_se && valid_pk ? ", (valid case)" : ", (invalid case)"));
 
-  // создаем пять колонок: primary_key, secondary_key, order, t1ha и dup_id
-  fpta_column_set def;
-  fpta_column_set_init(&def);
-
-  const std::string pk_col_name = "pk_" + std::to_string(pk_type);
-  const std::string se_col_name = "se_" + std::to_string(se_type);
-  if (!valid_pk) {
-    EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
-                                                pk_index, &def));
-    return;
-  }
-  EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
-                                          pk_index, &def));
-  if (!valid_se) {
-    EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
-                                                se_index, &def));
-    return;
-  }
-  EXPECT_EQ(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
-                                          se_index, &def));
-
-  EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                          fpta_index_none, &def));
-  EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
-  ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
-
-  // чистим
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
-
-#ifdef FPTA_INDEX_UT_LONG
-  // пытаемся обойтись меньшей базой, но для строк потребуется больше места
-  unsigned megabytes = 32;
-  if (type > fptu_128)
-    megabytes = 40;
-  if (type > fptu_256)
-    megabytes = 56;
-#else
-  const unsigned megabytes = 1;
-#endif
-
-  fpta_db *db = nullptr;
-  EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
-                                       megabytes, false, &db));
-  ASSERT_NE(nullptr, db);
-  db_quard.reset(db);
-
-  // создаем таблицу
-  fpta_txn *txn = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
-  ASSERT_NE(nullptr, txn);
-  txn_guard.reset(txn);
-  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
-  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
-  txn = nullptr;
-
-  // инициализируем идентификаторы колонок
-  fpta_name table, col_pk, col_se, col_order, col_dup_id, col_t1ha;
-  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
-  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
-  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_se, se_col_name.c_str()));
-  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
-  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
-  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
-
-  //------------------------------------------------------------------------
-
-  // начинаем транзакцию записи
-  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
-  ASSERT_NE(nullptr, txn);
-  txn_guard.reset(txn);
-
-  // связываем идентификаторы с ранее созданной схемой
-  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
-  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_se));
-  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_order));
-  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_dup_id));
-  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_t1ha));
-
-  fptu_rw *row = fptu_alloc(6, fpta_max_keylen * 42);
-  ASSERT_NE(nullptr, row);
-  ASSERT_STREQ(nullptr, fptu_check(row));
-
-  coupled_keygen pg(pk_index, pk_type, se_index, se_type);
-  unsigned n = 0;
-  for (unsigned order = 0; order < NNN; ++order) {
-    SCOPED_TRACE("order " + std::to_string(order));
-
-    // теперь формируем кортеж
-    ASSERT_EQ(FPTU_OK, fptu_clear(row));
-    ASSERT_STREQ(nullptr, fptu_check(row));
-    fpta_value value_pk = pg.make_primary(order, NNN);
-    ASSERT_EQ(FPTA_OK,
-              fpta_upsert_column(row, &col_order, fpta_value_sint(order)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
-    // тут важно помнить, что генераторы ключей для не-числовых типов
-    // используют статический буфер, поэтому генерация значения для
-    // secondary может повредить значение primary.
-    // поэтому primary поле нужно добавить в кортеж до генерации
-    // secondary.
-    fpta_value value_se = pg.make_secondary(order, NNN);
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
-    // t1ha как "checksum" для order
-    ASSERT_EQ(FPTA_OK,
-              fpta_upsert_column(row, &col_t1ha,
-                                 order_checksum(order, se_type, se_index)));
-
-    // пытаемся обновить несуществующую запись
-    ASSERT_EQ(MDB_NOTFOUND,
-              fpta_update_row(txn, &table, fptu_take_noshrink(row)));
-
-    if (fpta_index_is_unique(se_index)) {
-      // вставляем
-      ASSERT_EQ(FPTA_OK,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-      n++;
-      // проверяем что полный дубликат не вставляется
-      ASSERT_EQ(MDB_KEYEXIST,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-
-      // обновляем dup_id и проверям что дубликат по ключу не проходит
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-      ASSERT_EQ(MDB_KEYEXIST,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-
-      // проверяем что upsert и update работают,
-      // сначала upsert с текущим dup_id = 1
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
-      // теперь update c dup_id = 42, должен остаться только этот
-      // вариант
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_column(row, &col_dup_id, fpta_value_uint(42)));
-      ASSERT_EQ(FPTA_OK,
-                fpta_update_row(txn, &table, fptu_take_noshrink(row)));
-    } else {
-      // вставляем c dup_id = 0
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_column(row, &col_dup_id, fpta_value_uint(0)));
-      ASSERT_EQ(FPTA_OK,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-      n++;
-      // проверяем что полный дубликат не вставляется
-      ASSERT_EQ(MDB_KEYEXIST,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-
-      // обновляем dup_id и вставляем дубль по ключу
-      // без обновления primary, такой дубликат также
-      // НЕ должен вставится
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-      ASSERT_EQ(MDB_KEYEXIST, fpta_insert_row(txn, &table, fptu_take(row)));
-
-      // теперь обновляем primary key и вставляем дубль по вторичному
-      // ключу
-      value_pk = pg.make_primary_4dup(order, NNN);
-      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
-      ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take(row)));
-      n++;
-    }
-  }
-
-  // завершаем транзакцию
-  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
-  txn = nullptr;
-
-  // разрушаем кортеж
-  ASSERT_STREQ(nullptr, fptu_check(row));
-  free(row);
-
-  //------------------------------------------------------------------------
-
-  // начинаем транзакцию чтения
-  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
-  ASSERT_NE(nullptr, txn);
-  txn_guard.reset(txn);
-
-  scoped_cursor_guard cursor_guard;
-  fpta_cursor *cursor;
-  EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_se, fpta_value_begin(),
-                                      fpta_value_end(), nullptr,
-                                      fpta_index_is_ordered(se_index)
-                                          ? fpta_ascending_dont_fetch
-                                          : fpta_unsorted_dont_fetch,
-                                      &cursor));
-  ASSERT_NE(nullptr, cursor);
-  cursor_guard.reset(cursor);
+  fpta_cursor *const cursor = cursor_guard.get();
 
   // проверяем кол-во записей.
   size_t count;
@@ -361,86 +434,36 @@ void TestSecondary() {
   }
 
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-
-  // закрываем курсор и завершаем транзакцию
-  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-  cursor = nullptr;
-  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
-  txn = nullptr;
-
-  //------------------------------------------------------------------------
-
-  // разрушаем привязанные идентификаторы
-  fpta_name_destroy(&table);
-  fpta_name_destroy(&col_pk);
-  fpta_name_destroy(&col_se);
-  fpta_name_destroy(&col_order);
-  fpta_name_destroy(&col_dup_id);
-  fpta_name_destroy(&col_t1ha);
-
-  // закрываем и удаляем базу
-  ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-  ASSERT_TRUE(unlink(testdb_name) == 0);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0);
 }
 
-template <typename TypeParam>
-class SecondaryIndex : public ::testing::Test {};
-TYPED_TEST_CASE_P(SecondaryIndex);
-
-template <fptu_type _type> struct glue {
-  static constexpr fptu_type type = _type;
-};
-
-typedef ::testing::Types<glue<fptu_null>, glue<fptu_uint16>, glue<fptu_int32>,
-                         glue<fptu_uint32>, glue<fptu_fp32>, glue<fptu_int64>,
-                         glue<fptu_uint64>, glue<fptu_fp64>, glue<fptu_96>,
-                         glue<fptu_128>, glue<fptu_160>, glue<fptu_192>,
-                         glue<fptu_256>, glue<fptu_cstr>, glue<fptu_opaque>,
-                         /* glue<fptu_nested>, */ glue<fptu_farray>>
-    ColumnTypes;
-
-TYPED_TEST_CASE(SecondaryIndex, ColumnTypes);
-
-#define SI_TEST_CASE(se_index, pk_type, pk_index)                            \
-  TYPED_TEST(SecondaryIndex, se_index##__PK_##pk_type##_##pk_index) {        \
-    TestSecondary<fptu_##pk_type, fpta_primary_##pk_index, TypeParam::type,  \
-                  fpta_secondary_##se_index>();                              \
-  }
-
-#define SI_TEST_CASES__ITERATE_SI(pk_type, pk_index)                         \
-  SI_TEST_CASE(unique_obverse, pk_type, pk_index)                            \
-  SI_TEST_CASE(unique_unordered, pk_type, pk_index)                          \
-  SI_TEST_CASE(unique_reversed, pk_type, pk_index)                           \
-  SI_TEST_CASE(withdups_obverse, pk_type, pk_index)                          \
-  SI_TEST_CASE(withdups_unordered, pk_type, pk_index)                        \
-  SI_TEST_CASE(withdups_reversed, pk_type, pk_index)
-
-#define SI_TEST_CASES__ITERATE_PI(pk_type)                                   \
-  SI_TEST_CASES__ITERATE_SI(pk_type, unique_obverse)                         \
-  SI_TEST_CASES__ITERATE_SI(pk_type, unique_unordered)                       \
-  SI_TEST_CASES__ITERATE_SI(pk_type, unique_reversed)                        \
-  SI_TEST_CASES__ITERATE_SI(pk_type, withdups_obverse)                       \
-  SI_TEST_CASES__ITERATE_SI(pk_type, withdups_unordered)                     \
-  SI_TEST_CASES__ITERATE_SI(pk_type, withdups_reversed)
-
-// SI_TEST_CASES__ITERATE_PI(null)
-// SI_TEST_CASES__ITERATE_PI(uint16)
-// SI_TEST_CASES__ITERATE_PI(int32)
-// SI_TEST_CASES__ITERATE_PI(uint32)
-// SI_TEST_CASES__ITERATE_PI(int64)
-// SI_TEST_CASES__ITERATE_PI(uint64)
-// SI_TEST_CASES__ITERATE_PI(fp32)
-// SI_TEST_CASES__ITERATE_PI(fp64)
-// SI_TEST_CASES__ITERATE_PI(96)
-// SI_TEST_CASES__ITERATE_PI(128)
-// SI_TEST_CASES__ITERATE_PI(160)
-// SI_TEST_CASES__ITERATE_PI(192)
-// SI_TEST_CASES__ITERATE_PI(256)
-SI_TEST_CASES__ITERATE_PI(cstr)
-// SI_TEST_CASES__ITERATE_PI(opaque)
-// // SI_TEST_CASES__ITERATE_PI(nested)
-// SI_TEST_CASES__ITERATE_PI(farray)
+#if GTEST_HAS_COMBINE
+INSTANTIATE_TEST_CASE_P(
+    Combine, IndexSecondary,
+    ::testing::Combine(
+        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
+                          fpta_primary_withdups,
+                          fpta_primary_withdups_reversed,
+                          fpta_primary_unique_unordered,
+                          fpta_primary_withdups_unordered),
+        ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
+                          fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
+                          fptu_96, fptu_128, fptu_160, fptu_192, fptu_256,
+                          fptu_cstr, fptu_opaque
+                          /*, fptu_nested, fptu_farray */),
+        ::testing::Values(fpta_secondary_unique,
+                          fpta_secondary_unique_reversed,
+                          fpta_secondary_withdups,
+                          fpta_secondary_withdups_reversed,
+                          fpta_secondary_unique_unordered,
+                          fpta_secondary_withdups_unordered),
+        ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
+                          fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
+                          fptu_96, fptu_128, fptu_160, fptu_192, fptu_256,
+                          fptu_cstr, fptu_opaque
+                          /*, fptu_nested, fptu_farray */)));
+#else
+TEST(IndexSecondary, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
+#endif /* GTEST_HAS_COMBINE */
 
 //----------------------------------------------------------------------------
 
