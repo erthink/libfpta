@@ -11,5 +11,5 @@ add_ut(fpta4_data TIMEOUT 1 SOURCE 4data.cxx LIBRARY fpta)
 
 add_ut(fpta5_key TIMEOUT 5 SOURCE 5key.cxx keygen.hpp LIBRARY fpta)
 add_ut(fpta6_index_primary TIMEOUT 60 SOURCE 6index_primary.cxx keygen.cxx LIBRARY fpta)
-add_ut(fpta6_index_secondary TIMEOUT 60 SOURCE 6index_secondary.cxx keygen.cxx LIBRARY fpta)
+add_ut(fpta6_index_secondary TIMEOUT 300 SOURCE 6index_secondary.cxx keygen.cxx LIBRARY fpta)
 add_ut(fpta7_cursor TIMEOUT 120 SOURCE 7cursor.cxx keygen.cxx LIBRARY fpta)
