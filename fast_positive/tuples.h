@@ -62,10 +62,11 @@ enum fptu_error {
   FPTU_ENOSPACE = ENOSPC,
 };
 
-/* Внутренний тип для хранения размера полей переменной длины */
+/* Внутренний тип для хранения размера полей переменной длины. */
 typedef union fptu_varlen {
   struct __packed {
-    uint16_t brutto;
+    uint16_t brutto; /* брутто-размер в 4-байтовых юнитах,
+                      * всегда больше или равен 1. */
     union {
       uint16_t opaque_bytes;
       uint16_t array_length;
@@ -75,25 +76,38 @@ typedef union fptu_varlen {
   uint32_t flat;
 } fptu_varlen;
 
+/* Поле кортежа.
+ *
+ * Фактически это дескриптор поля, в котором записаны: тип данных,
+ * номер колонки и смещение к данным. */
 typedef union fptu_field {
   struct __packed {
-    uint16_t ct;
-    uint16_t offset;
+    uint16_t ct;     /* тип и "номер колонки". */
+    uint16_t offset; /* смещение к данным относительно заголовка, либо
+                        непосредственно данные для uint16_t. */
   };
   uint32_t header;
-  uint32_t body[1];
-
+  uint32_t body[1]; /* в body[0] расположен дескриптор/заголовок,
+                     * а начиная с body[offset] данные. */
 #ifdef __cplusplus
   uint16_t get_payload_uint16() const { return offset; }
 #endif
 } fptu_field;
 
+/* Внутренний тип соответствующий 32-битной ячейке с данными. */
 typedef union fptu_unit {
   fptu_field field;
   fptu_varlen varlen;
   uint32_t data;
 } fptu_unit;
 
+/* Представление сериализованной формы кортежа.
+ *
+ * Фактические это просто системная структура iovec, т.е. указатель
+ * на буфер с данными и размер этих данных в байтах. Системный тип struct
+ * iovec выбран для совместимости с функциями readv(), writev() и т.п.
+ * Другими словами, это просто "оболочка", а сами данные кортежа должны быть
+ * где-то размещены. */
 typedef union fptu_ro {
   struct {
     const fptu_unit *units;
@@ -102,6 +116,10 @@ typedef union fptu_ro {
   struct iovec sys;
 } fptu_ro;
 
+/* Изменяемая форма кортежа.
+ * Является плоским буфером, в начале которого расположены служебные поля.
+ *
+ * Инициализируется функциями fptu_init(), fptu_alloc() и fptu_fetch(). */
 typedef struct fptu_rw {
   unsigned head;  /* Индекс дозаписи дескрипторов, растет к началу буфера,
                      указывает на первый занятый элемент. */
@@ -173,6 +191,11 @@ enum fptu_bits {
   fptu_buffer_limit = fptu_max_tuple_bytes * 2
 };
 
+/* Типы полей.
+ *
+ * Следует обратить внимание, что fptu_farray является флагом,
+ * а значения начиная с fptu_filter используются как маски для
+ * поиска/фильтрации полей (и видимо будут выделены в отдельный enum). */
 typedef enum fptu_type {
   // fixed length, without ex-data (descriptor only)
   fptu_null = 0,
@@ -346,8 +369,14 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf);
 
 //----------------------------------------------------------------------------
 
-// Вставка или обновление существующего поля (первого найденного для
-// коллекций).
+/* Вставка или обновление существующего поля.
+ *
+ * В случае коллекций, когда в кортеже более одного поля с соответствующим
+ * типом и номером), будет обновлен первый найденный экземпляр. Но так как
+ * в общем случае физический порядок полей не определен, следует считать что
+ * функция обновит произвольный экземпляр поля. Поэтому для манипулирования
+ * коллекциями следует использовать fptu_erase() и/или fput_field_set_xyz().
+ */
 int fptu_upsert_null(fptu_rw *pt, unsigned column);
 int fptu_upsert_uint16(fptu_rw *pt, unsigned column, unsigned value);
 int fptu_upsert_int32(fptu_rw *pt, unsigned column, int32_t value);
@@ -526,11 +555,13 @@ const fptu_field *fptu_first_ex(const fptu_field *begin,
 const fptu_field *fptu_next_ex(const fptu_field *begin, const fptu_field *end,
                                fptu_field_filter filter, void *context,
                                void *param);
-
+/* Подсчет количества полей по заданному номеру колонки и типу,
+ * либо маски типов .*/
 size_t fptu_field_count(const fptu_rw *pt, unsigned column,
                         int type_or_filter);
 size_t fptu_field_count_ro(fptu_ro ro, unsigned column, int type_or_filter);
 
+/* Подсчет количества полей задаваемой функцией-фильтром. */
 size_t fptu_field_count_ex(const fptu_rw *pt, fptu_field_filter filter,
                            void *context, void *param);
 size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
