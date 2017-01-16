@@ -198,7 +198,7 @@ TEST(Trivia, iovec) {
 //----------------------------------------------------------------------------
 
 TEST(Trivia, time_ns2fractional) {
-  constexpr double scale = exp2(32) / 1e9;
+  const double scale = exp2(32) / 1e9;
   for (int base_2log = 0; base_2log < 32; ++base_2log) {
     for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
       SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
@@ -215,7 +215,7 @@ TEST(Trivia, time_ns2fractional) {
 }
 
 TEST(Trivia, time_fractional2ns) {
-  constexpr double scale = 1e9 / exp2(32);
+  const double scale = 1e9 / exp2(32);
   for (int base_2log = 0; base_2log < 32; ++base_2log) {
     for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
       SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
@@ -230,7 +230,7 @@ TEST(Trivia, time_fractional2ns) {
 }
 
 TEST(Trivia, time_us2fractional) {
-  constexpr double scale = exp2(32) / 1e6;
+  const double scale = exp2(32) / 1e6;
   for (int base_2log = 0; base_2log < 32; ++base_2log) {
     for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
       SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
@@ -247,7 +247,7 @@ TEST(Trivia, time_us2fractional) {
 }
 
 TEST(Trivia, time_fractional2us) {
-  constexpr double scale = 1e6 / exp2(32);
+  const double scale = 1e6 / exp2(32);
   for (int base_2log = 0; base_2log < 32; ++base_2log) {
     for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
       SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
@@ -262,7 +262,7 @@ TEST(Trivia, time_fractional2us) {
 }
 
 TEST(Trivia, time_ms2fractional) {
-  constexpr double scale = exp2(32) / 1e3;
+  const double scale = exp2(32) / 1e3;
   for (int base_2log = 0; base_2log < 32; ++base_2log) {
     for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
       SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
@@ -279,7 +279,7 @@ TEST(Trivia, time_ms2fractional) {
 }
 
 TEST(Trivia, time_fractional2ms) {
-  constexpr double scale = 1e3 / exp2(32);
+  const double scale = 1e3 / exp2(32);
   for (int base_2log = 0; base_2log < 32; ++base_2log) {
     for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
       SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
