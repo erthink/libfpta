@@ -60,7 +60,7 @@ fptu_time fptu_now_fine(void) {
   int rc = clock_gettime(CLOCK_REALTIME, &now);
   if (unlikely(rc != 0))
     clock_failure();
-  return fptu_time(now);
+  return fptu_time::from_timespec(now);
 }
 
 #ifdef CLOCK_REALTIME_COARSE
@@ -90,7 +90,7 @@ fptu_time fptu_now_coarse(void) {
   if (unlikely(rc != 0))
     clock_failure();
 
-  return fptu_time(now);
+  return fptu_time::from_timespec(now);
 #else  /* CLOCK_REALTIME_COARSE */
   return fptu_now_fine();
 #endif /* ! CLOCK_REALTIME_COARSE */

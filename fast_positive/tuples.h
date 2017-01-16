@@ -276,6 +276,7 @@ typedef union fptu_time {
     uint32_t fractional;
 #endif
   };
+
 #ifdef __cplusplus
   static uint32_t ns2fractional(uint32_t);
   static uint32_t fractional2ns(uint32_t);
@@ -284,23 +285,22 @@ typedef union fptu_time {
   static uint32_t ms2fractional(uint32_t);
   static uint32_t fractional2ms(uint32_t);
 
-  fptu_time() {}
-
-  fptu_time(const fptu_time &v) : fixedpoint(v.fixedpoint) {}
-
-  fptu_time(unsigned utc_seconds, unsigned utc_fractional) {
-    utc = utc_seconds;
-    fractional = utc_fractional;
+  /* LY: Clang не позволяет возвращать из C-linkage функции  структуру,
+   * у которой есть конструкторы C++. Поэтому необходимо либо отказаться
+   * от поддержки C (т.е. От возможности использовать libfptu из C),
+   * либо от Clang, либо от конструкторов (они и пострадали). */
+  static fptu_time from_timespec(const struct timespec &ts) {
+    fptu_time result;
+    result.fixedpoint =
+        ((uint64_t)ts.tv_sec << 32) | ns2fractional(ts.tv_nsec);
+    return result;
   }
 
-  fptu_time(const struct timespec &ts) {
-    utc = ts.tv_sec;
-    fractional = ns2fractional(ts.tv_nsec);
-  }
-
-  fptu_time(const struct timeval &tv) {
-    utc = tv.tv_sec;
-    fractional = us2fractional(tv.tv_usec);
+  static fptu_time from_timeval(const struct timeval &tv) {
+    fptu_time result;
+    result.fixedpoint =
+        ((uint64_t)tv.tv_sec << 32) | us2fractional(tv.tv_usec);
+    return result;
   }
 #endif
 } fptu_time;
