@@ -102,6 +102,26 @@ void probe(const fptu_rw *major_rw, const fptu_rw *minor_rw) {
   EXPECT_EQ(fptu_lt, fptu_cmp_tuples(minor, major));
 }
 
+TEST(Compare, EmptyNull) {
+  fptu_ro null;
+  null.sys.iov_base = NULL;
+  null.sys.iov_len = 0;
+  ASSERT_STREQ(nullptr, fptu_check_ro(null));
+
+  char space_exactly_noitems[sizeof(fptu_rw)];
+  fptu_rw *empty_rw =
+      fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems), 0);
+  ASSERT_NE(nullptr, empty_rw);
+  ASSERT_STREQ(nullptr, fptu_check(empty_rw));
+  const auto empty_ro = fptu_take_noshrink(empty_rw);
+  ASSERT_STREQ(nullptr, fptu_check_ro(empty_ro));
+
+  EXPECT_EQ(fptu_eq, fptu_cmp_tuples(null, null));
+  EXPECT_EQ(fptu_eq, fptu_cmp_tuples(null, empty_ro));
+  EXPECT_EQ(fptu_eq, fptu_cmp_tuples(empty_ro, null));
+  EXPECT_EQ(fptu_eq, fptu_cmp_tuples(empty_ro, empty_ro));
+}
+
 TEST(Compare, Base) {
   char space4major[fptu_buffer_enought];
   fptu_rw *major =
