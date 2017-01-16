@@ -22,6 +22,10 @@
 #define NSEC_PER_SEC 1000000000u
 uint32_t fptu_time::ns2fractional(uint32_t ns) {
   assert(ns < NSEC_PER_SEC);
+  /* LY: здесь и далее используется "длинное деление", которое
+   * для ясности кода оставлено как есть (без ручной оптимизации). Так как
+   * GCC, Clang и даже MSVC сами давно умеют конвертировать деление на
+   * константу в быструю reciprocal-форму. */
   return ((uint64_t)ns << 32) / NSEC_PER_SEC;
 }
 
@@ -52,6 +56,7 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 //----------------------------------------------------------------------------
 
 static void clock_failure(void) {
+  /* LY: немного паранойи */
   __assert_fail("clock_gettime() failed", "fptu/time.cxx", 42, "fptu_now()");
 }
 
@@ -69,6 +74,9 @@ static uint32_t fptu_coarse_resulution_ns;
 
 static void __attribute__((constructor)) fptu_clock_init(void) {
   struct timespec resolution;
+  /* LY: Получаем точность coarse-таймеров, одновременно проверяя
+   * поддерживается ли CLOCK_REALTIME_COARSE ядром.
+   * Если нет, то используем вместо него CLOCK_REALTIME.  */
   if (clock_getres(CLOCK_REALTIME_COARSE, &resolution) == 0 &&
       resolution.tv_sec == 0) {
     fptu_coarse_clockid = CLOCK_REALTIME_COARSE;
@@ -78,10 +86,13 @@ static void __attribute__((constructor)) fptu_clock_init(void) {
     fptu_coarse_resulution_ns = 0xffffFFFF;
   }
 }
-#else
+#else /* CLOCK_REALTIME_COARSE */
+/* LY: Если CLOCK_REALTIME_COARSE не определен, то в наличии
+ * дремучая версия glibc. В этом случае не пытаемся использовать
+ * CLOCK_REALTIME_COARSE, а просто ставим заглушку. */
 #define fptu_coarse_clockid CLOCK_REALTIME
 #define fptu_coarse_resulution_ns 0xffffFFFF
-#endif /* CLOCK_REALTIME_COARSE */
+#endif /* ! CLOCK_REALTIME_COARSE */
 
 fptu_time fptu_now_coarse(void) {
 #ifdef CLOCK_REALTIME_COARSE
@@ -99,7 +110,6 @@ fptu_time fptu_now_coarse(void) {
 fptu_time fptu_now(int grain_ns) {
   uint32_t mask = 0xffffFFFF;
   uint32_t grain = grain_ns;
-
   if (grain_ns < 0) {
     if (likely(grain_ns > -32)) {
       mask <<= -grain_ns;

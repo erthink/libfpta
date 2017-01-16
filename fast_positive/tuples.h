@@ -205,16 +205,16 @@ typedef enum fptu_type {
   // fixed length with ex-data (at least 4 byte after the pivot)
   fptu_int32 = 2,
   fptu_uint32 = 3,
-  fptu_fp32 = 4,
+  fptu_fp32 = 4, // 32-bit float-point, e.g. float
 
   fptu_int64 = 5,
   fptu_uint64 = 6,
-  fptu_fp64 = 7,
+  fptu_fp64 = 7,     // 64-bit float-point, e.g. double
+  fptu_datetime = 8, // date-time as fixed-point, compatible with UTC
 
-  fptu_96 = 8,   // opaque 12-bytes.
-  fptu_128 = 9,  // opaque 16-bytes (uuid, ipv6, etc).
-  fptu_160 = 10, // opaque 20-bytes (sha1).
-  fptu_192 = 11, // opaque 24-bytes
+  fptu_96 = 9,   // opaque 12-bytes (subject to change)
+  fptu_128 = 10, // opaque 16-bytes (uuid, ipv6, etc).
+  fptu_160 = 11, // opaque 20-bytes (sha1).
   fptu_256 = 12, // opaque 32-bytes (sha256).
 
   // variable length, e.g. length and payload inside ex-data
@@ -285,10 +285,10 @@ typedef union fptu_time {
   static uint32_t ms2fractional(uint32_t);
   static uint32_t fractional2ms(uint32_t);
 
-  /* LY: Clang не позволяет возвращать из C-linkage функции  структуру,
-   * у которой есть конструкторы C++. Поэтому необходимо либо отказаться
-   * от поддержки C (т.е. От возможности использовать libfptu из C),
-   * либо от Clang, либо от конструкторов (они и пострадали). */
+  /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
+   * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
+   * либо от возможности использовать libfptu из C, либо от Clang,
+   * либо от конструкторов (они и пострадали). */
   static fptu_time from_timespec(const struct timespec &ts) {
     fptu_time result;
     result.fixedpoint =
@@ -463,11 +463,11 @@ int fptu_upsert_int64(fptu_rw *pt, unsigned column, int64_t value);
 int fptu_upsert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 int fptu_upsert_fp64(fptu_rw *pt, unsigned column, double value);
 int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float value);
+int fptu_upsert_datetime(fptu_rw *pt, unsigned column, const fptu_time);
 
 int fptu_upsert_96(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_128(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_160(fptu_rw *pt, unsigned column, const void *data);
-int fptu_upsert_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_256(fptu_rw *pt, unsigned column, const void *data);
 
 int fptu_upsert_string(fptu_rw *pt, unsigned column, const char *text,
@@ -512,11 +512,11 @@ int fptu_insert_int64(fptu_rw *pt, unsigned column, int64_t value);
 int fptu_insert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 int fptu_insert_fp64(fptu_rw *pt, unsigned column, double value);
 int fptu_insert_fp32(fptu_rw *pt, unsigned column, float value);
+int fptu_insert_datetime(fptu_rw *pt, unsigned column, const fptu_time);
 
 int fptu_insert_96(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_128(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_160(fptu_rw *pt, unsigned column, const void *data);
-int fptu_insert_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_256(fptu_rw *pt, unsigned column, const void *data);
 
 int fptu_insert_string(fptu_rw *pt, unsigned column, const char *text,
@@ -559,11 +559,11 @@ int fptu_update_int64(fptu_rw *pt, unsigned column, int64_t value);
 int fptu_update_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 int fptu_update_fp64(fptu_rw *pt, unsigned column, double value);
 int fptu_update_fp32(fptu_rw *pt, unsigned column, float value);
+int fptu_update_datetime(fptu_rw *pt, unsigned column, const fptu_time);
 
 int fptu_update_96(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_128(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_160(fptu_rw *pt, unsigned column, const void *data);
-int fptu_update_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_256(fptu_rw *pt, unsigned column, const void *data);
 
 int fptu_update_string(fptu_rw *pt, unsigned column, const char *text,
@@ -655,10 +655,10 @@ int64_t fptu_field_int64(const fptu_field *pf);
 uint64_t fptu_field_uint64(const fptu_field *pf);
 double fptu_field_fp64(const fptu_field *pf);
 float fptu_field_fp32(const fptu_field *pf);
+fptu_time fptu_field_datetime(const fptu_field *pf);
 const uint8_t *fptu_field_96(const fptu_field *pf);
 const uint8_t *fptu_field_128(const fptu_field *pf);
 const uint8_t *fptu_field_160(const fptu_field *pf);
-const uint8_t *fptu_field_192(const fptu_field *pf);
 const uint8_t *fptu_field_256(const fptu_field *pf);
 const char *fptu_field_cstr(const fptu_field *pf);
 struct iovec fptu_field_opaque(const fptu_field *pf);
@@ -671,6 +671,7 @@ int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
 uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
 double fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
 float fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
+fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error);
 
 int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);
 uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error);
@@ -679,7 +680,6 @@ double fptu_get_fp(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_128(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_160(fptu_ro ro, unsigned column, int *error);
-const uint8_t *fptu_get_192(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_256(fptu_ro ro, unsigned column, int *error);
 const char *fptu_get_cstr(fptu_ro ro, unsigned column, int *error);
 struct iovec fptu_get_opaque(fptu_ro ro, unsigned column, int *error);
@@ -717,7 +717,6 @@ typedef enum fptu_lge {
 fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
                          size_t bytes);

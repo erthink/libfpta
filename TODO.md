@@ -3,7 +3,7 @@
 - [x] xxx_update();
 - [x] iterators;
 - [x] shrink(), e.g. defragmentation;
-- [ ] fptu_datetime instead of fptu_192;
+- [x] fptu_datetime instead of fptu_192;
 - [ ] fput_field_xyz_cmp();
 - [ ] fptu_field_xyz_set();
 - [ ] support for headspace reservation;

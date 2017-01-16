@@ -30,11 +30,11 @@ const uint8_t fptu_internal_map_t2b[fptu_cstr] = {
     /* int64 */ 8,
     /* uint64 */ 8,
     /* fp64 */ 8,
+    /* datetime */ 8,
 
     /* 96 */ 12,
     /* 128 */ 16,
     /* 160 */ 20,
-    /* 192 */ 24,
     /* 256 */ 32};
 
 const uint8_t fptu_internal_map_t2u[fptu_cstr] = {
@@ -48,11 +48,11 @@ const uint8_t fptu_internal_map_t2u[fptu_cstr] = {
     /* int64 */ 2,
     /* uint64 */ 2,
     /* fp64 */ 2,
+    /* datetime */ 2,
 
     /* 96 */ 3,
     /* 128 */ 4,
     /* 160 */ 5,
-    /* 192 */ 6,
     /* 256 */ 8};
 
 __hot size_t fptu_field_units(const fptu_field *pf) {

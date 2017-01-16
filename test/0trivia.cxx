@@ -74,7 +74,7 @@ TEST(Trivia, Apriory) {
   ASSERT_EQ(12, ct_elem_size(fptu_96));
   ASSERT_EQ(16, ct_elem_size(fptu_128));
   ASSERT_EQ(20, ct_elem_size(fptu_160));
-  ASSERT_EQ(24, ct_elem_size(fptu_192));
+  ASSERT_EQ(8, ct_elem_size(fptu_datetime));
   ASSERT_EQ(32, ct_elem_size(fptu_256));
 
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_null)),
@@ -108,8 +108,8 @@ TEST(Trivia, Apriory) {
             fptu_internal_map_t2u[fptu_128]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_160)),
             fptu_internal_map_t2u[fptu_160]);
-  ASSERT_EQ(bytes2units(ct_elem_size(fptu_192)),
-            fptu_internal_map_t2u[fptu_192]);
+  ASSERT_EQ(bytes2units(ct_elem_size(fptu_datetime)),
+            fptu_internal_map_t2u[fptu_datetime]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_256)),
             fptu_internal_map_t2u[fptu_256]);
 

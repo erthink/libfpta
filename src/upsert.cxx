@@ -203,6 +203,13 @@ int fptu_upsert_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
   return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
 }
 
+int fptu_upsert_datetime(fptu_rw *pt, unsigned col, fptu_time value) {
+  if (unlikely(col > fptu_max_cols))
+    return FPTU_EINVAL;
+  return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_datetime),
+                        value.fixedpoint);
+}
+
 //----------------------------------------------------------------------------
 
 int fptu_upsert_fp32(fptu_rw *pt, unsigned col, float value) {
@@ -266,18 +273,6 @@ int fptu_upsert_160(fptu_rw *pt, unsigned col, const void *data) {
     return FPTU_ENOSPACE;
 
   memcpy(fptu_field_payload(pf), data, 20);
-  return FPTU_SUCCESS;
-}
-
-int fptu_upsert_192(fptu_rw *pt, unsigned col, const void *data) {
-  if (unlikely(col > fptu_max_cols))
-    return FPTU_EINVAL;
-
-  fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_192), 6);
-  if (unlikely(pf == nullptr))
-    return FPTU_ENOSPACE;
-
-  memcpy(fptu_field_payload(pf), data, 24);
   return FPTU_SUCCESS;
 }
 
@@ -448,6 +443,13 @@ int fptu_update_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
   return fptu_update_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
 }
 
+int fptu_update_datetime(fptu_rw *pt, unsigned col, fptu_time value) {
+  if (unlikely(col > fptu_max_cols))
+    return FPTU_EINVAL;
+  return fptu_update_64(pt, fptu_pack_coltype(col, fptu_datetime),
+                        value.fixedpoint);
+}
+
 //----------------------------------------------------------------------------
 
 int fptu_update_fp32(fptu_rw *pt, unsigned col, float value) {
@@ -513,19 +515,6 @@ int fptu_update_160(fptu_rw *pt, unsigned col, const void *data) {
   if (likely(result.error == FPTU_SUCCESS)) {
     assert(result.pf != nullptr);
     memcpy(fptu_field_payload(result.pf), data, 20);
-  }
-  return result.error;
-}
-
-int fptu_update_192(fptu_rw *pt, unsigned col, const void *data) {
-  if (unlikely(col > fptu_max_cols))
-    return FPTU_EINVAL;
-
-  fptu_takeover_result result =
-      fptu_takeover(pt, fptu_pack_coltype(col, fptu_192), 6);
-  if (likely(result.error == FPTU_SUCCESS)) {
-    assert(result.pf != nullptr);
-    memcpy(fptu_field_payload(result.pf), data, 24);
   }
   return result.error;
 }
@@ -681,6 +670,13 @@ int fptu_insert_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
   return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
 }
 
+int fptu_insert_datetime(fptu_rw *pt, unsigned col, fptu_time value) {
+  if (unlikely(col > fptu_max_cols))
+    return FPTU_EINVAL;
+  return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_datetime),
+                        value.fixedpoint);
+}
+
 //----------------------------------------------------------------------------
 
 int fptu_insert_fp32(fptu_rw *pt, unsigned col, float value) {
@@ -744,18 +740,6 @@ int fptu_insert_160(fptu_rw *pt, unsigned col, const void *data) {
     return FPTU_ENOSPACE;
 
   memcpy(fptu_field_payload(pf), data, 20);
-  return FPTU_SUCCESS;
-}
-
-int fptu_insert_192(fptu_rw *pt, unsigned col, const void *data) {
-  if (unlikely(col > fptu_max_cols))
-    return FPTU_EINVAL;
-
-  fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_192), 6);
-  if (unlikely(pf == nullptr))
-    return FPTU_ENOSPACE;
-
-  memcpy(fptu_field_payload(pf), data, 24);
   return FPTU_SUCCESS;
 }
 
