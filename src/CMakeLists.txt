@@ -14,3 +14,5 @@ add_library(fptu STATIC
     iterator.cxx
     sort.cxx
 )
+
+target_link_libraries(fptu ${CMAKE_THREAD_LIBS_INIT})

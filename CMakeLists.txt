@@ -176,6 +176,8 @@ message (STATUS "")
 
 #######################################################################
 
+find_package(Threads REQUIRED)
+
 # Specify where to look for include files.
 include_directories("${PROJECT_SOURCE_DIR}")
 
