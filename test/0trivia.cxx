@@ -176,6 +176,22 @@ TEST(Trivia, diff2lge) {
   EXPECT_EQ(fptu_lt, fptu_diff2lge(LONG_MIN));
 }
 
+TEST(Trivia, iovec) {
+  ASSERT_EQ(sizeof(struct iovec), sizeof(fptu_ro));
+
+  fptu_ro serialized;
+  serialized.sys.iov_len = 42;
+  serialized.sys.iov_base = &serialized;
+
+  ASSERT_EQ(&serialized.total_bytes, &serialized.sys.iov_len);
+  ASSERT_EQ(sizeof(serialized.total_bytes), sizeof(serialized.sys.iov_len));
+  ASSERT_EQ(serialized.total_bytes, serialized.sys.iov_len);
+
+  ASSERT_EQ((void *)&serialized.units, &serialized.sys.iov_base);
+  ASSERT_EQ(sizeof(serialized.units), sizeof(serialized.sys.iov_base));
+  ASSERT_EQ(serialized.units, serialized.sys.iov_base);
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
