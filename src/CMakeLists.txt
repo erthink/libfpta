@@ -13,6 +13,7 @@ add_library(fptu STATIC
     compare.cxx
     iterator.cxx
     sort.cxx
+    time.cxx
 )
 
 target_link_libraries(fptu ${CMAKE_THREAD_LIBS_INIT})

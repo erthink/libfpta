@@ -34,6 +34,7 @@
 #include <errno.h>   // for error codes
 #include <string.h>  // for strlen
 #include <sys/uio.h> // for struct iovec
+#include <time.h>    // for struct timespec, struct timeval
 
 #ifdef __cplusplus
 #include <string> // for std::string
@@ -252,6 +253,83 @@ typedef enum fptu_type {
   fptu_sha256 = fptu_256,
   fptu_wstring = fptu_opaque
 } fptu_type;
+
+/* Представление времени.
+ *
+ * В формате фиксированной точки 32-dot-32:
+ *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
+ *     но без знака. Это отодвигает проблему 2038-го года на 2106,
+ *     требуя взамен аккуратности при вычитании.
+ *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
+ *
+ * Эта форма унифицирована с Positive Hyper100r и одновременно достаточно
+ * удобна в использовании. Поэтому настоятельно рекомендуется использовать
+ * именно её, особенно для хранения и передачи данных. */
+typedef union fptu_time {
+  uint64_t fixedpoint;
+  struct __packed {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    uint32_t fractional;
+    uint32_t utc;
+#else
+    uint32_t utc;
+    uint32_t fractional;
+#endif
+  };
+#ifdef __cplusplus
+  static uint32_t ns2fractional(uint32_t);
+  static uint32_t fractional2ns(uint32_t);
+  static uint32_t us2fractional(uint32_t);
+  static uint32_t fractional2us(uint32_t);
+  static uint32_t ms2fractional(uint32_t);
+  static uint32_t fractional2ms(uint32_t);
+
+  fptu_time() {}
+
+  fptu_time(const fptu_time &v) : fixedpoint(v.fixedpoint) {}
+
+  fptu_time(unsigned utc_seconds, unsigned utc_fractional) {
+    utc = utc_seconds;
+    fractional = utc_fractional;
+  }
+
+  fptu_time(const struct timespec &ts) {
+    utc = ts.tv_sec;
+    fractional = ns2fractional(ts.tv_nsec);
+  }
+
+  fptu_time(const struct timeval &tv) {
+    utc = tv.tv_sec;
+    fractional = us2fractional(tv.tv_usec);
+  }
+#endif
+} fptu_time;
+
+/* Возвращает текущее время в правильной форме.
+ *
+ * Аргумент grain_ns задает желаемую точность в наносекундах, в зависимости от
+ * которой будет использован CLOCK_REALTIME, либо CLOCK_REALTIME_COARSE.
+ *
+ * Положительные значения grain_ns, включая нуль, трактуются как наносекунды.
+ *
+ * Отрицательные же означают количество младших бит, которые НЕ требуются в
+ * результате и будут обнулены. Таким образом, отрицательные значения grain_ns
+ * позволяют запросить текущее время, одновременно с "резервированием" младших
+ * бит результата под специфические нужды.
+ *
+ * В конечном счете это позволяет существенно экономить на системных вызовах
+ * и/или обращении к аппаратуре. В том числе не выполнять системный вызов,
+ * а ограничиться использованием механизма vdso (прямое чтение из открытой
+ * страницы данных ядра). В зависимости от запрошенной точности,
+ * доступной аппаратуры и актуальном режиме работы ядра, экономия может
+ * составить до сотен и даже тысяч раз.
+ *
+ * Следует понимать, что реальная точность зависит от актуальной конфигурации
+ * аппаратуры и ядра ОС. Проще говоря, запрос текущего времени с grain_ns = 1
+ * достаточно абсурден и вовсе не гарантирует такой точности результата. */
+fptu_time fptu_now(int grain_ns);
+fptu_time fptu_now_fine(void);
+fptu_time fptu_now_coarse(void);
 
 //----------------------------------------------------------------------------
 

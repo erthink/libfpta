@@ -199,6 +199,11 @@
 /* clang-format on */
 //----------------------------------------------------------------------------
 
+/* Prototype should match libc runtime. ISO POSIX (2003) & LSB 3.1 */
+__extern_C void __assert_fail(const char *assertion, const char *file,
+                              unsigned line,
+                              const char *function) __nothrow __noreturn;
+
 static __inline unsigned fptu_get_col(uint16_t packed) {
   return packed >> fptu_co_shift;
 }
