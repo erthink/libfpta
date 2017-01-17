@@ -24,6 +24,30 @@ static const char testdb_name[] = "ut_smoke.fpta";
 static const char testdb_name_lck[] = "ut_smoke.fpta-lock";
 
 TEST(Smoke, Primary) {
+  /* Smoke-проверка жизнеспособности первичных индексов.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой три колонки
+   *     и один (primary) индекс.
+   *  2. Добавляем данные:
+   *     - добавляем "первую" запись, одновременно пытаясь
+   *       добавить в строку-кортеж поля с "плохими" значениями.
+   *     - добавляем "вторую" запись, которая отличается от первой
+   *       всеми колонками.
+   *     - также попутно пытаемся обновить несуществующие записи
+   *       и вставить дубликаты.
+   *  3. Читаем добавленное:
+   *     - открываем курсор по основному индексу, без фильтра,
+   *       на всю таблицу (весь диапазон строк),
+   *       и проверяем кол-во записей и дубликатов.
+   *     - переходим к последней, читаем и проверяем её (должна быть
+   *       "вторая").
+   *     - переходим к первой, читаем и проверяем её (должна быть "первая").
+   *  4. Удаляем данные:
+   *     - сначала "вторую" запись, потом "первую".
+   *     - проверяем кол-во записей и дубликатов, eof доя курсора.
+   *  5. Завершаем операции и освобождаем ресурсы.
+   */
   ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
   ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
@@ -227,6 +251,30 @@ TEST(Smoke, Primary) {
 }
 
 TEST(Smoke, Secondary) {
+  /* Smoke-проверка жизнеспособности вторичных индексов.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой три колонки,
+   *     и два индекса (primary и secondary).
+   *  2. Добавляем данные:
+   *      - добавляем "первую" запись, одновременно пытаясь
+   *        добавить в строку-кортеж поля с "плохими" значениями.
+   *      - добавляем "вторую" запись, которая отличается от первой
+   *        всеми колонками.
+   *      - также попутно пытаемся обновить несуществующие записи
+   *        и вставить дубликаты.
+   *  3. Читаем добавленное:
+   *     - открываем курсор по вторичному индексу, без фильтра,
+   *       на всю таблицу (весь диапазон строк),
+   *       и проверяем кол-во записей и дубликатов.
+   *     - переходим к последней, читаем и проверяем её (должна быть
+   *       "вторая").
+   *     - переходим к первой, читаем и проверяем её (должна быть "первая").
+   *  4. Удаляем данные:
+   *     - сначала "вторую" запись, потом "первую".
+   *     - проверяем кол-во записей и дубликатов, eof доя курсора.
+   *  5. Завершаем операции и освобождаем ресурсы.
+   */
   ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
   ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
@@ -236,7 +284,8 @@ TEST(Smoke, Secondary) {
             fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
   ASSERT_NE(nullptr, db);
 
-  // описываем простейшую таблицу с тремя колонками и одним PK
+  // описываем простейшую таблицу с тремя колонками,
+  // одним Primary и одним Secondary
   fpta_column_set def;
   fpta_column_set_init(&def);
 
@@ -303,17 +352,6 @@ TEST(Smoke, Secondary) {
             fpta_upsert_column(pt2, &col_b, fpta_value_float(12.34)));
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
-#if 0
-    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
-
-    EXPECT_EQ(FPTA_OK,
-              fpta_upsert_column(pt2, &col_pk, fpta_value_cstr("aaa")));
-    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
-
-    EXPECT_EQ(FPTA_OK,
-              fpta_upsert_column(pt2, &col_pk, fpta_value_cstr("zzz")));
-    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
-#else
   // пытаемся обновить несуществующую запись
   EXPECT_EQ(MDB_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
@@ -332,7 +370,6 @@ TEST(Smoke, Secondary) {
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(MDB_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
-#endif
 
   // фиксируем изменения
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));

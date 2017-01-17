@@ -47,6 +47,17 @@ static const uint8_t pattern[256] = {
 };
 
 TEST(Data, Field2Value) {
+  /* Проверка конвертации полей кортежа в соответствующие значения fpta_value.
+   *
+   * Сценарий:
+   *  1. Создаем и заполняем кортеж полями всяческих типов.
+   *  2. Читаем каждое добавленное поле и конвертируем в fpta_value.
+   *  3. Сравниваем значения в форме fpta_value с исходно добавленными.
+   *
+   * Тест НЕ перебирает комбинации и диапазоны значений. Некий относительно
+   * полный перебор происходит при тестировании индексов и курсоров.
+   */
+
   // формируем кортеж с полями всяческих типов
   fptu_rw *pt = fptu_alloc(15, 39 * 4 + sizeof(pattern));
   ASSERT_NE(nullptr, pt);
@@ -157,9 +168,25 @@ TEST(Data, Field2Value) {
 }
 
 TEST(Data, UpsertColumn) {
+  /* Проверка добавления/обновления полей кортежа (значений колонок) на
+   * уровне libfpta, через представление значений в fpta_value
+   * и с использованием схемы таблицы (описания колонок).
+   *
+   * Тест не добавляет данных в таблицу, но использует схему для контроля
+   * типов и преобразования fpta-значений в поля libfptu.
+   *
+   * Сценарий:
+   *  1. Создаем временную базу с таблицей, в которой есть колонка для
+         каждого fptu-типа.
+   *  2. Проверяем обслуживание каждого fptu-типа, посредством
+   *     добавления/обновления значений для соответствующей колонки.
+   *     - При этом также проверяем обработку как неверных типов,
+   *       так и недопустимых значений конвертируемых типов.
+   *  3. Завершаем операции и освобождаем ресурсы.
+   */
+
   // для проверки требуются полноценные идентификаторы колонок,
   // поэтому необходимо открыть базу, создать таблицу и т.д.
-
   ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
   ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
   fpta_db *db = nullptr;
@@ -600,6 +627,13 @@ TEST(Data, UpsertColumn) {
 //----------------------------------------------------------------------------
 
 TEST(Data, Compare_null) {
+  /* Проверка сравнения с fptu_null.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_null.
+   *  - результат "равно" должен быть для fpta_null и пусто бинарной строки.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -611,6 +645,7 @@ TEST(Data, Compare_null) {
   pf = fptu_lookup(pt, 0, fptu_null);
   ASSERT_NE(nullptr, pf);
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_null()));
+  EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(nullptr, 0)));
   EXPECT_EQ(fptu_ic, fpta_filter_cmp(pf, fpta_value_uint(42)));
   EXPECT_EQ(fptu_ic, fpta_filter_cmp(pf, fpta_value_sint(42)));
   EXPECT_EQ(fptu_ic, fpta_filter_cmp(pf, fpta_value_float(42)));
@@ -624,6 +659,14 @@ TEST(Data, Compare_null) {
 }
 
 TEST(Data, Compare_uint16) {
+  /* Проверка сравнения с fptu_uint16.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_uint16.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -674,6 +717,14 @@ TEST(Data, Compare_uint16) {
 }
 
 TEST(Data, Compare_uint32) {
+  /* Проверка сравнения с fptu_uint32.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_uint32.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -735,6 +786,14 @@ TEST(Data, Compare_uint32) {
 }
 
 TEST(Data, Compare_uint64) {
+  /* Проверка сравнения с fptu_uint64.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_uint64.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -795,6 +854,14 @@ TEST(Data, Compare_uint64) {
 }
 
 TEST(Data, Compare_int32) {
+  /* Проверка сравнения с fptu_int32.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_int32.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -869,6 +936,14 @@ TEST(Data, Compare_int32) {
 }
 
 TEST(Data, Compare_int64) {
+  /* Проверка сравнения с fptu_int64.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_int64.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -938,6 +1013,14 @@ TEST(Data, Compare_int64) {
 }
 
 TEST(Data, Compare_fp64) {
+  /* Проверка сравнения с fptu_fp64 (double).
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_fp64.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -1025,6 +1108,14 @@ TEST(Data, Compare_fp64) {
 }
 
 TEST(Data, Compare_fp32) {
+  /* Проверка сравнения с fptu_fp32 (float).
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_fp32.
+   *  - для всех чисел, включая signed/unsigned и float/double, должен быть
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -1121,6 +1212,14 @@ TEST(Data, Compare_fp32) {
 }
 
 TEST(Data, Compare_datetime) {
+  /* Проверка сравнения с fptu_datetime (структура fptu_time).
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_datetime.
+   *  - сравнение допустимо только с fpta_datetime и при этом должно давать
+   *    корректный результат больше/меньше/равно.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -1190,6 +1289,15 @@ TEST(Data, Compare_datetime) {
 }
 
 TEST(Data, Compare_string) {
+  /* Проверка сравнения с fptu_string (С-строка).
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_string.
+   *  - сравнение допустимо с fpta_string и fpta_binary и при этом должно
+   *    давать корректный результат больше/меньше/равно, с учетом полезной
+   *    длины данных (без терминирующего нуля), пояснение внутри fpta_value.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 12);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -1227,6 +1335,18 @@ TEST(Data, Compare_string) {
 }
 
 TEST(Data, Compare_binary) {
+  /* Проверка сравнения с fptu_opaque (бинарная строка вариативной длины),
+   * а также с бинарными типами фиксированного размера fptu_96/128/160/256.
+   *
+   * Сценарий:
+   *  - пробуем сравнить всяческие варианты fpta_value с fptu_opaque/fixbin.
+   *  - по ходу теста добавляется, обновляется и удаляется поле для
+   *    каждого из типов fptu_opaque, fptu_96/128/160/256.
+   *  - сравнения допустимы с fpta_string, fpta_binary и при этом должно
+   *    давать корректный результат больше/меньше/равно, с учетом полезной
+   *    длины данных (без терминирующего нуля), пояснение внутри fpta_value.
+   *  - в остальных случаях должно быть "несравнимо".
+   */
   fptu_rw *pt = fptu_alloc(1, 32);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));

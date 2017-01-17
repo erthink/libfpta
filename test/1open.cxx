@@ -24,6 +24,8 @@ static const char testdb_name[] = "ut_create.fpta";
 static const char testdb_name_lck[] = "ut_create.fpta-lock";
 
 TEST(Open, Trivia) {
+  /* Тривиальный тест открытия/создания БД во всех режимах durability.
+   * Корректность самих режимов не проверяется. */
   ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
   ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 

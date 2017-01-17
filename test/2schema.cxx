@@ -24,6 +24,17 @@ static const char testdb_name[] = "ut_schema.fpta";
 static const char testdb_name_lck[] = "ut_schema.fpta-lock";
 
 TEST(Schema, Trivia) {
+  /* Тривиальный тест создания/заполнения описания колонок таблицы.
+   *
+   * Сценарий:
+   *  - создаем/инициализируем описание колонок.
+   *  - пробуем добавить несколько некорректных колонок,
+   *    с плохими: именем, индексом, типом.
+   *  - добавляем несколько корректных описаний колонок.
+   *
+   * Тест НЕ перебирает все возможные комбинации, а только некоторые.
+   * Такой относительно полный перебор происходит автоматически при
+   * тестировании индексов и курсоров. */
   fpta_column_set def;
   fpta_column_set_init(&def);
   EXPECT_NE(FPTA_SUCCESS, fpta_column_set_validate(&def));
@@ -85,6 +96,18 @@ TEST(Schema, Trivia) {
 }
 
 TEST(Schema, Base) {
+  /* Базовый тест создания таблицы.
+   *
+   * Сценарий:
+   *  - создаем и заполняем описание колонок.
+   *  - создаем таблицу по сформированному описанию колонок.
+   *  - затем в другой транзакции проверяем, что у созданной таблицы
+   *    есть соответствующие колонки.
+   *  - после в другой транзакции удаляем созданную таблицу,
+   *    а также пробуем удалить несуществующую.
+   *
+   * Тест НЕ перебирает комбинации. Некий относительно полный перебор
+   * происходит автоматически при тестировании индексов и курсоров. */
   ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
   ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
 
@@ -134,7 +157,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.shove));
   EXPECT_EQ(fpta_primary_unique, fpta_name_colindex(&col_pk));
   EXPECT_EQ(fptu_cstr, fpta_name_coltype(&col_pk));
-  EXPECT_EQ(FPTA_OK, col_pk.column.num);
+  EXPECT_EQ(0, col_pk.column.num);
 
   EXPECT_EQ(fptu_uint64, fpta_shove2type(col_a.shove));
   EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_a));
