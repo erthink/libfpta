@@ -671,11 +671,12 @@ struct keygen<index, fptu_160> : public fixbin_stepper<160 / 8> {
 };
 
 template <fpta_index_type index>
-struct keygen<index, fptu_192> : public fixbin_stepper<192 / 8> {
-  static constexpr fptu_type type = fptu_192;
+struct keygen<index, fptu_datetime> : public scalar_range_stepper<uint64_t> {
+  static constexpr fptu_type type = fptu_datetime;
   static fpta_value make(int order, unsigned const N) {
-    return fixbin_stepper<192 / 8>::make(order, fpta_index_is_reverse(index),
-                                         N);
+    fptu_time datetime;
+    datetime.fixedpoint = scalar_range_stepper<uint64_t>::value(order, N);
+    return fpta_value_datetime(datetime);
   }
 };
 

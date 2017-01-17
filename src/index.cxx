@@ -222,6 +222,7 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(unsigned shove) {
   case fptu_int64:
     return fpta_idxcmp_type<int64_t>;
   case fptu_uint64:
+  case fptu_datetime:
     return fpta_idxcmp_type<uint64_t>;
   }
 }
@@ -345,6 +346,9 @@ bool fpta_index_ordered_is_compat(fptu_type data_type,
       /* fpta_unsigned_int */
       1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64,
 
+      /* fpta_datetime */
+      1 << fptu_datetime,
+
       /* fpta_float_point */
       1 << fptu_fp32 | 1 << fptu_fp64,
 
@@ -353,14 +357,14 @@ bool fpta_index_ordered_is_compat(fptu_type data_type,
 
       /* fpta_binary */
       ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-        1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
+        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
+        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
 
       /* fpta_shoved */
       ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-        1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_96 | 1 << fptu_128 |
-        1 << fptu_160 | 1 << fptu_192 | 1 << fptu_256),
+        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
+        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_96 |
+        1 << fptu_128 | 1 << fptu_160 | 1 << fptu_256),
 
       /* fpta_begin */
       ~(1 << fptu_null),
@@ -390,6 +394,9 @@ bool fpta_index_unordered_is_compat(fptu_type data_type,
       1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
           1 << fptu_int32 | 1 << fptu_int64,
 
+      /* fpta_date_time */
+      1 << fptu_datetime,
+
       /* fpta_float_point */
       1 << fptu_fp32 | 1 << fptu_fp64,
 
@@ -398,13 +405,13 @@ bool fpta_index_unordered_is_compat(fptu_type data_type,
 
       /* fpta_binary */
       ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-        1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
+        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
+        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
 
       /* fpta_shoved */
       ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-        1 << fptu_fp32 | 1 << fptu_fp64),
+        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
+        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64),
 
       /* fpta_begin */
       ~(1 << fptu_null),
@@ -582,6 +589,13 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     }
     return FPTA_SUCCESS;
 
+  case fptu_datetime:
+    assert(value.type == fpta_datetime);
+    key.place.u64 = value.uint;
+    key.mdbx.mv_size = sizeof(key.place.u64);
+    key.mdbx.mv_data = &key.place.u64;
+    return FPTA_SUCCESS;
+
   case fptu_cstr:
     /* не позволяем смешивать string и opaque/binary, в том числе
      * чтобы избежать путаницы между строками в utf8 и unicode,
@@ -614,13 +628,6 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     key.mdbx.mv_size = value.binary_length;
     key.mdbx.mv_data = value.binary_data;
     if (unlikely(value.binary_length != 160 / 8))
-      return FPTA_DATALEN_MISMATCH;
-    break;
-
-  case fptu_192:
-    key.mdbx.mv_size = value.binary_length;
-    key.mdbx.mv_data = value.binary_data;
-    if (unlikely(value.binary_length != 192 / 8))
       return FPTA_DATALEN_MISMATCH;
     break;
 
@@ -743,6 +750,15 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
     return FPTA_SUCCESS;
   }
 
+  case fptu_datetime: {
+    if (unlikely(mdbx.mv_size != sizeof(uint64_t)))
+      return FPTA_INDEX_CORRUPTED;
+    value.type = fpta_datetime;
+    value.datetime.fixedpoint = *(uint64_t *)mdbx.mv_data;
+    value.binary_length = mdbx.mv_size;
+    return FPTA_SUCCESS;
+  }
+
   case fptu_96:
     if (unlikely(mdbx.mv_size != 96 / 8))
       return FPTA_INDEX_CORRUPTED;
@@ -755,11 +771,6 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
 
   case fptu_160:
     if (unlikely(mdbx.mv_size != 160 / 8))
-      return FPTA_INDEX_CORRUPTED;
-    break;
-
-  case fptu_192:
-    if (unlikely(mdbx.mv_size != 192 / 8))
       return FPTA_INDEX_CORRUPTED;
     break;
 
@@ -834,6 +845,7 @@ int fpta_index_row2key(fpta_shove_t shove, unsigned column,
       return FPTA_EVALUE;*/
   case fptu_int64:
   case fptu_uint64:
+  case fptu_datetime:
     static_assert(sizeof(key.place.f64) == sizeof(key.place.i64),
                   "something wrong");
     static_assert(sizeof(key.place.i64) == sizeof(key.place.u64),
@@ -860,11 +872,6 @@ int fpta_index_row2key(fpta_shove_t shove, unsigned column,
 
   case fptu_160:
     key.mdbx.mv_size = 160 / 8;
-    key.mdbx.mv_data = (void *)payload->fixbin;
-    break;
-
-  case fptu_192:
-    key.mdbx.mv_size = 192 / 8;
     key.mdbx.mv_data = (void *)payload->fixbin;
     break;
 

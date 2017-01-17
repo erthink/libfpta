@@ -80,6 +80,11 @@ fpta_value fpta_field2value(const fptu_field *field) {
     result.fp = payload->fp64;
     break;
 
+  case fptu_datetime:
+    result.type = fpta_datetime;
+    result.datetime.fixedpoint = payload->u64;
+    break;
+
   case fptu_96:
     result.type = fpta_binary;
     result.binary_length = 96 / 8;
@@ -95,12 +100,6 @@ fpta_value fpta_field2value(const fptu_field *field) {
   case fptu_160:
     result.type = fpta_binary;
     result.binary_length = 160 / 8;
-    result.binary_data = (void *)payload->fixbin;
-    break;
-
-  case fptu_192:
-    result.type = fpta_binary;
-    result.binary_length = 192 / 8;
     result.binary_data = (void *)payload->fixbin;
     break;
 
@@ -243,6 +242,11 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_EVALUE;
     return fptu_upsert_fp64(pt, col, value.fp);
 
+  case fptu_datetime:
+    if (value.type != fpta_datetime)
+      return FPTA_ETYPE;
+    return fptu_upsert_datetime(pt, col, value.datetime);
+
   case fptu_96:
     if (unlikely(value.type != fpta_binary))
       return FPTA_ETYPE;
@@ -269,15 +273,6 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
     return fptu_upsert_160(pt, col, value.binary_data);
-
-  case fptu_192:
-    if (unlikely(value.type != fpta_binary))
-      return FPTA_ETYPE;
-    if (unlikely(value.binary_length != 192 / 8))
-      return FPTA_DATALEN_MISMATCH;
-    if (unlikely(!value.binary_data))
-      return FPTA_EINVAL;
-    return fptu_upsert_192(pt, col, value.binary_data);
 
   case fptu_256:
     if (unlikely(value.type != fpta_binary))

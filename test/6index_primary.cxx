@@ -370,7 +370,7 @@ template <fptu_type _type> struct glue {
 typedef ::testing::Types<glue<fptu_null>, glue<fptu_uint16>, glue<fptu_int32>,
                          glue<fptu_uint32>, glue<fptu_fp32>, glue<fptu_int64>,
                          glue<fptu_uint64>, glue<fptu_fp64>, glue<fptu_96>,
-                         glue<fptu_128>, glue<fptu_160>, glue<fptu_192>,
+                         glue<fptu_128>, glue<fptu_160>, glue<fptu_datetime>,
                          glue<fptu_256>, glue<fptu_cstr>, glue<fptu_opaque>,
                          /* glue<fptu_nested>, */ glue<fptu_farray>>
     ColumnTypes;

@@ -616,6 +616,59 @@ TEST(Value2Key, fp32) {
   probe.check();
 }
 
+TEST(Value2Key, datetime) {
+  const auto ordered =
+      fpta_column_shove(0, fptu_datetime, fpta_primary_unique);
+  const auto unordered =
+      fpta_column_shove(0, fptu_datetime, fpta_primary_unique_unordered);
+  fpta_key key;
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_index_value2key(
+                ordered, fpta_value_datetime(fptu_now_coarse()), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(ordered, fpta_value_null(), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_index_value2key(
+                unordered, fpta_value_datetime(fptu_now_coarse()), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(unordered, fpta_value_null(), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE,
+            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+
+  // проверяем через компараторы индексов
+  probe_triplet<fptu_datetime> probe;
+  for (auto i = 0; i < 42; i++) {
+    fptu_time datetime;
+    datetime.fixedpoint = UINT64_MAX - i;
+    probe(fpta_value_datetime(datetime), 100 - i);
+    datetime.fixedpoint = i;
+    probe(fpta_value_datetime(datetime), i);
+  }
+  probe.check(42 * 2);
+}
+
+//----------------------------------------------------------------------------
+
 TEST(Value2Key, string_keygen) {
   string_keygen_test<false>(1, 3);
   string_keygen_test<true>(1, 3);
@@ -625,8 +678,6 @@ TEST(Value2Key, string_keygen) {
   string_keygen_test<true>(8, 8);
 }
 
-//----------------------------------------------------------------------------
-
 template <fptu_type _type> struct glue {
   static constexpr fptu_type type = _type;
 };
@@ -635,8 +686,7 @@ typedef ::testing::Types<glue<fptu_cstr>, glue<fptu_opaque>>
     VariableStringTypes;
 
 typedef ::testing::Types<glue<fptu_96>, glue<fptu_cstr>, glue<fptu_opaque>,
-                         glue<fptu_128>, glue<fptu_160>, glue<fptu_192>,
-                         glue<fptu_256>>
+                         glue<fptu_128>, glue<fptu_160>, glue<fptu_256>>
     AllStringTypes;
 
 template <typename TypeParam>

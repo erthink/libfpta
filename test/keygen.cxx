@@ -65,8 +65,8 @@ void any_keygen::init_tier::unroll(fptu_type _type) {
     return glue<_index, fptu_128>();
   case fptu_160:
     return glue<_index, fptu_160>();
-  case fptu_192:
-    return glue<_index, fptu_192>();
+  case fptu_datetime:
+    return glue<_index, fptu_datetime>();
   case fptu_256:
     return glue<_index, fptu_256>();
   case fptu_cstr:

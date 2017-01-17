@@ -125,6 +125,16 @@ static __hot fptu_lge fpta_cmp_fp(const fptu_field *left, double right) {
   }
 }
 
+static __hot fptu_lge fpta_cmp_datetime(const fptu_field *left,
+                                        const fptu_time right) {
+
+  if (unlikely(fptu_get_type(left->ct) != fptu_datetime))
+    return fptu_ic;
+
+  auto payload = fptu_field_payload(left);
+  return fptu_cmp2lge(payload->u64, right.fixedpoint);
+}
+
 static __hot fptu_lge fpta_cmp_string(const fptu_field *left,
                                       const char *right, size_t length) {
   auto payload = fptu_field_payload(left);
@@ -160,6 +170,7 @@ static __hot fptu_lge fpta_cmp_binary(const fptu_field *left,
   case fptu_uint64:
   case fptu_int64:
   case fptu_fp64:
+  case fptu_datetime:
     return fptu_ic;
 
   case fptu_96:
@@ -170,9 +181,6 @@ static __hot fptu_lge fpta_cmp_binary(const fptu_field *left,
     break;
   case fptu_160:
     left_len = 20;
-    break;
-  case fptu_192:
-    left_len = 24;
     break;
   case fptu_256:
     left_len = 32;
@@ -215,6 +223,9 @@ __hot fptu_lge fpta_filter_cmp(const fptu_field *pf,
 
   case fpta_float_point:
     return fpta_cmp_fp(pf, right.fp);
+
+  case fpta_datetime:
+    return fpta_cmp_datetime(pf, right.datetime);
 
   case fpta_string:
     return fpta_cmp_string(pf, right.str, right.binary_length);

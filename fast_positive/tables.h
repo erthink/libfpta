@@ -174,33 +174,6 @@ typedef struct fpta_cursor fpta_cursor;
 
 //----------------------------------------------------------------------------
 
-/* Представление времени.
- *
- * В формате фиксированной точки 32-dot-32:
- *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
- *     но без знака. Это отодвигает проблему 2038-го года на 2106,
- *     требуя взамен аккуратности при вычитании.
- *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
- *
- * Эта форма унифицирована с Positive Hyper100r и одновременно достаточно
- * удобна в использовании. Поэтому настоятельно рекомендуется использовать
- * именно её, особенно для хранения и передачи данных. */
-typedef union fpta_time {
-  uint64_t fixedpoint;
-  struct {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    uint32_t fractional;
-    uint32_t utc;
-#else
-    uint32_t utc;
-    uint32_t fractional;
-#endif
-  };
-} fpta_time;
-
-/* Возвращает текущее время в правильной форме. */
-fpta_time fpta_now();
-
 /* Типы данных для ключей (проиндексированных полей) и значений
  * для сравнения в условиях фильтров больше/меньше/равно/не-равно. */
 typedef enum fpta_value_type {
@@ -208,7 +181,7 @@ typedef enum fpta_value_type {
                     * или отсутствия колонки/поля в строке. */
   fpta_signed_int, /* Integer со знаком, задается в int64_t */
   fpta_unsigned_int, /* Беззнаковый integer, задается в uint64_t */
-  // fpta_datetime, /* Время в форме fpta_time */
+  fpta_datetime, /* Время в форме fptu_time */
   fpta_float_point, /* Плавающая точка, задается в double */
   fpta_string,      /* Строка utf8, задается адресом и длиной, без терминатора!
                        */
@@ -234,6 +207,7 @@ typedef struct fpta_value {
     int64_t sint;
     uint64_t uint;
     double fp;
+    fptu_time datetime;
 
     /* ВАЖНО! К большому сожалению и грандиозному неудобству, строка
      * здесь НЕ в традиционной для C форме, а БЕЗ терминирующего
@@ -272,6 +246,15 @@ static __inline fpta_value fpta_value_uint(uint64_t value) {
   r.type = fpta_unsigned_int;
   r.binary_length = ~0u;
   r.uint = value;
+  return r;
+}
+
+/* Конструктор value для datetime. */
+static __inline fpta_value fpta_value_datetime(fptu_time datetime) {
+  fpta_value r;
+  r.type = fpta_datetime;
+  r.binary_length = ~0u;
+  r.datetime = datetime;
   return r;
 }
 
@@ -1312,7 +1295,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
 
 namespace std {
 string to_string(fpta_error);
-string to_string(const fpta_time &);
+string to_string(const fptu_time &);
 string to_string(fpta_value_type);
 string to_string(const fpta_value &);
 string to_string(fpta_durability);
