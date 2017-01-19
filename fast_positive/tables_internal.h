@@ -245,8 +245,7 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           unsigned stepover);
 
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
-                           MDB_val &pk_key_old, const fptu_ro &row_old,
-                           MDB_val &pk_key_new, const fptu_ro &row_new,
+                           const fptu_ro &row_old, const fptu_ro &row_new,
                            unsigned stepover);
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,

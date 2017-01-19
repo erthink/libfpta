@@ -312,12 +312,16 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
       return rc;
   }
 
-  fptu_ro present;
+  fptu_ro present_row;
   int rows_with_same_key;
   rc = mdbx_get_ex(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
-                   &present.sys, &rows_with_same_key);
-  if (unlikely(rc != MDB_SUCCESS && rc != MDB_NOTFOUND))
-    return rc;
+                   &present_row.sys, &rows_with_same_key);
+  if (rc != MDB_SUCCESS) {
+    if (unlikely(rc != MDB_NOTFOUND))
+      return rc;
+    present_row.sys.iov_base = nullptr;
+    present_row.sys.iov_len = 0;
+  }
 
   switch (op) {
   default:
@@ -326,16 +330,16 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     return FPTA_EINVAL;
   case fpta_insert:
     if (fpta_index_is_unique(table_id->table.pk)) {
-      if (rc != MDB_NOTFOUND)
+      if (present_row.sys.iov_base)
         /* запись с таким PK уже есть, вставка НЕ возможна */
         return MDB_KEYEXIST;
     }
     break;
 
   case fpta_update:
-    if (rc != MDB_SUCCESS)
+    if (!present_row.sys.iov_base)
       /* нет записи с таким PK, обновлять нечего */
-      return rc;
+      return MDB_NOTFOUND;
   /* no break here */
   case fpta_upsert:
     if (rows_with_same_key > 1)
@@ -343,9 +347,9 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
       return MDB_KEYEXIST;
   }
 
-  if (rc == MDB_SUCCESS) {
-    if (present.total_bytes == row_value.total_bytes &&
-        memcmp(present.units, row_value.units, present.total_bytes) == 0)
+  if (present_row.sys.iov_base) {
+    if (present_row.total_bytes == row_value.total_bytes &&
+        !memcmp(present_row.units, row_value.units, present_row.total_bytes))
       /* если полный дубликат записи */
       return MDB_KEYEXIST;
   }
@@ -353,8 +357,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   if (!fpta_table_has_secondary(table_id))
     return FPTA_SUCCESS;
 
-  return fpta_check_constraints(txn, table_id, pk_key.mdbx, present,
-                                pk_key.mdbx, row_value, 0);
+  return fpta_check_constraints(txn, table_id, present_row, row_value, 0);
 }
 
 int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,

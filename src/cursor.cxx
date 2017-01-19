@@ -557,9 +557,8 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     if (unlikely(rc != MDB_SUCCESS))
       return rc;
 
-    return fpta_check_constraints(cursor->txn, cursor->table_id,
-                                  cursor->current, present_row,
-                                  cursor->current, new_row_value, 0);
+    return fpta_check_constraints(cursor->txn, cursor->table_id, present_row,
+                                  new_row_value, 0);
   }
 
   MDB_val present_pk_key;
@@ -579,9 +578,8 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (unlikely(rc != MDB_SUCCESS))
     return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 
-  return fpta_check_constraints(cursor->txn, cursor->table_id, present_pk_key,
-                                present_row, new_pk_key.mdbx, new_row_value,
-                                cursor->index.column_order);
+  return fpta_check_constraints(cursor->txn, cursor->table_id, present_row,
+                                new_row_value, cursor->index.column_order);
 }
 
 int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {

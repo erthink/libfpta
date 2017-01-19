@@ -38,17 +38,40 @@ static __inline bool fpta_fk_changed(const fpta_table_schema *def,
 }
 
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
-                           MDB_val &pk_key_old, const fptu_ro &row_old,
-                           MDB_val &pk_key_new, const fptu_ro &row_new,
+                           const fptu_ro &row_old, const fptu_ro &row_new,
                            unsigned stepover) {
-  (void)txn;
-  (void)table_id;
-  (void)pk_key_old;
-  (void)row_old;
-  (void)pk_key_new;
-  (void)row_new;
-  (void)stepover;
-  // TODO: проверка конфликтов для индексов с контролем уникальности
+  MDB_dbi dbi[fpta_max_indexes];
+  int rc = fpta_open_secondaries(txn, table_id, dbi);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  for (size_t i = 1; i < table_id->table.def->count; ++i) {
+    auto index = fpta_shove2index(table_id->table.def->columns[i]);
+    if (index == fpta_index_none)
+      break;
+    assert(i < fpta_max_indexes);
+    if (i == stepover || !fpta_index_is_unique(index))
+      continue;
+
+    if (row_old.sys.iov_base) {
+      const bool fk_changed =
+          fpta_fk_changed(table_id->table.def, row_old, row_new, i);
+      if (!fk_changed)
+        continue;
+    }
+
+    fpta_key fk_key_new;
+    rc = fpta_index_row2key(table_id->table.def->columns[i], i, row_new,
+                            fk_key_new, false);
+    if (unlikely(rc != MDB_SUCCESS))
+      return rc;
+
+    MDB_val pk_exist;
+    rc = mdbx_get(txn->mdbx_txn, dbi[i], &fk_key_new.mdbx, &pk_exist);
+    if (unlikely(rc != MDB_NOTFOUND))
+      return (rc == MDB_SUCCESS) ? MDB_KEYEXIST : rc;
+  }
+
   return FPTA_SUCCESS;
 }
 
