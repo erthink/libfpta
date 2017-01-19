@@ -484,10 +484,14 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       return rc;
   } else {
     MDB_val pk_key;
-    int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
-                             MDB_GET_CURRENT);
-    if (unlikely(rc != MDB_SUCCESS))
-      return rc;
+    if (fpta_index_is_primary(cursor->index.shove)) {
+      pk_key = cursor->current;
+    } else {
+      int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
+                               MDB_GET_CURRENT);
+      if (unlikely(rc != MDB_SUCCESS))
+        return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+    }
 
     fptu_ro old;
 #ifdef NDEBUG
@@ -499,8 +503,8 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     old.sys.iov_base = buffer;
     old.sys.iov_len = likely_enough;
 
-    rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
-                      &pk_key, nullptr, &old.sys, MDB_CURRENT);
+    int rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                          &pk_key, nullptr, &old.sys, MDB_CURRENT);
     if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
         old.sys.iov_len > likely_enough) {
       old.sys.iov_base = alloca(old.sys.iov_len);
