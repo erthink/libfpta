@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -40,11 +40,57 @@
 #include "fast_positive/defs.h"
 #include "fast_positive/tuples.h"
 
+#include <assert.h>  // for assert()
 #include <errno.h>   // for error codes
-#include <string.h>  // for strlen
+#include <limits.h>  // for INT_MAX
+#include <string.h>  // for strlen()
 #include <sys/uio.h> // for struct iovec
 
+//----------------------------------------------------------------------------
+/* Опции конфигурации управляющие внутренним поведением libfpta, т.е
+ * их изменение требует пересборки библиотеки.
+ *
+ * Чуть позже эти определения передедут в fpta_config.h */
+
+#ifndef FPTA_PROHIBIT_LOSS_PRECISION
+/* При обслуживании индексированных колонок типа float/fptu_fp32
+ * double значения из fpta_value будут преобразованы в float.
+ * Опция определяет, считать ли этом потерю точности ошибкой или нет. */
+#define FPTA_PROHIBIT_LOSS_PRECISION 0
+#endif /* FPTA_PROHIBIT_LOSS_PRECISION */
+
+#ifndef FPTA_ENABLE_RETURN_INTO_RANGE
+/* Опция определяет, поддерживать ли для курсора возврат в диапазон строк
+ * после его исчерпания при итерировании. Например, позволить ли возврат
+ * к последней строке посредством move(prev), после того как
+ * move(next) вернул NODATA, так как курсор уже был на последней строке. */
+#define FPTA_ENABLE_RETURN_INTO_RANGE 1
+#endif /*FPTA_ENABLE_RETURN_INTO_RANGE */
+
+#ifndef FPTA_ENABLE_ABORT_ON_PANIC
+/* Опция определяет, что делать при фатальных ошибках, например в случае
+ * ошибки отката/прерывания транзакции.
+ *
+ * Как правило, такие ошибки возникают при "росписи" памяти или при серьезных
+ * нарушениях соглашений API. Лучшим выходом, в таких случаях, обычно является
+ * скорейшее прерывания выполнения процесса. Согласованность данных при этом
+ * обеспечивается откатом (не фиксацией) транзакции внутри MDBX.
+ *
+ * Если FPTA_ENABLE_ABORT_ON_PANIC == 0, то при фатальной проблеме
+ * будет возвращена ошибка FPTA_WANNA_DIE, клиентскому коду следует её
+ * обработать и максимально быстро завершить выполнение.
+ *
+ * Если FPTA_ENABLE_ABORT_ON_PANIC != 0, то при фатальной проблеме будет
+ * вызвана системная abort().
+ *
+ * На платформах с поддержкой __attribute__((weak)) поведение может быть
+ * дополнительно изменено перекрытием функции fpta_panic(). */
+#define FPTA_ENABLE_ABORT_ON_PANIC 1
+#endif /* FPTA_ENABLE_ABORT_ON_PANIC */
+
 #ifdef __cplusplus
+#include <string> // for std::string
+
 extern "C" {
 #endif
 
@@ -53,48 +99,50 @@ extern "C" {
 
 /* Основные ограничения, константы и их производные. */
 enum fpta_bits {
-    /* Максимальное кол-во таблиц */
-    fpta_tables_max = 1024,
-    /* Максимальное кол-во колонок (порядка 1000) */
-    fpta_max_cols = fptu_max_cols,
+  /* Максимальное кол-во таблиц */
+  fpta_tables_max = 1024,
+  /* Максимальное кол-во колонок (порядка 1000) */
+  fpta_max_cols = fptu_max_cols,
 
-    /* Максимальная длина ключа и/или индексируемого поля. Ограничение
-     * актуально только для строк и бинарных данных переменной длины.
-     *
-     * При превышении заданной величины в индекс попадет только
-     * помещающаяся часть ключа, с дополнением 64-битным хэшем остатка.
-     *
-     * Для эффективного индексирования значений, у которых наиболее значимая
-     * часть находится в конце (например доменных имен), предусмотрен
-     * специальный тип реверсивных индексов. При этом ограничение сохраняется,
-     * но ключи обрабатываются и сравниваются с конца.
-     *
-     * Ограничение можно немного "подвинуть" за счет производительности,
-     * но нельзя убрать полностью. Также будет рассмотрен вариант перехода
-     * на 128-битный хэш. */
-    fpta_max_keylen = 64 * 1 - 8,
+  /* Максимальная длина ключа и/или индексируемого поля. Ограничение
+   * актуально только для строк и бинарных данных переменной длины.
+   *
+   * При превышении заданной величины в индекс попадет только
+   * помещающаяся часть ключа, с дополнением 64-битным хэшем остатка.
+   *
+   * Для эффективного индексирования значений, у которых наиболее значимая
+   * часть находится в конце (например доменных имен), предусмотрен
+   * специальный тип реверсивных индексов. При этом ограничение сохраняется,
+   * но ключи обрабатываются и сравниваются с конца.
+   *
+   * Ограничение можно немного "подвинуть" за счет производительности,
+   * но нельзя убрать полностью. Также будет рассмотрен вариант перехода
+   * на 128-битный хэш. */
+  fpta_max_keylen = 64 * 1 - 8,
 
-    /* Минимальная длина имени/идентификатора */
-    fpta_name_len_min = 1,
-    /* Максимальная длина имени/идентификатора */
-    fpta_name_len_max = 42,
+  /* Минимальная длина имени/идентификатора */
+  fpta_name_len_min = 1,
+  /* Максимальная длина имени/идентификатора */
+  fpta_name_len_max = 42,
 
-    /* Далее внутренние технические делали. */
-    fpta_id_bits = 64,
+  /* Далее внутренние технические детали. */
+  fpta_id_bits = 64,
 
-    fpta_column_typeid_bits = fptu_typeid_bits,
-    fpta_column_typeid_shift = 0,
-    fpta_column_typeid_mask = (1 << fptu_typeid_bits) - 1,
+  fpta_column_typeid_bits = fptu_typeid_bits,
+  fpta_column_typeid_shift = 0,
+  fpta_column_typeid_mask = (1 << fptu_typeid_bits) - 1,
 
-    fpta_column_index_bits = 4,
-    fpta_column_index_shift = fpta_column_typeid_bits,
-    fpta_column_index_mask = ((1 << fpta_column_index_bits) - 1)
-                             << fpta_column_index_shift,
+  fpta_column_index_bits = 4,
+  fpta_column_index_shift = fpta_column_typeid_bits,
+  fpta_column_index_mask = ((1 << fpta_column_index_bits) - 1)
+                           << fpta_column_index_shift,
 
-    fpta_column_flag_bits = 4,
-    fpta_name_hash_bits =
-        fpta_id_bits - fpta_column_typeid_bits - fpta_column_index_bits,
-    fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits
+  fpta_name_hash_bits =
+      fpta_id_bits - fpta_column_typeid_bits - fpta_column_index_bits,
+  fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits,
+
+  /* Максимальное кол-во индексов для одной таблице (порядка 500) */
+  fpta_max_indexes = (1 << (fpta_id_bits - fpta_name_hash_bits))
 };
 
 /* Экземпляр БД.
@@ -126,132 +174,164 @@ typedef struct fpta_cursor fpta_cursor;
 
 //----------------------------------------------------------------------------
 
-/* Представление времени.
- *
- * В формате фиксированной точки 32-dot-32:
- *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
- *     но без знака. Это отодвигает проблему 2038-го года на 2106,
- *     требуя взамен аккуратности при вычитании.
- *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
- *
- * Эта форма унифицирована с Positive Hyper100r и одновременно достаточно
- * удобна в использовании. Поэтому настоятельно рекомендуется использовать
- * именно её, особенно для хранения и передачи данных. */
-typedef union fpta_time {
-    uint64_t fixedpoint;
-    struct {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        uint32_t fractional;
-        uint32_t utc;
-#else
-        uint32_t utc;
-        uint32_t fractional;
-#endif
-    };
-} fpta_time;
-
-/* Возвращает текущее время в правильной форме. */
-fpta_time fpta_now();
-
 /* Типы данных для ключей (проиндексированных полей) и значений
  * для сравнения в условиях фильтров больше/меньше/равно/не-равно. */
 typedef enum fpta_value_type {
-    fpta_null,       /* "Пусто", в том числе для проверки присутствия
-                      * или отсутствия колонки/поля в строке. */
-    fpta_signed_int, /* Integer со знаком, задается в int64_t */
-    fpta_unsigned_int, /* Беззнаковый integer, задается в uint64_t */
-    fpta_datetime, /* Время в форме fpta_time */
-    fpta_float_point, /* Плавающая точка, задается в double */
-    fpta_string, /* Строка, задается в const char* */
-    fpta_binary, /* Бинарные данные, задается адресом и длинной */
-    fpta_shoved, /* Преобразованный длинный ключ из индекса. */
-    fpta_begin,  /* Псевдо-тип, всегда меньше любого значения.
-                  * Используется при открытии курсора для выборки
-                  * первой записи посредством range_from. */
-    fpta_end,    /* Псевдо-тип, всегда больше любого значения.
-                  * Используется при открытии курсора для выборки
-                  * последней записи посредством range_to. */
+  fpta_null,       /* "Пусто", в том числе для проверки присутствия
+                    * или отсутствия колонки/поля в строке. */
+  fpta_signed_int, /* Integer со знаком, задается в int64_t */
+  fpta_unsigned_int, /* Беззнаковый integer, задается в uint64_t */
+  fpta_datetime, /* Время в форме fptu_time */
+  fpta_float_point, /* Плавающая точка, задается в double */
+  fpta_string, /* Строка utf8, задается адресом и длиной,
+                * без терминирующего нуля!
+                * (объяснение см внутри fpta_value) */
+  fpta_binary, /* Бинарные данные, задается адресом и длиной */
+  fpta_shoved, /* Преобразованный длинный ключ из индекса. */
+  fpta_begin,  /* Псевдо-тип, всегда меньше любого значения.
+                * Используется при открытии курсора для выборки
+                * первой записи посредством range_from. */
+  fpta_end,    /* Псевдо-тип, всегда больше любого значения.
+                * Используется при открытии курсора для выборки
+                * последней записи посредством range_to. */
 } fpta_value_type;
 
-/* Структура для представления значений.
+/* Структура-контейнер для представления значений.
  *
  * В том числе для передачи ключей (проиндексированных полей)
  * и значений для сравнения в условия больше/меньше/равно/не-равно. */
 typedef struct fpta_value {
-    fpta_value_type type;
-    unsigned binary_length;
-    union {
-        int64_t sint;
-        uint64_t uint;
-        double fp;
-        const char *cstr;
-        void *binary_data;
-    };
+  fpta_value_type type;
+  unsigned binary_length;
+  union {
+    void *binary_data;
+    int64_t sint;
+    uint64_t uint;
+    double fp;
+    fptu_time datetime;
+
+    /* ВАЖНО! К большому сожалению и грандиозному неудобству, строка
+     * здесь НЕ в традиционной для C форме, а БЕЗ терминирующего
+     * нуля с явным указанием длины в binary_length.
+     *
+     * Причины таковы:
+     *  - fpta_value также используется для возврата значений из индексов;
+     *  - в индексах и ключах строки без терминирующего нуля;
+     *  - поддержка двух форм/типов строк только увеличивает энтропию.
+     *
+     * Однако, в реальности терминирующий ноль:
+     *  - будет на конце строк расположенных внутри
+     *    строк таблицы (кортежах);
+     *  - отсутствует в строках от fpta_cursor_key();
+     *  - в остальных случаях - как было подготовлено вашим кодом;
+     */
+    const char *str;
+  };
 #ifdef __cplusplus
-// TODO: constructors from basic types.
+/* TODO: constructors from basic types (на самом деле через отдельный
+ * дочерний класс, так как Clang капризничает и не позволяет возвращать из
+ * C-linkage функции тип, у которого есть конструкторы C++). */
 #endif
 } fpta_value;
 
 /* Конструктор value с целочисленным значением. */
-static __inline fpta_value fpta_value_sint(int64_t value)
-{
-    fpta_value r;
-    r.type = fpta_signed_int;
-    r.sint = value;
-    return r;
+static __inline fpta_value fpta_value_sint(int64_t value) {
+  fpta_value r;
+  r.type = fpta_signed_int;
+  r.binary_length = ~0u;
+  r.sint = value;
+  return r;
 }
 
 /* Конструктор value с беззнаковым целочисленным значением. */
-static __inline fpta_value fpta_value_uint(uint64_t value)
-{
-    fpta_value r;
-    r.type = fpta_unsigned_int;
-    r.uint = value;
-    return r;
+static __inline fpta_value fpta_value_uint(uint64_t value) {
+  fpta_value r;
+  r.type = fpta_unsigned_int;
+  r.binary_length = ~0u;
+  r.uint = value;
+  return r;
+}
+
+/* Конструктор value для datetime. */
+static __inline fpta_value fpta_value_datetime(fptu_time datetime) {
+  fpta_value r;
+  r.type = fpta_datetime;
+  r.binary_length = ~0u;
+  r.datetime = datetime;
+  return r;
 }
 
 /* Конструктор value с плавающей точкой. */
-static __inline fpta_value fpta_value_float(double value)
-{
-    fpta_value r;
-    r.type = fpta_float_point;
-    r.fp = value;
-    return r;
+static __inline fpta_value fpta_value_float(double value) {
+  fpta_value r;
+  r.type = fpta_float_point;
+  r.binary_length = ~0u;
+  r.fp = value;
+  return r;
 }
 
-/* Конструктор value со строковым значением,
+/* Конструктор value со строковым значением из c-str,
  * строка не копируется и не хранится внутри. */
-static __inline fpta_value fpta_value_str(const char *value)
-{
-    fpta_value r;
-    r.type = fpta_string;
-    r.cstr = value;
-    r.binary_length = value ? strlen(value) : 0;
-    return r;
+static __inline fpta_value fpta_value_cstr(const char *value) {
+  size_t length = value ? strlen(value) : 0;
+  assert(length < INT_MAX);
+  fpta_value r;
+  r.type = fpta_string;
+  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.str = value;
+  return r;
+}
+
+/* Конструктор value со строковым значением
+ * строка не копируется и не хранится внутри. */
+static __inline fpta_value fpta_value_string(const char *text,
+                                             size_t length) {
+  assert(strnlen(text, length) == length);
+  assert(length < INT_MAX);
+  fpta_value r;
+  r.type = fpta_string;
+  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.str = text;
+  return r;
+}
+
+/* Конструктор value с бинарным/opaque значением,
+ * даные не копируются и не хранятся внутри. */
+static __inline fpta_value fpta_value_binary(const void *data,
+                                             size_t length) {
+  assert(length < INT_MAX);
+  fpta_value r;
+  r.type = fpta_binary;
+  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_data = (void *)data;
+  return r;
 }
 
 /* Конструктор value с void/null значением. */
-static __inline fpta_value fpta_value_null()
-{
-    fpta_value r;
-    r.type = fpta_null;
-    return r;
+static __inline fpta_value fpta_value_null() {
+  fpta_value r;
+  r.type = fpta_null;
+  r.binary_length = 0;
+  r.binary_data = nullptr;
+  return r;
 }
 
 /* Конструктор value с псевдо-значением "начало". */
-static __inline fpta_value fpta_value_begin(void)
-{
-    fpta_value r;
-    r.type = fpta_begin;
-    return r;
+static __inline fpta_value fpta_value_begin(void) {
+  fpta_value r;
+  r.type = fpta_begin;
+  r.binary_length = ~0u;
+  r.binary_data = nullptr;
+  return r;
 }
 
 /* Конструктор value с псевдо-значением "конец". */
-static __inline fpta_value fpta_value_end(void)
-{
-    fpta_value r;
-    r.type = fpta_end;
-    return r;
+static __inline fpta_value fpta_value_end(void) {
+  fpta_value r;
+  r.type = fpta_end;
+  r.binary_length = ~0u;
+  r.binary_data = nullptr;
+  return r;
 }
 
 //----------------------------------------------------------------------------
@@ -259,27 +339,30 @@ static __inline fpta_value fpta_value_end(void)
 /* Коды ошибок.
  * Список будет пополнен, а описания уточнены. */
 enum fpta_error {
-    FPTA_SUCCESS = 0,
-    FPTA_OK = FPTA_SUCCESS,
-    FPTA_ERRROR_BASE = 4242,
+  FPTA_SUCCESS = 0,
+  FPTA_OK = FPTA_SUCCESS,
+  FPTA_ERRROR_BASE = 4242,
 
-    FPTA_EOOPS /* Internal unexpected Oops */,
-    FPTA_SCHEMA_CORRUPTED /* */,
-    FPTA_ETYPE /* Type mismatch */,
-    FPTA_DATALEN_MISMATCH,
-    FPTA_ROW_MISMATCH /* Row schema is mismatch */,
-    FPTA_INDEX_CORRUPTED,
-    FPTA_ETXNOUT /* Transaction should be restared */,
-    FPTA_ECURSOR /* Cursor not positioned */,
+  FPTA_EOOPS /* Internal unexpected Oops */,
+  FPTA_SCHEMA_CORRUPTED /* */,
+  FPTA_ETYPE /* Type mismatch */,
+  FPTA_DATALEN_MISMATCH,
+  FPTA_ROW_MISMATCH /* Row schema is mismatch */,
+  FPTA_INDEX_CORRUPTED,
+  FPTA_NO_INDEX,
+  FPTA_ETXNOUT /* Transaction should be restared */,
+  FPTA_ECURSOR /* Cursor not positioned */,
+  FPTA_TOOMANY /* Too many columns or indexes */,
+  FPTA_WANNA_DIE,
 
-    FPTA_EINVAL = EINVAL,
-    FPTA_ENOFIELD = ENOENT,
-    FPTA_ENOMEM = ENOMEM,
-    FPTA_EVALUE = EDOM /* Numeric value out of range*/,
-    FPTA_NODATA = -1 /* EOF */,
-    FPTA_ENOIMP = ENOSYS,
+  FPTA_EINVAL = EINVAL,
+  FPTA_ENOFIELD = ENOENT,
+  FPTA_ENOMEM = ENOMEM,
+  FPTA_EVALUE = EDOM /* Numeric value out of range*/,
+  FPTA_NODATA = -1 /* EOF */,
+  FPTA_ENOIMP = ENOSYS,
 
-    FPTA_DEADBEEF = 0xDeadBeef
+  FPTA_DEADBEEF = 0xDeadBeef
 };
 
 /* Возвращает краткое описание ошибки по её коду.
@@ -297,6 +380,17 @@ const char *fpta_strerror(int error);
  * как при этом вызывается потоко-безопасная системная strerror_r(). */
 int fpta_strerror_r(int errnum, char *buf, size_t buflen);
 
+/* Внутренняя функция, которая вызывается при фатальных ошибках и может
+ * быть замещена на платформах с поддержкой __attribute__((weak)).
+ * При таком замещении:
+ *  - в err будет передан первичный код ошибки, в результате которой
+ *    потребовалась отмена транзакции.
+ *  - в fatal будет передан вторичный код ошибки, которая случилась
+ *    при отмене транзакции.
+ *  - возврат НУЛЯ приведет к вызову системной abort(), ИНАЧЕ выполнение
+ *    будет продолжено с генерацией кода ошибки FPTA_WANNA_DIE. */
+int fpta_panic(int err, int fatal);
+
 //----------------------------------------------------------------------------
 /* Открытие и закрытие БД */
 
@@ -306,50 +400,50 @@ int fpta_strerror_r(int errnum, char *buf, size_t buflen);
  * и durability. */
 typedef enum fpta_durability {
 
-    fpta_readonly, /* Только чтение, изменения запрещены. */
+  fpta_readonly, /* Только чтение, изменения запрещены. */
 
-    fpta_sync, /* Полностью синхронная запись на диск.
-                * Самый надежный и самый медленный режим.
-                *
-                * По завершению транзакции выполняется fdatasync().
-                * Производительность по записи определяется
-                * скоростью диска (порядка 500 TPS для SSD). */
+  fpta_sync, /* Полностью синхронная запись на диск.
+              * Самый надежный и самый медленный режим.
+              *
+              * По завершению транзакции выполняется fdatasync().
+              * Производительность по записи определяется
+              * скоростью диска (порядка 500 TPS для SSD). */
 
-    fpta_lazy, /* "Ленивый" режим записи посредством файловой
-                * системы. Детали поведения и сохранность данных
-                * полностью определяются видом файловой системой
-                * и её настройками. Производительность по записи
-                * в основном определяется скоростью диска (порядка
-                * 50K TPS для SSD).
-                *
-                * Изменения будут записываться через файловый
-                * дескриптор в обычном режиме, без O_SYNC, O_DSYNC
-                * и/или O_DIRECT.
-                * В случае аварии могут быть потеряны последние
-                * транзакции, при это целостность БД определяется
-                * соблюдением data ordered со стороны ФС.
-                *
-                * Другими словами, кроме потери последних изменений
-                * БД может быть разрушена, если ФС переупорядочивает
-                * порядок операций записи (см режим data=writeback
-                * для ext4). */
+  fpta_lazy, /* "Ленивый" режим записи посредством файловой
+              * системы. Детали поведения и сохранность данных
+              * полностью определяются видом файловой системой
+              * и её настройками. Производительность по записи
+              * в основном определяется скоростью диска (порядка
+              * 50K TPS для SSD).
+              *
+              * Изменения будут записываться через файловый
+              * дескриптор в обычном режиме, без O_SYNC, O_DSYNC
+              * и/или O_DIRECT.
+              * В случае аварии могут быть потеряны последние
+              * транзакции, при это целостность БД определяется
+              * соблюдением data ordered со стороны ФС.
+              *
+              * Другими словами, кроме потери последних изменений
+              * БД может быть разрушена, если ФС переупорядочивает
+              * порядок операций записи (см режим data=writeback
+              * для ext4). */
 
-    fpta_async /* Самый быстрый режим. Образ БД отображается в
-                * память в режиме read-write и изменения
-                * производятся только в памяти.
-                *
-                * Ядро ОС, по своему усмотрению, асинхронно
-                * записывает измененные страницы на диск.
-                * При этом ядро ОС обещает запись всех изменений
-                * при сбое приложения, OOM или при штатной
-                * остановке. Но НЕ при сбое в ядре или при
-                * отключении питания.
-                *
-                * Также, БД может быть повреждена в результате
-                * некорректных действий приложения (роспись памяти).
-                *
-                * Производительность по записи в основном
-                * определяется скоростью CPU и RAM (более 100K TPS). */
+  fpta_async /* Самый быстрый режим. Образ БД отображается в
+              * память в режиме read-write и изменения
+              * производятся только в памяти.
+              *
+              * Ядро ОС, по своему усмотрению, асинхронно
+              * записывает измененные страницы на диск.
+              * При этом ядро ОС обещает запись всех изменений
+              * при сбое приложения, OOM или при штатной
+              * остановке. Но НЕ при сбое в ядре или при
+              * отключении питания.
+              *
+              * Также, БД может быть повреждена в результате
+              * некорректных действий приложения (роспись памяти).
+              *
+              * Производительность по записи в основном
+              * определяется скоростью CPU и RAM (более 100K TPS). */
 } fpta_durability;
 
 /* Открывает базу по заданному пути и в durability режиме.
@@ -378,7 +472,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
  * курсоры и завершены все транзакции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_db_close(fpta_db **db);
+int fpta_db_close(fpta_db *db);
 
 //----------------------------------------------------------------------------
 /* Инициация и завершение транзакций. */
@@ -386,78 +480,78 @@ int fpta_db_close(fpta_db **db);
 /* Уровень доступа к данным из транзакции. */
 typedef enum fpta_level {
 
-    fpta_read = 1, /* Только чтение.
-                    * Одновременно бесконфликтно могут выполняться
-                    * несколько транзакций в режиме чтения. При
-                    * этом они не блокируются пишущими транзакциями,
-                    * как из этого же процесса, так и из других
-                    * процессов работающих с БД.
-                    *
-                    * Однако, транзакция уровня изменения схемы
-                    * всегда блокирует читающие транзакции в рамках
-                    * того же процесса (но не в других процессах).
-                    *
-                    * При старте каждая читающая транзакция получает
-                    * в свое распоряжение консистентный MVCC снимок
-                    * всей БД, который видит до своего завершения.
-                    * Другими словами, читающая транзакция не видит
-                    * изменений в данных, которые произошли после
-                    * её старта.
-                    *
-                    * По этой же причине следует избегать долгих
-                    * читающих транзакций. Так как такая долгая
-                    * транзакция производит удержание снимка-версии
-                    * БД в линейной истории и этим приостанавливает
-                    * переработку старых снимков (сборку мусора).
-                    * Соответственно, долгая читающая транзакция
-                    * на фоне большого темпа изменений может
-                    * приводить к исчерпанию свободного места в БД. */
+  fpta_read = 1, /* Только чтение.
+                  * Одновременно бесконфликтно могут выполняться
+                  * несколько транзакций в режиме чтения. При
+                  * этом они не блокируются пишущими транзакциями,
+                  * как из этого же процесса, так и из других
+                  * процессов работающих с БД.
+                  *
+                  * Однако, транзакция уровня изменения схемы
+                  * всегда блокирует читающие транзакции в рамках
+                  * того же процесса (но не в других процессах).
+                  *
+                  * При старте каждая читающая транзакция получает
+                  * в свое распоряжение консистентный MVCC снимок
+                  * всей БД, который видит до своего завершения.
+                  * Другими словами, читающая транзакция не видит
+                  * изменений в данных, которые произошли после
+                  * её старта.
+                  *
+                  * По этой же причине следует избегать долгих
+                  * читающих транзакций. Так как такая долгая
+                  * транзакция производит удержание снимка-версии
+                  * БД в линейной истории и этим приостанавливает
+                  * переработку старых снимков (сборку мусора).
+                  * Соответственно, долгая читающая транзакция
+                  * на фоне большого темпа изменений может
+                  * приводить к исчерпанию свободного места в БД. */
 
-    fpta_write = 2, /* Чтение и изменение данных, но не схемы.
-                     *
-                     * Одновременно в одной БД может быть активна только
-                     * одна транзакция изменяющая данные. Проще говоря,
-                     * при старте такой транзакции захватывается
-                     * глобальный мьютех в разделяемой памяти.
-                     *
-                     * Пишущая транзакция никак не мешает выполнению
-                     * читающих транзакций как в этом, так и в других
-                     * процессах.
-                     *
-                     * Изменения сделанные из пишущей транзакции сразу
-                     * видны в её контексте. Но для других транзакций и
-                     * процессов они вступят в силу и будут видимы
-                     * только после успешной фиксации транзакции.
-                     *
-                     * Пишущая транзакция может быть либо зафиксирована,
-                     * либо отменена (при этом теряются все произведенные
-                     * изменения). */
+  fpta_write = 2, /* Чтение и изменение данных, но не схемы.
+                   *
+                   * Одновременно в одной БД может быть активна только
+                   * одна транзакция изменяющая данные. Проще говоря,
+                   * при старте такой транзакции захватывается
+                   * глобальный мьютех в разделяемой памяти.
+                   *
+                   * Пишущая транзакция никак не мешает выполнению
+                   * читающих транзакций как в этом, так и в других
+                   * процессах.
+                   *
+                   * Изменения сделанные из пишущей транзакции сразу
+                   * видны в её контексте. Но для других транзакций и
+                   * процессов они вступят в силу и будут видимы
+                   * только после успешной фиксации транзакции.
+                   *
+                   * Пишущая транзакция может быть либо зафиксирована,
+                   * либо отменена (при этом теряются все произведенные
+                   * изменения). */
 
-    fpta_schema = 3 /* Чтение, плюс изменение данных и схемы.
-                     *
-                     * Прежде всего, это пишущая транзакция, т.е.
-                     * в пределах БД может быть активна только одна.
-                     * Аналогично, транзакция изменения схемы может быть
-                     * либо зафиксирована, либо отменена (с потерей всех
-                     * изменений).
-                     *
-                     * Однако, транзакция изменения схемы также
-                     * блокирует все читающие транзакции в рамках
-                     * своего процесса посредством pthread_rwlock_t.
-                     * Такая блокировка обусловлена двумя причинами:
-                     *  - спецификой движков libmdbx/LMDB (удаление
-                     *    таблицы приводит к закрытию её разделяемого
-                     *    дескриптора, т.е. к нарушению MVCC);
-                     *  - ради упрощения реализации "Позитивных Таблиц";
-                     *
-                     * Инициация транзакции изменяющей схему возможна,
-                     * только если при БД была открыта в соответствующем
-                     * режиме (было задано alterable_schema = true).
-                     *
-                     * С другой стороны, обещание не менять схему
-                     * (указание alterable_schema = false) позволяет
-                     * экономить на захвате pthread_rwlock_t при старте
-                     * читающих транзакций. */
+  fpta_schema = 3 /* Чтение, плюс изменение данных и схемы.
+                   *
+                   * Прежде всего, это пишущая транзакция, т.е.
+                   * в пределах БД может быть активна только одна.
+                   * Аналогично, транзакция изменения схемы может быть
+                   * либо зафиксирована, либо отменена (с потерей всех
+                   * изменений).
+                   *
+                   * Однако, транзакция изменения схемы также
+                   * блокирует все читающие транзакции в рамках
+                   * своего процесса посредством pthread_rwlock_t.
+                   * Такая блокировка обусловлена двумя причинами:
+                   *  - спецификой движков libmdbx/LMDB (удаление
+                   *    таблицы приводит к закрытию её разделяемого
+                   *    дескриптора, т.е. к нарушению MVCC);
+                   *  - ради упрощения реализации "Позитивных Таблиц";
+                   *
+                   * Инициация транзакции изменяющей схему возможна,
+                   * только если при БД была открыта в соответствующем
+                   * режиме (было задано alterable_schema = true).
+                   *
+                   * С другой стороны, обещание не менять схему
+                   * (указание alterable_schema = false) позволяет
+                   * экономить на захвате pthread_rwlock_t при старте
+                   * читающих транзакций. */
 } fpta_level;
 
 /* Инициация транзакции заданного уровня.
@@ -512,10 +606,14 @@ int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
 
 /* Режимы индексирования для колонок таблиц.
  *
- * Вторичные индексы возможны только при уникальности ключей в первичном
- * индексе. При невозможности обеспечить уникальность по какому-либо полю
- * следует добавить еще одну колонку, заполняя её при вставке текущим
- * временем получаемым от fpta_now().
+ * Ради достижения максимальной производительности libfpta не расходует
+ * ресурсы на служебные колонки, в том числе на идентификаторы строк (ROW_ID).
+ * Проще говоря, в libfpta в качестве ROW_ID используется первичный ключ.
+ * Поэтому вторичные индексы возможны только при первичном индексе с контролем
+ * уникальности. Если естественным образом в таблице нет поля/колонки
+ * подходящего на роль первичного ключа, то такую колонку необходимо добавить
+ * и заполнять искусственными уникальными значениями. Например, посмотреть
+ * в сторону fptu_datetime и fptu_now().
  *
  * Неупорядоченные индексы:
  *   - fpta_primary_unique_unordered, fpta_primary_withdups_unordered;
@@ -531,95 +629,107 @@ int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
  *   - fpta_secondary_unique_reversed, fpta_secondary_withdups_reversed.
  *
  *   Индексы этого типа применимы только для строк и бинарных данных (типы
- *   fptu_96..fptu_256, fptu_string и fptu_opaque При этом значения ключей
+ *   fptu_96..fptu_256, fptu_cstr и fptu_opaque При этом значения ключей
  *   сравниваются в обратном порядке байт. Не от первых к последним,
  *   а от последних к первым. Не следует пусть с обратным порядком сортировки
  *   или упорядочения величин.
  */
-enum fpta_index_type {
-    /* служебные флажки/битики для комбинаций */
-    fpta_index_funique = 1 << fpta_column_index_shift,
-    fpta_index_fordered = 2 << fpta_column_index_shift,
-    fpta_index_fobverse = 4 << fpta_column_index_shift,
-    fpta_index_fsecondary = 8 << fpta_column_index_shift,
+typedef enum fpta_index_type {
+  /* служебные флажки/битики для комбинаций */
+  fpta_index_funique = 1 << fpta_column_index_shift,
+  fpta_index_fordered = 2 << fpta_column_index_shift,
+  fpta_index_fobverse = 4 << fpta_column_index_shift,
+  fpta_index_fsecondary = 8 << fpta_column_index_shift,
 
-    /* Колонка НЕ индексируется и в последствии не может быть указана
-     * при открытии курсора как опорная. */
-    fpta_index_none = 0,
+  /* Колонка НЕ индексируется и в последствии не может быть указана
+   * при открытии курсора как опорная. */
+  fpta_index_none = 0,
 
-    /* Первичный ключ/индекс.
-     *
-     * Колонка будет использована как первичный ключ таблицы. При создании
-     * таблицы такая колонка должна быть задана одна, и только одна. Вторичные
-     * ключи/индексы допустимы только при уникальности по первичному ключу. */
+  /* Первичный ключ/индекс.
+   *
+   * Колонка будет использована как первичный ключ таблицы. При создании
+   * таблицы такая колонка должна быть задана одна, и только одна. Вторичные
+   * ключи/индексы допустимы только при уникальности по первичному ключу. */
 
-    /* с повторами */
-    fpta_primary_withdups = fpta_index_fordered + fpta_index_fobverse,
+  /* с повторами */
+  fpta_primary_withdups = fpta_index_fordered + fpta_index_fobverse,
+  fpta_primary_withdups_obverse = fpta_primary_withdups,
 
-    /* с контролем уникальности */
-    fpta_primary_unique = fpta_primary_withdups + fpta_index_funique,
+  /* с контролем уникальности */
+  fpta_primary_unique = fpta_primary_withdups + fpta_index_funique,
+  fpta_primary_unique_obverse = fpta_primary_unique,
 
-    /* неупорядоченный, с контролем уникальности */
-    fpta_primary_unique_unordered = fpta_primary_unique - fpta_index_fordered,
+  /* неупорядоченный, с контролем уникальности */
+  fpta_primary_unique_unordered = fpta_primary_unique - fpta_index_fordered,
 
-    /* неупорядоченный с повторами */
-    fpta_primary_withdups_unordered =
-        fpta_primary_withdups - fpta_index_fordered,
+  /* неупорядоченный с повторами */
+  fpta_primary_withdups_unordered =
+      fpta_primary_withdups - fpta_index_fordered,
 
-    /* строки и binary сравниваются с конца, с контролем уникальности */
-    fpta_primary_unique_reversed = fpta_primary_unique - fpta_index_fobverse,
+  /* строки и binary сравниваются с конца, с контролем уникальности */
+  fpta_primary_unique_reversed = fpta_primary_unique - fpta_index_fobverse,
 
-    /* строки и binary сравниваются с конца, с повторами */
-    fpta_primary_withdups_reversed =
-        fpta_primary_withdups - fpta_index_fobverse,
+  /* строки и binary сравниваются с конца, с повторами */
+  fpta_primary_withdups_reversed =
+      fpta_primary_withdups - fpta_index_fobverse,
 
-    /* базовый вариант для основного индекса */
-    fpta_primary = fpta_primary_unique,
+  /* базовый вариант для основного индекса */
+  fpta_primary = fpta_primary_unique_obverse,
 
-    /* Вторичный ключ/индекс.
-     *
-     * Для колонки будет поддерживаться вторичный индекс, т.е. будет создана
-     * дополнительная служебная таблица с key-value проекцией на первичный
-     * ключ. Поэтому каждый вторичный индекс линейно увеличивает стоимость
-     * операций обновления данных. Вторичные ключи/индексы допустимы только
-     * при уникальности по первичному ключу. */
+  /* Вторичный ключ/индекс.
+   *
+   * Для колонки будет поддерживаться вторичный индекс, т.е. будет создана
+   * дополнительная служебная таблица с key-value проекцией на первичный
+   * ключ. Поэтому каждый вторичный индекс линейно увеличивает стоимость
+   * операций обновления данных.
+   * Вторичные индексы возможны только при первичном индексе с контролем
+   * уникальности. Если естественным образом в таблице нет поля/колонки
+   * подходящего на роль первичного ключа, то такую колонку необходимо
+   * добавить и заполнять искусственными уникальными значениями. Например,
+   * посмотреть в сторону fptu_datetime и fptu_now().
+   */
 
-    /* с повторами */
-    fpta_secondary_withdups = fpta_primary_withdups + fpta_index_fsecondary,
+  /* с повторами */
+  fpta_secondary_withdups = fpta_primary_withdups + fpta_index_fsecondary,
+  fpta_secondary_withdups_obverse = fpta_secondary_withdups,
 
-    /* с контролем уникальности */
-    fpta_secondary_unique = fpta_secondary_withdups + fpta_index_funique,
+  /* с контролем уникальности */
+  fpta_secondary_unique = fpta_secondary_withdups + fpta_index_funique,
+  fpta_secondary_unique_obverse = fpta_secondary_unique,
 
-    /* неупорядоченный, с контролем уникальности */
-    fpta_secondary_unique_unordered =
-        fpta_secondary_unique - fpta_index_fordered,
+  /* неупорядоченный, с контролем уникальности */
+  fpta_secondary_unique_unordered =
+      fpta_secondary_unique - fpta_index_fordered,
 
-    /* неупорядоченный с повторами */
-    fpta_secondary_withdups_unordered =
-        fpta_secondary_withdups - fpta_index_fordered,
+  /* неупорядоченный с повторами */
+  fpta_secondary_withdups_unordered =
+      fpta_secondary_withdups - fpta_index_fordered,
 
-    /* строки и binary сравниваются с конца, с контролем уникальности */
-    fpta_secondary_unique_reversed =
-        fpta_secondary_unique - fpta_index_fobverse,
+  /* строки и binary сравниваются с конца, с контролем уникальности */
+  fpta_secondary_unique_reversed =
+      fpta_secondary_unique - fpta_index_fobverse,
 
-    /* строки и binary сравниваются с конца, с повторами */
-    fpta_secondary_withdups_reversed =
-        fpta_secondary_withdups - fpta_index_fobverse,
+  /* строки и binary сравниваются с конца, с повторами */
+  fpta_secondary_withdups_reversed =
+      fpta_secondary_withdups - fpta_index_fobverse,
 
-    /* базовый вариант для вторичных индексов */
-    fpta_secondary = fpta_secondary_withdups,
-};
+  /* базовый вариант для вторичных индексов */
+  fpta_secondary = fpta_secondary_withdups_obverse,
+} fpta_index_type;
+
+/* Внутренний тип для сжатых описаний идентификаторов. */
+typedef uint64_t fpta_shove_t;
 
 /* Набор колонок для создания таблицы */
 typedef struct fpta_column_set {
-    /* Счетчик заполненных описателей. */
-    unsigned count;
-    /* Упакованное внутреннее описание колонок. */
-    uint64_t internal[fpta_max_cols];
+  /* Счетчик заполненных описателей. */
+  unsigned count;
+  /* Упакованное внутреннее описание колонок. */
+  fpta_shove_t shoves[fpta_max_cols];
 } fpta_column_set;
 
 /* Вспомогательная функция, проверяет корректность имени */
-bool fpta_name_validate(const char *name);
+bool fpta_validate_name(const char *name);
 
 /* Вспомогательная функция для создания описания колонок.
  *
@@ -694,8 +804,9 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  *    производится посредством полей структуры fpta_name.
  *
  *    В свою очередь, каждый экземпляр fpta_name:
- *     1) инициализируется посредством fpta_name_init(),
- *        которая на вход получает имя таблицы или колонки.
+ *     1) инициализируется посредством fpta_table_init(), либо
+ *        fpta_column_init(), которые на вход получают соответственно
+ *        имя таблицы или колонки.
  *     2) перед использованием обновляется в fpta_name_refresh(),
  *        которая выполняется в контексте конкретной транзакции.
  *
@@ -707,57 +818,86 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
  *  - Таким образом, пользователю предоставляются средства для
  *    эффективного кэширования зависящей от схемы информации,
  *    а также её обновления по необходимости.
+ *
+ *  - Функция fpta_name_refresh() вызывается автоматически, поэтому
+ *    как правило в явном ручном вызове необходимости нет.
  */
+
+/* Внутренний тип */
+struct fpta_table_schema;
 
 /* Операционный идентификатор таблицы или колонки. */
 typedef struct fpta_name {
-    size_t version; /* версия схемы для кэширования. */
-    uint64_t internal; /* хэш имени и внутренние данные. */
-    union {
-        /* для таблицы */
-        struct {
-            unsigned dbi;
-            unsigned pk;
-        } table;
+  size_t version; /* версия схемы для кэширования. */
+  fpta_shove_t shove; /* хэш имени и внутренние данные. */
+  union {
+    /* для таблицы */
+    struct {
+      struct fpta_table_schema *def;
+      unsigned pk; /* вид индекса и тип данных для primary key */
+    } table;
 
-        /* для колонки */
-        struct {
-            int order;           /* номер поля в кортеже. */
-            enum fptu_type type; /* тип поля в кортеже. */
-        } column;
-    };
-    void *handle; /* внутренний дескриптор. */
+    /* для колонки */
+    struct {
+      struct fpta_name *table;
+      int num; /* номер поля в кортеже. */
+    } column;
+  };
+  unsigned mdbx_dbi; /* дескриптор движка */
 } fpta_name;
+
+/* Возвращает тип данных колонки из дескриптора имени */
+static __inline fptu_type fpta_name_coltype(const fpta_name *column_id) {
+  return (fptu_type)(column_id->shove & fpta_column_typeid_mask);
+}
+
+/* Возвращает тип индекса колонки из дескриптора имени */
+static __inline fpta_index_type
+fpta_name_colindex(const fpta_name *column_id) {
+  return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
+}
 
 /* Получение и актуализация идентификаторов таблицы и колонки.
  *
  * Функция работает в семантике кэширования с отслеживанием версии
  * схемы.
  *
- * Перед первым обращением table_id и column_id должны
- * быть инициализирован посредством fpta_name_init().
+ * Перед первым обращением name_id должен быть инициализирован
+ * посредством fpta_table_init() или fpta_column_init().
  *
  * Аргумент column_id может быть нулевым. В этом случае он
  * игнорируется, и обрабатывается только table_id.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_name_refresh(fpta_txn *txn, fpta_name *table_id,
-                      fpta_name *column_id);
+int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id);
+int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
+                             fpta_name *column_id);
 
-enum fpta_schema_item { fpta_table, fpta_column };
-
-/* Инициализирует операционный идентификатор.
+/* Инициализирует операционный идентификатор таблицы.
  *
- * Подготавливает идентификатор к последующему использованию.
- * Аргумент schema_item определяет тип объекта, который будет
- * идентифицироваться.
+ * Подготавливает идентификатор таблицы к последующему использованию.
  *
  * Следует считать, что стоимость операции сопоставима с вычислением
  * дайджеста MD5 для переданного имени.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_name_init(fpta_name *id, const char *name,
-                   enum fpta_schema_item schema_item);
+int fpta_table_init(fpta_name *table_id, const char *name);
+
+/* Инициализирует операционный идентификатор колонки.
+ *
+ * Подготавливает идентификатор колонки к последующему использованию,
+ * при этом связывает его с идентификатором таблицы задаваемым в table_id.
+ * В свою очередь table_id должен быть предварительно подготовлен
+ * посредством fpta_table_init().
+ *
+ * Следует считать, что стоимость операции сопоставима с вычислением
+ * дайджеста MD5 для переданного имени.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
+                     const char *name);
+
+/* Разрушает операционный идентификаторы таблиц и колонок. */
 void fpta_name_destroy(fpta_name *id);
 
 //----------------------------------------------------------------------------
@@ -766,16 +906,16 @@ void fpta_name_destroy(fpta_name *id);
 /* Варианты условий (типы узлов) фильтра: НЕ, ИЛИ, И, функция-предикат,
  * меньше, больше, равно, не равно... */
 typedef enum fpta_filter_bits {
-    fpta_node_not = -3,
-    fpta_node_or = -2,
-    fpta_node_and = -1,
-    fpta_node_fn = 0,
-    fpta_node_lt = fptu_lt,
-    fpta_node_gt = fptu_gt,
-    fpta_node_le = fptu_le,
-    fpta_node_ge = fptu_ge,
-    fpta_node_eq = fptu_eq,
-    fpta_node_ne = fptu_ne,
+  fpta_node_not = -3,
+  fpta_node_or = -2,
+  fpta_node_and = -1,
+  fpta_node_fn = 0,
+  fpta_node_lt = fptu_lt,
+  fpta_node_gt = fptu_gt,
+  fpta_node_le = fptu_le,
+  fpta_node_ge = fptu_ge,
+  fpta_node_eq = fptu_eq,
+  fpta_node_ne = fptu_ne,
 } fpta_filter_bits;
 
 /* Фильтр, формируется пользователем как дерево из узлов-условий.
@@ -786,44 +926,43 @@ typedef enum fpta_filter_bits {
  * Текущую реализацию можно считать базовым вариантом для быстрого старта,
  * который в последствии может быть доработан. */
 typedef struct fpta_filter {
-    fpta_filter_bits type;
+  fpta_filter_bits type;
 
-    union {
-        /* вложенный узел фильтра для "НЕ". */
-        struct fpta_filter *node_not;
+  union {
+    /* вложенный узел фильтра для "НЕ". */
+    struct fpta_filter *node_not;
 
-        /* вложенная пара узлов фильтра для условий "И" и "ИЛИ". */
-        struct {
-            struct fpta_filter *a;
-            struct fpta_filter *b;
-        } node_or, node_and;
+    /* вложенная пара узлов фильтра для условий "И" и "ИЛИ". */
+    struct {
+      struct fpta_filter *a;
+      struct fpta_filter *b;
+    } node_or, node_and;
 
-        /* параметры для вызова функтора/предиката. */
-        struct {
-            /* идентификатор колонки */
-            const fpta_name *column_id;
-            /* функция-предикат, получает указатель на найденное поле,
-             * или nullptr если такового нет. А также опциональные
-             * параметры context и arg.
-             * Функция должна вернуть true, если значение колонки/поля
-             * удовлетворяет критерию фильтрации.
-             */
-            bool (*predicate)(const fptu_field *field,
-                              const fpta_name *column_id, void *context,
-                              void *arg);
-            /* дополнительные аргументы для функции-предиката */
-            void *context;
-            void *arg;
-        } node_fn;
+    /* параметры для вызова функтора/предиката. */
+    struct {
+      /* идентификатор колонки */
+      const fpta_name *column_id;
+      /* функция-предикат, получает указатель на найденное поле,
+       * или nullptr если такового нет. А также опциональные
+       * параметры context и arg.
+       * Функция должна вернуть true, если значение колонки/поля
+       * удовлетворяет критерию фильтрации.
+       */
+      bool (*predicate)(const fptu_field *field, const fpta_name *column_id,
+                        void *context, void *arg);
+      /* дополнительные аргументы для функции-предиката */
+      void *context;
+      void *arg;
+    } node_fn;
 
-        /* параметры для условия больше/меньше/равно/не-равно. */
-        struct {
-            /* идентификатор колонки */
-            const fpta_name *left_id;
-            /* значение для сравнения */
-            fpta_value right_value;
-        } node_cmp;
-    };
+    /* параметры для условия больше/меньше/равно/не-равно. */
+    struct {
+      /* идентификатор колонки */
+      const fpta_name *left_id;
+      /* значение для сравнения */
+      fpta_value right_value;
+    } node_cmp;
+  };
 } fpta_filter;
 
 /* Проверка соответствия кортежа условию фильтра.
@@ -837,33 +976,38 @@ bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
 
 /* Порядок по индексной колонке для строк видимых через курсор. */
 typedef enum fpta_cursor_options {
-    /* Без обязательного порядка. Требуется для неупорядоченных индексов,
-     * для упорядоченных равносилен fpta_ascending */
-    fpta_unordered = 0,
+  /* Без обязательного порядка. Требуется для неупорядоченных индексов,
+   * для упорядоченных равносилен fpta_ascending */
+  fpta_unsorted = 0,
 
-    /* По-возрастанию */
-    fpta_ascending = 1,
+  /* По-возрастанию */
+  fpta_ascending = 1,
 
-    /* По-убыванию */
-    fpta_descending = 2,
+  /* По-убыванию */
+  fpta_descending = 2,
 
-    /* Дополнительный флаг, предотвращающий чтение и поиск/фильтрацию
-     * данных при открытии курсора. Позволяет избежать лишних операций,
-     * если известно, что сразу после открытия курсор будет перемещен. */
-    fpta_dont_fetch = 4,
+  /* Дополнительный флаг, предотвращающий чтение и поиск/фильтрацию
+   * данных при открытии курсора. Позволяет избежать лишних операций,
+   * если известно, что сразу после открытия курсор будет перемещен. */
+  fpta_dont_fetch = 4,
 
-    fpta_unordered_dont_fetch = fpta_unordered | fpta_dont_fetch,
-    fpta_ascending_dont_fetch = fpta_ascending | fpta_dont_fetch,
-    fpta_descending_dont_fetch = fpta_descending | fpta_dont_fetch,
+  fpta_unsorted_dont_fetch = fpta_unsorted | fpta_dont_fetch,
+  fpta_ascending_dont_fetch = fpta_ascending | fpta_dont_fetch,
+  fpta_descending_dont_fetch = fpta_descending | fpta_dont_fetch,
 } fpta_cursor_options;
 
 /* Создает и открывает курсор для доступа к строкам таблицы,
  * включая их модификацию и удаление. Открытый курсор должен быть
  * закрыт до завершения транзакции посредством fpta_cursor_close().
  *
- * Аргументы table_id и column_id перед первым использованием должны
- * быть инициализированы посредством fpta_name_init(). Предварительный
- * вызов fpta_name_refresh() не обязателен.
+ * Указанная посредством column_id колонка должна иметь индекс,
+ * причем для курсоров с сортировкой индекс должен быть упорядоченным.
+ * Таблица-источник, в которой производится поиск, задается
+ * неявно через колонку.
+
+ * Аргумент column_id перед первым использованием должен
+ * быть инициализированы посредством fpta_column_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * Аргументы range_from и range_to задают диапазон выборки по значению
  * ключевой колонки. При необходимости могут быть заданы значения
@@ -881,7 +1025,7 @@ typedef enum fpta_cursor_options {
  * не изменяться до закрытия курсора и всех его клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_open(fpta_txn *txn, fpta_name *table_id, fpta_name *column_id,
+int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
                      fpta_value range_from, fpta_value range_to,
                      fpta_filter *filter, fpta_cursor_options op,
                      fpta_cursor **cursor);
@@ -901,8 +1045,9 @@ int fpta_cursor_eof(fpta_cursor *cursor);
 /* Возвращает количество строк попадающих в условие выборки курсора.
  *
  * Подсчет производится путем перестановки и пошагового движения курсора.
- * Операция затратна, стоимость порядка O(log(M) + N), где M это общее кол-во
- * строк в таблице, а N количество строк попадающее под критерий выборки.
+ * Операция затратна, стоимость порядка O(log(ALL) + RANGE),
+ * где ALL - общее количество строк в таблице, а RANGE - количество строк
+ * попадающее под первичный (range from/to) критерий выборки.
  *
  * Текущая позиция курсора не используется и сбрасывается перед возвратом,
  * как если бы курсор был открыл с опцией fpta_dont_fetch.
@@ -929,25 +1074,25 @@ int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *tuple);
 
 /* Варианты перемещения курсора. */
 typedef enum fpta_seek_operations {
-    /* Перемещение по диапазону строк за курсором. */
-    fpta_first,
-    fpta_last,
-    fpta_next,
-    fpta_prev,
+  /* Перемещение по диапазону строк за курсором. */
+  fpta_first,
+  fpta_last,
+  fpta_next,
+  fpta_prev,
 
-    /* Перемещение по дубликатам текущего значения ключа, т.е.
-     * по набору строк, у которых значение ключевого поля совпадает
-     * с текущей строкой. */
-    fpta_dup_first,
-    fpta_dup_last,
-    fpta_dup_next,
-    fpta_dup_prev,
+  /* Перемещение по дубликатам текущего значения ключа, т.е.
+   * по набору строк, у которых значение ключевого поля совпадает
+   * с текущей строкой. */
+  fpta_dup_first,
+  fpta_dup_last,
+  fpta_dup_next,
+  fpta_dup_prev,
 
-    /* Перемещение с пропуском дубликатов, т.е.
-     * переход осуществляется к строке со значением ключевого поля
-     * отличным от текущего. */
-    fpta_key_next,
-    fpta_key_prev
+  /* Перемещение с пропуском дубликатов, т.е.
+   * переход осуществляется к строке со значением ключевого поля
+   * отличным от текущего. */
+  fpta_key_next,
+  fpta_key_prev
 } fpta_seek_operations;
 
 /* Относительное перемещение курсора.
@@ -987,34 +1132,11 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
 int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
 
 //----------------------------------------------------------------------------
-/* Манипуляция данными. */
-
-/* Опции при помещении или обновлении данных, т.е. для fpta_cursor_put(). */
-typedef enum fpta_put_options {
-    /* Вставить новую запись, т.е. не обновлять существующую.
-     * Будет возвращена ошибка, если указанный ключ уже присутствует в
-     * таблице и соответствующий индекс требует уникальности. */
-    fpta_insert,
-    fpta_not_overwrite = fpta_insert,
-
-    /* Не добавлять новую запись, а обновить текущую запись.
-     *
-     * При обновлении посредством fpta_cursor_update() за курсором должна
-     * быть текущая запись, а в новом значении строки ключевое поле должно
-     * совпадать со значением в текущей позиции курсора, иначе будет
-     * возвращена ошибка. */
-    fpta_update,
-    fpta_overwrite = fpta_update,
-
-    /* Обновить существующую запись, либо вставить новую. Опция допустима
-     * только если соответствующий индекс требует уникальности, иначе будет
-     * возвращена ошибка. */
-    fpta_upsert
-} fpta_put_options;
+/* Манипуляция данными через курсоры. */
 
 /* Обновляет строку в текущей позиции курсора.
  *
- * При обновлении не допускается изменение значения ключевой колонки,
+ * ВАЖНО-1: При обновлении НЕ допускается изменение значения ключевой колонки,
  * которая была задана посредством column_id при открытии курсора.
  *
  * В противном случае возникает ряд вопросов по состоянию и дальнейшему
@@ -1028,8 +1150,35 @@ typedef enum fpta_put_options {
  *  - должен ли курсор повторно прочитать обновленную запись, если она была
  *    перемещена "вперед" в пределах текущей выборки.
  *
+ * ВАЖНО-2: Нарушение ограничений (constraints) уникальности ключей считается
+ * грубой ошибкой в логике приложения и приведет к прерыванию транзакции,
+ * т.е. откату всех изменений сделанных в рамках текущей транзакции. При
+ * необходимости следует предварительно проверять изменения посредством
+ * fpta_cursor_validate_update() в самом начале транзакции. Такое поведение
+ * имеет две веские причины:
+ *  1. Уже сделанные в рамках транзакции изменения могут быть связаны с
+ *     попыткой нарушения ограничений уникальности, поэтому для
+ *     согласованности данных на уровне приложения следует откатывать
+ *     транзакцию целиком.
+ *  2. При наличии вторичных индексов вставка/обновления строки требует
+ *     обновления служебных "индексных" таблиц. При таких обновлениях, ради
+ *     производительности, libfpta не производит предварительную проверку
+ *     соблюдения ограничений уникальности. Соответственно, нарушение этих
+ *     ограничений обнаруживается когда часть изменений уже сделана и поэтому
+ *     прерывание транзакции требуется для согласованности данных и индексов.
+ *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row_value);
+int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value);
+
+/* Проверяет соблюдение ограничений (constraints) перед обновлением
+ * строки в текущей позиции курсора.
+ *
+ * Выполняет проверку ограничений (constraints) как если бы выполнялось
+ * обновление. Позволяет избежать соответствующих ошибок fpta_cursor_update(),
+ * которые приводят к прерыванию транзакции.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value);
 
 /* Удаляет из таблицы строку соответствующую текущей позиции курсора.
  * После удаления курсор перемещается к следующей записи.
@@ -1037,75 +1186,322 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row_value);
  * За курсором должна быть текущая запись, иначе будет возвращена ошибка.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_delete(fpta_cursor *cursor, bool all_dups);
+int fpta_cursor_delete(fpta_cursor *cursor);
 
-/* Конвертирует поле кортежа в более унифицированное значение. */
+//----------------------------------------------------------------------------
+/* Манипуляция данными без курсоров. */
+
+/* Возвращает одну строку с соответствующим значением в заданной ключевой
+ * колонке. При получении одиночных строк функция дешевле в сравнении
+ * с открытием курсора.
+ *
+ * Указанная посредством column_id колонка должна иметь индекс с контролем
+ * уникальности. Таблица-источник, в которой производится поиск, задается
+ * неявно через колонку.
+ *
+ * Аргумент column_id перед первым использованием должен
+ * быть инициализированы посредством fpta_column_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_get(fpta_txn *txn, fpta_name *column_id,
+             const fpta_value *column_value, fptu_ro *row);
+
+/* Опции при помещении или обновлении данных, т.е. для fpta_put(). */
+typedef enum fpta_put_options {
+  /* Вставить новую запись, т.е. не обновлять существующую.
+   *
+   * Будет возвращена ошибка, если указанный ключ уже присутствует в
+   * таблице и соответствующий индекс требует уникальности. */
+  fpta_insert,
+
+  /* Не добавлять новую запись, а обновить существующую запись.
+   *
+   * Должна быть одна и только одна запись с соответствующим значением
+   * ключевой колонке, иначе будет возвращена ошибка. */
+  fpta_update,
+
+  /* Обновить существующую запись, либо вставить новую.
+   *
+   * Будет возвращена ошибка если существует более одной записи
+   * с соответствующим значением ключевой колонки. */
+  fpta_upsert
+} fpta_put_options;
+
+/* Базовая функция для вставки и обновления строк таблицы. При вставке или
+ * обновлении одиночных строк функция дешевле в сравнении с открытием курсора.
+ *
+ * В зависимости от fpta_put_options выполняет вставку, либо обновление.
+ * Для наглядности рекомендуется использовать функции-обертки определенные
+ * ниже.
+ *
+ * ВАЖНО: Нарушение ограничений (constraints) уникальности ключей считается
+ * грубой ошибкой в логике приложения и приведет к прерыванию транзакции,
+ * т.е. откату всех изменений сделанных в рамках текущей транзакции. При
+ * необходимости следует предварительно проверять изменения посредством
+ * fpta_validate_put() в самом начале транзакции. Такое поведение имеет
+ * две веские причины:
+ *  1. Уже сделанные в рамках транзакции изменения могут быть связаны с
+ *     попыткой нарушения ограничений уникальности, поэтому для
+ *     согласованности данных на уровне приложения следует откатывать
+ *     транзакцию целиком.
+ *  2. При наличии вторичных индексов вставка/обновления строки требует
+ *     обновления служебных "индексных" таблиц. При таких обновлениях, ради
+ *     производительности, libfpta не производит предварительную проверку
+ *     соблюдения ограничений уникальности. Соответственно, нарушение этих
+ *     ограничений обнаруживается когда часть изменений уже сделана и поэтому
+ *     прерывание транзакции требуется для согласованности данных и индексов.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
+             fpta_put_options op);
+
+/* Базовая функция для проверки соблюдения ограничений (constraints) перед
+ * вставкой и обновлением строк таблицы.
+ *
+ * В зависимости от fpta_put_options выполняет проверку ограничений
+ * (constraints) как если бы выполнялась вставка или обновление, и таким
+ * образом позволяет избежать соответствующих ошибок fpta_put(), которые
+ * приводят к прерыванию транзакции. Для наглядности рекомендуется
+ * использовать функции-обертки определенные ниже.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
+                      fpta_put_options op);
+
+/* Обновляет существующую строку таблицы. При обновлении одиночных строк
+ * функция дешевле в сравнении с открытием курсора.
+ *
+ * Для колонок индексируемых с контролем уникальности наличие дубликатов не
+ * допускается. Кроме этого, в любом случае, не допускается наличие полностью
+ * идентичных строк.
+ *
+ * ВАЖНО: Нарушение ограничений (constraints) уникальности ключей считается
+ * грубой ошибкой в логике приложения и приведет к прерыванию транзакции,
+ * т.е. откату всех изменений сделанных в рамках текущей транзакции. При
+ * необходимости следует предварительно проверять изменения посредством
+ * fpta_validate_update_row() в самом начале транзакции. Такое поведение
+ * имеет две веские причины:
+ *  1. Уже сделанные в рамках транзакции изменения могут быть связаны с
+ *     попыткой нарушения ограничений уникальности, поэтому для
+ *     согласованности данных на уровне приложения следует откатывать
+ *     транзакцию целиком.
+ *  2. При наличии вторичных индексов вставка/обновления строки требует
+ *     обновления служебных "индексных" таблиц. При таких обновлениях, ради
+ *     производительности, libfpta не производит предварительную проверку
+ *     соблюдения ограничений уникальности. Соответственно, нарушение этих
+ *     ограничений обнаруживается когда часть изменений уже сделана и поэтому
+ *     прерывание транзакции требуется для согласованности данных и индексов.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_update_row(fpta_txn *txn, fpta_name *table_id,
+                                    fptu_ro row_value) {
+  return fpta_put(txn, table_id, row_value, fpta_update);
+}
+
+/* Проверяет соблюдение ограничений (constraints) перед обновлением
+ * существующей строки таблицы.
+ *
+ * Выполняет проверку ограничений (constraints) как если бы выполнялось
+ * обновление. Позволяет избежать соответствующих ошибок fpta_update_row(),
+ * которые приводят к прерыванию транзакции.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_validate_update_row(fpta_txn *txn,
+                                             fpta_name *table_id,
+                                             fptu_ro row_value) {
+  return fpta_validate_put(txn, table_id, row_value, fpta_update);
+}
+
+/* Вставляет в таблицу новую строку. При вставке одиночных строк функция
+ * дешевле в сравнении с открытием курсора.
+ *
+ * Для колонок индексируемых с контролем уникальности вставка дубликатов не
+ * допускается. Кроме этого, в любом случае, не допускается вставка полностью
+ * идентичных строк.
+ *
+ * ВАЖНО: Нарушение ограничений (constraints) уникальности ключей считается
+ * грубой ошибкой в логике приложения и приведет к прерыванию транзакции,
+ * т.е. откату всех изменений сделанных в рамках текущей транзакции. При
+ * необходимости следует предварительно проверять изменения посредством
+ * fpta_validate_insert_row() в самом начале транзакции. Такое поведение
+ * имеет две веские причины:
+ *  1. Уже сделанные в рамках транзакции изменения могут быть связаны с
+ *     попыткой нарушения ограничений уникальности, поэтому для
+ *     согласованности данных на уровне приложения следует откатывать
+ *     транзакцию целиком.
+ *  2. При наличии вторичных индексов вставка/обновления строки требует
+ *     обновления служебных "индексных" таблиц. При таких обновлениях, ради
+ *     производительности, libfpta не производит предварительную проверку
+ *     соблюдения ограничений уникальности. Соответственно, нарушение этих
+ *     ограничений обнаруживается когда часть изменений уже сделана и поэтому
+ *     прерывание транзакции требуется для согласованности данных и индексов.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_insert_row(fpta_txn *txn, fpta_name *table_id,
+                                    fptu_ro row_value) {
+  return fpta_put(txn, table_id, row_value, fpta_insert);
+}
+
+/* Проверяет соблюдение ограничений (constraints) перед вставкой
+ * в таблицу новой строки.
+ *
+ * Выполняет проверку ограничений (constraints) как если бы выполнялась
+ * вставка. Позволяет избежать соответствующих ошибок fpta_insert_row(),
+ * которые приводят к прерыванию транзакции.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_validate_insert_row(fpta_txn *txn,
+                                             fpta_name *table_id,
+                                             fptu_ro row_value) {
+  return fpta_validate_put(txn, table_id, row_value, fpta_insert);
+}
+
+/* В зависимости от существования строки с заданным первичным ключом либо
+ * обновляет её, либо вставляет новую. При вставке или обновлении одиночных
+ * строк функция дешевле в сравнении с открытием курсора.
+ *
+ * Для колонок индексируемых с контролем уникальности наличие дубликатов не
+ * допускается. Кроме этого, в любом случае, не допускается наличие полностью
+ * идентичных строк.
+ *
+ * ВАЖНО: Нарушение ограничений (constraints) уникальности ключей считается
+ * грубой ошибкой в логике приложения и приведет к прерыванию транзакции,
+ * т.е. откату всех изменений сделанных в рамках текущей транзакции. При
+ * необходимости следует предварительно проверять изменения посредством
+ * fpta_validate_upsert_row() в самом начале транзакции. Такое поведение
+ * имеет две веские причины:
+ *  1. Уже сделанные в рамках транзакции изменения могут быть связаны с
+ *     попыткой нарушения ограничений уникальности, поэтому для
+ *     согласованности данных на уровне приложения следует откатывать
+ *     транзакцию целиком.
+ *  2. При наличии вторичных индексов вставка/обновления строки требует
+ *     обновления служебных "индексных" таблиц. При таких обновлениях, ради
+ *     производительности, libfpta не производит предварительную проверку
+ *     соблюдения ограничений уникальности. Соответственно, нарушение этих
+ *     ограничений обнаруживается когда часть изменений уже сделана и поэтому
+ *     прерывание транзакции требуется для согласованности данных и индексов.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_upsert_row(fpta_txn *txn, fpta_name *table_id,
+                                    fptu_ro row_value) {
+  return fpta_put(txn, table_id, row_value, fpta_upsert);
+}
+
+/* Проверяет соблюдение ограничений (constraints) перед upsert-операцией
+ * для строки таблицы.
+ *
+ * Выполняет проверку ограничений (constraints) как если бы выполнялось
+ * обновление существующей или вставка новой строки, в зависимости от
+ * существования строки с заданным первичным ключом. Позволяет избежать
+ * соответствующих ошибок fpta_upsert_row(), которые приводят к прерыванию
+ * транзакции.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_validate_upsert_row(fpta_txn *txn,
+                                             fpta_name *table_id,
+                                             fptu_ro row_value) {
+  return fpta_validate_put(txn, table_id, row_value, fpta_upsert);
+}
+
+/* Удаляет указанную строку таблицы. При удалении одиночных строк функция
+ * дешевле в сравнении с открытием курсора.
+ *
+ * Аргумент table_id перед первым использованием должен
+ * быть инициализированы посредством fpta_table_init().
+ * Предварительный вызов fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
+
+//----------------------------------------------------------------------------
+/* Манипуляция данными внутри строк. */
+
+/* Конвертирует поле кортежа в "контейнер" fpta_value. */
 fpta_value fpta_field2value(const fptu_field *pf);
 
 /* Обновляет или добавляет в кортеж значение колонки.
  *
  * Аргумент column_id идентифицирует колонку и должен быть
  * предварительно подготовлен посредством fpta_name_refresh().
+ * Внутри функции column_id не обновляется.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
                        fpta_value value);
 
-/* Базовая функция для вставки и обновления строк таблицы.
+/* Получает значение указанной колонки из переданной строки.
  *
- * В зависимости от fpta_put_options выполняет вставку, либо обновление.
- * Для наглядности рекомендуется использовать функции-обертки определенные
- * ниже.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
-             fpta_put_options op);
-
-/* Обновляет существующую строку таблицы.
- *
- * Для колонок индексируемых с контролем уникальности наличие дубликатов не
- * допускается. Кроме этого, в любом случае, не допускается наличие полностью
- * идентичных строк.
+ * Аргумент column_id идентифицирует колонку и должен быть
+ * предварительно подготовлен посредством fpta_name_refresh().
+ * Внутри функции column_id не обновляется.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_update_row(fpta_txn *txn, fpta_name *table_id,
-                                    fptu_ro row_value)
-{
-    return fpta_put(txn, table_id, row_value, fpta_update);
-}
-
-/* Вставляет в таблицу новую строку.
- *
- * Для колонок индексируемых с контролем уникальности вставка дубликатов не
- * допускается. Кроме этого, в любом случае, не допускается вставка полностью
- * идентичных строк.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_insert_row(fpta_txn *txn, fpta_name *table_id,
-                                    fptu_ro row_value)
-{
-    return fpta_put(txn, table_id, row_value, fpta_insert);
-}
-
-/* Обновляет существующую строку таблицы, либо вставляет новую.
- *
- * Для колонок индексируемых с контролем уникальности наличие дубликатов не
- * допускается. Кроме этого, в любом случае, не допускается наличие полностью
- * идентичных строк.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_upsert_row(fpta_txn *txn, fpta_name *table_id,
-                                    fptu_ro row_value)
-{
-    return fpta_put(txn, table_id, row_value, fpta_upsert);
-}
-
-/* Удаляет указанную строку таблицы.
- * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
+int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
+                    fpta_value *value);
 
 #ifdef __cplusplus
 }
+
+//----------------------------------------------------------------------------
+/* Сервисные функции и классы для C++ (будет пополнять, существенно). */
+
+namespace std {
+string to_string(fpta_error);
+string to_string(const fptu_time &);
+string to_string(fpta_value_type);
+string to_string(const fpta_value &);
+string to_string(fpta_durability);
+string to_string(fpta_level);
+string to_string(const fpta_db *);
+string to_string(const fpta_txn *);
+string to_string(fpta_index_type);
+string to_string(const fpta_column_set &);
+string to_string(const fpta_name &);
+string to_string(fpta_filter_bits);
+string to_string(const fpta_filter &);
+string to_string(fpta_cursor_options);
+string to_string(const fpta_cursor *);
+string to_string(fpta_seek_operations);
+string to_string(fpta_put_options);
+}
+
+static __inline fpta_value fpta_value_str(const std::string &str) {
+  return fpta_value_string(str.data(), str.length());
+}
+
 #endif
 
 #endif /* FAST_POSITIVE_TABLES_H */
