@@ -718,7 +718,7 @@ typedef struct fpta_column_set {
 } fpta_column_set;
 
 /* Вспомогательная функция, проверяет корректность имени */
-bool fpta_name_validate(const char *name);
+bool fpta_validate_name(const char *name);
 
 /* Вспомогательная функция для создания описания колонок.
  *

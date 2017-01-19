@@ -47,7 +47,7 @@ static __hot fpta_shove_t fpta_shove_name(const char *name,
   return shove;
 }
 
-bool fpta_name_validate(const char *name) {
+bool fpta_validate_name(const char *name) {
   if (unlikely(name == nullptr))
     return false;
 
@@ -256,7 +256,7 @@ void fpta_column_set_init(fpta_column_set *column_set) {
 int fpta_column_describe(const char *column_name, enum fptu_type data_type,
                          fpta_index_type index_type,
                          fpta_column_set *column_set) {
-  if (unlikely(!fpta_name_validate(column_name)))
+  if (unlikely(!fpta_validate_name(column_name)))
     return FPTA_EINVAL;
 
   if (unlikely(data_type == fptu_null ||
@@ -501,7 +501,7 @@ static int fpta_name_init(fpta_name *id, const char *name,
 
   memset(id, 0, sizeof(fpta_name));
 
-  if (unlikely(!fpta_name_validate(name)))
+  if (unlikely(!fpta_validate_name(name)))
     return FPTA_EINVAL;
 
   switch (schema_item) {
@@ -647,7 +647,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
                       fpta_column_set *column_set) {
   if (!fpta_txn_validate(txn, fpta_schema))
     return FPTA_EINVAL;
-  if (!fpta_name_validate(table_name))
+  if (!fpta_validate_name(table_name))
     return FPTA_EINVAL;
 
   int rc = fpta_column_set_validate(column_set);
@@ -725,7 +725,7 @@ bailout:
 int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   if (!fpta_txn_validate(txn, fpta_schema))
     return FPTA_EINVAL;
-  if (!fpta_name_validate(table_name))
+  if (!fpta_validate_name(table_name))
     return FPTA_EINVAL;
 
   fpta_db *db = txn->db;

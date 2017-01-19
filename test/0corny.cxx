@@ -29,22 +29,22 @@ TEST(Corny, NameValidate) {
    *  - несколько кейсов для допустимых имен.
    *  - несколько кейсов для НЕ допустимых имен.
    */
-  EXPECT_TRUE(fpta_name_validate("valid"));
-  EXPECT_TRUE(fpta_name_validate("valid_valid"));
-  EXPECT_TRUE(fpta_name_validate("valid_42"));
+  EXPECT_TRUE(fpta_validate_name("valid"));
+  EXPECT_TRUE(fpta_validate_name("valid_valid"));
+  EXPECT_TRUE(fpta_validate_name("valid_42"));
 
-  EXPECT_FALSE(fpta_name_validate(""));
-  EXPECT_FALSE(fpta_name_validate(nullptr));
-  EXPECT_FALSE(fpta_name_validate("a_very_long_long_long_long_long_long_"
+  EXPECT_FALSE(fpta_validate_name(""));
+  EXPECT_FALSE(fpta_validate_name(nullptr));
+  EXPECT_FALSE(fpta_validate_name("a_very_long_long_long_long_long_long_"
                                   "long_long_long_long_long_long_name"));
 
-  EXPECT_FALSE(fpta_name_validate("no valid"));
-  EXPECT_FALSE(fpta_name_validate("1nvalid"));
-  EXPECT_FALSE(fpta_name_validate("inval.d"));
-  EXPECT_FALSE(fpta_name_validate("_1nvalid"));
-  EXPECT_FALSE(fpta_name_validate("invalid#"));
-  EXPECT_FALSE(fpta_name_validate("invalid/"));
-  EXPECT_FALSE(fpta_name_validate("invalid_ещераз"));
+  EXPECT_FALSE(fpta_validate_name("no valid"));
+  EXPECT_FALSE(fpta_validate_name("1nvalid"));
+  EXPECT_FALSE(fpta_validate_name("inval.d"));
+  EXPECT_FALSE(fpta_validate_name("_1nvalid"));
+  EXPECT_FALSE(fpta_validate_name("invalid#"));
+  EXPECT_FALSE(fpta_validate_name("invalid/"));
+  EXPECT_FALSE(fpta_validate_name("invalid_ещераз"));
 }
 
 TEST(Corny, KeyGenerator) {

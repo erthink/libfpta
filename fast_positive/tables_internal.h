@@ -270,7 +270,6 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor);
 fptu_lge fpta_filter_cmp(const fptu_field *pf, const fpta_value &right);
 bool fpta_filter_validate(const fpta_filter *filter);
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
-bool fpta_name_validate(const char *name);
 int fpta_column_set_validate(fpta_column_set *column_set);
 bool fpta_schema_validate(const MDB_val def);
 
