@@ -52,14 +52,14 @@ __cold string to_string(fptu_type type) {
     return "uint64";
   case fptu_fp64:
     return "fp64";
+  case fptu_datetime:
+    return "datetime";
   case fptu_96:
     return "b96";
   case fptu_128:
     return "b128";
   case fptu_160:
     return "b160";
-  case fptu_192:
-    return "b192";
   case fptu_256:
     return "b256";
   case fptu_cstr:
@@ -85,14 +85,14 @@ __cold string to_string(fptu_type type) {
     return "uint64[]";
   case fptu_fp64 | fptu_farray:
     return "fp64[]";
+  case fptu_datetime | fptu_farray:
+    return "datetime[]";
   case fptu_96 | fptu_farray:
     return "b96[]";
   case fptu_128 | fptu_farray:
     return "b128[]";
   case fptu_160 | fptu_farray:
     return "b160[]";
-  case fptu_192 | fptu_farray:
-    return "b192[]";
   case fptu_256 | fptu_farray:
     return "b256[]";
   case fptu_cstr | fptu_farray:

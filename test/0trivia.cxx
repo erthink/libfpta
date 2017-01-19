@@ -18,7 +18,10 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+#include <cmath>
 #include <gtest/gtest.h>
+
+const auto ms100 = fptu_time::ms2fractional(100);
 
 TEST(Trivia, Apriory) {
   ASSERT_EQ(sizeof(uint16_t) * CHAR_BIT, fptu_bits);
@@ -71,7 +74,7 @@ TEST(Trivia, Apriory) {
   ASSERT_EQ(12, ct_elem_size(fptu_96));
   ASSERT_EQ(16, ct_elem_size(fptu_128));
   ASSERT_EQ(20, ct_elem_size(fptu_160));
-  ASSERT_EQ(24, ct_elem_size(fptu_192));
+  ASSERT_EQ(8, ct_elem_size(fptu_datetime));
   ASSERT_EQ(32, ct_elem_size(fptu_256));
 
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_null)),
@@ -105,8 +108,8 @@ TEST(Trivia, Apriory) {
             fptu_internal_map_t2u[fptu_128]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_160)),
             fptu_internal_map_t2u[fptu_160]);
-  ASSERT_EQ(bytes2units(ct_elem_size(fptu_192)),
-            fptu_internal_map_t2u[fptu_192]);
+  ASSERT_EQ(bytes2units(ct_elem_size(fptu_datetime)),
+            fptu_internal_map_t2u[fptu_datetime]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_256)),
             fptu_internal_map_t2u[fptu_256]);
 
@@ -175,6 +178,182 @@ TEST(Trivia, diff2lge) {
   EXPECT_EQ(fptu_lt, fptu_diff2lge(INT_MIN));
   EXPECT_EQ(fptu_lt, fptu_diff2lge(LONG_MIN));
 }
+
+TEST(Trivia, iovec) {
+  ASSERT_EQ(sizeof(struct iovec), sizeof(fptu_ro));
+
+  fptu_ro serialized;
+  serialized.sys.iov_len = 42;
+  serialized.sys.iov_base = &serialized;
+
+  ASSERT_EQ(&serialized.total_bytes, &serialized.sys.iov_len);
+  ASSERT_EQ(sizeof(serialized.total_bytes), sizeof(serialized.sys.iov_len));
+  ASSERT_EQ(serialized.total_bytes, serialized.sys.iov_len);
+
+  ASSERT_EQ((void *)&serialized.units, &serialized.sys.iov_base);
+  ASSERT_EQ(sizeof(serialized.units), sizeof(serialized.sys.iov_base));
+  ASSERT_EQ(serialized.units, serialized.sys.iov_base);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Trivia, time_ns2fractional) {
+  const double scale = exp2(32) / 1e9;
+  for (int base_2log = 0; base_2log < 32; ++base_2log) {
+    for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
+      SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
+                   std::to_string(offset_42));
+      uint32_t ns = (1 << base_2log) + offset_42;
+      if (ns >= 1e9)
+        continue;
+      SCOPED_TRACE("ns " + std::to_string(ns) + ", factional " +
+                   std::to_string(ns * scale));
+      uint32_t probe = floor(ns * scale);
+      ASSERT_EQ(probe, fptu_time::ns2fractional(ns));
+    }
+  }
+}
+
+TEST(Trivia, time_fractional2ns) {
+  const double scale = 1e9 / exp2(32);
+  for (int base_2log = 0; base_2log < 32; ++base_2log) {
+    for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
+      SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
+                   std::to_string(offset_42));
+      uint32_t fractional = (1 << base_2log) + offset_42;
+      SCOPED_TRACE("fractional " + std::to_string(fractional) + ", ns " +
+                   std::to_string(fractional * scale));
+      uint32_t probe = floor(fractional * scale);
+      ASSERT_EQ(probe, fptu_time::fractional2ns(fractional));
+    }
+  }
+}
+
+TEST(Trivia, time_us2fractional) {
+  const double scale = exp2(32) / 1e6;
+  for (int base_2log = 0; base_2log < 32; ++base_2log) {
+    for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
+      SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
+                   std::to_string(offset_42));
+      uint32_t us = (1 << base_2log) + offset_42;
+      if (us >= 1e6)
+        continue;
+      SCOPED_TRACE("us " + std::to_string(us) + ", factional " +
+                   std::to_string(us * scale));
+      uint32_t probe = floor(us * scale);
+      ASSERT_EQ(probe, fptu_time::us2fractional(us));
+    }
+  }
+}
+
+TEST(Trivia, time_fractional2us) {
+  const double scale = 1e6 / exp2(32);
+  for (int base_2log = 0; base_2log < 32; ++base_2log) {
+    for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
+      SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
+                   std::to_string(offset_42));
+      uint32_t fractional = (1 << base_2log) + offset_42;
+      SCOPED_TRACE("fractional " + std::to_string(fractional) + ", us " +
+                   std::to_string(fractional * scale));
+      uint32_t probe = floor(fractional * scale);
+      ASSERT_EQ(probe, fptu_time::fractional2us(fractional));
+    }
+  }
+}
+
+TEST(Trivia, time_ms2fractional) {
+  const double scale = exp2(32) / 1e3;
+  for (int base_2log = 0; base_2log < 32; ++base_2log) {
+    for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
+      SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
+                   std::to_string(offset_42));
+      uint32_t ms = (1 << base_2log) + offset_42;
+      if (ms >= 1e3)
+        continue;
+      SCOPED_TRACE("ms " + std::to_string(ms) + ", factional " +
+                   std::to_string(ms * scale));
+      uint32_t probe = floor(ms * scale);
+      ASSERT_EQ(probe, fptu_time::ms2fractional(ms));
+    }
+  }
+}
+
+TEST(Trivia, time_fractional2ms) {
+  const double scale = 1e3 / exp2(32);
+  for (int base_2log = 0; base_2log < 32; ++base_2log) {
+    for (int offset_42 = -42; offset_42 <= 42; ++offset_42) {
+      SCOPED_TRACE("base_2log " + std::to_string(base_2log) + ", offset_42 " +
+                   std::to_string(offset_42));
+      uint32_t fractional = (1 << base_2log) + offset_42;
+      SCOPED_TRACE("fractional " + std::to_string(fractional) + ", ms " +
+                   std::to_string(fractional * scale));
+      uint32_t probe = floor(fractional * scale);
+      ASSERT_EQ(probe, fptu_time::fractional2ms(fractional));
+    }
+  }
+}
+
+TEST(Trivia, time_coarse) {
+  auto prev = fptu_now_coarse();
+  for (auto n = 0; n < 42; ++n) {
+    auto now = fptu_now_coarse();
+    ASSERT_GE(now.fixedpoint, prev.fixedpoint);
+    prev = now;
+    usleep(137);
+  }
+}
+
+TEST(Trivia, time_fine) {
+  auto prev = fptu_now_fine();
+  for (auto n = 0; n < 42; ++n) {
+    auto now = fptu_now_fine();
+    ASSERT_GE(now.fixedpoint, prev.fixedpoint);
+    prev = now;
+    usleep(137);
+  }
+}
+
+TEST(Trivia, time_coarse_vs_fine) {
+  for (auto n = 0; n < 42; ++n) {
+    auto coarse = fptu_now_coarse();
+    auto fine = fptu_now_fine();
+    ASSERT_GE(fine.fixedpoint, coarse.fixedpoint);
+    ASSERT_GT(ms100, fine.fixedpoint - coarse.fixedpoint);
+    usleep(137);
+  }
+}
+
+namespace std {
+template <typename T> std::string to_hex(const T &v) {
+  std::stringstream stream;
+  stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << v;
+  return stream.str();
+}
+}
+
+TEST(Trivia, time_grain) {
+  for (int grain = -32; grain < 0; ++grain) {
+    SCOPED_TRACE("grain " + std::to_string(grain));
+
+    auto prev = fptu_now(grain);
+    for (auto n = 0; n < 42; ++n) {
+      auto grained = fptu_now(grain);
+      ASSERT_GE(grained.fixedpoint, prev.fixedpoint);
+      prev = grained;
+      auto fine = fptu_now_fine();
+      SCOPED_TRACE("grained.hex " + std::to_hex(grained.fractional) +
+                   ", fine.hex " + std::to_hex(fine.fractional));
+      ASSERT_GE(fine.fixedpoint, grained.fixedpoint);
+      for (int bit = 0; - bit > grain; ++bit) {
+        SCOPED_TRACE("bit " + std::to_string(bit));
+        EXPECT_EQ(0, grained.fractional & (1 << bit));
+      }
+      usleep(37);
+    }
+  }
+}
+
+//----------------------------------------------------------------------------
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

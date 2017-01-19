@@ -84,6 +84,14 @@ float fptu_field_fp32(const fptu_field *pf) {
   return fptu_field_payload(pf)->fp32;
 }
 
+fptu_time fptu_field_datetime(const fptu_field *pf) {
+  fptu_time result;
+  result.fixedpoint = likely(fptu_field_type(pf) == fptu_datetime)
+                          ? fptu_field_payload(pf)->u64
+                          : 0;
+  return result;
+}
+
 const char *fptu_field_cstr(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_cstr))
     return "";
@@ -107,13 +115,6 @@ const uint8_t *fptu_field_128(const fptu_field *pf) {
 
 const uint8_t *fptu_field_160(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_160))
-    return nullptr;
-
-  return fptu_field_payload(pf)->fixbin;
-}
-
-const uint8_t *fptu_field_192(const fptu_field *pf) {
-  if (unlikely(fptu_field_type(pf) != fptu_192))
     return nullptr;
 
   return fptu_field_payload(pf)->fixbin;
@@ -311,6 +312,18 @@ double fptu_get_fp(fptu_ro ro, unsigned column, int *error) {
   return 0;
 }
 
+fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error) {
+  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_datetime);
+  if (error)
+    *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
+
+  fptu_time result;
+  result.fixedpoint = likely(fptu_field_type(pf) == fptu_datetime)
+                          ? fptu_field_payload(pf)->u64
+                          : 0;
+  return result;
+}
+
 //----------------------------------------------------------------------------
 
 const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error) {
@@ -332,13 +345,6 @@ const uint8_t *fptu_get_160(fptu_ro ro, unsigned column, int *error) {
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
   return fptu_field_160(pf);
-}
-
-const uint8_t *fptu_get_192(fptu_ro ro, unsigned column, int *error) {
-  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_192);
-  if (error)
-    *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
-  return fptu_field_192(pf);
 }
 
 const uint8_t *fptu_get_256(fptu_ro ro, unsigned column, int *error) {

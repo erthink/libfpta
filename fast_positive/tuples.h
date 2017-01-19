@@ -34,6 +34,7 @@
 #include <errno.h>   // for error codes
 #include <string.h>  // for strlen
 #include <sys/uio.h> // for struct iovec
+#include <time.h>    // for struct timespec, struct timeval
 
 #ifdef __cplusplus
 #include <string> // for std::string
@@ -62,10 +63,11 @@ enum fptu_error {
   FPTU_ENOSPACE = ENOSPC,
 };
 
-/* Внутренний тип для хранения размера полей переменной длины */
+/* Внутренний тип для хранения размера полей переменной длины. */
 typedef union fptu_varlen {
   struct __packed {
-    uint16_t brutto;
+    uint16_t brutto; /* брутто-размер в 4-байтовых юнитах,
+                      * всегда больше или равен 1. */
     union {
       uint16_t opaque_bytes;
       uint16_t array_length;
@@ -75,25 +77,38 @@ typedef union fptu_varlen {
   uint32_t flat;
 } fptu_varlen;
 
+/* Поле кортежа.
+ *
+ * Фактически это дескриптор поля, в котором записаны: тип данных,
+ * номер колонки и смещение к данным. */
 typedef union fptu_field {
   struct __packed {
-    uint16_t ct;
-    uint16_t offset;
+    uint16_t ct;     /* тип и "номер колонки". */
+    uint16_t offset; /* смещение к данным относительно заголовка, либо
+                        непосредственно данные для uint16_t. */
   };
   uint32_t header;
-  uint32_t body[1];
-
+  uint32_t body[1]; /* в body[0] расположен дескриптор/заголовок,
+                     * а начиная с body[offset] данные. */
 #ifdef __cplusplus
   uint16_t get_payload_uint16() const { return offset; }
 #endif
 } fptu_field;
 
+/* Внутренний тип соответствующий 32-битной ячейке с данными. */
 typedef union fptu_unit {
   fptu_field field;
   fptu_varlen varlen;
   uint32_t data;
 } fptu_unit;
 
+/* Представление сериализованной формы кортежа.
+ *
+ * Фактические это просто системная структура iovec, т.е. указатель
+ * на буфер с данными и размер этих данных в байтах. Системный тип struct
+ * iovec выбран для совместимости с функциями readv(), writev() и т.п.
+ * Другими словами, это просто "оболочка", а сами данные кортежа должны быть
+ * где-то размещены. */
 typedef union fptu_ro {
   struct {
     const fptu_unit *units;
@@ -102,6 +117,10 @@ typedef union fptu_ro {
   struct iovec sys;
 } fptu_ro;
 
+/* Изменяемая форма кортежа.
+ * Является плоским буфером, в начале которого расположены служебные поля.
+ *
+ * Инициализируется функциями fptu_init(), fptu_alloc() и fptu_fetch(). */
 typedef struct fptu_rw {
   unsigned head;  /* Индекс дозаписи дескрипторов, растет к началу буфера,
                      указывает на первый занятый элемент. */
@@ -173,6 +192,11 @@ enum fptu_bits {
   fptu_buffer_limit = fptu_max_tuple_bytes * 2
 };
 
+/* Типы полей.
+ *
+ * Следует обратить внимание, что fptu_farray является флагом,
+ * а значения начиная с fptu_filter используются как маски для
+ * поиска/фильтрации полей (и видимо будут выделены в отдельный enum). */
 typedef enum fptu_type {
   // fixed length, without ex-data (descriptor only)
   fptu_null = 0,
@@ -181,16 +205,16 @@ typedef enum fptu_type {
   // fixed length with ex-data (at least 4 byte after the pivot)
   fptu_int32 = 2,
   fptu_uint32 = 3,
-  fptu_fp32 = 4,
+  fptu_fp32 = 4, // 32-bit float-point, e.g. float
 
   fptu_int64 = 5,
   fptu_uint64 = 6,
-  fptu_fp64 = 7,
+  fptu_fp64 = 7,     // 64-bit float-point, e.g. double
+  fptu_datetime = 8, // date-time as fixed-point, compatible with UTC
 
-  fptu_96 = 8,   // opaque 12-bytes.
-  fptu_128 = 9,  // opaque 16-bytes (uuid, ipv6, etc).
-  fptu_160 = 10, // opaque 20-bytes (sha1).
-  fptu_192 = 11, // opaque 24-bytes
+  fptu_96 = 9,   // opaque 12-bytes (subject to change)
+  fptu_128 = 10, // opaque 16-bytes (uuid, ipv6, etc).
+  fptu_160 = 11, // opaque 20-bytes (sha1).
   fptu_256 = 12, // opaque 32-bytes (sha256).
 
   // variable length, e.g. length and payload inside ex-data
@@ -229,6 +253,83 @@ typedef enum fptu_type {
   fptu_sha256 = fptu_256,
   fptu_wstring = fptu_opaque
 } fptu_type;
+
+/* Представление времени.
+ *
+ * В формате фиксированной точки 32-dot-32:
+ *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
+ *     но без знака. Это отодвигает проблему 2038-го года на 2106,
+ *     требуя взамен аккуратности при вычитании.
+ *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
+ *
+ * Эта форма унифицирована с Positive Hyper100r и одновременно достаточно
+ * удобна в использовании. Поэтому настоятельно рекомендуется использовать
+ * именно её, особенно для хранения и передачи данных. */
+typedef union fptu_time {
+  uint64_t fixedpoint;
+  struct __packed {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    uint32_t fractional;
+    uint32_t utc;
+#else
+    uint32_t utc;
+    uint32_t fractional;
+#endif
+  };
+
+#ifdef __cplusplus
+  static uint32_t ns2fractional(uint32_t);
+  static uint32_t fractional2ns(uint32_t);
+  static uint32_t us2fractional(uint32_t);
+  static uint32_t fractional2us(uint32_t);
+  static uint32_t ms2fractional(uint32_t);
+  static uint32_t fractional2ms(uint32_t);
+
+  /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
+   * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
+   * либо от возможности использовать libfptu из C, либо от Clang,
+   * либо от конструкторов (они и пострадали). */
+  static fptu_time from_timespec(const struct timespec &ts) {
+    fptu_time result;
+    result.fixedpoint =
+        ((uint64_t)ts.tv_sec << 32) | ns2fractional(ts.tv_nsec);
+    return result;
+  }
+
+  static fptu_time from_timeval(const struct timeval &tv) {
+    fptu_time result;
+    result.fixedpoint =
+        ((uint64_t)tv.tv_sec << 32) | us2fractional(tv.tv_usec);
+    return result;
+  }
+#endif
+} fptu_time;
+
+/* Возвращает текущее время в правильной форме.
+ *
+ * Аргумент grain_ns задает желаемую точность в наносекундах, в зависимости от
+ * которой будет использован CLOCK_REALTIME, либо CLOCK_REALTIME_COARSE.
+ *
+ * Положительные значения grain_ns, включая нуль, трактуются как наносекунды.
+ *
+ * Отрицательные же означают количество младших бит, которые НЕ требуются в
+ * результате и будут обнулены. Таким образом, отрицательные значения grain_ns
+ * позволяют запросить текущее время, одновременно с "резервированием" младших
+ * бит результата под специфические нужды.
+ *
+ * В конечном счете это позволяет существенно экономить на системных вызовах
+ * и/или обращении к аппаратуре. В том числе не выполнять системный вызов,
+ * а ограничиться использованием механизма vdso (прямое чтение из открытой
+ * страницы данных ядра). В зависимости от запрошенной точности,
+ * доступной аппаратуры и актуальном режиме работы ядра, экономия может
+ * составить до сотен и даже тысяч раз.
+ *
+ * Следует понимать, что реальная точность зависит от актуальной конфигурации
+ * аппаратуры и ядра ОС. Проще говоря, запрос текущего времени с grain_ns = 1
+ * достаточно абсурден и вовсе не гарантирует такой точности результата. */
+fptu_time fptu_now(int grain_ns);
+fptu_time fptu_now_fine(void);
+fptu_time fptu_now_coarse(void);
 
 //----------------------------------------------------------------------------
 
@@ -346,8 +447,14 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf);
 
 //----------------------------------------------------------------------------
 
-// Вставка или обновление существующего поля (первого найденного для
-// коллекций).
+/* Вставка или обновление существующего поля.
+ *
+ * В случае коллекций, когда в кортеже более одного поля с соответствующим
+ * типом и номером), будет обновлен первый найденный экземпляр. Но так как
+ * в общем случае физический порядок полей не определен, следует считать что
+ * функция обновит произвольный экземпляр поля. Поэтому для манипулирования
+ * коллекциями следует использовать fptu_erase() и/или fput_field_set_xyz().
+ */
 int fptu_upsert_null(fptu_rw *pt, unsigned column);
 int fptu_upsert_uint16(fptu_rw *pt, unsigned column, unsigned value);
 int fptu_upsert_int32(fptu_rw *pt, unsigned column, int32_t value);
@@ -356,11 +463,11 @@ int fptu_upsert_int64(fptu_rw *pt, unsigned column, int64_t value);
 int fptu_upsert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 int fptu_upsert_fp64(fptu_rw *pt, unsigned column, double value);
 int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float value);
+int fptu_upsert_datetime(fptu_rw *pt, unsigned column, const fptu_time);
 
 int fptu_upsert_96(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_128(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_160(fptu_rw *pt, unsigned column, const void *data);
-int fptu_upsert_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_upsert_256(fptu_rw *pt, unsigned column, const void *data);
 
 int fptu_upsert_string(fptu_rw *pt, unsigned column, const char *text,
@@ -405,11 +512,11 @@ int fptu_insert_int64(fptu_rw *pt, unsigned column, int64_t value);
 int fptu_insert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 int fptu_insert_fp64(fptu_rw *pt, unsigned column, double value);
 int fptu_insert_fp32(fptu_rw *pt, unsigned column, float value);
+int fptu_insert_datetime(fptu_rw *pt, unsigned column, const fptu_time);
 
 int fptu_insert_96(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_128(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_160(fptu_rw *pt, unsigned column, const void *data);
-int fptu_insert_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_insert_256(fptu_rw *pt, unsigned column, const void *data);
 
 int fptu_insert_string(fptu_rw *pt, unsigned column, const char *text,
@@ -452,11 +559,11 @@ int fptu_update_int64(fptu_rw *pt, unsigned column, int64_t value);
 int fptu_update_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 int fptu_update_fp64(fptu_rw *pt, unsigned column, double value);
 int fptu_update_fp32(fptu_rw *pt, unsigned column, float value);
+int fptu_update_datetime(fptu_rw *pt, unsigned column, const fptu_time);
 
 int fptu_update_96(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_128(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_160(fptu_rw *pt, unsigned column, const void *data);
-int fptu_update_192(fptu_rw *pt, unsigned column, const void *data);
 int fptu_update_256(fptu_rw *pt, unsigned column, const void *data);
 
 int fptu_update_string(fptu_rw *pt, unsigned column, const char *text,
@@ -526,11 +633,13 @@ const fptu_field *fptu_first_ex(const fptu_field *begin,
 const fptu_field *fptu_next_ex(const fptu_field *begin, const fptu_field *end,
                                fptu_field_filter filter, void *context,
                                void *param);
-
+/* Подсчет количества полей по заданному номеру колонки и типу,
+ * либо маски типов .*/
 size_t fptu_field_count(const fptu_rw *pt, unsigned column,
                         int type_or_filter);
 size_t fptu_field_count_ro(fptu_ro ro, unsigned column, int type_or_filter);
 
+/* Подсчет количества полей задаваемой функцией-фильтром. */
 size_t fptu_field_count_ex(const fptu_rw *pt, fptu_field_filter filter,
                            void *context, void *param);
 size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
@@ -546,10 +655,10 @@ int64_t fptu_field_int64(const fptu_field *pf);
 uint64_t fptu_field_uint64(const fptu_field *pf);
 double fptu_field_fp64(const fptu_field *pf);
 float fptu_field_fp32(const fptu_field *pf);
+fptu_time fptu_field_datetime(const fptu_field *pf);
 const uint8_t *fptu_field_96(const fptu_field *pf);
 const uint8_t *fptu_field_128(const fptu_field *pf);
 const uint8_t *fptu_field_160(const fptu_field *pf);
-const uint8_t *fptu_field_192(const fptu_field *pf);
 const uint8_t *fptu_field_256(const fptu_field *pf);
 const char *fptu_field_cstr(const fptu_field *pf);
 struct iovec fptu_field_opaque(const fptu_field *pf);
@@ -562,6 +671,7 @@ int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
 uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
 double fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
 float fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
+fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error);
 
 int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);
 uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error);
@@ -570,7 +680,6 @@ double fptu_get_fp(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_128(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_160(fptu_ro ro, unsigned column, int *error);
-const uint8_t *fptu_get_192(fptu_ro ro, unsigned column, int *error);
 const uint8_t *fptu_get_256(fptu_ro ro, unsigned column, int *error);
 const char *fptu_get_cstr(fptu_ro ro, unsigned column, int *error);
 struct iovec fptu_get_opaque(fptu_ro ro, unsigned column, int *error);
@@ -608,7 +717,6 @@ typedef enum fptu_lge {
 fptu_lge fptu_cmp_96(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_128(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value);
-fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value);
 fptu_lge fptu_cmp_opaque(fptu_ro ro, unsigned column, const void *value,
                          size_t bytes);

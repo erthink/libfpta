@@ -119,8 +119,8 @@ TEST(Iterate, Simple) {
   ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
 
-  EXPECT_EQ(fptu_end(pt), fptu_end_ro(ro));
-  EXPECT_EQ(fptu_begin(pt), fptu_begin_ro(ro));
+  EXPECT_EQ(begin, fptu_begin_ro(ro));
+  EXPECT_EQ(end, fptu_end_ro(ro));
   EXPECT_EQ(begin, fptu_first(begin, end, 1, fptu_any));
   EXPECT_EQ(end, fptu_next(begin, end, 1, fptu_any));
 
@@ -144,8 +144,8 @@ TEST(Iterate, Simple) {
     ro = fptu_take_noshrink(pt);
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
 
-    EXPECT_EQ(fptu_end(pt), fptu_end_ro(ro));
-    EXPECT_EQ(fptu_begin(pt), fptu_begin_ro(ro));
+    EXPECT_EQ(begin, fptu_begin_ro(ro));
+    EXPECT_EQ(end, fptu_end_ro(ro));
 
     EXPECT_EQ(1, fptu_field_count(pt, 0, fptu_any));
     EXPECT_EQ(1, fptu_field_count(pt, 1, fptu_any));

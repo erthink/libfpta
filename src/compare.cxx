@@ -67,17 +67,6 @@ fptu_lge fptu_cmp_160(fptu_ro ro, unsigned column, const uint8_t *value) {
   return cmpbin(fptu_field_payload(pf)->fixbin, value, 20);
 }
 
-fptu_lge fptu_cmp_192(fptu_ro ro, unsigned column, const uint8_t *value) {
-  if (unlikely(value == nullptr))
-    return fptu_ic;
-
-  const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_192);
-  if (unlikely(pf == nullptr))
-    return fptu_ic;
-
-  return cmpbin(fptu_field_payload(pf)->fixbin, value, 24);
-}
-
 fptu_lge fptu_cmp_256(fptu_ro ro, unsigned column, const uint8_t *value) {
   if (unlikely(value == nullptr))
     return fptu_ic;
@@ -133,6 +122,7 @@ static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
   case fptu_int64:
     return fptu_cmp2lge(payload_left->i64, payload_right->i64);
   case fptu_uint64:
+  case fptu_datetime:
     return fptu_cmp2lge(payload_left->u64, payload_right->u64);
   case fptu_fp64:
     return fptu_cmp2lge(payload_left->fp64, payload_right->fp64);
@@ -143,8 +133,6 @@ static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
     return cmpbin(payload_left->fixbin, payload_right->fixbin, 16);
   case fptu_160:
     return cmpbin(payload_left->fixbin, payload_right->fixbin, 20);
-  case fptu_192:
-    return cmpbin(payload_left->fixbin, payload_right->fixbin, 24);
   case fptu_256:
     return cmpbin(payload_left->fixbin, payload_right->fixbin, 32);
 

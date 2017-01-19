@@ -1,0 +1,14 @@
+- [x] fptu_fetch();
+- [x] xxx_insert(), e.g. collections;
+- [x] xxx_update();
+- [x] iterators;
+- [x] shrink(), e.g. defragmentation;
+- [x] fptu_datetime instead of fptu_192;
+- [ ] fput_field_xyz_cmp();
+- [ ] fptu_field_xyz_set();
+- [ ] support for headspace reservation;
+- [ ] support for arrays and nested tuples;
+- [ ] C++ bindings;
+- [ ] unit test for `limits`;
+- [ ] external scheme support and C++ binding auto-generation;
+- [ ] ? support for sorted tuples.
