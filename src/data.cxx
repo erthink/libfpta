@@ -294,11 +294,67 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 
 int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op) {
-  (void)txn;
-  (void)table_id;
-  (void)row_value;
-  (void)op;
-  return FPTA_ENOIMP;
+  if (unlikely(op < fpta_insert || op > fpta_upsert))
+    return FPTA_EINVAL;
+
+  int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  fpta_key pk_key;
+  rc = fpta_index_row2key(table_id->table.pk, 0, row_value, pk_key, false);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  if (unlikely(table_id->mdbx_dbi < 1)) {
+    rc = fpta_open_table(txn, table_id);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  fptu_ro present;
+  int rows_with_same_key;
+  rc = mdbx_get_ex(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
+                   &present.sys, &rows_with_same_key);
+  if (unlikely(rc != MDB_SUCCESS && rc != MDB_NOTFOUND))
+    return rc;
+
+  switch (op) {
+  default:
+    assert(false && "unreachable");
+    __unreachable();
+    return FPTA_EINVAL;
+  case fpta_insert:
+    if (fpta_index_is_unique(table_id->table.pk)) {
+      if (rc != MDB_NOTFOUND)
+        /* запись с таким PK уже есть, вставка НЕ возможна */
+        return MDB_KEYEXIST;
+    }
+    break;
+
+  case fpta_update:
+    if (rc != MDB_SUCCESS)
+      /* нет записи с таким PK, обновлять нечего */
+      return rc;
+  /* no break here */
+  case fpta_upsert:
+    if (rows_with_same_key > 1)
+      /* обновление НЕ возможно, если первичный ключ НЕ уникален */
+      return MDB_KEYEXIST;
+  }
+
+  if (rc == MDB_SUCCESS) {
+    if (present.total_bytes == row_value.total_bytes &&
+        memcmp(present.units, row_value.units, present.total_bytes) == 0)
+      /* если полный дубликат записи */
+      return MDB_KEYEXIST;
+  }
+
+  if (!fpta_table_has_secondary(table_id))
+    return FPTA_SUCCESS;
+
+  return fpta_check_constraints(txn, table_id, pk_key.mdbx, present,
+                                pk_key.mdbx, row_value, 0);
 }
 
 int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
