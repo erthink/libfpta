@@ -549,13 +549,17 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro row) {
     return mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx, &row.sys,
                            MDB_CURRENT | MDB_NODUPDATA);
 
-  fptu_ro old;
   MDB_val old_pk_key;
-  rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &old_pk_key,
-                       MDB_GET_CURRENT);
-  if (unlikely(rc != MDB_SUCCESS))
-    return rc;
+  if (fpta_index_is_primary(cursor->index.shove)) {
+    old_pk_key = cursor->current;
+  } else {
+    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &old_pk_key,
+                         MDB_GET_CURRENT);
+    if (unlikely(rc != MDB_SUCCESS))
+      return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+  }
 
+  fptu_ro old;
   rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                 &old_pk_key, &old.sys);
   if (unlikely(rc != MDB_SUCCESS))
