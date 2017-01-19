@@ -242,15 +242,15 @@ int fpta_index_row2key(fpta_shove_t shove, unsigned column,
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val &pk_key_old, const fptu_ro &row_old,
                           MDB_val &pk_key_new, const fptu_ro &row_new,
-                          unsigned overstep);
+                          unsigned stepover);
 
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
                            MDB_val &pk_key_old, const fptu_ro &row_old,
                            MDB_val &pk_key_new, const fptu_ro &row_new,
-                           unsigned overstep);
+                           unsigned stepover);
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
-                          const fptu_ro &row_old, unsigned overstep);
+                          const fptu_ro &row_old, unsigned stepover);
 
 //----------------------------------------------------------------------------
 

@@ -40,15 +40,14 @@ static __inline bool fpta_fk_changed(const fpta_table_schema *def,
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
                            MDB_val &pk_key_old, const fptu_ro &row_old,
                            MDB_val &pk_key_new, const fptu_ro &row_new,
-                           unsigned overstep) {
-
+                           unsigned stepover) {
   (void)txn;
   (void)table_id;
   (void)pk_key_old;
   (void)row_old;
   (void)pk_key_new;
   (void)row_new;
-  (void)overstep;
+  (void)stepover;
   // TODO: проверка конфликтов для индексов с контролем уникальности
   return FPTA_SUCCESS;
 }
@@ -56,7 +55,7 @@ int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val &pk_key_old, const fptu_ro &row_old,
                           MDB_val &pk_key_new, const fptu_ro &row_new,
-                          unsigned overstep) {
+                          unsigned stepover) {
   MDB_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_id, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -66,7 +65,7 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
     if (fpta_shove2index(table_id->table.def->columns[i]) == fpta_index_none)
       break;
     assert(i < fpta_max_indexes);
-    if (i == overstep)
+    if (i == stepover)
       continue;
 
     if (row_old.sys.iov_base) {
@@ -101,7 +100,7 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
 }
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
-                          const fptu_ro &row_old, unsigned overstep) {
+                          const fptu_ro &row_old, unsigned stepover) {
   MDB_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_id, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -111,7 +110,7 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
     if (fpta_shove2index(table_id->table.def->columns[i]) == fpta_index_none)
       break;
     assert(i < fpta_max_indexes);
-    if (i == overstep)
+    if (i == stepover)
       continue;
 
     fpta_key fk_key_old;
