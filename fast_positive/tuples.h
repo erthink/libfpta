@@ -703,6 +703,7 @@ typedef struct fptu_array {
 } fptu_array;
 
 //----------------------------------------------------------------------------
+/* Определения и примитивы для сравнения. */
 
 typedef enum fptu_lge {
   fptu_ic = 1,                           // incomparable
@@ -732,6 +733,9 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 #ifdef __cplusplus
 }
 
+//----------------------------------------------------------------------------
+/* Сервисные функции и классы для C++ (будет пополнять, существенно). */
+
 namespace std {
 string to_string(fptu_error);
 string to_string(const fptu_varlen &);
@@ -743,6 +747,7 @@ string to_string(const fptu_ro &);
 string to_string(fptu_lge);
 }
 
+/* Явно удаляем лишенные смысла операции, в том числе для выявления ошибок */
 bool operator>(const fptu_lge &, const fptu_lge &) = delete;
 bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<(const fptu_lge &, const fptu_lge &) = delete;
