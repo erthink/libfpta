@@ -292,6 +292,15 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 
 //----------------------------------------------------------------------------
 
+int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
+                      fpta_put_options op) {
+  (void)txn;
+  (void)table_id;
+  (void)row_value;
+  (void)op;
+  return FPTA_ENOIMP;
+}
+
 int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
              fpta_put_options op) {
   int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
@@ -358,6 +367,8 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
 
   return FPTA_SUCCESS;
 }
+
+//----------------------------------------------------------------------------
 
 int fpta_del(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
