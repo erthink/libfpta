@@ -19,9 +19,9 @@
 
 #include "fast_positive/tables_internal.h"
 #include <gtest/gtest.h>
-#include <memory>
 
 #include "keygen.hpp"
+#include "tools.hpp"
 
 /* Кол-во проверочных точек в диапазонах значений индексируемых типов.
  *
@@ -39,31 +39,6 @@ static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
 #define TEST_DB_DIR "/dev/shm/"
-
-struct db_deleter : public std::unary_function<void, fpta_db *> {
-  void operator()(fpta_db *db) const {
-    if (db)
-      EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
-  }
-};
-
-struct txn_deleter : public std::unary_function<void, fpta_txn *> {
-  void operator()(fpta_txn *txn) const {
-    if (txn)
-      ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
-  }
-};
-
-struct cursor_deleter : public std::unary_function<void, fpta_cursor *> {
-  void operator()(fpta_cursor *cursor) const {
-    if (cursor)
-      ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
-  }
-};
-
-typedef std::unique_ptr<fpta_db, db_deleter> scoped_db_guard;
-typedef std::unique_ptr<fpta_txn, txn_deleter> scoped_txn_guard;
-typedef std::unique_ptr<fpta_cursor, cursor_deleter> scoped_cursor_guard;
 
 static const char testdb_name[] = TEST_DB_DIR "ut_index_primary.fpta";
 static const char testdb_name_lck[] =
