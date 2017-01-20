@@ -1180,6 +1180,14 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value);
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value);
 
+static __inline int fpta_cursor_probe_and_update(fpta_cursor *cursor,
+                                                 fptu_ro new_row_value) {
+  int rc = fpta_cursor_validate_update(cursor, new_row_value);
+  if (rc == FPTA_SUCCESS)
+    rc = fpta_cursor_update(cursor, new_row_value);
+  return rc;
+}
+
 /* Удаляет из таблицы строку соответствующую текущей позиции курсора.
  * После удаления курсор перемещается к следующей записи.
  *
@@ -1277,6 +1285,15 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
 int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op);
 
+static __inline int fpta_probe_and_put(fpta_txn *txn, fpta_name *table_id,
+                                       fptu_ro row_value,
+                                       fpta_put_options op) {
+  int rc = fpta_validate_put(txn, table_id, row_value, op);
+  if (rc == FPTA_SUCCESS)
+    rc = fpta_put(txn, table_id, row_value, op);
+  return rc;
+}
+
 /* Обновляет существующую строку таблицы. При обновлении одиночных строк
  * функция дешевле в сравнении с открытием курсора.
  *
@@ -1329,6 +1346,12 @@ static __inline int fpta_validate_update_row(fpta_txn *txn,
   return fpta_validate_put(txn, table_id, row_value, fpta_update);
 }
 
+static __inline int fpta_probe_and_update_row(fpta_txn *txn,
+                                              fpta_name *table_id,
+                                              fptu_ro row_value) {
+  return fpta_probe_and_put(txn, table_id, row_value, fpta_update);
+}
+
 /* Вставляет в таблицу новую строку. При вставке одиночных строк функция
  * дешевле в сравнении с открытием курсора.
  *
@@ -1379,6 +1402,12 @@ static __inline int fpta_validate_insert_row(fpta_txn *txn,
                                              fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_insert);
+}
+
+static __inline int fpta_probe_and_insert_row(fpta_txn *txn,
+                                              fpta_name *table_id,
+                                              fptu_ro row_value) {
+  return fpta_probe_and_put(txn, table_id, row_value, fpta_insert);
 }
 
 /* В зависимости от существования строки с заданным первичным ключом либо
@@ -1434,6 +1463,12 @@ static __inline int fpta_validate_upsert_row(fpta_txn *txn,
                                              fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_upsert);
+}
+
+static __inline int fpta_probe_and_upsert_row(fpta_txn *txn,
+                                              fpta_name *table_id,
+                                              fptu_ro row_value) {
+  return fpta_probe_and_put(txn, table_id, row_value, fpta_upsert);
 }
 
 /* Удаляет указанную строку таблицы. При удалении одиночных строк функция
