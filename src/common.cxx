@@ -314,7 +314,8 @@ int fpta_inconsistent_abort(fpta_txn *txn, int err) {
   if (unlikely(rc != MDB_SUCCESS)) {
     if (!fpta_panic(err, rc))
       abort();
+    err = FPTA_WANNA_DIE;
   }
   txn->mdbx_txn = nullptr;
-  return FPTA_WANNA_DIE;
+  return err;
 }
