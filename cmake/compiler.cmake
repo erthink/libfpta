@@ -10,7 +10,7 @@ endif()
 # We support building with Clang and gcc. First check
 # what we're using for build.
 #
-if (CMAKE_C_COMPILER_ID STREQUAL Clang)
+if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_COMPILER_IS_CLANG  ON)
     set(CMAKE_COMPILER_IS_GNUCC  OFF)
     set(CMAKE_COMPILER_IS_GNUCXX OFF)
@@ -38,47 +38,60 @@ endif()
 #
 # Check supported standards
 #
-if((NOT HAVE_STD_C11 AND NOT HAVE_STD_GNU99) OR
+if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
    (NOT HAVE_STD_CXX11 AND NOT HAVE_STD_GNUXX0X))
     set(CMAKE_REQUIRED_FLAGS "-std=c11")
     check_c_source_compiles("
-    /*
-     * FreeBSD 10 ctype.h header fail to compile on gcc4.8 in c11 mode.
-     * Make sure we aren't affected.
-     */
-    #include <ctype.h>
-    int main(void) { return 0; }
-    " HAVE_STD_C11)
+        #if __STDC_VERSION__ < 201112L
+        #   error C11 not available
+        #endif
+        /*
+         * FreeBSD 10 ctype.h header fail to compile on gcc4.8 in c11 mode.
+         * Make sure we aren't affected.
+         */
+        #include <ctype.h>
+        int main(void) { return 0; }
+        " HAVE_STD_C11)
+
+    set(CMAKE_REQUIRED_FLAGS "-std=c99")
+    check_c_source_compiles("
+        #if (__STDC_VERSION__ < 199901L) && (_MSC_FULL_VER < 190024215)
+        #   error C99 not available
+        #endif
+	int main(void) { return 0; }
+	" HAVE_STD_C99)
+
     set(CMAKE_REQUIRED_FLAGS "-std=gnu99")
-    check_c_source_compiles("int main(void) { return 0; }" HAVE_STD_GNU99)
+    check_c_source_compiles("
+        #if __STDC_VERSION__ < 199901L
+        #   error C99 not available
+        #endif
+	int main(void) { return 0; }
+	" HAVE_STD_GNU99)
+
     set(CMAKE_REQUIRED_FLAGS "-std=c++11")
-    check_cxx_source_compiles("int main(void) { return 0; }" HAVE_STD_CXX11)
+    check_cxx_source_compiles("
+        #if (__cplusplus < 201103L) && (_MSC_FULL_VER < 190024215)
+        #   error C++11 not available
+        #endif
+        int main(void) { return 0; }
+        " HAVE_STD_CXX11)
     set(CMAKE_REQUIRED_FLAGS "-std=gnu++0x")
-    check_cxx_source_compiles("int main(void) { return 0; }" HAVE_STD_GNUXX0X)
+
+    check_cxx_source_compiles("
+        #if __cplusplus < 201103L && !defined(__GXX_EXPERIMENTAL_CXX0X__)
+        #   error GNU C++0x not available
+        #endif
+        int main(void) { return 0; }
+        " HAVE_STD_GNUXX0X)
     set(CMAKE_REQUIRED_FLAGS "")
 endif()
-if((NOT HAVE_STD_C11 AND NOT HAVE_STD_GNU99) OR
+if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
    (NOT HAVE_STD_CXX11 AND NOT HAVE_STD_GNUXX0X))
     message (FATAL_ERROR
-        "${CMAKE_C_COMPILER} should support -std=c11 or -std=gnu99. "
+        "${CMAKE_C_COMPILER} should support -std=c11 or -std=c99. "
         "${CMAKE_CXX_COMPILER} should support -std=c++11 or -std=gnu++0x. "
         "Please consider upgrade to gcc 4.5+ or clang 3.2+.")
-endif()
-
-#
-# Check for an omp support
-#
-set(CMAKE_REQUIRED_FLAGS "-fopenmp -Werror")
-check_cxx_source_compiles("int main(void) {
-#pragma omp parallel
-    {
-    }
-    return 0;
-}" HAVE_OPENMP)
-set(CMAKE_REQUIRED_FLAGS "")
-
-if (NOT HAVE_OPENMP)
-    add_compile_flags("C;CXX" -Wno-unknown-pragmas)
 endif()
 
 #
@@ -86,7 +99,6 @@ endif()
 # this is when it introduced -Wno-unused-result
 # GCC can also be built on top of llvm runtime (on mac).
 #
-
 check_c_compiler_flag("-Wno-unused-const-variable" CC_HAS_WNO_UNUSED_CONST_VARIABLE)
 check_c_compiler_flag("-Wno-unused-result" CC_HAS_WNO_UNUSED_RESULT)
 check_c_compiler_flag("-Wno-unused-value" CC_HAS_WNO_UNUSED_VALUE)
@@ -100,25 +112,29 @@ check_c_compiler_flag("-Wno-dangling-else" CC_HAS_WNO_DANGLING_ELSE)
 check_c_compiler_flag("-Wno-tautological-compare" CC_HAS_WNO_TAUTOLOGICAL_COMPARE)
 check_c_compiler_flag("-Wno-misleading-indentation" CC_HAS_WNO_MISLEADING_INDENTATION)
 
+check_c_compiler_flag("-Wno-unknown-pragmas" CC_HAS_WNO_UNKNOWN_PRAGMAS)
+check_c_compiler_flag("-Wall" CC_HAS_WALL)
+check_c_compiler_flag("-Wextra" CC_HAS_WEXTRA)
+check_c_compiler_flag("-Werror" CC_HAS_WERROR)
+check_c_compiler_flag("-fexceptions" CC_HAS_FEXCEPTIONS)
+check_c_compiler_flag("-funwind-tables" CC_HAS_FUNWIND_TABLES)
+check_c_compiler_flag("-fno-omit-frame-pointer" CC_HAS_FNO_OMIT_FRAME_POINTER)
+check_c_compiler_flag("-fno-stack-protector" CC_HAS_FNO_STACK_PROTECTOR)
+check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
+check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
+check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
+
+#
+# Check for an omp support
+set(CMAKE_REQUIRED_FLAGS "-fopenmp -Werror")
+check_cxx_source_compiles("int main(void) {
+#pragma omp parallel
+    return 0;
+}" HAVE_OPENMP)
+set(CMAKE_REQUIRED_FLAGS "")
+
 #
 # Perform build type specific configuration.
-#
-check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
-if (CC_HAS_GGDB)
-    set (CC_DEBUG_OPT "-ggdb")
-endif()
-
-set (CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} ${CC_DEBUG_OPT} -O0")
-set (CMAKE_C_FLAGS_RELWITHDEBINFO
-    "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${CC_DEBUG_OPT} -O2")
-set (CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CC_DEBUG_OPT} -O0")
-set (CMAKE_CXX_FLAGS_RELWITHDEBINFO
-    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CC_DEBUG_OPT} -O2")
-
-unset(CC_DEBUG_OPT)
-
 option(ENABLE_BACKTRACE "Enable output of fiber backtrace information in 'show
 fiber' administrative command. Only works on x86 architectures, if compiled
 with gcc. If GNU binutils and binutils-dev libraries are installed, backtrace
@@ -143,7 +159,7 @@ if (ENABLE_BACKTRACE)
         check_library_exists (${IBERTY_LIBRARY} cplus_demangle ""  HAVE_IBERTY_LIB)
     endif()
     set(CMAKE_REQUIRED_DEFINITIONS -DPACKAGE=${PACKAGE} -DPACKAGE_VERSION=${PACKAGE_VERSION})
-    check_include_file(bfd.h HAVE_BFD_H)
+    check_include_files(bfd.h HAVE_BFD_H)
     set(CMAKE_REQUIRED_DEFINITIONS)
     find_package(ZLIB)
     if (HAVE_BFD_LIB AND HAVE_BFD_H AND HAVE_IBERTY_LIB AND ZLIB_FOUND)
@@ -155,27 +171,6 @@ if (ENABLE_BACKTRACE)
             set (BFD_LIBRARIES ${BFD_LIBRARIES} iconv)
         endif()
     endif()
-endif()
-
-#
-# Set flags for all include files: those maintained by us and
-# coming from third parties.
-# Since we began using luajit, which uses gcc stack unwind
-# internally, we also need to make sure all code is compiled
-# with unwind info.
-#
-
-add_compile_flags("C;CXX" "-fexceptions" "-funwind-tables")
-
-# We must set -fno-omit-frame-pointer here, since we rely
-# on frame pointer when getting a backtrace, and it must
-# be used consistently across all object files.
-# The same reasoning applies to -fno-stack-protector switch.
-
-if (ENABLE_BACKTRACE)
-    add_compile_flags("C;CXX"
-        "-fno-omit-frame-pointer"
-        "-fno-stack-protector")
 endif()
 
 # In C a global variable without a storage specifier (static/extern) and
@@ -196,14 +191,37 @@ endif()
 # are platforms lacking proper support for common symbols (osx).
 #
 
-add_compile_flags("C;CXX" "-fno-common")
-
-if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-# Remove VALGRIND code and assertions in *any* type of release build.
-    add_definitions("-DNDEBUG" "-DNVALGRIND")
-endif()
-
 macro(setup_compile_flags)
+    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # Remove VALGRIND code and assertions in *any* type of release build.
+        add_definitions("-DNDEBUG" "-DNVALGRIND")
+    endif()
+
+    if (CC_HAS_FNO_COMMON)
+        add_compile_flags("C;CXX" "-fno-common")
+    endif()
+
+    if (CC_HAS_GGDB)
+        add_compile_flags("C;CXX" "-ggdb")
+    endif()
+
+    if (CC_HAS_WNO_UNKNOWN_PRAGMAS AND NOT HAVE_OPENMP)
+        add_compile_flags("C;CXX" -Wno-unknown-pragmas)
+    endif()
+
+    # We must set -fno-omit-frame-pointer here, since we rely
+    # on frame pointer when getting a backtrace, and it must
+    # be used consistently across all object files.
+    # The same reasoning applies to -fno-stack-protector switch.
+    if (ENABLE_BACKTRACE)
+        if (CC_HAS_FNO_OMIT_FRAME_POINTER)
+            add_compile_flags("C;CXX" "-fno-omit-frame-pointer")
+	endif()
+        if (CC_HAS_FNO_STACK_PROTECTOR)
+            add_compile_flags("C;CXX" "-fno-stack-protector")
+        endif()
+    endif()
+
     # libfptu code is written in GNU C dialect.
     # Additionally, compile it with more strict flags than the rest
     # of the code.
@@ -211,26 +229,24 @@ macro(setup_compile_flags)
     # Set standard
     if (HAVE_STD_C11)
         add_compile_flags("C" "-std=c11")
-    else()
+    elseif(HAVE_STD_GNU99)
         add_compile_flags("C" "-std=gnu99")
+    elseif(HAVE_STD_C99 AND NOT (CMAKE_C_COMPILER_ID STREQUAL "MSVC"))
+        add_compile_flags("C" "-std=c99")
     endif()
 
-    if (HAVE_STD_CXX11)
+    if (HAVE_STD_CXX11 AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"))
         add_compile_flags("CXX" "-std=c++11")
-    else()
+    elseif(HAVE_STD_GNUXX0X)
         add_compile_flags("CXX" "-std=gnu++0x")
         add_definitions("-Doverride=")
     endif()
 
-    add_compile_flags("C;CXX"
-        "-Wall"
-        "-Wextra"
-        "-Wno-strict-aliasing"
-    )
-
-    if (CMAKE_COMPILER_IS_CLANG AND CC_HAS_WNO_UNUSED_VALUE)
-        # False-positive warnings for ({ xx = ...; x; }) macroses
-        add_compile_flags("C;CXX" "-Wno-unused-value")
+    if (CC_HAS_WALL)
+        add_compile_flags("C;CXX" "-Wall")
+    endif()
+    if (CC_HAS_WEXTRA)
+        add_compile_flags("C;CXX" "-Wextra")
     endif()
 
     if (CMAKE_COMPILER_IS_GNUCXX)
@@ -240,9 +256,8 @@ macro(setup_compile_flags)
         )
     endif()
 
-    if (CMAKE_COMPILER_IS_GNUCC)
-        # A workaround for Redhat Developer Toolset 2.x on RHEL/CentOS 5.x
-        add_compile_flags("C" "-fno-gnu89-inline")
+    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+        add_compile_flags("C;CXX" "-march=native")
     endif()
 
     add_definitions("-D__STDC_FORMAT_MACROS=1")
@@ -251,16 +266,15 @@ macro(setup_compile_flags)
 
     # Only add -Werror if it's a debug build, done by developers.
     # Release builds should not cause extra trouble.
-    if ((${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if (CC_HAS_WERROR AND (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
         AND HAVE_STD_C11 AND HAVE_STD_CXX11)
         add_compile_flags("C;CXX" "-Werror")
     endif()
+
+    if (HAVE_OPENMP)
+        add_compile_flags("C;CXX" "-fopenmp")
+    endif()
 endmacro(setup_compile_flags)
-
-if (HAVE_OPENMP)
-    add_compile_flags("C;CXX" "-fopenmp")
-endif()
-
 
 if (CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCC)
     set(HAVE_BUILTIN_CTZ 1)

@@ -3,7 +3,11 @@ include(ExternalProject)
 
 if(NOT GTEST_FOUND)
     message(STATUS "Lookup gtest sources...")
-    find_path(GTEST_CMAKE_PROJ CMakeLists.txt /usr/src/gtest /usr/local/gtest /usr/local/src/gtest)
+    find_path(GTEST_CMAKE_PROJ
+        NAMES CMakeLists.txt
+        PATHS /usr/src /usr/local /usr/local/src
+        PATH_SUFFIXES gtest
+        NO_DEFAULT_PATH NO_CMAKE_PATH)
     message(STATUS "GTEST_CMAKE_PROJ = ${GTEST_CMAKE_PROJ}")
     if(GTEST_CMAKE_PROJ)
         externalproject_add(GTEST PREFIX "${CMAKE_BINARY_DIR}/gtest" SOURCE_DIR "${GTEST_CMAKE_PROJ}" INSTALL_COMMAND "")

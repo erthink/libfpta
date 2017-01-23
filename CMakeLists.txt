@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
+cmake_policy(SET CMP0054 NEW)
 
 project(libfptu C CXX)
 
@@ -6,7 +7,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_INCLUDE_PATH})
 
 include(CheckLibraryExists)
-include(CheckIncludeFile)
+include(CheckIncludeFiles)
 include(CheckCCompilerFlag)
 include(CheckSymbolExists)
 include(CheckCSourceRuns)
@@ -16,6 +17,7 @@ include(CheckCXXSourceCompiles)
 include(TestBigEndian)
 include(CheckFunctionExists)
 include(FindPackageMessage)
+include(CheckStructHasMember)
 
 #
 # Set default build type to Debug. This is to ease a developer's
@@ -45,6 +47,7 @@ find_program(CAT cat)
 find_program(GIT git)
 find_program(LD ld)
 find_program(CTAGS ctags)
+find_program(CLANG_FORMAT clang-format)
 
 option(ENABLE_VALGRIND "Enable integration with valgrind, a memory analyzing tool" OFF)
 
@@ -53,25 +56,30 @@ set (PACKAGE "libfptu")
 # check_function_exists(memmem HAVE_MEMMEM)
 # check_function_exists(memrchr HAVE_MEMRCHR)
 # check_function_exists(uuidgen HAVE_UUIDGEN)
+CHECK_INCLUDE_FILES(unistd.h HAVE_UNISTD_H)
+CHECK_INCLUDE_FILES(sys/uio.h HAVE_SYS_UIO_H)
+CHECK_INCLUDE_FILES(sys/stat.h HAVE_SYS_STAT_H)
+CHECK_STRUCT_HAS_MEMBER("struct timeval" tv_usec time.h HAVE_TIMEVAL_TV_USEC)
 
 #
 # Enable 'make tags' target.
-#
-add_custom_target(tags COMMAND ${CTAGS} -R -f tags
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-add_custom_target(ctags DEPENDS tags)
+if (CTAGS)
+    add_custom_target(tags COMMAND ${CTAGS} -R -f tags
+       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	add_custom_target(ctags DEPENDS tags)
+endif(CTAGS)
 
 #
 # Enable 'make reformat' target.
-#
-add_custom_target(reformat
-    VERBATIM
-    COMMAND git ls-files | grep -E \\.\(c|cc|cxx|cpp|h|hh|hxx|hpp\)\$ | xargs clang-format -i --style=file
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+if (CLANG_FORMAT)
+    add_custom_target(reformat
+        VERBATIM
+        COMMAND git ls-files | grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\$ | xargs clang-format -i --style=file
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif(CLANG_FORMAT)
 
 #
 # Get version
-#
 set (PACKAGE_VERSION "")
 set (FPTU_VERSION "")
 
@@ -146,6 +154,7 @@ elseif(IS_DIRECTORY .git AND GIT)
     )
 endif()
 
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 setup_compile_flags()
 
 #
