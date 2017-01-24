@@ -25,8 +25,6 @@ namespace std {
 
 __cold string to_string(fpta_error) { return FIXME; }
 
-__cold string to_string(const fptu_time &) { return FIXME; }
-
 __cold string to_string(fpta_value_type type) {
   switch (type) {
   default:
