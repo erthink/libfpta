@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "fast_positive/config.h"
 #include "fast_positive/tables.h"
 #include "fast_positive/tuples_internal.h"
 

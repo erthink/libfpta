@@ -37,6 +37,7 @@
 #ifndef FAST_POSITIVE_TABLES_H
 #define FAST_POSITIVE_TABLES_H
 
+#include "fast_positive/config.h"
 #include "fast_positive/defs.h"
 #include "fast_positive/tuples.h"
 

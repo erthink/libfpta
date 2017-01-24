@@ -234,7 +234,8 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
     goto bailout;
 
   rc = mdbx_txn_begin(db->mdbx_env, nullptr,
-                      (level == fpta_read) ? MDB_RDONLY : 0u, &txn->mdbx_txn);
+                      (level == fpta_read) ? (unsigned)MDB_RDONLY : 0u,
+                      &txn->mdbx_txn);
   if (unlikely(rc != MDB_SUCCESS))
     goto bailout;
 
