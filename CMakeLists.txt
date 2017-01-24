@@ -53,13 +53,13 @@ option(ENABLE_VALGRIND "Enable integration with valgrind, a memory analyzing too
 
 set (PACKAGE "libfptu")
 
-# check_function_exists(memmem HAVE_MEMMEM)
-# check_function_exists(memrchr HAVE_MEMRCHR)
-# check_function_exists(uuidgen HAVE_UUIDGEN)
+check_function_exists(memmem HAVE_MEMMEM)
+check_function_exists(memrchr HAVE_MEMRCHR)
+check_function_exists(uuidgen HAVE_UUIDGEN)
 CHECK_INCLUDE_FILES(unistd.h HAVE_UNISTD_H)
 CHECK_INCLUDE_FILES(sys/uio.h HAVE_SYS_UIO_H)
 CHECK_INCLUDE_FILES(sys/stat.h HAVE_SYS_STAT_H)
-CHECK_STRUCT_HAS_MEMBER("struct timeval" tv_usec time.h HAVE_TIMEVAL_TV_USEC)
+CHECK_STRUCT_HAS_MEMBER("struct timeval" tv_usec sys/select.h HAVE_TIMEVAL_TV_USEC)
 
 #
 # Enable 'make tags' target.
@@ -186,9 +186,10 @@ message (STATUS "")
 #######################################################################
 
 find_package(Threads REQUIRED)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
 
 # Specify where to look for include files.
-include_directories("${PROJECT_SOURCE_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_subdirectory(src)
 add_subdirectory(test)

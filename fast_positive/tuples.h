@@ -29,6 +29,7 @@
 #ifndef FAST_POSITIVE_TUPLES_H
 #define FAST_POSITIVE_TUPLES_H
 
+#include "fast_positive/config.h"
 #include "fast_positive/defs.h"
 
 #include <errno.h>  // for error codes
