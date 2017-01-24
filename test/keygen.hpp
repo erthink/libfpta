@@ -229,9 +229,9 @@ template <bool printable>
 bool string_keygen(const size_t len, uint32_t order, uint8_t *buf,
                    uint32_t tailseed = 0) {
   /* параметры алфавита */
-  constexpr int alphabet_bits = printable ? 7 : 8;
+  constexpr int alphabet_bits = printable ? 6 : 8;
   constexpr unsigned alphabet_mask = (1 << alphabet_bits) - 1;
-  constexpr unsigned alphabet_base = printable ? ' ' : 0;
+  constexpr unsigned alphabet_base = printable ? '0' : 0;
 
   /* кол-во бит под кодирование "ширины" */
   constexpr unsigned rle_bits = 5;
