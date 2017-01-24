@@ -53,6 +53,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     # this is pretty much irrelevant. Disable CMake rpath features
     # altogether. Suppresses a few warnings.
     set(CMAKE_SKIP_RPATH true)
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 else()
     message (FATAL_ERROR "Unsupported platform -- ${CMAKE_SYSTEM_NAME}")
 endif()

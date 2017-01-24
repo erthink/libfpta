@@ -19,7 +19,7 @@
 
 #include "fast_positive/tuples_internal.h"
 
-static __hot fptu_field *fptu_find_dead(fptu_rw *pt, unsigned units) {
+static __hot fptu_field *fptu_find_dead(fptu_rw *pt, size_t units) {
   fptu_field *end = &pt->units[pt->pivot].field;
   for (fptu_field *pf = &pt->units[pt->head].field; pf < end; ++pf) {
     if (ct_is_dead(pf->ct) && fptu_field_units(pf) == units)
@@ -28,13 +28,12 @@ static __hot fptu_field *fptu_find_dead(fptu_rw *pt, unsigned units) {
   return nullptr;
 }
 
-static __hot fptu_field *fptu_append(fptu_rw *pt, unsigned ct,
-                                     unsigned units) {
+static __hot fptu_field *fptu_append(fptu_rw *pt, unsigned ct, size_t units) {
   fptu_field *pf = fptu_find_dead(pt, units);
   if (pf) {
-    pf->ct = ct;
+    pf->ct = (uint16_t)ct;
     assert(pt->junk > 1 + units);
-    pt->junk -= 1 + units;
+    pt->junk -= 1 + (unsigned)units;
     return pf;
   }
 
@@ -44,24 +43,24 @@ static __hot fptu_field *fptu_append(fptu_rw *pt, unsigned ct,
   pt->head -= 1;
   pf = &pt->units[pt->head].field;
   if (likely(units)) {
-    size_t offset = &pt->units[pt->tail].data - pf->body;
+    size_t offset = (size_t)(&pt->units[pt->tail].data - pf->body);
     if (unlikely(offset > fptu_limit))
       return nullptr;
-    pf->offset = offset;
-    pt->tail += units;
+    pf->offset = (uint16_t)offset;
+    pt->tail += (unsigned)units;
   } else {
-    pf->offset = -1;
+    pf->offset = UINT16_MAX;
   }
 
-  pf->ct = ct;
+  pf->ct = (uint16_t)ct;
   return pf;
 }
 
 static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct,
-                                      unsigned units) {
+                                      size_t units) {
   fptu_field *pf = fptu_lookup_ct(pt, ct);
   if (pf) {
-    unsigned avail = fptu_field_units(pf);
+    size_t avail = fptu_field_units(pf);
     if (likely(avail == units))
       return pf;
 
@@ -75,7 +74,7 @@ static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct,
     if (unlikely(fresh == nullptr)) {
       // undo erase
       // TODO: unit test for this case
-      pf->ct = ct;
+      pf->ct = (uint16_t)ct;
       assert(pt->head >= save_head);
       assert(pt->tail <= save_tail);
       assert(pt->junk >= save_junk);
@@ -96,7 +95,7 @@ struct fptu_takeover_result {
 };
 
 static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, unsigned ct,
-                                                unsigned units) {
+                                                size_t units) {
   fptu_takeover_result result;
 
   result.pf = fptu_lookup_ct(pt, ct);
@@ -105,7 +104,7 @@ static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, unsigned ct,
     return result;
   }
 
-  unsigned avail = fptu_field_units(result.pf);
+  size_t avail = fptu_field_units(result.pf);
   if (likely(avail == units)) {
     result.error = FPTU_SUCCESS;
     return result;
@@ -140,6 +139,7 @@ int fptu_upsert_null(fptu_rw *pt, unsigned col) {
 }
 
 int fptu_upsert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
+  assert(value <= UINT16_MAX);
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -147,7 +147,7 @@ int fptu_upsert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
   if (unlikely(pf == nullptr))
     return FPTU_ENOSPACE;
 
-  pf->offset = value;
+  pf->offset = (uint16_t)value;
   return FPTU_SUCCESS;
 }
 
@@ -168,7 +168,8 @@ static int fptu_upsert_32(fptu_rw *pt, unsigned ct, uint32_t value) {
 int fptu_upsert_int32(fptu_rw *pt, unsigned col, int32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
-  return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_int32), value);
+  return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_int32),
+                        (uint32_t)value);
 }
 
 int fptu_upsert_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
@@ -194,7 +195,8 @@ static int fptu_upsert_64(fptu_rw *pt, unsigned ct, uint64_t value) {
 int fptu_upsert_int64(fptu_rw *pt, unsigned col, int64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
-  return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_int64), value);
+  return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_int64),
+                        (uint64_t)value);
 }
 
 int fptu_upsert_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
@@ -325,8 +327,8 @@ int fptu_upsert_opaque(fptu_rw *pt, unsigned col, const void *value,
     return FPTU_ENOSPACE;
 
   fptu_payload *payload = fptu_field_payload(pf);
-  payload->other.varlen.brutto = units - 1;
-  payload->other.varlen.opaque_bytes = bytes;
+  payload->other.varlen.brutto = (uint16_t)(units - 1);
+  payload->other.varlen.opaque_bytes = (uint16_t)bytes;
 
   memcpy(payload->other.data, value, bytes);
   return FPTU_SUCCESS;
@@ -350,7 +352,7 @@ int fptu_upsert_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
   if (unlikely(ro.units == nullptr))
     return FPTU_EINVAL;
 
-  size_t units = 1 + ro.units[0].varlen.brutto;
+  size_t units = (size_t)ro.units[0].varlen.brutto + 1;
   if (unlikely(ro.total_bytes != units2bytes(units)))
     return FPTU_EINVAL;
 
@@ -379,6 +381,7 @@ int fptu_upsert_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
 //============================================================================
 
 int fptu_update_uint16(fptu_rw *pt, unsigned col, unsigned value) {
+  assert(value <= UINT16_MAX);
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -386,7 +389,7 @@ int fptu_update_uint16(fptu_rw *pt, unsigned col, unsigned value) {
       fptu_takeover(pt, fptu_pack_coltype(col, fptu_uint16), 0);
   if (likely(result.error == FPTU_SUCCESS)) {
     assert(result.pf != nullptr);
-    result.pf->offset = value;
+    result.pf->offset = (uint16_t)value;
   }
   return result.error;
 }
@@ -408,7 +411,8 @@ static int fptu_update_32(fptu_rw *pt, unsigned ct, uint32_t value) {
 int fptu_update_int32(fptu_rw *pt, unsigned col, int32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
-  return fptu_update_32(pt, fptu_pack_coltype(col, fptu_int32), value);
+  return fptu_update_32(pt, fptu_pack_coltype(col, fptu_int32),
+                        (uint32_t)value);
 }
 
 int fptu_update_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
@@ -434,7 +438,8 @@ static int fptu_update_64(fptu_rw *pt, unsigned ct, uint64_t value) {
 int fptu_update_int64(fptu_rw *pt, unsigned col, int64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
-  return fptu_update_64(pt, fptu_pack_coltype(col, fptu_int64), value);
+  return fptu_update_64(pt, fptu_pack_coltype(col, fptu_int64),
+                        (uint64_t)value);
 }
 
 int fptu_update_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
@@ -566,8 +571,8 @@ int fptu_update_opaque(fptu_rw *pt, unsigned col, const void *value,
   if (likely(result.error == FPTU_SUCCESS)) {
     assert(result.pf != nullptr);
     fptu_payload *payload = fptu_field_payload(result.pf);
-    payload->other.varlen.brutto = units - 1;
-    payload->other.varlen.opaque_bytes = bytes;
+    payload->other.varlen.brutto = (uint16_t)(units - 1);
+    payload->other.varlen.opaque_bytes = (uint16_t)bytes;
     memcpy(payload->other.data, value, bytes);
   }
   return result.error;
@@ -591,7 +596,7 @@ int fptu_update_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
   if (unlikely(ro.units == nullptr))
     return FPTU_EINVAL;
 
-  size_t units = 1 + ro.units[0].varlen.brutto;
+  size_t units = (size_t)ro.units[0].varlen.brutto + 1;
   if (unlikely(ro.total_bytes != units2bytes(units)))
     return FPTU_EINVAL;
 
@@ -607,6 +612,7 @@ int fptu_update_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
 //============================================================================
 
 int fptu_insert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
+  assert(value <= UINT16_MAX);
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -614,7 +620,7 @@ int fptu_insert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
   if (unlikely(pf == nullptr))
     return FPTU_ENOSPACE;
 
-  pf->offset = value;
+  pf->offset = (uint16_t)value;
   return FPTU_SUCCESS;
 }
 
@@ -635,7 +641,8 @@ static int fptu_insert_32(fptu_rw *pt, unsigned ct, uint32_t v) {
 int fptu_insert_int32(fptu_rw *pt, unsigned col, int32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
-  return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_int32), value);
+  return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_int32),
+                        (uint32_t)value);
 }
 
 int fptu_insert_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
@@ -661,7 +668,8 @@ static int fptu_insert_64(fptu_rw *pt, unsigned ct, uint64_t v) {
 int fptu_insert_int64(fptu_rw *pt, unsigned col, int64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
-  return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_int64), value);
+  return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_int64),
+                        (uint64_t)value);
 }
 
 int fptu_insert_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
@@ -789,8 +797,8 @@ int fptu_insert_opaque(fptu_rw *pt, unsigned col, const void *value,
     return FPTU_ENOSPACE;
 
   fptu_payload *payload = fptu_field_payload(pf);
-  payload->other.varlen.brutto = units - 1;
-  payload->other.varlen.opaque_bytes = bytes;
+  payload->other.varlen.brutto = (uint16_t)(units - 1);
+  payload->other.varlen.opaque_bytes = (uint16_t)bytes;
 
   memcpy(payload->other.data, value, bytes);
   return FPTU_SUCCESS;
@@ -814,7 +822,7 @@ int fptu_insert_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
   if (unlikely(ro.units == nullptr))
     return FPTU_EINVAL;
 
-  size_t units = 1 + ro.units[0].varlen.brutto;
+  size_t units = (size_t)ro.units[0].varlen.brutto + 1;
   if (unlikely(ro.total_bytes != units2bytes(units)))
     return FPTU_EINVAL;
 

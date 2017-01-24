@@ -85,11 +85,11 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
   /* вполне вероятно, что резерный бит всегда нулевой, также возможно что
    * нет массивов, тогда размер карты можно сократить в 4 раза. */
   const unsigned blank =
-      (have & fptu_fr_mask) ? 0 : fptu_ct_reserve_bits +
-                                      ((have & fptu_farray) ? 0 : 1);
+      (have & fptu_fr_mask) ? 0u : (unsigned)fptu_ct_reserve_bits +
+                                       ((have & fptu_farray) ? 0u : 1u);
   const unsigned lo_part =
       (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
-  const auto hi_part = (uint16_t)~lo_part;
+  const unsigned hi_part = lo_part ^ UINT16_MAX;
   assert((lo_part >> blank) >= (have & lo_part));
   const auto top = (have & lo_part) + ((have & hi_part) >> blank) + 1;
   const auto word_bits = sizeof(size_t) * 8;
@@ -97,28 +97,34 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
   /* std::bitset прекрасен, но требует инстанцирования под максимальный
    * размер. При этом на стеке будет выделено и заполнено нулями 4K,
    * в итоге расходы превысят экономию. */
-  size_t bm[(top + word_bits - 1) / word_bits];
-  memset(bm, 0, sizeof(bm));
+
+  const size_t n_words = (top + word_bits - 1) / word_bits;
+#ifdef __GNUC__
+  size_t bm[n_words];
+#else
+  size_t *bm = (size_t *)_alloca(sizeof(size_t) * n_words);
+#endif
+  memset(bm, 0, sizeof(size_t) * n_words);
 
   /* отмечаем обработанное */
   for (auto i = first; i < tail; ++i) {
-    unsigned n = *i;
+    size_t n = *i;
     assert((lo_part >> blank) >= (n & lo_part));
     n = (n & lo_part) + ((n & hi_part) >> blank);
     assert(n < top);
 
-    bm[n / word_bits] |= 1 << n % word_bits;
+    bm[n / word_bits] |= (size_t)1 << (n % word_bits);
   }
 
   /* обрабатываем неупорядоченный остаток */
   for (auto i = pos; i < end; ++i) {
-    unsigned n = i->ct;
+    size_t n = i->ct;
     assert((lo_part >> blank) >= (n & lo_part));
     n = (n & lo_part) + ((n & hi_part) >> blank);
     assert(n < top);
 
-    if ((bm[n / word_bits] & (1 << n % word_bits)) == 0) {
-      bm[n / word_bits] |= 1 << n % word_bits;
+    if ((bm[n / word_bits] & ((size_t)1 << (n % word_bits))) == 0) {
+      bm[n / word_bits] |= (size_t)1 << (n % word_bits);
       *tail++ = i->ct;
     }
   }

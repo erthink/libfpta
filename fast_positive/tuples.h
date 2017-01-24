@@ -29,18 +29,34 @@
 #ifndef FAST_POSITIVE_TUPLES_H
 #define FAST_POSITIVE_TUPLES_H
 
+#include "fast_positive/config.h"
 #include "fast_positive/defs.h"
 
-#include <errno.h>   // for error codes
-#include <string.h>  // for strlen
+#include <errno.h>  // for error codes
+#include <string.h> // for strlen
+#include <time.h>   // for struct timespec, struct timeval
+
+#ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h> // for struct iovec
-#include <time.h>    // for struct timespec, struct timeval
+#else
+struct iovec {
+  void *iov_base; /* Starting address */
+  size_t iov_len; /* Number of bytes to transfer */
+};
+#endif /* windows mustdie */
 
 #ifdef __cplusplus
 #include <string> // for std::string
 
 extern "C" {
 #endif
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(                                                             \
+    disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
+#pragma pack(push, 1)
+#endif /* windows mustdie */
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfptu, т.е
@@ -262,7 +278,7 @@ typedef enum fptu_type {
  *     требуя взамен аккуратности при вычитании.
  *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
  *
- * Эта форма унифицирована с Positive Hyper100r и одновременно достаточно
+ * Эта форма унифицирована с "Positive Hyper100re" и одновременно достаточно
  * удобна в использовании. Поэтому настоятельно рекомендуется использовать
  * именно её, особенно для хранения и передачи данных. */
 typedef union fptu_time {
@@ -285,6 +301,7 @@ typedef union fptu_time {
   static uint32_t ms2fractional(uint32_t);
   static uint32_t fractional2ms(uint32_t);
 
+#ifdef HAVE_TIMESPEC_TV_NSEC
   /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
    * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
    * либо от возможности использовать libfptu из C, либо от Clang,
@@ -292,16 +309,19 @@ typedef union fptu_time {
   static fptu_time from_timespec(const struct timespec &ts) {
     fptu_time result;
     result.fixedpoint =
-        ((uint64_t)ts.tv_sec << 32) | ns2fractional(ts.tv_nsec);
+        ((uint64_t)ts.tv_sec << 32) | ns2fractional((uint32_t)ts.tv_nsec);
     return result;
   }
+#endif /* HAVE_TIMESPEC_TV_NSEC */
 
+#ifdef HAVE_TIMEVAL_TV_USEC
   static fptu_time from_timeval(const struct timeval &tv) {
     fptu_time result;
     result.fixedpoint =
-        ((uint64_t)tv.tv_sec << 32) | us2fractional(tv.tv_usec);
+        ((uint64_t)tv.tv_sec << 32) | us2fractional((uint32_t)tv.tv_usec);
     return result;
   }
+#endif /* HAVE_TIMEVAL_TV_USEC */
 #endif
 } fptu_time;
 
@@ -703,6 +723,7 @@ typedef struct fptu_array {
 } fptu_array;
 
 //----------------------------------------------------------------------------
+/* Определения и примитивы для сравнения. */
 
 typedef enum fptu_lge {
   fptu_ic = 1,                           // incomparable
@@ -732,6 +753,9 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 #ifdef __cplusplus
 }
 
+//----------------------------------------------------------------------------
+/* Сервисные функции и классы для C++ (будет пополнять, существенно). */
+
 namespace std {
 string to_string(fptu_error);
 string to_string(const fptu_varlen &);
@@ -741,12 +765,19 @@ string to_string(const fptu_field &);
 string to_string(const fptu_rw &);
 string to_string(const fptu_ro &);
 string to_string(fptu_lge);
+string to_string(const fptu_time &time);
 }
 
+/* Явно удаляем лишенные смысла операции, в том числе для выявления ошибок */
 bool operator>(const fptu_lge &, const fptu_lge &) = delete;
 bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
 #endif // __cplusplus
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#pragma warning(pop)
+#endif /* windows mustdie */
 
 #endif /* FAST_POSITIVE_TUPLES_H */

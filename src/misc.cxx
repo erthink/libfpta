@@ -18,6 +18,20 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+#include <cmath>
+
+#if defined(_WIN32) || defined(_WIN64)
+__extern_C __declspec(dllimport) __noreturn
+    void __cdecl _assert(char const *message, char const *filename,
+                         unsigned line);
+
+void __assert_fail(const char *assertion, const char *filename, unsigned line,
+                   const char *function) {
+  (void)function;
+  _assert(assertion, filename, line);
+  abort();
+}
+#endif /* windows mustdie */
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
@@ -126,5 +140,10 @@ __cold string to_string(fptu_lge lge) {
   case fptu_ge:
     return ">=";
   }
+}
+
+__cold string to_string(const fptu_time &time) {
+  const double scale = exp2(-32);
+  return std::to_string(time.fixedpoint * scale) + "_" FIXME;
 }
 }

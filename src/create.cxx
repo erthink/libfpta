@@ -41,8 +41,8 @@ fptu_rw *fptu_init(void *space, size_t buffer_bytes, size_t items_limit) {
 
   fptu_rw *pt = (fptu_rw *)space;
   // make a empty tuple
-  pt->end = (buffer_bytes - sizeof(fptu_rw)) / fptu_unit_size + 1;
-  pt->head = pt->tail = pt->pivot = items_limit + 1;
+  pt->end = (unsigned)(buffer_bytes - sizeof(fptu_rw)) / fptu_unit_size + 1;
+  pt->head = pt->tail = pt->pivot = (unsigned)items_limit + 1;
   pt->junk = 0;
   return pt;
 }
@@ -83,10 +83,11 @@ fptu_rw *fptu_fetch(fptu_ro ro, void *space, size_t buffer_bytes,
     return nullptr;
   if (unlikely(ro.total_bytes > fptu_max_tuple_bytes))
     return nullptr;
-  if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
+  if (unlikely(ro.total_bytes !=
+               units2bytes(1 + (size_t)ro.units[0].varlen.brutto)))
     return nullptr;
 
-  size_t items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  size_t items = (size_t)ro.units[0].varlen.tuple_items & fptu_lt_mask;
   if (unlikely(items > fptu_max_fields))
     return nullptr;
   if (unlikely(space == nullptr || more_items > fptu_max_fields))
@@ -110,10 +111,10 @@ fptu_rw *fptu_fetch(fptu_ro ro, void *space, size_t buffer_bytes,
     return nullptr;
 
   fptu_rw *pt = (fptu_rw *)space;
-  pt->end = (buffer_bytes - sizeof(fptu_rw)) / fptu_unit_size + 1;
-  pt->pivot = reserve_items + 1;
-  pt->head = pt->pivot - items;
-  pt->tail = pt->pivot + (payload_bytes >> fptu_unit_shift);
+  pt->end = (unsigned)(buffer_bytes - sizeof(fptu_rw)) / fptu_unit_size + 1;
+  pt->pivot = (unsigned)reserve_items + 1;
+  pt->head = pt->pivot - (unsigned)items;
+  pt->tail = pt->pivot + (unsigned)(payload_bytes >> fptu_unit_shift);
   pt->junk = 0;
 
   memcpy(&pt->units[pt->head], begin, ro.total_bytes - fptu_unit_size);
@@ -139,7 +140,7 @@ size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
     return 0;
   }
 
-  size_t items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  size_t items = (size_t)ro.units[0].varlen.tuple_items & fptu_lt_mask;
   size_t payload_bytes = ro.total_bytes - units2bytes(items + 1);
   return fptu_space(items + more_items, payload_bytes + more_payload);
 }

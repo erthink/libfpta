@@ -55,6 +55,45 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 
 //----------------------------------------------------------------------------
 
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+
+#ifndef HAVE_TIMESPEC_TV_NSEC
+struct timespec {
+  time_t tv_sec;
+  long tv_nsec;
+};
+
+static __inline fptu_time from_timespec(const struct timespec &ts) {
+  fptu_time result;
+  result.fixedpoint = ((uint64_t)ts.tv_sec << 32) |
+                      fptu_time::ns2fractional((uint32_t)ts.tv_nsec);
+  return result;
+}
+#endif /* HAVE_TIMESPEC_TV_NSEC */
+
+static int clock_gettime(int clk_id, struct timespec *tp) {
+  (void)clk_id;
+  FILETIME filetime;
+  GetSystemTimeAsFileTime(&filetime);
+  uint64_t ns =
+      (uint64_t)filetime.dwHighDateTime << 32 | filetime.dwLowDateTime;
+  tp->tv_sec = (time_t)(ns / 1000000000ul);
+  tp->tv_nsec = (long)(ns % 1000000000ul);
+  return 0;
+}
+#else
+static int clock_gettime(int clk_id, struct timespec *tp) {
+  (void)clk_id;
+  (void)tp;
+  return ENOSYS;
+}
+#endif /* windows must die */
+#endif /* CLOCK_REALTIME */
+
 static void clock_failure(void) {
   /* LY: немного паранойи */
   __assert_fail("clock_gettime() failed", "fptu/time.cxx", 42, "fptu_now()");
@@ -65,7 +104,11 @@ fptu_time fptu_now_fine(void) {
   int rc = clock_gettime(CLOCK_REALTIME, &now);
   if (unlikely(rc != 0))
     clock_failure();
+#ifdef HAVE_TIMESPEC_TV_NSEC
   return fptu_time::from_timespec(now);
+#else
+  return from_timespec(now);
+#endif
 }
 
 #ifdef CLOCK_REALTIME_COARSE
@@ -109,11 +152,11 @@ fptu_time fptu_now_coarse(void) {
 
 fptu_time fptu_now(int grain_ns) {
   uint32_t mask = 0xffffFFFF;
-  uint32_t grain = grain_ns;
+  uint32_t grain = (uint32_t)grain_ns;
   if (grain_ns < 0) {
     if (likely(grain_ns > -32)) {
       mask <<= -grain_ns;
-      grain = 1u << -grain;
+      grain = 1u << -grain_ns;
     } else {
       mask = 0;
       grain = ~mask;
@@ -129,7 +172,8 @@ fptu_time fptu_now(int grain_ns) {
     clock_failure();
 
   fptu_time result;
-  result.fractional = mask ? fptu_time::ns2fractional(now.tv_nsec) & mask : 0;
-  result.utc = now.tv_sec;
+  result.fractional =
+      mask ? fptu_time::ns2fractional((uint32_t)now.tv_nsec) & mask : 0;
+  result.utc = (uint32_t)now.tv_sec;
   return result;
 }

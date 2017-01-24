@@ -28,7 +28,7 @@ __hot const fptu_field *fptu_first(const fptu_field *begin,
         return pf;
     }
   } else {
-    unsigned ct = fptu_pack_coltype(column, type_or_filter);
+    unsigned ct = fptu_pack_coltype(column, (unsigned)type_or_filter);
     for (const fptu_field *pf = begin; pf < end; ++pf) {
       if (pf->ct == ct)
         return pf;
@@ -84,7 +84,7 @@ __hot const fptu_field *fptu_end_ro(fptu_ro ro) {
                fptu_unit_size + units2bytes(ro.units[0].varlen.brutto)))
     return nullptr;
 
-  unsigned items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  size_t items = (size_t)ro.units[0].varlen.tuple_items & fptu_lt_mask;
   return &ro.units[1 + items].field;
 }
 

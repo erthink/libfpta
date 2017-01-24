@@ -1,0 +1,28 @@
+/*
+ * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
+ *
+ * This file is part of libfptu, aka "Fast Positive Tuples".
+ *
+ * libfptu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * libfptu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#cmakedefine HAVE_MEMMEM
+#cmakedefine HAVE_MEMRCHR
+#cmakedefine HAVE_UUIDGEN
+#cmakedefine HAVE_UNISTD_H
+#cmakedefine HAVE_SYS_UIO_H
+#cmakedefine HAVE_SYS_STAT_H
+#cmakedefine HAVE_TIMEVAL_TV_USEC
+#cmakedefine HAVE_TIMESPEC_TV_NSEC
+#cmakedefine CMAKE_HAVE_PTHREAD_H

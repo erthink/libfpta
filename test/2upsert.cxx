@@ -383,7 +383,7 @@ TEST(Upsert, Overwrite) {
 
     // overwrite field#3 and check all
     SCOPED_TRACE("touch field #3, uint16_t, n " + std::to_string(n));
-    ASSERT_EQ(FPTU_OK, fptu_upsert_uint16(pt, 3, n * m));
+    ASSERT_EQ(FPTU_OK, fptu_upsert_uint16(pt, 3, (uint16_t)(n * m)));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     ro = fptu_take_noshrink(pt);
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));

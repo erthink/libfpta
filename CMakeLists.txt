@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
+cmake_policy(SET CMP0054 NEW)
 
 project(libfptu C CXX)
 
@@ -6,7 +7,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_INCLUDE_PATH})
 
 include(CheckLibraryExists)
-include(CheckIncludeFile)
+include(CheckIncludeFiles)
 include(CheckCCompilerFlag)
 include(CheckSymbolExists)
 include(CheckCSourceRuns)
@@ -16,6 +17,7 @@ include(CheckCXXSourceCompiles)
 include(TestBigEndian)
 include(CheckFunctionExists)
 include(FindPackageMessage)
+include(CheckStructHasMember)
 
 #
 # Set default build type to Debug. This is to ease a developer's
@@ -45,33 +47,53 @@ find_program(CAT cat)
 find_program(GIT git)
 find_program(LD ld)
 find_program(CTAGS ctags)
+find_program(CLANG_FORMAT clang-format)
 
 option(ENABLE_VALGRIND "Enable integration with valgrind, a memory analyzing tool" OFF)
 
 set (PACKAGE "libfptu")
 
-# check_function_exists(memmem HAVE_MEMMEM)
-# check_function_exists(memrchr HAVE_MEMRCHR)
-# check_function_exists(uuidgen HAVE_UUIDGEN)
+check_function_exists(memmem HAVE_MEMMEM)
+check_function_exists(memrchr HAVE_MEMRCHR)
+check_function_exists(uuidgen HAVE_UUIDGEN)
+CHECK_INCLUDE_FILES(unistd.h HAVE_UNISTD_H)
+CHECK_INCLUDE_FILES(sys/uio.h HAVE_SYS_UIO_H)
+CHECK_INCLUDE_FILES(sys/stat.h HAVE_SYS_STAT_H)
+CHECK_STRUCT_HAS_MEMBER("struct timeval" tv_usec sys/select.h HAVE_TIMEVAL_TV_USEC)
+CHECK_STRUCT_HAS_MEMBER("struct timespec" tv_nsec time.h HAVE_TIMESPEC_TV_NSEC)
+
+CHECK_FUNCTION_EXISTS(pow NOT_NEED_LIBM)
+if(NOT_NEED_LIBM)
+  set(LIB_MATH "")
+else()
+  set(CMAKE_REQUIRED_LIBRARIES m)
+  CHECK_FUNCTION_EXISTS(pow HAVE_LIBM)
+  if(HAVE_LIBM)
+    set(LIB_MATH m)
+  else()
+    message(FATAL_ERROR "No libm found for math support")
+  endif()
+endif()
 
 #
 # Enable 'make tags' target.
-#
-add_custom_target(tags COMMAND ${CTAGS} -R -f tags
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-add_custom_target(ctags DEPENDS tags)
+if (CTAGS)
+    add_custom_target(tags COMMAND ${CTAGS} -R -f tags
+       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	add_custom_target(ctags DEPENDS tags)
+endif(CTAGS)
 
 #
 # Enable 'make reformat' target.
-#
-add_custom_target(reformat
-    VERBATIM
-    COMMAND git ls-files | grep -E \\.\(c|cc|cxx|cpp|h|hh|hxx|hpp\)\$ | xargs clang-format -i --style=file
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+if (CLANG_FORMAT)
+    add_custom_target(reformat
+        VERBATIM
+        COMMAND git ls-files | grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\$ | xargs clang-format -i --style=file
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif(CLANG_FORMAT)
 
 #
 # Get version
-#
 set (PACKAGE_VERSION "")
 set (FPTU_VERSION "")
 
@@ -146,6 +168,7 @@ elseif(IS_DIRECTORY .git AND GIT)
     )
 endif()
 
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 setup_compile_flags()
 
 #
@@ -177,9 +200,10 @@ message (STATUS "")
 #######################################################################
 
 find_package(Threads REQUIRED)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
 
 # Specify where to look for include files.
-include_directories("${PROJECT_SOURCE_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_subdirectory(src)
 add_subdirectory(test)

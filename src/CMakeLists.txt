@@ -16,4 +16,4 @@ add_library(fptu STATIC
     time.cxx
 )
 
-target_link_libraries(fptu ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(fptu ${LIB_MATH} ${CMAKE_THREAD_LIBS_INIT})

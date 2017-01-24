@@ -38,13 +38,13 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf) {
   // head & tail optimization
   if (pf != &pt->units[pt->head].field || !fptu_is_tailed(pt, pf, units)) {
     // account junk
-    pt->junk += units + 1;
+    pt->junk += (unsigned)units + 1;
     return;
   }
 
   // cutoff head and tail
   pt->head += 1;
-  pt->tail -= units;
+  pt->tail -= (unsigned)units;
 
   // continue cutting junk
   while (pt->head < pt->pivot) {
@@ -57,9 +57,9 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf) {
       break;
 
     assert(pt->junk >= units + 1);
-    pt->junk -= units + 1;
+    pt->junk -= (unsigned)units + 1;
     pt->head += 1;
-    pt->tail -= units;
+    pt->tail -= (unsigned)units;
   }
 }
 
@@ -81,7 +81,7 @@ int fptu_erase(fptu_rw *pt, unsigned column, int type_or_filter) {
   }
 
   fptu_field *pf =
-      fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
+      fptu_lookup_ct(pt, fptu_pack_coltype(column, (unsigned)type_or_filter));
   if (pf == nullptr)
     return 0;
 
