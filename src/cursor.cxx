@@ -507,7 +507,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     }
 
     fptu_ro old;
-#ifdef NDEBUG
+#if defined(NDEBUG) && !defined(_MSC_VER)
     const constexpr size_t likely_enough = 64u * 42u;
 #else
     const size_t likely_enough = (time(nullptr) & 1) ? 11u : 64u * 42u;

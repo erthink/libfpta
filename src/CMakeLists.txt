@@ -16,6 +16,6 @@ if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 target_link_libraries(fpta
-    fptu t1ha m
+    fptu t1ha ${LIB_MATH}
     ${CMAKE_THREAD_LIBS_INIT}
 )

@@ -400,8 +400,8 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
                     flags);
 
   fptu_ro old;
-#ifdef NDEBUG
-  const constexpr size_t likely_enough = 64u * 42u;
+#if defined(NDEBUG) && !defined(_MSC_VER)
+  constexpr size_t likely_enough = 64u * 42u;
 #else
   const size_t likely_enough = (time(nullptr) & 1) ? 11u : 64u * 42u;
 #endif /* NDEBUG */
