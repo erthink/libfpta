@@ -46,11 +46,23 @@
 #include <limits.h> // for INT_MAX
 #include <string.h> // for strlen()
 
-#ifdef HAVE_SYS_STAT_H
+#if defined(HAVE_SYS_STAT_H) && !defined(_WIN32) && !defined(_WIN64)
 #include <sys/stat.h> // for mode_t
 #else
-typedef int mode_t;
+typedef unsigned mode_t;
 #endif
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
+#pragma warning(disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
+#pragma warning(disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
+#pragma warning(disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
+#pragma warning(disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
+#pragma warning(disable : 4127 /* условное выражение является константой */)
+#pragma warning(disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
+#pragma pack(push, 1)
+#endif /* windows mustdie */
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfpta, т.е
@@ -1544,6 +1556,11 @@ static __inline fpta_value fpta_value_str(const std::string &str) {
   return fpta_value_string(str.data(), str.length());
 }
 
-#endif
+#endif /* __cplusplus */
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#pragma warning(pop)
+#endif /* windows mustdie */
 
 #endif /* FAST_POSITIVE_TABLES_H */

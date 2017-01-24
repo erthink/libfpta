@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -19,6 +19,14 @@
 
 /* test conformance for C mode */
 #include <fast_positive/tables.h>
+
+#ifdef _MSC_VER
+#pragma warning(                                                             \
+    disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
+#pragma warning(                                                             \
+    disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
+#endif /* windows mustdie */
+
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
