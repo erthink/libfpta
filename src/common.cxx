@@ -86,7 +86,7 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
   if (unlikely(column > fptu_max_cols))
     return nullptr;
 
-  unsigned items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  unsigned items = (unsigned)ro.units[0].varlen.tuple_items & fptu_lt_mask;
   const fptu_field *begin = &ro.units[1].field;
   const fptu_field *end = begin + items;
 
@@ -100,7 +100,7 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
         return pf;
     }
   } else {
-    unsigned ct = fptu_pack_coltype(column, type_or_filter);
+    unsigned ct = fptu_pack_coltype(column, (unsigned)type_or_filter);
     for (const fptu_field *pf = begin; pf < end; ++pf) {
       if (pf->ct == ct)
         return pf;
@@ -134,7 +134,8 @@ __hot fptu_field *fptu_lookup(fptu_rw *pt, unsigned column,
     return nullptr;
   }
 
-  return fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
+  return fptu_lookup_ct(pt,
+                        fptu_pack_coltype(column, (unsigned)type_or_filter));
 }
 
 //----------------------------------------------------------------------------
@@ -143,12 +144,13 @@ __hot fptu_ro fptu_take_noshrink(const fptu_rw *pt) {
   fptu_ro tuple;
 
   assert(pt->head > 0);
-  ptrdiff_t items = pt->pivot - pt->head;
+  assert(pt->tail - pt->head <= UINT16_MAX);
   fptu_payload *payload = (fptu_payload *)&pt->units[pt->head - 1];
-  payload->other.varlen.brutto = pt->tail - pt->head;
-  payload->other.varlen.tuple_items = items;
+  payload->other.varlen.brutto = (uint16_t)(pt->tail - pt->head);
+  payload->other.varlen.tuple_items = (uint16_t)(pt->pivot - pt->head);
   // TODO: support for ordered tuples
   tuple.units = (const fptu_unit *)payload;
-  tuple.total_bytes = (char *)&pt->units[pt->tail] - (char *)payload;
+  tuple.total_bytes =
+      (size_t)((char *)&pt->units[pt->tail] - (char *)payload);
   return tuple;
 }

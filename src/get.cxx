@@ -30,7 +30,7 @@ int fptu_field_column(const fptu_field *pf) {
   if (unlikely(pf == nullptr || ct_is_dead(pf->ct)))
     return -1;
 
-  return fptu_get_col(pf->ct);
+  return (int)fptu_get_col(pf->ct);
 }
 
 //----------------------------------------------------------------------------
@@ -142,7 +142,7 @@ struct iovec fptu_field_opaque(const fptu_field *pf) {
 struct iovec fptu_field_as_iovec(const fptu_field *pf) {
   struct iovec opaque;
   const fptu_payload *payload;
-  unsigned type = fptu_field_type(pf);
+  unsigned type = (unsigned)fptu_field_type(pf);
 
   switch (type) {
   default:
@@ -265,8 +265,8 @@ int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error) {
     case fptu_int64:
       return fptu_field_payload(pf)->i64;
     default:
-      __unreachable();
       assert(false && "unexpected field type");
+      __unreachable();
     }
   }
   return 0;
@@ -286,8 +286,8 @@ uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error) {
     case fptu_uint64:
       return fptu_field_payload(pf)->u64;
     default:
-      __unreachable();
       assert(false && "unexpected field type");
+      __unreachable();
     }
   }
   return 0;
@@ -305,8 +305,8 @@ double fptu_get_fp(fptu_ro ro, unsigned column, int *error) {
     case fptu_fp64:
       return fptu_field_payload(pf)->fp64;
     default:
-      __unreachable();
       assert(false && "unexpected field type");
+      __unreachable();
     }
   }
   return 0;

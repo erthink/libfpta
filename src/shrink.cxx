@@ -88,9 +88,9 @@ bool fptu_shrink(fptu_rw *pt) {
       assert(t <= p);
       if (t != p)
         memmove(t, p, units2bytes(u));
-      size_t offset = t - h[shift].body;
+      size_t offset = (size_t)(t - h[shift].body);
       assert(offset <= fptu_limit);
-      f.offset = offset;
+      f.offset = (uint16_t)offset;
       t += u;
     }
     if (h[shift].header != f.header)
@@ -98,8 +98,8 @@ bool fptu_shrink(fptu_rw *pt) {
   }
 
   assert(t <= &pt->units[pt->end].data);
-  pt->head += shift;
-  pt->tail = t - &pt->units[0].data;
+  pt->head += (unsigned)shift;
+  pt->tail = (unsigned)(t - &pt->units[0].data);
   pt->junk = 0;
   return true;
 }

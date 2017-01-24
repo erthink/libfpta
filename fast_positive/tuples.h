@@ -31,16 +31,31 @@
 
 #include "fast_positive/defs.h"
 
-#include <errno.h>   // for error codes
-#include <string.h>  // for strlen
+#include <errno.h>  // for error codes
+#include <string.h> // for strlen
+#include <time.h>   // for struct timespec, struct timeval
+
+#ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h> // for struct iovec
-#include <time.h>    // for struct timespec, struct timeval
+#else
+struct iovec {
+  void *iov_base; /* Starting address */
+  size_t iov_len; /* Number of bytes to transfer */
+};
+#endif /* windows mustdie */
 
 #ifdef __cplusplus
 #include <string> // for std::string
 
 extern "C" {
 #endif
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(                                                             \
+    disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
+#pragma pack(push, 1)
+#endif /* windows mustdie */
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfptu, т.е
@@ -292,16 +307,18 @@ typedef union fptu_time {
   static fptu_time from_timespec(const struct timespec &ts) {
     fptu_time result;
     result.fixedpoint =
-        ((uint64_t)ts.tv_sec << 32) | ns2fractional(ts.tv_nsec);
+        ((uint64_t)ts.tv_sec << 32) | ns2fractional((uint32_t)ts.tv_nsec);
     return result;
   }
 
+#ifdef HAVE_TIMEVAL_TV_USEC
   static fptu_time from_timeval(const struct timeval &tv) {
     fptu_time result;
     result.fixedpoint =
-        ((uint64_t)tv.tv_sec << 32) | us2fractional(tv.tv_usec);
+        ((uint64_t)tv.tv_sec << 32) | us2fractional((uint32_t)tv.tv_usec);
     return result;
   }
+#endif /* HAVE_TIMEVAL_TV_USEC */
 #endif
 } fptu_time;
 
@@ -753,5 +770,10 @@ bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
 #endif // __cplusplus
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#pragma warning(pop)
+#endif /* windows mustdie */
 
 #endif /* FAST_POSITIVE_TUPLES_H */

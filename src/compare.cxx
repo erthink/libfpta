@@ -198,8 +198,13 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
     // TODO: account perfomance penalty.
   }
 
-  // буфер на стеке под сортированные теги полей
+// буфер на стеке под сортированные теги полей
+#ifdef __GNUC__
   uint16_t buffer[l_size + r_size];
+#else
+  uint16_t *const buffer =
+      (uint16_t *)_alloca(sizeof(uint16_t) * (l_size + r_size));
+#endif
 
   // получаем отсортированные теги слева
   uint16_t *const tags_l_begin = buffer;
@@ -215,10 +220,12 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
   auto tags_l = tags_l_begin, tags_r = tags_r_begin;
   for (;;) {
     // если уперлись в конец слева или справа
-    const bool left_depleted = (tags_l == tags_l_end);
-    const bool right_depleted = (tags_r == tags_r_end);
-    if (left_depleted | right_depleted)
-      return fptu_cmp2lge(!left_depleted, !right_depleted);
+    {
+      const bool left_depleted = (tags_l == tags_l_end);
+      const bool right_depleted = (tags_r == tags_r_end);
+      if (left_depleted | right_depleted)
+        return fptu_cmp2lge(!left_depleted, !right_depleted);
+    }
 
     // если слева и справа разные теги
     if (*tags_l != *tags_r)
@@ -286,12 +293,14 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
         ;
 
       // если дошли до конца слева или справа
-      const bool left_depleted = (field_l < l_begin);
-      const bool right_depleted = (field_r < r_begin);
-      if (left_depleted | right_depleted) {
-        if (left_depleted != right_depleted)
-          return left_depleted ? fptu_lt : fptu_gt;
-        break;
+      {
+        const bool left_depleted = (field_l < l_begin);
+        const bool right_depleted = (field_r < r_begin);
+        if (left_depleted | right_depleted) {
+          if (left_depleted != right_depleted)
+            return left_depleted ? fptu_lt : fptu_gt;
+          break;
+        }
       }
     }
 

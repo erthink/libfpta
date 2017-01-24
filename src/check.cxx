@@ -56,7 +56,7 @@ fptu_field_check(const fptu_field *pf, const char *pivot, const char *detent,
 
   if (type == fptu_cstr) {
     // length is'nt stored, but zero terminated
-    len = strnlen((const char *)payload, left) + 1;
+    len = strnlen((const char *)payload, (size_t)left) + 1;
     payload_units = bytes2units(len);
   } else {
     // length is stored
@@ -101,11 +101,12 @@ const char *fptu_check_ro(fptu_ro ro) {
   if (unlikely(ro.total_bytes > fptu_max_tuple_bytes))
     return "tuple.length_bytes < max_bytes";
 
-  if (unlikely(ro.total_bytes != units2bytes(1 + ro.units[0].varlen.brutto)))
+  if (unlikely(ro.total_bytes !=
+               units2bytes(1 + (size_t)ro.units[0].varlen.brutto)))
     return "tuple.length_bytes != tuple.brutto";
 
   const char *detent = (const char *)ro.units + ro.total_bytes;
-  size_t items = ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  size_t items = (size_t)ro.units[0].varlen.tuple_items & fptu_lt_mask;
   if (unlikely(items > fptu_max_fields))
     return "tuple.items > fptu_max_fields";
 

@@ -31,7 +31,16 @@
 #	include <cassert>
 #endif
 
-#if !defined(__GNUC__) || !__GNUC_PREREQ(4,2)
+#ifndef __GNUC_PREREQ
+#if defined(__GNUC__) && defined(__GNUC_MINOR__)
+#define __GNUC_PREREQ(maj, min)                                                \
+  ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#else
+#define __GNUC_PREREQ(maj, min) 0
+#endif
+#endif
+
+#if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
 	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
 	 * But you could remove this #error and try to continue at your own risk.
 	 * In such case please don't rise up an issues related ONLY to old compilers. */
@@ -73,9 +82,29 @@
 #	endif
 #endif
 
-#if !defined(__cplusplus) || __cplusplus < 201103L
+#if !defined(__cplusplus) || (__cplusplus < 201103L && !defined(_MSC_VER))
 #	define nullptr NULL
 #	define final
+#endif
+
+#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) ||           \
+    !defined(__ORDER_BIG_ENDIAN__)
+#define __ORDER_LITTLE_ENDIAN__ 1234
+#define __ORDER_BIG_ENDIAN__ 4321
+#if defined(__LITTLE_ENDIAN__) || defined(__ARMEL__) ||                        \
+    defined(__THUMBEL__) || defined(__AARCH64EL__) || defined(__MIPSEL__) ||   \
+    defined(_MIPSEL) || defined(__MIPSEL) || defined(__i386) ||                \
+    defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64) ||              \
+    defined(i386) || defined(_X86_) || defined(__i386__) ||                    \
+    defined(_X86_64_) || defined(_M_ARM)
+#define __BYTE_ORDER__ __ORDER_LITTLE_ENDIAN__
+#elif defined(__BIG_ENDIAN__) || defined(__ARMEB__) || defined(__THUMBEB__) || \
+    defined(__AARCH64EB__) || defined(__MIPSEB__) || defined(_MIPSEB) ||       \
+    defined(__MIPSEB)
+#define __BYTE_ORDER__ __ORDER_BIG_ENDIAN__
+#else
+#error __BYTE_ORDER__ should be defined.
+#endif
 #endif
 
 //----------------------------------------------------------------------------
@@ -121,7 +150,11 @@
 #endif /* __deprecated */
 
 #ifndef __packed
-#	define __packed __attribute__((packed))
+#	if defined(__GNUC__) || __has_attribute(packed)
+#		define __packed __attribute__((packed))
+#	else
+#		define  __packed
+#	endif
 #endif
 
 #ifndef __hidden

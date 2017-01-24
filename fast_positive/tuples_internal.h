@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -21,6 +21,17 @@
 
 /* *INDENT-OFF* */
 /* clang-format off */
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
+#pragma warning(disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
+#pragma warning(disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
+#pragma warning(disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
+#pragma warning(disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
+#pragma warning(disable : 4127 /* условное выражение является константой */)
+#pragma warning(disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
+#endif /* windows mustdie */
+
 #ifndef _ISOC99_SOURCE
 #	define _ISOC99_SOURCE 1
 #endif
@@ -97,6 +108,10 @@
 #	define FPT_NONCOPYABLE(typename) \
 		typename(const typename&) = delete; \
 		typename& operator=(typename const&) = delete
+#endif
+
+#if !defined(__typeof) && defined(_MSC_VER)
+#	define __typeof(exp) decltype(exp)
 #endif
 
 #ifndef __noop
@@ -184,33 +199,36 @@
     })
 #endif /* container_of */
 
-#define FPT_IS_POWER2(value) (((value) & ((value)-1LL)) == 0 && (value) > 0)
+#define FPT_IS_POWER2(value) (((value) & ((value)-1)) == 0 && (value) > 0)
 #define __FPT_FLOOR_MASK(type, value, mask) ((value) & ~(type)(mask))
 #define __FPT_CEIL_MASK(type, value, mask)                                   \
     __FPT_FLOOR_MASK(type, (value) + (mask), mask)
 #define FPT_ALIGN_FLOOR(value, align)                                        \
-    __FPT_FLOOR_MASK(__typeof(value), value, (align)-1LL)
+    __FPT_FLOOR_MASK(__typeof(value), value, (__typeof(value))(align)-1)
 #define FPT_ALIGN_CEIL(value, align)                                         \
-    __FPT_CEIL_MASK(__typeof(value), value, (align)-1LL)
+    __FPT_CEIL_MASK(__typeof(value), value, (__typeof(value))(align)-1)
 #define FPT_IS_ALIGNED(ptr, align)                                           \
-    ((((align)-1LL) & ((__typeof(align))((uintptr_t)(ptr)))) == 0)
+    ((((uintptr_t)(align)-1) & (uintptr_t)(ptr)) == 0)
 
 /* *INDENT-ON* */
 /* clang-format on */
 //----------------------------------------------------------------------------
 
 /* Prototype should match libc runtime. ISO POSIX (2003) & LSB 3.1 */
-__extern_C void __assert_fail(const char *assertion, const char *file,
+__extern_C void __assert_fail(const char *assertion, const char *filename,
                               unsigned line, const char *function)
+#ifdef __GNUC__
 #ifdef __THROW
     __THROW
 #else
     __nothrow
 #endif
-    __noreturn;
+    __noreturn
+#endif
+    ;
 
 static __inline unsigned fptu_get_col(uint16_t packed) {
-  return packed >> fptu_co_shift;
+  return (unsigned)packed >> fptu_co_shift;
 }
 
 static __inline fptu_type fptu_get_type(unsigned packed) {
