@@ -13,7 +13,7 @@ structured data in shared memory, with target performance from 100K
 to 1000K simple SQL-like requests per second on each CPU core.
 
 *The Future will Positive. Всё будет хорошо.*
-
+[![Build Status](https://travis-ci.org/leo-yuriev/libfpta.svg?branch=master)](https://travis-ci.org/leo-yuriev/libfpta)
 
 ## Кратко
 

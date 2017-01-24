@@ -37,14 +37,38 @@
 #ifndef FAST_POSITIVE_TABLES_H
 #define FAST_POSITIVE_TABLES_H
 
+#include "fast_positive/config.h"
 #include "fast_positive/defs.h"
 #include "fast_positive/tuples.h"
 
-#include <assert.h>  // for assert()
-#include <errno.h>   // for error codes
-#include <limits.h>  // for INT_MAX
-#include <string.h>  // for strlen()
-#include <sys/uio.h> // for struct iovec
+#include <assert.h> // for assert()
+#include <errno.h>  // for error codes
+#include <limits.h> // for INT_MAX
+#include <string.h> // for strlen()
+
+#if defined(HAVE_SYS_STAT_H) && !defined(_WIN32) && !defined(_WIN64)
+#include <sys/stat.h> // for mode_t
+#else
+typedef unsigned mode_t;
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(                                                             \
+    disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
+#pragma warning(                                                             \
+    disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
+#pragma warning(                                                             \
+    disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
+#pragma warning(                                                             \
+    disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
+#pragma warning(                                                             \
+    disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
+#pragma warning(disable : 4127 /* условное выражение является константой */)
+#pragma warning(                                                             \
+    disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
+#pragma pack(push, 1)
+#endif /* windows mustdie */
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfpta, т.е
@@ -277,7 +301,7 @@ static __inline fpta_value fpta_value_cstr(const char *value) {
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_string;
-  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_length = (length < INT_MAX) ? (unsigned)length : INT_MAX;
   r.str = value;
   return r;
 }
@@ -290,7 +314,7 @@ static __inline fpta_value fpta_value_string(const char *text,
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_string;
-  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_length = (length < INT_MAX) ? (unsigned)length : INT_MAX;
   r.str = text;
   return r;
 }
@@ -302,13 +326,13 @@ static __inline fpta_value fpta_value_binary(const void *data,
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_binary;
-  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_length = (length < INT_MAX) ? (unsigned)length : INT_MAX;
   r.binary_data = (void *)data;
   return r;
 }
 
 /* Конструктор value с void/null значением. */
-static __inline fpta_value fpta_value_null() {
+static __inline fpta_value fpta_value_null(void) {
   fpta_value r;
   r.type = fpta_null;
   r.binary_length = 0;
@@ -353,6 +377,7 @@ enum fpta_error {
   FPTA_ETXNOUT /* Transaction should be restared */,
   FPTA_ECURSOR /* Cursor not positioned */,
   FPTA_TOOMANY /* Too many columns or indexes */,
+  FPTA_EMULTIVAL /* Multiple values associated with a key. */,
   FPTA_WANNA_DIE,
 
   FPTA_EINVAL = EINVAL,
@@ -576,7 +601,8 @@ int fpta_transaction_end(fpta_txn *txn, bool abort);
  * и версию схемы (которая действует внутри транзакции).
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
+                              uint64_t *schema);
 
 //----------------------------------------------------------------------------
 /* Управление схемой:
@@ -828,7 +854,7 @@ struct fpta_table_schema;
 
 /* Операционный идентификатор таблицы или колонки. */
 typedef struct fpta_name {
-  size_t version; /* версия схемы для кэширования. */
+  uint64_t version; /* версия схемы для кэширования. */
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
     /* для таблицы */
@@ -1114,7 +1140,10 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
  * заданного при открытии курсора.
  *
  * Аргумент exactly определяет требуется ли поиск именно заданного значения,
- * либо курсор необходимо переместить к ближайшей позиции.
+ * либо курсор необходимо переместить к ближайшей позиции. Если запрошено
+ * точное позиционирование (exactly = true) и оно не может быть выполнено
+ * из-за наличия  нескольких значений, то будет возвращена специфическая
+ * ошибка FPTA_EMULTIVAL.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
@@ -1179,6 +1208,14 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value);
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value);
+
+static __inline int fpta_cursor_probe_and_update(fpta_cursor *cursor,
+                                                 fptu_ro new_row_value) {
+  int rc = fpta_cursor_validate_update(cursor, new_row_value);
+  if (rc == FPTA_SUCCESS)
+    rc = fpta_cursor_update(cursor, new_row_value);
+  return rc;
+}
 
 /* Удаляет из таблицы строку соответствующую текущей позиции курсора.
  * После удаления курсор перемещается к следующей записи.
@@ -1277,6 +1314,15 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
 int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op);
 
+static __inline int fpta_probe_and_put(fpta_txn *txn, fpta_name *table_id,
+                                       fptu_ro row_value,
+                                       fpta_put_options op) {
+  int rc = fpta_validate_put(txn, table_id, row_value, op);
+  if (rc == FPTA_SUCCESS)
+    rc = fpta_put(txn, table_id, row_value, op);
+  return rc;
+}
+
 /* Обновляет существующую строку таблицы. При обновлении одиночных строк
  * функция дешевле в сравнении с открытием курсора.
  *
@@ -1329,6 +1375,12 @@ static __inline int fpta_validate_update_row(fpta_txn *txn,
   return fpta_validate_put(txn, table_id, row_value, fpta_update);
 }
 
+static __inline int fpta_probe_and_update_row(fpta_txn *txn,
+                                              fpta_name *table_id,
+                                              fptu_ro row_value) {
+  return fpta_probe_and_put(txn, table_id, row_value, fpta_update);
+}
+
 /* Вставляет в таблицу новую строку. При вставке одиночных строк функция
  * дешевле в сравнении с открытием курсора.
  *
@@ -1379,6 +1431,12 @@ static __inline int fpta_validate_insert_row(fpta_txn *txn,
                                              fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_insert);
+}
+
+static __inline int fpta_probe_and_insert_row(fpta_txn *txn,
+                                              fpta_name *table_id,
+                                              fptu_ro row_value) {
+  return fpta_probe_and_put(txn, table_id, row_value, fpta_insert);
 }
 
 /* В зависимости от существования строки с заданным первичным ключом либо
@@ -1434,6 +1492,12 @@ static __inline int fpta_validate_upsert_row(fpta_txn *txn,
                                              fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_upsert);
+}
+
+static __inline int fpta_probe_and_upsert_row(fpta_txn *txn,
+                                              fpta_name *table_id,
+                                              fptu_ro row_value) {
+  return fpta_probe_and_put(txn, table_id, row_value, fpta_upsert);
 }
 
 /* Удаляет указанную строку таблицы. При удалении одиночных строк функция
@@ -1502,6 +1566,11 @@ static __inline fpta_value fpta_value_str(const std::string &str) {
   return fpta_value_string(str.data(), str.length());
 }
 
-#endif
+#endif /* __cplusplus */
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#pragma warning(pop)
+#endif /* windows mustdie */
 
 #endif /* FAST_POSITIVE_TABLES_H */
