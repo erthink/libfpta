@@ -143,7 +143,7 @@ __cold string to_string(fptu_lge lge) {
 }
 
 __cold string to_string(const fptu_time &time) {
-  constexpr double scale = exp2(-32);
+  const double scale = exp2(-32);
   return std::to_string(time.fixedpoint * scale) + "_" FIXME;
 }
 }
