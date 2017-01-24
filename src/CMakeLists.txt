@@ -11,6 +11,11 @@ add_library(fpta STATIC
    misc.cxx
 )
 
+if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+   target_link_libraries(fpta mdbx)
+endif()
+
 target_link_libraries(fpta
-    fptu mdbx t1ha ${CMAKE_THREAD_LIBS_INIT}
+    fptu t1ha
+    ${CMAKE_THREAD_LIBS_INIT}
 )

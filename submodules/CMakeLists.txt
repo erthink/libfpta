@@ -5,6 +5,10 @@ add_library(t1ha STATIC
    t1ha/t1ha.c
 )
 
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    message (WARNING "Sorry, but Windows MUST DIE, so only a stub will be provided.")
+else()
+
 add_library(mdbx STATIC
    libmdbx/mdbx.h
    libmdbx/lmdb.h
@@ -28,3 +32,5 @@ target_link_libraries(mdbx_dump mdbx)
 
 add_executable(mdbx_load libmdbx/mdb_load.c)
 target_link_libraries(mdbx_load mdbx)
+
+endif()
