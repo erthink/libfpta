@@ -371,8 +371,21 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
     mdbx_seek_op = row ? MDB_GET_BOTH_RANGE : MDB_SET_RANGE;
   }
 
-  return fpta_cursor_seek(cursor, mdbx_seek_op, MDB_NEXT, &seek_key.mdbx,
-                          mdbx_seek_data);
+  rc = fpta_cursor_seek(cursor, mdbx_seek_op, MDB_NEXT, &seek_key.mdbx,
+                        mdbx_seek_data);
+  if (likely(rc == FPTA_SUCCESS) && exactly && !row &&
+      !fpta_index_is_unique(cursor->index.shove)) {
+    size_t dups;
+    if (unlikely(mdbx_cursor_count(cursor->mdbx_cursor, &dups) !=
+                 MDB_SUCCESS))
+      return FPTA_EOOPS;
+    if (unlikely(dups > 1))
+      /* возвращаем ошибку, если запрошено точное позиционирование
+       * по ключу (без указания полного значения строки) и с заданным
+       * значением ключа связано более одной строки. */
+      return FPTA_EMULTIVAL;
+  }
+  return rc;
 }
 
 //----------------------------------------------------------------------------
