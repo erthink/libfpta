@@ -55,7 +55,7 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
 
     set(CMAKE_REQUIRED_FLAGS "-std=c99")
     check_c_source_compiles("
-        #if (__STDC_VERSION__ < 199901L) && (_MSC_FULL_VER < 190024215)
+        #if (__STDC_VERSION__ < 199901L) && (_MSC_FULL_VER < 180040629)
         #   error C99 not available
         #endif
 	int main(void) { return 0; }
@@ -71,7 +71,7 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
 
     set(CMAKE_REQUIRED_FLAGS "-std=c++11")
     check_cxx_source_compiles("
-        #if (__cplusplus < 201103L) && (_MSC_FULL_VER < 190024215)
+        #if (__cplusplus < 201103L) && (_MSC_FULL_VER < 180040629)
         #   error C++11 not available
         #endif
         int main(void) { return 0; }

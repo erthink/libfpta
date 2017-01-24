@@ -60,6 +60,20 @@ CHECK_INCLUDE_FILES(unistd.h HAVE_UNISTD_H)
 CHECK_INCLUDE_FILES(sys/uio.h HAVE_SYS_UIO_H)
 CHECK_INCLUDE_FILES(sys/stat.h HAVE_SYS_STAT_H)
 CHECK_STRUCT_HAS_MEMBER("struct timeval" tv_usec sys/select.h HAVE_TIMEVAL_TV_USEC)
+CHECK_STRUCT_HAS_MEMBER("struct timespec" tv_nsec time.h HAVE_TIMESPEC_TV_NSEC)
+
+CHECK_FUNCTION_EXISTS(pow NOT_NEED_LIBM)
+if(NOT_NEED_LIBM)
+  set(LIB_MATH "")
+else()
+  set(CMAKE_REQUIRED_LIBRARIES m)
+  CHECK_FUNCTION_EXISTS(pow HAVE_LIBM)
+  if(HAVE_LIBM)
+    set(LIB_MATH m)
+  else()
+    message(FATAL_ERROR "No libm found for math support")
+  endif()
+endif()
 
 #
 # Enable 'make tags' target.

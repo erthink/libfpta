@@ -309,10 +309,13 @@ struct fpta_cursor {
   fpta_cursor(const fpta_cursor &) = delete;
   MDB_cursor *mdbx_cursor;
   fpta_cursor_options options;
-
   MDB_val current;
 
+#if defined(_MSC_VER) && (_MSC_FULL_VER < 190024215)
+#define poor nullptr
+#else
   static constexpr void *poor = nullptr;
+#endif
   bool is_poor() const { return current.iov_base == poor; }
   void set_poor() { current.iov_base = poor; }
 
