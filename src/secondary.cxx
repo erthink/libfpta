@@ -21,20 +21,21 @@
 
 static __hot bool fpta_is_column_changed(const fptu_ro &row_old,
                                          const fptu_ro &row_new,
-                                         unsigned column) {
-  auto filed_old = fptu_lookup_ro(row_old, column, fptu_any);
-  auto filed_new = fptu_lookup_ro(row_new, column, fptu_any);
+                                         size_t column) {
+  auto filed_old = fptu_lookup_ro(row_old, (unsigned)column, fptu_any);
+  auto filed_new = fptu_lookup_ro(row_new, (unsigned)column, fptu_any);
   return fptu_cmp_fields(filed_old, filed_new) != fptu_eq;
 }
 
 static __inline bool fpta_fk_changed(const fpta_table_schema *def,
                                      const fptu_ro &row_old,
-                                     const fptu_ro &row_new,
-                                     unsigned column) {
+                                     const fptu_ro &row_new, size_t column) {
   assert(column > 0 && column < def->count);
+  (void)column;
   assert(fpta_shove2index(def->columns[column]) != fpta_index_none);
   assert(fpta_index_is_secondary(fpta_shove2index(def->columns[column])));
-  return fpta_is_column_changed(row_old, row_new, 0);
+  (void)def;
+  return fpta_is_column_changed(row_old, row_new, column);
 }
 
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,

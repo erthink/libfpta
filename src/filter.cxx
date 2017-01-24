@@ -55,10 +55,10 @@ static __hot fptu_lge fpta_cmp_sint(const fptu_field *left, int64_t right) {
     return fptu_cmp2lge(payload->i64, right);
 
   case fptu_fp32:
-    return fptu_cmp2lge<double>(payload->fp32, right);
+    return fptu_cmp2lge<double>(payload->fp32, (double)right);
 
   case fptu_fp64:
-    return fptu_cmp2lge<double>(payload->fp64, right);
+    return fptu_cmp2lge<double>(payload->fp64, (double)right);
 
   default:
     return fptu_ic;
@@ -85,10 +85,10 @@ static __hot fptu_lge fpta_cmp_uint(const fptu_field *left, uint64_t right) {
     return fptu_cmp2lge(payload->u64, right);
 
   case fptu_fp32:
-    return fptu_cmp2lge<double>(payload->fp32, right);
+    return fptu_cmp2lge<double>(payload->fp32, (double)right);
 
   case fptu_fp64:
-    return fptu_cmp2lge<double>(payload->fp64, right);
+    return fptu_cmp2lge<double>(payload->fp64, (double)right);
 
   default:
     return fptu_ic;
@@ -109,10 +109,10 @@ static __hot fptu_lge fpta_cmp_fp(const fptu_field *left, double right) {
     return fptu_cmp2lge<double>(payload->u32, right);
 
   case fptu_int64:
-    return fptu_cmp2lge<double>(payload->i64, right);
+    return fptu_cmp2lge<double>((double)payload->i64, right);
 
   case fptu_uint64:
-    return fptu_cmp2lge<double>(payload->u64, right);
+    return fptu_cmp2lge<double>((double)payload->u64, right);
 
   case fptu_fp32:
     return fptu_cmp2lge<double>(payload->fp32, right);
@@ -266,13 +266,13 @@ tail_recursion:
 
   case fpta_node_fn:
     return fn->node_fn.predicate(
-        fptu_lookup_ro(tuple, fn->node_fn.column_id->column.num,
+        fptu_lookup_ro(tuple, (unsigned)fn->node_fn.column_id->column.num,
                        fpta_id2type(fn->node_fn.column_id)),
         fn->node_fn.column_id, fn->node_fn.context, fn->node_fn.arg);
 
   default:
     int cmp_bits = fpta_filter_cmp(
-        fptu_lookup_ro(tuple, fn->node_cmp.left_id->column.num,
+        fptu_lookup_ro(tuple, (unsigned)fn->node_cmp.left_id->column.num,
                        fpta_id2type(fn->node_cmp.left_id)),
         fn->node_cmp.right_value);
 

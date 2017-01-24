@@ -104,7 +104,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
   cursor->table_id = table_id;
   cursor->index.shove =
       column_id->shove & (fpta_column_typeid_mask | fpta_column_index_mask);
-  cursor->index.column_order = column_id->column.num;
+  cursor->index.column_order = (unsigned)column_id->column.num;
   cursor->index.mdbx_dbi = column_id->mdbx_dbi;
 
   cursor->range_from_value = range_from;
@@ -390,7 +390,7 @@ int fpta_cursor_eof(fpta_cursor *cursor) {
 int fpta_cursor_count(fpta_cursor *cursor, size_t *pcount, size_t limit) {
   if (unlikely(!pcount))
     return FPTA_EINVAL;
-  *pcount = FPTA_DEADBEEF;
+  *pcount = (size_t)FPTA_DEADBEEF;
 
   size_t count = 0;
   int rc = fpta_cursor_move(cursor, fpta_first);
@@ -411,7 +411,7 @@ int fpta_cursor_count(fpta_cursor *cursor, size_t *pcount, size_t limit) {
 int fpta_cursor_dups(fpta_cursor *cursor, size_t *pdups) {
   if (unlikely(pdups == nullptr))
     return FPTA_EINVAL;
-  *pdups = FPTA_DEADBEEF;
+  *pdups = (size_t)FPTA_DEADBEEF;
 
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
@@ -495,9 +495,9 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 
     fptu_ro old;
 #ifdef NDEBUG
-    const constexpr size_t likely_enough = 64 * 42;
+    const constexpr size_t likely_enough = 64u * 42u;
 #else
-    const size_t likely_enough = (time(nullptr) & 1) ? 11 : 64 * 42;
+    const size_t likely_enough = (time(nullptr) & 1) ? 11u : 64u * 42u;
 #endif /* NDEBUG */
     void *buffer = alloca(likely_enough);
     old.sys.iov_base = buffer;

@@ -155,11 +155,11 @@ static int __hot fpta_idxcmp_fp32(const MDB_val *a, const MDB_val *b) {
   memcpy(vb, b->mv_data, 4);
 #endif
 
-  int negative = va & 0x80000000;
+  int32_t negative = va & (1 << 31);
   if ((negative ^ vb) < 0)
     return negative ? -1 : 1;
 
-  int cmp = (va & 0x7fffFFFF) - (vb & 0x7fffFFFF);
+  int32_t cmp = (va & 0x7fffFFFF) - (vb & 0x7fffFFFF);
   return negative ? -cmp : cmp;
 }
 
@@ -175,12 +175,12 @@ static int __hot fpta_idxcmp_fp64(const MDB_val *a, const MDB_val *b) {
   memcpy(vb, b->mv_data, 8);
 #endif
 
-  int64_t negative = va & 0x8000000000000000ull;
+  int64_t negative = va & 0x8000000000000000ll;
   if ((negative ^ vb) < 0)
     return negative ? -1 : 1;
 
   int cmp =
-      fptu_cmp2int(va & 0x7fffFFFFffffFFFFull, vb & 0x7fffFFFFffffFFFFull);
+      fptu_cmp2int(va & 0x7fffFFFFffffFFFFll, vb & 0x7fffFFFFffffFFFFll);
   return negative ? -cmp : cmp;
 }
 
@@ -190,7 +190,7 @@ static int fpta_idxcmp_mad(const MDB_val *a, const MDB_val *b) {
   return 0;
 }
 
-__hot MDB_cmp_func *fpta_index_shove2comparator(unsigned shove) {
+__hot MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove) {
   fptu_type type = fpta_shove2type(shove);
   fpta_index_type index = fpta_shove2index(shove);
 
@@ -217,7 +217,7 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(unsigned shove) {
     return fpta_idxcmp_type<uint32_t>;
   case fptu_fp64:
     static_assert(sizeof(double) == sizeof(int64_t), "something wrong");
-    static_assert(sizeof(long) == 8, "something wrong");
+    static_assert(sizeof(int64_t) == 8, "something wrong");
     return fpta_idxcmp_fp64;
   case fptu_int64:
     return fpta_idxcmp_type<int64_t>;
@@ -288,13 +288,14 @@ static int fpta_normalize_key(fpta_shove_t shove, fpta_key &key, bool copy) {
 
 //----------------------------------------------------------------------------
 
-static __inline unsigned shove2dbiflags(unsigned shove) {
+static __inline unsigned shove2dbiflags(fpta_shove_t shove) {
   fptu_type type = fpta_shove2type(shove);
   fpta_index_type index = fpta_shove2index(shove);
   assert(type != fptu_null);
   assert(index != fpta_index_none);
 
-  unsigned dbi_flags = fpta_index_is_unique(index) ? 0 : MDB_DUPSORT;
+  unsigned dbi_flags =
+      fpta_index_is_unique(index) ? 0u : (unsigned)MDB_DUPSORT;
   if (type < fptu_96 || !fpta_index_is_ordered(index))
     dbi_flags |= MDB_INTEGERKEY;
   else if (fpta_index_is_reverse(index))
@@ -303,13 +304,13 @@ static __inline unsigned shove2dbiflags(unsigned shove) {
   return dbi_flags | MDB_CREATE;
 }
 
-unsigned fpta_index_shove2primary_dbiflags(unsigned shove) {
+unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t shove) {
   assert(fpta_index_is_primary(fpta_shove2index(shove)));
   return shove2dbiflags(shove);
 }
 
-unsigned fpta_index_shove2secondary_dbiflags(unsigned pk_shove,
-                                             unsigned shove) {
+unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
+                                             fpta_shove_t shove) {
   assert(fpta_index_is_primary(fpta_shove2index(pk_shove)));
   assert(fpta_index_is_secondary(fpta_shove2index(shove)));
 
@@ -675,13 +676,13 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
   case fptu_opaque:
     value.type = (mdbx.mv_size > fpta_max_keylen) ? fpta_shoved : fpta_binary;
     value.binary_data = mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
 
   case fptu_cstr:
     value.type = (mdbx.mv_size > fpta_max_keylen) ? fpta_shoved : fpta_string;
     value.binary_data = mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
 
   case fptu_uint16: {
@@ -692,7 +693,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_unsigned_int;
     value.uint = tmp;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -701,7 +702,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_unsigned_int;
     value.uint = *(uint32_t *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -710,7 +711,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_signed_int;
     value.sint = *(int32_t *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -719,7 +720,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_float_point;
     value.fp = *(float *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -728,7 +729,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_float_point;
     value.fp = *(double *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -737,7 +738,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_unsigned_int;
     value.uint = *(uint64_t *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -745,8 +746,8 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
     if (unlikely(mdbx.mv_size != sizeof(int64_t)))
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_signed_int;
-    value.uint = *(int64_t *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.sint = *(int64_t *)mdbx.mv_data;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -755,7 +756,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
       return FPTA_INDEX_CORRUPTED;
     value.type = fpta_datetime;
     value.datetime.fixedpoint = *(uint64_t *)mdbx.mv_data;
-    value.binary_length = mdbx.mv_size;
+    value.binary_length = (unsigned)mdbx.mv_size;
     return FPTA_SUCCESS;
   }
 
@@ -782,20 +783,20 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
 
   value.type = fpta_binary;
   value.binary_data = mdbx.mv_data;
-  value.binary_length = mdbx.mv_size;
+  value.binary_length = (unsigned)mdbx.mv_size;
   return FPTA_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
 
-int fpta_index_row2key(fpta_shove_t shove, unsigned column,
-                       const fptu_ro &row, fpta_key &key, bool copy) {
+int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
+                       fpta_key &key, bool copy) {
 #ifndef NDEBUG
   fpta_pollute(&key, sizeof(key));
 #endif
 
   fptu_type type = fpta_shove2type(shove);
-  const fptu_field *field = fptu_lookup_ro(row, column, type);
+  const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
   if (unlikely(field == nullptr))
     return FPTA_ROW_MISMATCH;

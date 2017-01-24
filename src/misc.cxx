@@ -153,13 +153,13 @@ void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {
     }
   } else {
     while (bytes >= sizeof(uint32_t)) {
-      *((uint32_t *)ptr) = mrand48();
+      *((uint32_t *)ptr) = (uint32_t)mrand48();
       ptr = (char *)ptr + sizeof(uint32_t);
       bytes -= sizeof(uint32_t);
     }
 
     if (bytes) {
-      uint32_t tail = mrand48();
+      uint32_t tail = (uint32_t)mrand48();
       memcpy(ptr, &tail, bytes);
     }
   }

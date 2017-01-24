@@ -26,12 +26,194 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
-#include <unistd.h>
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#else
+static __inline long int mrand48(void) { return 0; }
+#endif /* windows must die (HAVE_UNISTD_H) */
+
+#ifdef CMAKE_HAVE_PTHREAD_H
+#include <pthread.h>
+#else
+struct pthread_rwlock_t {};
+static int __inline pthread_rwlock_init(struct pthread_rwlock_t *, void *) {
+  return ENOSYS;
+}
+static int __inline pthread_rwlock_rdlock(struct pthread_rwlock_t *) {
+  return ENOSYS;
+}
+static int __inline pthread_rwlock_wrlock(struct pthread_rwlock_t *) {
+  return ENOSYS;
+}
+static int __inline pthread_rwlock_unlock(struct pthread_rwlock_t *) {
+  return ENOSYS;
+}
+static int __inline pthread_rwlock_destroy(struct pthread_rwlock_t *) {
+  return ENOSYS;
+}
+
+struct pthread_mutex_t {};
+static int __inline pthread_mutex_init(struct pthread_mutex_t *, void *) {
+  return ENOSYS;
+}
+static int __inline pthread_mutex_lock(struct pthread_mutex_t *) {
+  return ENOSYS;
+}
+static int __inline pthread_mutex_unlock(struct pthread_mutex_t *) {
+  return ENOSYS;
+}
+static int __inline pthread_mutex_destroy(struct pthread_mutex_t *) {
+  return ENOSYS;
+}
+
+#endif /* windows must die (CMAKE_HAVE_PTHREAD_H) */
+
+#ifdef __linux__
 #include "libmdbx/mdbx.h"
+#else
+typedef struct stub_MDB_env MDB_env;
+typedef struct stub_MDB_txn MDB_txn;
+typedef struct stub_MDB_cursor MDB_cursor;
+typedef struct iovec MDB_val;
+#define mv_size iov_len
+#define mv_data iov_base
+typedef unsigned MDB_dbi;
+typedef int MDB_cursor_op;
+typedef int(MDB_cmp_func)(const MDB_val *a, const MDB_val *b);
+
+typedef struct mdbx_canary { size_t v; } mdbx_canary;
+static __inline int mdbx_canary_put(MDB_txn *, const mdbx_canary *) {
+  return ENOSYS;
+}
+static __inline size_t mdbx_canary_get(MDB_txn *, mdbx_canary *) { return 0; }
+static __inline int mdbx_cursor_eof(MDB_cursor *) { return ENOSYS; }
+static __inline int mdbx_replace(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
+                                 MDB_val *, unsigned) {
+  return ENOSYS;
+}
+static __inline int mdbx_get_ex(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
+                                int *) {
+  return ENOSYS;
+}
+static __inline int mdbx_get(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *) {
+  return ENOSYS;
+}
+static __inline int mdbx_put(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
+                             unsigned) {
+  return ENOSYS;
+}
+static __inline int mdbx_del(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *) {
+  return ENOSYS;
+}
+static __inline int mdbx_set_dupsort(MDB_txn *, MDB_dbi, MDB_cmp_func *) {
+  return ENOSYS;
+}
+static __inline int mdbx_set_compare(MDB_txn *, MDB_dbi, MDB_cmp_func *) {
+  return ENOSYS;
+}
+static __inline int mdbx_drop(MDB_txn *, MDB_dbi, int) { return ENOSYS; }
+static __inline void mdbx_dbi_close(MDB_env *, MDB_dbi) {}
+static __inline int mdbx_dbi_open(MDB_txn *, const char *, unsigned,
+                                  MDB_dbi *) {
+  return ENOSYS;
+}
+static __inline int mdbx_txn_renew(MDB_txn *) { return ENOSYS; }
+static __inline int mdbx_txn_reset(MDB_txn *) { return ENOSYS; }
+static __inline int mdbx_txn_abort(MDB_txn *) { return ENOSYS; }
+static __inline int mdbx_txn_commit(MDB_txn *) { return ENOSYS; }
+static __inline int mdbx_txn_begin(MDB_env *, MDB_txn *, unsigned,
+                                   MDB_txn **) {
+  return ENOSYS;
+}
+static __inline int mdbx_env_set_maxdbs(MDB_env *, MDB_dbi) { return ENOSYS; }
+static __inline int mdbx_env_set_maxreaders(MDB_env *, unsigned) {
+  return ENOSYS;
+}
+static __inline void mdbx_env_close(MDB_env *) {}
+static __inline int mdbx_env_sync(MDB_env *, int) { return ENOSYS; }
+static __inline int mdbx_env_open(MDB_env *, const char *, unsigned, mode_t) {
+  return ENOSYS;
+}
+static __inline int mdbx_env_create(MDB_env **) { return ENOSYS; }
+static __inline const char *mdbx_strerror(int) { return "ENOSYS"; }
+static __inline int mdbx_cursor_open(MDB_txn *, MDB_dbi, MDB_cursor **) {
+  return ENOSYS;
+}
+static __inline void mdbx_cursor_close(MDB_cursor *) {}
+static __inline int mdbx_cursor_renew(MDB_txn *, MDB_cursor *) {
+  return ENOSYS;
+}
+static __inline int mdbx_cursor_get(MDB_cursor *, MDB_val *, MDB_val *,
+                                    MDB_cursor_op) {
+  return ENOSYS;
+}
+static __inline int mdbx_cursor_put(MDB_cursor *, MDB_val *, MDB_val *,
+                                    unsigned) {
+  return ENOSYS;
+}
+static __inline int mdbx_cursor_del(MDB_cursor *, unsigned) { return ENOSYS; }
+static __inline int mdbx_cursor_count(MDB_cursor *, size_t *) {
+  return ENOSYS;
+}
+static __inline int mdbx_cmp(MDB_txn *, MDB_dbi, const MDB_val *,
+                             const MDB_val *) {
+  return 0;
+}
+static __inline int mdbx_dcmp(MDB_txn *, MDB_dbi, const MDB_val *,
+                              const MDB_val *) {
+  return 0;
+}
+static __inline int mdbx_env_set_userctx(MDB_env *, void *) { return ENOSYS; }
+static __inline int mdbx_env_set_mapsize(MDB_env *, size_t) { return ENOSYS; }
+static __inline int mdbx_env_close_ex(MDB_env *, int) { return ENOSYS; }
+
+enum stub_MDB_defs {
+  MDB_NOSUBDIR,
+  MDB_RDONLY,
+  MDBX_LIFORECLAIM,
+  MDBX_COALESCE,
+  MDB_NOSYNC,
+  MDB_NOMETASYNC,
+  MDB_WRITEMAP,
+  MDB_MAPASYNC,
+  MDBX_UTTERLY_NOSYNC,
+  MDB_SUCCESS,
+  MDB_NOTFOUND,
+  MDB_KEYEXIST,
+
+  MDB_REVERSEKEY,
+  MDB_DUPSORT,
+  MDB_INTEGERKEY,
+  MDB_DUPFIXED,
+  MDB_INTEGERDUP,
+  MDB_REVERSEDUP,
+  MDB_CREATE,
+  MDB_NOOVERWRITE,
+  MDB_NODUPDATA,
+  MDB_CURRENT,
+
+  MDB_GET_CURRENT,
+  MDB_NEXT,
+  MDB_NEXT_NODUP,
+  MDB_PREV,
+  MDB_PREV_NODUP,
+  MDB_PREV_DUP,
+  MDB_NEXT_DUP,
+  MDB_FIRST,
+  MDB_SET_KEY,
+  MDB_LAST,
+  MDB_FIRST_DUP,
+  MDB_LAST_DUP,
+  MDB_GET_BOTH,
+  MDB_SET,
+  MDB_GET_BOTH_RANGE,
+  MDB_SET_RANGE,
+};
+#endif /* windows must die (__LINUX__) */
+
 #include "t1ha/t1ha.h"
 
 #include <algorithm>
@@ -198,21 +380,21 @@ static __inline bool fpta_shove_eq(fpta_shove_t a, fpta_shove_t b) {
   return (a ^ b) < ((1u << fpta_name_hash_shift) - 1);
 }
 
-static __inline fptu_type fpta_shove2type(unsigned shove) {
+static __inline fptu_type fpta_shove2type(fpta_shove_t shove) {
   static_assert(fpta_column_typeid_shift == 0,
                 "expecting column_typeid_shift is zero");
-  int type = shove & fpta_column_typeid_mask;
+  unsigned type = shove & fpta_column_typeid_mask;
   return (fptu_type)type;
 }
 
-static __inline fpta_index_type fpta_shove2index(unsigned shove) {
+static __inline fpta_index_type fpta_shove2index(fpta_shove_t shove) {
   static_assert((int)fpta_primary < fpta_column_index_mask,
                 "check fpta_column_index_mask");
   static_assert((int)fpta_primary > (1 << fpta_column_index_shift) - 1,
                 "expect fpta_primary is shifted");
   static_assert((fpta_column_index_mask & fpta_column_typeid_mask) == 0,
                 "seems a bug");
-  int index = shove & fpta_column_index_mask;
+  unsigned index = shove & fpta_column_index_mask;
   return (fpta_index_type)index;
 }
 
@@ -224,10 +406,10 @@ static __inline fpta_index_type fpta_id2index(const fpta_name *id) {
   return fpta_shove2index(id->shove);
 }
 
-MDB_cmp_func *fpta_index_shove2comparator(unsigned shove);
-unsigned fpta_index_shove2primary_dbiflags(unsigned shove);
-unsigned fpta_index_shove2secondary_dbiflags(unsigned pk_shove,
-                                             unsigned shove);
+MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove);
+unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t shove);
+unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
+                                             fpta_shove_t shove);
 
 bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value);
 
@@ -236,8 +418,8 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
 int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx_key,
                          fpta_value &key_value);
 
-int fpta_index_row2key(fpta_shove_t shove, unsigned column,
-                       const fptu_ro &row, fpta_key &key, bool copy = false);
+int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
+                       fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val &pk_key_old, const fptu_ro &row_old,
@@ -253,7 +435,6 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
 
 //----------------------------------------------------------------------------
 
-uint64_t fpta_txn_version(fpta_txn *txn);
 int fpta_open_column(fpta_txn *txn, fpta_name *column_id);
 int fpta_open_table(fpta_txn *txn, fpta_name *table_id);
 int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
@@ -321,27 +502,27 @@ static __inline bool fpta_id_validate(const fpta_name *id,
   }
 }
 
-static __inline bool fpta_index_is_unique(unsigned index) {
+static __inline bool fpta_index_is_unique(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_funique) != 0;
 }
 
-static __inline bool fpta_index_is_ordered(unsigned index) {
+static __inline bool fpta_index_is_ordered(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fordered) != 0;
 }
 
-static __inline bool fpta_index_is_reverse(unsigned index) {
+static __inline bool fpta_index_is_reverse(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fobverse) == 0;
 }
 
-static __inline bool fpta_index_is_primary(unsigned index) {
+static __inline bool fpta_index_is_primary(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fsecondary) == 0;
 }
 
-static __inline bool fpta_index_is_secondary(unsigned index) {
+static __inline bool fpta_index_is_secondary(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fsecondary) != 0;
 }

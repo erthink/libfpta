@@ -31,7 +31,8 @@ fpta_value fpta_field2value(const fptu_field *field) {
   switch (fptu_get_type(field->ct)) {
   default:
   case fptu_nested:
-    result.binary_length = units2bytes(payload->other.varlen.brutto);
+    result.binary_length =
+        (unsigned)units2bytes(payload->other.varlen.brutto);
     result.binary_data = (void *)payload->other.data;
     result.type = fpta_binary;
     break;
@@ -112,7 +113,7 @@ fpta_value fpta_field2value(const fptu_field *field) {
   case fptu_cstr:
     result.type = fpta_string;
     result.str = payload->cstr;
-    result.binary_length = strlen(result.str);
+    result.binary_length = (unsigned)strlen(result.str);
     break;
   }
   return result;
@@ -123,8 +124,8 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
   if (unlikely(column_id == nullptr || value == nullptr))
     return FPTA_EINVAL;
 
-  const fptu_field *field = fptu_lookup_ro(row, column_id->column.num,
-                                           fpta_name_coltype(column_id));
+  const fptu_field *field = fptu_lookup_ro(
+      row, (unsigned)column_id->column.num, fpta_name_coltype(column_id));
   *value = fpta_field2value(field);
   return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
@@ -136,7 +137,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 
   fptu_type coltype = fpta_shove2type(column_id->shove);
   assert(column_id->column.num <= fptu_max_cols);
-  unsigned col = column_id->column.num;
+  unsigned col = (unsigned)column_id->column.num;
 
   switch (coltype) {
   default:
@@ -400,9 +401,9 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
 
   fptu_ro old;
 #ifdef NDEBUG
-  const constexpr size_t likely_enough = 64 * 42;
+  const constexpr size_t likely_enough = 64u * 42u;
 #else
-  const size_t likely_enough = (time(nullptr) & 1) ? 11 : 64 * 42;
+  const size_t likely_enough = (time(nullptr) & 1) ? 11u : 64u * 42u;
 #endif /* NDEBUG */
   void *buffer = alloca(likely_enough);
   old.sys.iov_base = buffer;

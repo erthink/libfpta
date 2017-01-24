@@ -40,11 +40,16 @@
 #include "fast_positive/defs.h"
 #include "fast_positive/tuples.h"
 
-#include <assert.h>  // for assert()
-#include <errno.h>   // for error codes
-#include <limits.h>  // for INT_MAX
-#include <string.h>  // for strlen()
-#include <sys/uio.h> // for struct iovec
+#include <assert.h> // for assert()
+#include <errno.h>  // for error codes
+#include <limits.h> // for INT_MAX
+#include <string.h> // for strlen()
+
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h> // for mode_t
+#else
+typedef int mode_t;
+#endif
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfpta, т.е
@@ -277,7 +282,7 @@ static __inline fpta_value fpta_value_cstr(const char *value) {
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_string;
-  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_length = (length < INT_MAX) ? (unsigned)length : INT_MAX;
   r.str = value;
   return r;
 }
@@ -290,7 +295,7 @@ static __inline fpta_value fpta_value_string(const char *text,
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_string;
-  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_length = (length < INT_MAX) ? (unsigned)length : INT_MAX;
   r.str = text;
   return r;
 }
@@ -302,13 +307,13 @@ static __inline fpta_value fpta_value_binary(const void *data,
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_binary;
-  r.binary_length = (length < INT_MAX) ? length : INT_MAX;
+  r.binary_length = (length < INT_MAX) ? (unsigned)length : INT_MAX;
   r.binary_data = (void *)data;
   return r;
 }
 
 /* Конструктор value с void/null значением. */
-static __inline fpta_value fpta_value_null() {
+static __inline fpta_value fpta_value_null(void) {
   fpta_value r;
   r.type = fpta_null;
   r.binary_length = 0;
@@ -576,7 +581,8 @@ int fpta_transaction_end(fpta_txn *txn, bool abort);
  * и версию схемы (которая действует внутри транзакции).
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema);
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
+                              uint64_t *schema);
 
 //----------------------------------------------------------------------------
 /* Управление схемой:
@@ -828,7 +834,7 @@ struct fpta_table_schema;
 
 /* Операционный идентификатор таблицы или колонки. */
 typedef struct fpta_name {
-  size_t version; /* версия схемы для кэширования. */
+  uint64_t version; /* версия схемы для кэширования. */
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
     /* для таблицы */

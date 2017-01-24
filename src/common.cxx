@@ -33,6 +33,7 @@ static int fpta_db_lock(fpta_db *db, fpta_level level) {
 }
 
 static int fpta_db_unlock(fpta_db *db, fpta_level level) {
+  (void)level;
   assert(level >= fpta_read && level <= fpta_schema);
 
   int rc = pthread_rwlock_unlock(&db->schema_rwlock);
@@ -42,6 +43,7 @@ static int fpta_db_unlock(fpta_db *db, fpta_level level) {
 
 static fpta_txn *fpta_txn_alloc(fpta_db *db, fpta_level level) {
   // TODO: use pool
+  (void)level;
   fpta_txn *txn = (fpta_txn *)calloc(1, sizeof(fpta_txn));
   if (likely(txn)) {
     txn->db = db;
@@ -52,6 +54,7 @@ static fpta_txn *fpta_txn_alloc(fpta_db *db, fpta_level level) {
 
 static void fpta_txn_free(fpta_db *db, fpta_txn *txn) {
   // TODO: use pool
+  (void)db;
   if (likely(txn)) {
     assert(txn->db == db);
     txn->db = nullptr;
@@ -71,6 +74,7 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor) {
   // TODO: use pool
   if (likely(cursor)) {
     assert(cursor->db == db);
+    (void)db;
     cursor->db = nullptr;
     free(cursor);
   }
@@ -88,7 +92,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
   if (unlikely(path == nullptr || *path == '\0'))
     return FPTA_EINVAL;
 
-  int mdbx_flags = MDB_NOSUBDIR;
+  unsigned mdbx_flags = MDB_NOSUBDIR;
   switch (durability) {
   default:
     return FPTA_EINVAL;
@@ -124,6 +128,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
   if (unlikely(rc != 0)) {
     int err = pthread_rwlock_destroy(&db->schema_rwlock);
     assert(err == 0);
+    (void)err;
     free(db);
     return (fpta_error)rc;
   }
@@ -160,6 +165,7 @@ bailout:
     int err =
         mdbx_env_close_ex(db->mdbx_env, true /* don't touch/save/sync */);
     assert(err == MDB_SUCCESS);
+    (void)err;
   }
 
   int err = pthread_mutex_destroy(&db->dbi_mutex);
@@ -183,6 +189,7 @@ int fpta_db_close(fpta_db *db) {
   if (unlikely(rc != 0)) {
     int err = fpta_db_unlock(db, fpta_schema);
     assert(err == 0);
+    (void)err;
     return (fpta_error)rc;
   }
 
@@ -227,7 +234,7 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
     goto bailout;
 
   rc = mdbx_txn_begin(db->mdbx_env, nullptr,
-                      (level == fpta_read) ? MDB_RDONLY : 0, &txn->mdbx_txn);
+                      (level == fpta_read) ? MDB_RDONLY : 0u, &txn->mdbx_txn);
   if (unlikely(rc != MDB_SUCCESS))
     goto bailout;
 
@@ -274,12 +281,14 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
 
   int err = fpta_db_unlock(txn->db, txn->level);
   assert(err == 0);
+  (void)err;
   fpta_txn_free(txn->db, txn);
 
   return (fpta_error)rc;
 }
 
-int fpta_transaction_versions(fpta_txn *txn, size_t *data, size_t *schema) {
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
+                              uint64_t *schema) {
   if (unlikely(!fpta_txn_validate(txn, fpta_read)))
     return FPTA_EINVAL;
 
