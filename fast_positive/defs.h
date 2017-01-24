@@ -82,9 +82,8 @@
 #	endif
 #endif
 
-#if !defined(__cplusplus) || (__cplusplus < 201103L && !defined(_MSC_VER))
+#if !defined(nullptr) && !defined(__cplusplus) || (__cplusplus < 201103L && !defined(_MSC_VER))
 #	define nullptr NULL
-#	define final
 #endif
 
 #if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) ||           \

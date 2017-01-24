@@ -301,6 +301,7 @@ typedef union fptu_time {
   static uint32_t ms2fractional(uint32_t);
   static uint32_t fractional2ms(uint32_t);
 
+#ifdef HAVE_TIMESPEC_TV_NSEC
   /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
    * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
    * либо от возможности использовать libfptu из C, либо от Clang,
@@ -311,6 +312,7 @@ typedef union fptu_time {
         ((uint64_t)ts.tv_sec << 32) | ns2fractional((uint32_t)ts.tv_nsec);
     return result;
   }
+#endif /* HAVE_TIMESPEC_TV_NSEC */
 
 #ifdef HAVE_TIMEVAL_TV_USEC
   static fptu_time from_timeval(const struct timeval &tv) {

@@ -61,6 +61,20 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 
+#ifndef HAVE_TIMESPEC_TV_NSEC
+struct timespec {
+  time_t tv_sec;
+  long tv_nsec;
+};
+
+static __inline fptu_time from_timespec(const struct timespec &ts) {
+  fptu_time result;
+  result.fixedpoint = ((uint64_t)ts.tv_sec << 32) |
+                      fptu_time::ns2fractional((uint32_t)ts.tv_nsec);
+  return result;
+}
+#endif /* HAVE_TIMESPEC_TV_NSEC */
+
 static int clock_gettime(int clk_id, struct timespec *tp) {
   (void)clk_id;
   FILETIME filetime;
@@ -90,7 +104,11 @@ fptu_time fptu_now_fine(void) {
   int rc = clock_gettime(CLOCK_REALTIME, &now);
   if (unlikely(rc != 0))
     clock_failure();
+#ifdef HAVE_TIMESPEC_TV_NSEC
   return fptu_time::from_timespec(now);
+#else
+  return from_timespec(now);
+#endif
 }
 
 #ifdef CLOCK_REALTIME_COARSE
