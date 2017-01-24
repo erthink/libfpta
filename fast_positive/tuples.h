@@ -763,6 +763,7 @@ string to_string(const fptu_field &);
 string to_string(const fptu_rw &);
 string to_string(const fptu_ro &);
 string to_string(fptu_lge);
+string to_string(const fptu_time &time);
 }
 
 /* Явно удаляем лишенные смысла операции, в том числе для выявления ошибок */

@@ -18,6 +18,7 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+#include <cmath>
 
 #if defined(_WIN32) || defined(_WIN64)
 __extern_C __declspec(dllimport) __noreturn
@@ -139,5 +140,10 @@ __cold string to_string(fptu_lge lge) {
   case fptu_ge:
     return ">=";
   }
+}
+
+__cold string to_string(const fptu_time &time) {
+  constexpr double scale = exp2(-32);
+  return std::to_string(time.fixedpoint * scale) + "_" FIXME;
 }
 }
