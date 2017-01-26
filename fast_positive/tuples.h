@@ -33,7 +33,7 @@
 #include "fast_positive/defs.h"
 
 #include <errno.h>  // for error codes
-#include <string.h> // for strlen
+#include <string.h> // for strlen()
 #include <time.h>   // for struct timespec, struct timeval
 
 #ifdef HAVE_SYS_UIO_H
@@ -754,7 +754,16 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 }
 
 //----------------------------------------------------------------------------
-/* Сервисные функции и классы для C++ (будет пополнять, существенно). */
+/* Сервисные функции и классы для C++ (будет существенно пополнятся). */
+
+namespace fptu {
+std::string format(const char *fmt, ...)
+#ifdef __GNUC__
+    __attribute__((format(printf, 1, 2)))
+#endif
+    ;
+std::string hexadecimal(const void *data, size_t bytes);
+} /* namespace fptu */
 
 namespace std {
 string to_string(fptu_error);
@@ -766,14 +775,14 @@ string to_string(const fptu_rw &);
 string to_string(const fptu_ro &);
 string to_string(fptu_lge);
 string to_string(const fptu_time &time);
-}
+} /* namespace std */
 
 /* Явно удаляем лишенные смысла операции, в том числе для выявления ошибок */
 bool operator>(const fptu_lge &, const fptu_lge &) = delete;
 bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
-#endif // __cplusplus
+#endif /* __cplusplus */
 
 #ifdef _MSC_VER
 #pragma pack(pop)

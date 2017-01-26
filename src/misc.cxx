@@ -18,7 +18,9 @@
  */
 
 #include "fast_positive/tuples_internal.h"
-#include <cmath>
+#include <cmath>     // for exp2()
+#include <cstdarg>   // for va_list
+#include <cstdio>    // for _vscprintf()
 
 #if defined(_WIN32) || defined(_WIN64)
 __extern_C __declspec(dllimport) __noreturn
@@ -32,6 +34,54 @@ void __assert_fail(const char *assertion, const char *filename, unsigned line,
   abort();
 }
 #endif /* windows mustdie */
+
+namespace fptu {
+
+__cold std::string format(const char *fmt, ...) {
+  va_list ap, ones;
+  va_start(ap, fmt);
+  va_copy(ones, ap);
+#ifdef MSVC
+  int needed = _vscprintf(fmt, ap);
+#else
+  int needed = vsnprintf(nullptr, 0, fmt, ap);
+#endif
+  assert(needed >= 0);
+  va_end(ap);
+  std::string result;
+  result.reserve((size_t)needed + 1);
+  result.resize(needed, '\0');
+#ifdef MSVC
+  int actual = vsnprintf_s((char *)result.data(), result.capacity(),
+                           _TRUNCATE, fmt, ones);
+#else
+  int actual = vsnprintf((char *)result.data(), result.capacity(), fmt, ones);
+#endif
+  assert(actual == needed);
+  (void)actual;
+  va_end(ones);
+  return result;
+}
+
+__cold std::string hexadecimal(const void *data, size_t bytes) {
+  std::string result;
+  if (bytes > 0) {
+    result.reserve(bytes * 2);
+    const uint8_t *ptr = (const uint8_t *)data;
+    const uint8_t *const end = ptr + bytes;
+    do {
+      char high = *ptr >> 4;
+      char low = *ptr & 15;
+      result.push_back((high < 10) ? high + '0' : high - 10 + 'a');
+      result.push_back((low < 10) ? low + '0' : low - 10 + 'a');
+    } while (++ptr < end);
+  }
+  return result;
+}
+
+} /* namespace fptu */
+
+//----------------------------------------------------------------------------
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
@@ -146,4 +196,4 @@ __cold string to_string(const fptu_time &time) {
   const double scale = exp2(-32);
   return std::to_string(time.fixedpoint * scale) + "_" FIXME;
 }
-}
+} /* namespace std */

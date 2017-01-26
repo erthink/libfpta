@@ -60,6 +60,14 @@
 #	define __has_attribute(x) (0)
 #endif
 
+#if defined(__GLIBC__) && !__GLIBC_PREREQ(2,12)
+	/* Actualy libfptu requires just C99 (e.g glibc >= 2.1), but was
+	 * not tested with glibc older than 2.12 (from RHEL6). So you could
+	 * remove this #error and try to continue at your own risk.
+	 * In such case please don't rise up an issues related ONLY to old glibc. */
+#	error "libfptu required at least glibc version 2.12 or later."
+#endif
+
 //----------------------------------------------------------------------------
 
 #ifndef __extern_C
