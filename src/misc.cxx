@@ -18,6 +18,7 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+#include <cinttypes> // for PRId64, PRIu64
 #include <cmath>     // for exp2()
 #include <cstdarg>   // for va_list
 #include <cstdio>    // for _vscprintf()
@@ -85,21 +86,13 @@ __cold std::string hexadecimal(const void *data, size_t bytes) {
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
-namespace std {
-
-__cold string to_string(fptu_error) { return FIXME; }
-
-__cold string to_string(const fptu_varlen &) { return FIXME; }
-
-__cold string to_string(const fptu_unit &) { return FIXME; }
-
-__cold string to_string(const fptu_field &) { return FIXME; }
-
-__cold string to_string(fptu_type type) {
+__cold const char *fptu_type_name(fptu_type type) {
   switch ((int /* hush 'not in enumerated' */)type) {
-  default:
-    return "invalid(fptu_type)" + to_string((int)type);
-
+  default: {
+    static __thread char buf[16];
+    snprintf(buf, sizeof(buf), "invalid(%d)", type);
+    return buf;
+  }
   case fptu_null:
     return "null";
   case fptu_uint16:
@@ -168,8 +161,130 @@ __cold string to_string(fptu_type type) {
   }
 }
 
+namespace std {
+
+__cold string to_string(fptu_error) { return FIXME; }
+
+__cold string to_string(const fptu_varlen &) { return FIXME; }
+
+__cold string to_string(const fptu_unit &) { return FIXME; }
+
+__cold string to_string(const fptu_field &field) {
+  const auto type = fptu_get_type(field.ct);
+  auto payload = fptu_field_payload(&field);
+  switch ((int /* hush 'not in enumerated' */)type) {
+  default:
+  case fptu_null:
+    return fptu::format("{%u.%s}", fptu_get_col(field.ct),
+                        fptu_type_name(type));
+  case fptu_uint16:
+    return fptu::format("{%u.%s=%u}", fptu_get_col(field.ct),
+                        fptu_type_name(type),
+                        (unsigned)field.get_payload_uint16());
+  case fptu_int32:
+    return fptu::format("{%u.%s=%" PRId32 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->i32);
+  case fptu_uint32:
+    return fptu::format("{%u.%s=%" PRIu32 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->u32);
+  case fptu_fp32:
+    return fptu::format("{%u.%s=%g}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->fp32);
+  case fptu_int64:
+    return fptu::format("{%u.%s=%" PRId64 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->i64);
+  case fptu_uint64:
+    return fptu::format("{%u.%s=%" PRIu64 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->u64);
+  case fptu_fp64:
+    return fptu::format("{%u.%s=%.12g}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->fp64);
+  case fptu_datetime:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           to_string(payload->dt) + '}';
+  case fptu_96:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 96 / 8) + '}';
+  case fptu_128:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 128 / 8) + '}';
+  case fptu_160:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 160 / 8) + '}';
+  case fptu_256:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 256 / 8) + '}';
+  case fptu_cstr:
+    return fptu::format("{%u.%s=%s}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->cstr);
+  case fptu_opaque:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->other.data,
+                             payload->other.varlen.opaque_bytes) +
+           '}';
+    break;
+  case fptu_nested:
+    return "{" FIXME "}";
+  case fptu_null | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_uint16 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_int32 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_uint32 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_fp32 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_int64 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_uint64 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_fp64 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_datetime | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_96 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_128 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_160 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_256 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_cstr | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_opaque | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_nested | fptu_farray:
+    return "{" FIXME "}";
+  }
+}
+
+__cold string to_string(fptu_type type) {
+  return string(fptu_type_name(type));
+}
+
 __cold string to_string(const fptu_rw &) { return FIXME; }
-__cold string to_string(const fptu_ro &) { return FIXME; }
+
+__cold string to_string(const fptu_ro &ro) {
+  const fptu_field *const begin = fptu_begin_ro(ro);
+  const fptu_field *const end = fptu_end_ro(ro);
+  string result = fptu::format("(%zi bytes, %ti fields, %p)={",
+                               ro.total_bytes, end - begin, ro.units);
+  for (auto i = begin; i != end; ++i) {
+    if (i != begin)
+      result.append(", ");
+    result.append(to_string(*i));
+  }
+  result.push_back('}');
+  return result;
+}
 
 __cold string to_string(fptu_lge lge) {
   switch (lge) {

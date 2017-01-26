@@ -784,6 +784,8 @@ bool operator<(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
 #endif /* __cplusplus */
 
+const char *fptu_type_name(fptu_type);
+
 #ifdef _MSC_VER
 #pragma pack(pop)
 #pragma warning(pop)
