@@ -47,7 +47,7 @@ int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
     return rc;
 
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    auto index = fpta_shove2index(table_id->table.def->columns[i]);
+    const auto index = fpta_shove2index(table_id->table.def->columns[i]);
     if (index == fpta_index_none)
       break;
     assert(i < fpta_max_indexes);
@@ -86,7 +86,8 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
     return rc;
 
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    if (fpta_shove2index(table_id->table.def->columns[i]) == fpta_index_none)
+    const auto index = fpta_shove2index(table_id->table.def->columns[i]);
+    if (index == fpta_index_none)
       break;
     assert(i < fpta_max_indexes);
     if (i == stepover)

@@ -170,13 +170,19 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
   while (rc == MDB_SUCCESS) {
     if (cursor->range_from_value.type != fpta_begin &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->range_from_key.mdbx, &cursor->current) < 0)
-      goto eof;
+                 &cursor->range_from_key.mdbx, &cursor->current) < 0) {
+      if (fpta_index_is_ordered(cursor->index.shove))
+        goto eof;
+      goto next;
+    }
 
     if (cursor->range_to_value.type != fpta_end &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->range_to_key.mdbx, &cursor->current) >= 0)
-      goto eof;
+                 &cursor->range_to_key.mdbx, &cursor->current) >= 0) {
+      if (fpta_index_is_ordered(cursor->index.shove))
+        goto eof;
+      goto next;
+    }
 
     if (!cursor->filter)
       return FPTA_SUCCESS;
@@ -192,6 +198,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
     if (fpta_filter_match(cursor->filter, mdbx_data))
       return FPTA_SUCCESS;
 
+  next:
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                          &mdbx_data.sys, mdbx_step_op);
   }
@@ -242,7 +249,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
     return FPTA_EOOPS;
 
   case fpta_first:
-    if (cursor->range_from_value.type == fpta_begin) {
+    if (cursor->range_from_value.type == fpta_begin ||
+        !fpta_index_is_ordered(cursor->index.shove)) {
       mdbx_seek_op = MDB_FIRST;
     } else {
       mdbx_seek_key = &cursor->range_from_key.mdbx;
@@ -252,7 +260,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
     break;
 
   case fpta_last:
-    if (cursor->range_to_value.type == fpta_end) {
+    if (cursor->range_to_value.type == fpta_end ||
+        !fpta_index_is_ordered(cursor->index.shove)) {
       mdbx_seek_op = MDB_LAST;
     } else {
       mdbx_seek_key = &cursor->range_to_key.mdbx;
