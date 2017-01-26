@@ -194,6 +194,23 @@ __cold string to_string(fptu_lge lge) {
 
 __cold string to_string(const fptu_time &time) {
   const double scale = exp2(-32);
-  return std::to_string(time.fixedpoint * scale) + "_" FIXME;
+  char fractional[16];
+  snprintf(fractional, sizeof(fractional), "%.9f",
+           scale * (uint32_t)time.fixedpoint);
+  assert(fractional[0] == '0' || fractional[0] == '1');
+
+  time_t utc_sec = time.fixedpoint >> 32;
+  if (fractional[0] == '1')
+    /* учитываем перенос при округлении fractional */
+    utc_sec += 1;
+
+  struct tm utc_tm;
+  gmtime_r(&utc_sec, &utc_tm);
+
+  char datetime[32];
+  snprintf(datetime, sizeof(datetime), "%04d-%02d-%02d_%02d:%02d:%02d",
+           utc_tm.tm_year + 1900, utc_tm.tm_mon + 1, utc_tm.tm_mday,
+           utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec);
+  return string(datetime) + (fractional + /* skip leading */ 1);
 }
 } /* namespace std */

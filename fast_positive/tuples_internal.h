@@ -255,6 +255,7 @@ typedef union fptu_payload {
   int32_t i32;
   uint64_t u64;
   int64_t i64;
+  fptu_time dt;
   float fp32;
   double fp64;
   char cstr[4];
