@@ -227,7 +227,8 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove) {
   }
 }
 
-static int fpta_normalize_key(fpta_shove_t shove, fpta_key &key, bool copy) {
+static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
+                                    bool copy) {
   static_assert(fpta_max_keylen % sizeof(uint64_t) == 0,
                 "wrong fpta_max_keylen");
 
@@ -789,8 +790,8 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
 
 //----------------------------------------------------------------------------
 
-int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
-                       fpta_key &key, bool copy) {
+__hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
+                             const fptu_ro &row, fpta_key &key, bool copy) {
 #ifndef NDEBUG
   fpta_pollute(&key, sizeof(key));
 #endif

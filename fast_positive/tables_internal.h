@@ -426,8 +426,8 @@ int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
                        fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
-                          MDB_val &pk_key_old, const fptu_ro &row_old,
-                          MDB_val &pk_key_new, const fptu_ro &row_new,
+                          MDB_val pk_key_old, const fptu_ro &row_old,
+                          MDB_val pk_key_new, const fptu_ro &row_new,
                           unsigned stepover);
 
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
@@ -544,3 +544,8 @@ static __inline bool fpta_cursor_is_ascending(fpta_cursor_options op) {
 }
 
 int fpta_inconsistent_abort(fpta_txn *txn, int err);
+
+static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
+  return a.iov_len == b.iov_len &&
+         memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
+}

@@ -19,11 +19,6 @@
 
 #include "fast_positive/tables_internal.h"
 
-static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
-  return a.iov_len == b.iov_len &&
-         memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
-}
-
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level) {
   if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr ||
                !fpta_txn_validate(cursor->txn, min_level)))
@@ -634,9 +629,28 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
       return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
   }
 
+  /* Здесь не очевидный момент при обновлении с изменением PK:
+   *  - для обновления secondary индексов требуется как старое,
+   *    так и новое значения строки, а также оба значения PK.
+   *  - подготовленный old_pk_key содержит указатель на значение,
+   *    которое физически размещается в value в служебной таблице
+   *    secondary индекса, по которому открыт курсор.
+   *  - если сначала, вызовом fpta_secondary_upsert(), обновить
+   *    вспомогательные таблицы для secondary индексов, то указатель
+   *    внутри old_pk_key может стать невалидным, т.е. так мы потеряем
+   *    предыдущее значение PK.
+   *  - если же сначала просто обновить строку в основной таблице,
+   *    то будет утрачено её предыдущее значение, которое требуется
+   *    для обновления secondary индексов.
+   *
+   * Поэтому, чтобы не потерять старое значение PK и одновременно избежать
+   * лишних копирований, здесь используется mdbx_get_ex(). В свою очередь
+   * mdbx_get_ex() использует MDB_SET_KEY для получения как данных, так и
+   * данных ключа. */
+
   fptu_ro old;
-  rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
-                &old_pk_key, &old.sys);
+  rc = mdbx_get_ex(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                   &old_pk_key, &old.sys, nullptr);
   if (unlikely(rc != MDB_SUCCESS))
     return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 
