@@ -541,7 +541,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       return fpta_inconsistent_abort(cursor->txn, rc);
   }
 
-  if (mdbx_cursor_eof(cursor->mdbx_cursor) == 1)
+  if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE)
     cursor->set_eof(fpta_cursor::after_last);
   return FPTA_SUCCESS;
 }
