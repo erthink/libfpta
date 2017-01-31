@@ -591,7 +591,90 @@ public:
   std::set<crud_item *, crud_item::less_str> checker_str;
   std::set<crud_item *, crud_item::less_real> checker_real;
 
+  void Check(fpta_cursor *cursor) {
+    int move_result = fpta_cursor_move(cursor, fpta_first);
+    if (container.size() == 0)
+      EXPECT_EQ(FPTA_NODATA, move_result);
+    else {
+      EXPECT_EQ(FPTA_OK, move_result);
+      unsigned count = 0;
+      do {
+        ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+        fptu_ro row;
+        ASSERT_EQ(FPTA_OK, fpta_cursor_get(cursor, &row));
+        SCOPED_TRACE("row #" + std::to_string(count) + ", " +
+                     std::to_string(row));
+        unsigned row_present = 0;
+        for (const auto &item : container) {
+          fpta_value value;
+          ASSERT_EQ(FPTA_OK, fpta_get_column(row, &col_uint, &value));
+          if (item->pk_uint == value.uint) {
+            row_present++;
+            ASSERT_EQ(FPTA_OK, fpta_get_column(row, &col_str, &value));
+            EXPECT_STREQ(item->se_str.c_str(), value.str);
+            ASSERT_EQ(FPTA_OK, fpta_get_column(row, &col_real, &value));
+            EXPECT_EQ(item->se_real, value.fp);
+            ASSERT_EQ(FPTA_OK, fpta_get_column(row, &col_time, &value));
+            EXPECT_EQ(item->time.fixedpoint, value.datetime.fixedpoint);
+          }
+        }
+        ASSERT_EQ(1, row_present);
+        count++;
+        move_result = fpta_cursor_move(cursor, fpta_next);
+        ASSERT_TRUE(move_result == FPTA_OK || move_result == FPTA_NODATA);
+      } while (move_result == FPTA_OK);
+      EXPECT_EQ(container.size(), count);
+    }
+  }
+
+  void Check() {
+    ASSERT_TRUE(txn_guard.operator bool());
+
+    /* проверяем по PK */ {
+      SCOPED_TRACE("check: pk/uint");
+      // открываем курсор по col_uint: на всю таблицу, без фильтра
+      scoped_cursor_guard guard;
+      fpta_cursor *cursor;
+      EXPECT_EQ(FPTA_OK,
+                fpta_cursor_open(txn_guard.get(), &col_uint,
+                                 fpta_value_begin(), fpta_value_end(),
+                                 nullptr, fpta_unsorted_dont_fetch, &cursor));
+      ASSERT_NE(cursor, nullptr);
+      guard.reset(cursor);
+      ASSERT_NO_FATAL_FAILURE(Check(cursor));
+    }
+
+    /* проверяем по вторичному индексу колонки 'str' */ {
+      SCOPED_TRACE("check: se/str");
+      // открываем курсор по col_str: на всю таблицу, без фильтра
+      scoped_cursor_guard guard;
+      fpta_cursor *cursor;
+      EXPECT_EQ(FPTA_OK,
+                fpta_cursor_open(txn_guard.get(), &col_str,
+                                 fpta_value_begin(), fpta_value_end(),
+                                 nullptr, fpta_unsorted_dont_fetch, &cursor));
+      ASSERT_NE(cursor, nullptr);
+      guard.reset(cursor);
+      ASSERT_NO_FATAL_FAILURE(Check(cursor));
+    }
+
+    /* проверяем по вторичному индексу колонки 'real' */ {
+      SCOPED_TRACE("check: se/real");
+      // открываем курсор по col_real: на всю таблицу, без фильтра
+      scoped_cursor_guard guard;
+      fpta_cursor *cursor;
+      EXPECT_EQ(FPTA_OK,
+                fpta_cursor_open(txn_guard.get(), &col_real,
+                                 fpta_value_begin(), fpta_value_end(),
+                                 nullptr, fpta_unsorted_dont_fetch, &cursor));
+      ASSERT_NE(cursor, nullptr);
+      guard.reset(cursor);
+      ASSERT_NO_FATAL_FAILURE(Check(cursor));
+    }
+  }
+
   virtual void SetUp() {
+    SCOPED_TRACE("setup");
     // инициализируем идентификаторы таблицы и её колонок
     EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_crud"));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_uint, "uint"));
@@ -637,6 +720,7 @@ public:
   }
 
   virtual void TearDown() {
+    SCOPED_TRACE("teardown");
     // разрушаем привязанные идентификаторы
     fpta_name_destroy(&table);
     fpta_name_destroy(&col_uint);
@@ -657,16 +741,24 @@ public:
     }
   }
 
-  static unsigned mesh_order1_uint(unsigned n, unsigned NNN) {
+  static unsigned mesh_order4uint(unsigned n, unsigned NNN) {
     return (37 * n) % NNN;
   }
 
-  static unsigned mesh_order2_str(unsigned n, unsigned NNN) {
+  static unsigned mesh_order4str(unsigned n, unsigned NNN) {
     return (67 * n + 17) % NNN;
   }
 
-  static unsigned mesh_order3_real(unsigned n, unsigned NNN) {
+  static unsigned mesh_order4real(unsigned n, unsigned NNN) {
     return (97 * n + 43) % NNN;
+  }
+
+  static unsigned mesh_order4update(unsigned n, unsigned NNN) {
+    return (11 * n + 23) % NNN;
+  }
+
+  static unsigned mesh_order4delete(unsigned n, unsigned NNN) {
+    return (5 * n + 37) % NNN;
   }
 };
 
@@ -683,12 +775,12 @@ TEST_F(SmokeCRUD, none) {
    *      - первичный индекс, для возможности secondary он должен быть
    *        с контролем уникальности.
    *      - два secondary, из которых один с контролем уникальности,
-   *        второй неупорядоченный.
+   *        второй неупорядоченный и "с дубликатами".
    *  2. Добавляем данные:
    *     - последующие шаги требуют не менее 32 строк;
    *     - для колонки с дубликатами реализуем карту: 8x1 (8 уникальных),
    *       4x2 (4 парных дубля), 2x4 (два значения по 4 раза),
-   *       1x8 (одно значение 8 раз);
+   *       1x8 (одно значение 8 раз), это делает mapdup_order2key();
    *  3. Обновляем строки:
    *     - без курсора и без изменения PK: перебираем все комбинации
    *       сохранения/изменения каждой колонки = 7 комбинаций из 3 колонок;
@@ -736,92 +828,98 @@ TEST_F(SmokeCRUD, none) {
   ASSERT_STREQ(nullptr, fptu_check(row));
 
   constexpr unsigned NNN = 42;
-  for (unsigned i = 0; i < NNN; ++i) {
-    /* перемешиваем, так чтобы у полей был независимый порядок */
-    unsigned pk_uint_value = mesh_order1_uint(i, NNN);
-    unsigned order_se_str = mesh_order2_str(i, NNN);
-    unsigned order_se_real = mesh_order3_real(i, NNN);
-    double se_real_value = mapdup_order2key(order_se_real, NNN) / (double)NNN;
+  /* создаем достаточно кол-во строк для последующих проверок */ {
+    SCOPED_TRACE("fill");
+    for (unsigned i = 0; i < NNN; ++i) {
+      /* перемешиваем, так чтобы у полей был независимый порядок */
+      unsigned pk_uint_value = mesh_order4uint(i, NNN);
+      unsigned order_se_str = mesh_order4str(i, NNN);
+      unsigned order_se_real = mesh_order4real(i, NNN);
+      double se_real_value =
+          mapdup_order2key(order_se_real, NNN) / (double)NNN;
 
-    SCOPED_TRACE(
-        "add: row " + std::to_string(i) + " of [0.." + std::to_string(NNN) +
-        "), orders: " + std::to_string(pk_uint_value) + " / " +
-        std::to_string(order_se_str) + " / " + std::to_string(order_se_real) +
-        " (" + std::to_string(se_real_value) + ")");
-    ASSERT_EQ(FPTU_OK, fptu_clear(row));
+      SCOPED_TRACE("add: row " + std::to_string(i) + " of [0.." +
+                   std::to_string(NNN) + "), orders: " +
+                   std::to_string(pk_uint_value) + " / " +
+                   std::to_string(order_se_str) + " / " +
+                   std::to_string(order_se_real) + " (" +
+                   std::to_string(se_real_value) + ")");
+      ASSERT_EQ(FPTU_OK, fptu_clear(row));
 
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
-                                          fpta_value_uint(pk_uint_value)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
-                                          fpta_value_float(se_real_value)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                            fpta_value_uint(pk_uint_value)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(se_real_value)));
 
-    /* пытаемся обновить несуществующую строку */
-    EXPECT_EQ(MDB_NOTFOUND, fpta_probe_and_update_row(
-                                txn, &table, fptu_take_noshrink(row)));
+      /* пытаемся обновить несуществующую строку */
+      EXPECT_EQ(MDB_NOTFOUND, fpta_probe_and_update_row(
+                                  txn, &table, fptu_take_noshrink(row)));
 
-    /* пытаемся вставить неполноценную строку, в которой сейчас
-     * не хватает одного из индексируемых полей, поэтому вместо
-     * MDB_NOTFOUND должно быть возвращено FPTA_ROW_MISMATCH */
-    EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
-                                     txn, &table, fptu_take_noshrink(row)));
-    EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_insert_row(
-                                     txn, &table, fptu_take_noshrink(row)));
+      /* пытаемся вставить неполноценную строку, в которой сейчас
+       * не хватает одного из индексируемых полей, поэтому вместо
+       * MDB_NOTFOUND должно быть возвращено FPTA_ROW_MISMATCH */
+      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
+                                       txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_insert_row(
+                                       txn, &table, fptu_take_noshrink(row)));
 
-    /* добавляем недостающее индексируемое поле */
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
-                                          keygen.make(order_se_str, NNN)));
+      /* добавляем недостающее индексируемое поле */
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
+                                            keygen.make(order_se_str, NNN)));
 
-    /* теперь вставляем новую запись, но пока без поля `time`.
-     * проверяем как insert, так и upsert. */
-    if (i & 1)
+      /* теперь вставляем новую запись, но пока без поля `time`.
+       * проверяем как insert, так и upsert. */
+      if (i & 1)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+      else
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
+
+      /* пробуем вставить дубликат */
+      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
+                                  txn, &table, fptu_take_noshrink(row)));
+
+      /* добавляем поле `time` с нулевым значением и обновлем */
+      fptu_time datetime;
+      datetime.fixedpoint = 0;
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(datetime)));
       EXPECT_EQ(FPTA_OK,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-    else
-      EXPECT_EQ(FPTA_OK,
-                fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
+                fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
-    /* пробуем вставить дубликат */
-    EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                txn, &table, fptu_take_noshrink(row)));
+      /* обновляем поле `time`, проверяя как update, так и upsert. */
+      datetime = fptu_now_fine();
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(datetime)));
+      if (i & 2)
+        EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(
+                               txn, &table, fptu_take_noshrink(row)));
+      else
+        EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(
+                               txn, &table, fptu_take_noshrink(row)));
 
-    /* добавляем поле `time` с нулевым значением и обновлем */
-    fptu_time datetime;
-    datetime.fixedpoint = 0;
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
-                                          fpta_value_datetime(datetime)));
-    EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(row)));
+      /* еще раз пробуем вставить дубликат */
+      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
+                                  txn, &table, fptu_take_noshrink(row)));
 
-    /* обновляем поле `time`, проверяя как update, так и upsert. */
-    datetime = fptu_now_fine();
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
-                                          fpta_value_datetime(datetime)));
-    if (i & 2)
-      EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(txn, &table,
-                                                   fptu_take_noshrink(row)));
-    else
-      EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn, &table,
-                                                   fptu_take_noshrink(row)));
+      /* обновляем PK и пробуем вставить дубликат по вторичным ключам */
+      ASSERT_EQ(FPTA_OK,
+                fpta_upsert_column(row, &col_uint, fpta_value_uint(NNN)));
+      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
+                                  txn, &table, fptu_take_noshrink(row)));
 
-    /* еще раз пробуем вставить дубликат */
-    EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                txn, &table, fptu_take_noshrink(row)));
+      // добавляем аналог строки в проверочный набор
+      fpta_value se_str_value;
+      ASSERT_EQ(FPTA_OK, fpta_get_column(fptu_take_noshrink(row), &col_str,
+                                         &se_str_value));
+      container.emplace_back(new crud_item(pk_uint_value, se_str_value.str,
+                                           se_real_value, datetime));
 
-    /* обновляем PK и пробуем вставить дубликат по вторичным ключам */
-    ASSERT_EQ(FPTA_OK,
-              fpta_upsert_column(row, &col_uint, fpta_value_uint(NNN)));
-    EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                txn, &table, fptu_take_noshrink(row)));
-
-    // добавляем аналог строки в проверочный набор
-    fpta_value se_str_value;
-    ASSERT_EQ(FPTA_OK, fpta_get_column(fptu_take_noshrink(row), &col_str,
-                                       &se_str_value));
-    container.emplace_back(new crud_item(pk_uint_value, se_str_value.str,
-                                         se_real_value, datetime));
-
-    checker_pk_uint.insert(container.back().get());
-    checker_str.insert(container.back().get());
-    checker_real.insert(container.back().get());
+      checker_pk_uint.insert(container.back().get());
+      checker_str.insert(container.back().get());
+      checker_real.insert(container.back().get());
+    }
   }
 
   // фиксируем транзакцию и добавленные данные
@@ -830,191 +928,297 @@ TEST_F(SmokeCRUD, none) {
 
   //--------------------------------------------------------------------------
 
-  // начинаем транзакцию для проверочных изменений
+  /* при добавлении значения полей были перемешаны, поэтому из container их
+   * можно брать просто последовательно. */
+  unsigned nn = 0;
+
+  // начинаем транзакцию для проверочных обновлений
   EXPECT_EQ(FPTA_OK,
             fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
   ASSERT_NE(nullptr, txn);
   txn_guard.reset(txn);
 
-  /* при добавлении строки были перемешаны, поэтому из container их
-   * можно брать последовательно */
-  unsigned n = 0;
+  ASSERT_NO_FATAL_FAILURE(Check());
 
-  // обновляем строки без курсора и без изменения PK
-  for (int m = 0; m < 8; ++m) {
-    SCOPED_TRACE("update (without cursor): row " + std::to_string(n) +
-                 " of [0.." + std::to_string(NNN) + "), change-mask: " +
-                 std::to_string(m));
-    crud_item *item = container[n++].get();
-    SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str " +
-                 item->se_str + ", real " + std::to_string(item->se_real) +
-                 ", time " + std::to_string(item->time));
-    ASSERT_EQ(FPTU_OK, fptu_clear(row));
-    if (m & 1)
-      item->se_str += "42";
-    if (m & 2)
-      item->se_real += 42;
-    if (m & 4)
-      item->time.fixedpoint += 42;
-    SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str " +
-                 item->se_str + ", real " + std::to_string(item->se_real) +
-                 ", time " + std::to_string(item->time));
-
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
-                                          fpta_value_str(item->se_str)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
-                                          fpta_value_float(item->se_real)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
-                                          fpta_value_datetime(item->time)));
-    /* пробуем обновить без одного поля */
-    EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
-                                     txn, &table, fptu_take_noshrink(row)));
-
-    /* обновляем строку */
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
-                                          fpta_value_uint(item->pk_uint)));
-    EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn, &table,
-                                                 fptu_take_noshrink(row)));
-  }
-
-  // открываем курсор по col_str: на всю таблицу, без фильтра
-  fpta_cursor *cursor;
-  EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),
-                                      fpta_value_end(), nullptr,
-                                      fpta_unsorted_dont_fetch, &cursor));
-  ASSERT_NE(nullptr, cursor);
-  cursor_guard.reset(cursor);
-
-  // обновляем строки через курсор по col_str.
-  for (int m = 0; m < 8; ++m) {
-    SCOPED_TRACE("update (cursor-str): row " + std::to_string(n) +
-                 " of [0.." + std::to_string(NNN) + "), change-mask: " +
-                 std::to_string(m));
-    crud_item *item = container[n++].get();
-    SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str " +
-                 item->se_str + ", real " + std::to_string(item->se_real) +
-                 ", time " + std::to_string(item->time));
-
-    fpta_value key = fpta_value_str(item->se_str);
-    ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
-    EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
-    // ради проверки считаем повторы
-    size_t dups;
-    EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-    EXPECT_EQ(1, dups);
-
-    ASSERT_EQ(FPTU_OK, fptu_clear(row));
-    if (m & 1)
-      item->pk_uint += NNN;
-    if (m & 2)
-      item->se_real += 42;
-    if (m & 4)
-      item->time.fixedpoint += 42;
-    SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                 item->se_str + "\", real " + std::to_string(item->se_real) +
-                 ", time " + std::to_string(item->time));
-
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
-                                          fpta_value_str(item->se_str)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
-                                          fpta_value_float(item->se_real)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
-                                          fpta_value_datetime(item->time)));
-    /* пробуем обновить без одного поля */
-    EXPECT_EQ(FPTA_ROW_MISMATCH,
-              fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
-
-    /* обновляем строку */
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
-                                          fpta_value_uint(item->pk_uint)));
-    ASSERT_EQ(FPTA_OK,
-              fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
-  }
-
-  // закрываем курсор
-  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-  cursor = nullptr;
-
-  // открываем курсор по col_real: на всю таблицу, без фильтра
-  EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_real, fpta_value_begin(),
-                                      fpta_value_end(), nullptr,
-                                      fpta_unsorted_dont_fetch, &cursor));
-  ASSERT_NE(nullptr, cursor);
-  cursor_guard.reset(cursor);
-
-  // обновляем строки через курсор по col_real.
-  for (int m = 0; m < 8; ++m) {
-    SCOPED_TRACE("update (cursor-real): row " + std::to_string(n) +
-                 " of [0.." + std::to_string(NNN) + "), change-mask: " +
-                 std::to_string(m));
-    crud_item *item = container[n++].get();
-    SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                 item->se_str + "\", real " + std::to_string(item->se_real) +
-                 ", time " + std::to_string(item->time));
-
-    // считаем сколько должно быть повторов
-    unsigned expected_dups = 0;
-    for (auto const &scan : container)
-      if (item->se_real == scan->se_real)
-        expected_dups++;
-
-    fpta_value key = fpta_value_float(item->se_real);
-    if (expected_dups == 1)
-      ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
-    else {
-      /* больше одного значения, точное позиционирование возможно
-       * только по ключу не возможно */
-      ASSERT_EQ(FPTA_EMULTIVAL,
-                fpta_cursor_locate(cursor, true, &key, nullptr));
-      /* создаем фейковую строку с PK и искомым значением для поиска*/
+  /* обновляем строки без курсора и без изменения PK */ {
+    SCOPED_TRACE("update.without-cursor");
+    for (int m = 0; m < 8; ++m) {
+      const unsigned n = mesh_order4update(nn++, NNN);
+      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), change-mask: " +
+                   std::to_string(m));
+      crud_item *item = container[n].get();
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
+      if (m & 1)
+        item->se_str += "42";
+      if (m & 2)
+        item->se_real += 42;
+      if (m & 4)
+        item->time.fixedpoint += 42;
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
+                                            fpta_value_str(item->se_str)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(item->se_real)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(item->time)));
+      /* пробуем обновить без одного поля */
+      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
+                                       txn, &table, fptu_take_noshrink(row)));
+
+      /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
                                             fpta_value_uint(item->pk_uint)));
-      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real, key));
-      fptu_ro row_value = fptu_take_noshrink(row);
-      /* теперь поиск должен быть успешен */
-      ASSERT_EQ(FPTA_OK,
-                fpta_cursor_locate(cursor, true, nullptr, &row_value));
+      EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn, &table,
+                                                   fptu_take_noshrink(row)));
+      ASSERT_NO_FATAL_FAILURE(Check());
     }
-    EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
-
-    size_t dups;
-    EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-    EXPECT_EQ(expected_dups, dups);
-
-    ASSERT_EQ(FPTU_OK, fptu_clear(row));
-    if (m & 1)
-      item->pk_uint += NNN;
-    if (m & 2)
-      item->se_str += "42";
-    if (m & 4)
-      item->time.fixedpoint += 42;
-    SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                 item->se_str + "\", real " + std::to_string(item->se_real) +
-                 ", time " + std::to_string(item->time));
-
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
-                                          fpta_value_uint(item->pk_uint)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
-                                          fpta_value_float(item->se_real)));
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
-                                          fpta_value_datetime(item->time)));
-    /* пробуем обновить без одного поля */
-    EXPECT_EQ(FPTA_ROW_MISMATCH,
-              fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
-
-    /* обновляем строку */
-    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
-                                          fpta_value_str(item->se_str)));
-    ASSERT_EQ(FPTA_OK,
-              fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
+    ASSERT_NO_FATAL_FAILURE(Check());
   }
 
-  // закрываем курсор
-  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-  cursor = nullptr;
+  /* обновляем строки через курсор по col_str. */ {
+    SCOPED_TRACE("update.cursor-ordered_unique_reversed_str");
+    // открываем курсор по col_str: на всю таблицу, без фильтра
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+
+    for (int m = 0; m < 8; ++m) {
+      const unsigned n = mesh_order4update(nn++, NNN);
+      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), change-mask: " +
+                   std::to_string(m));
+      crud_item *item = container[n].get();
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      fpta_value key = fpta_value_str(item->se_str);
+      ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+      EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+      // ради проверки считаем повторы
+      size_t dups;
+      EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(1, dups);
+
+      ASSERT_EQ(FPTU_OK, fptu_clear(row));
+      if (m & 1)
+        item->pk_uint += NNN;
+      if (m & 2)
+        item->se_real += 42;
+      if (m & 4)
+        item->time.fixedpoint += 42;
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
+                                            fpta_value_str(item->se_str)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(item->se_real)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(item->time)));
+      /* пробуем обновить без одного поля */
+      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
+                                       cursor, fptu_take_noshrink(row)));
+
+      /* обновляем строку */
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                            fpta_value_uint(item->pk_uint)));
+      ASSERT_EQ(FPTA_OK, fpta_cursor_probe_and_update(
+                             cursor, fptu_take_noshrink(row)));
+
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    // закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
+
+  /* обновляем строки через курсор по col_real. */ {
+    SCOPED_TRACE("update.cursor-se-unordered_withdups_real");
+    // открываем курсор по col_real: на всю таблицу, без фильтра
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_real, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+
+    for (int m = 0; m < 8; ++m) {
+      const unsigned n = mesh_order4update(nn++, NNN);
+      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), change-mask: " +
+                   std::to_string(m));
+      crud_item *item = container[n].get();
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      // считаем сколько должно быть повторов
+      unsigned expected_dups = 0;
+      for (auto const &scan : container)
+        if (item->se_real == scan->se_real)
+          expected_dups++;
+
+      fpta_value key = fpta_value_float(item->se_real);
+      if (expected_dups == 1)
+        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+      else {
+        /* больше одного значения, точное позиционирование возможно
+         * только по ключу не возможно */
+        ASSERT_EQ(FPTA_EMULTIVAL,
+                  fpta_cursor_locate(cursor, true, &key, nullptr));
+        /* создаем фейковую строку с PK и искомым значением для поиска*/
+        ASSERT_EQ(FPTU_OK, fptu_clear(row));
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_uint,
+                                     fpta_value_uint(item->pk_uint)));
+        ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real, key));
+        fptu_ro row_value = fptu_take_noshrink(row);
+        /* теперь поиск должен быть успешен */
+        ASSERT_EQ(FPTA_OK,
+                  fpta_cursor_locate(cursor, true, nullptr, &row_value));
+      }
+      EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+
+      size_t dups;
+      EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(expected_dups, dups);
+
+      ASSERT_EQ(FPTU_OK, fptu_clear(row));
+      if (m & 1)
+        item->pk_uint += NNN;
+      if (m & 2)
+        item->se_str += "42";
+      if (m & 4)
+        item->time.fixedpoint += 42;
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                            fpta_value_uint(item->pk_uint)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(item->se_real)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(item->time)));
+      /* пробуем обновить без одного поля */
+      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
+                                       cursor, fptu_take_noshrink(row)));
+
+      /* обновляем строку */
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
+                                            fpta_value_str(item->se_str)));
+      ASSERT_EQ(FPTA_OK, fpta_cursor_probe_and_update(
+                             cursor, fptu_take_noshrink(row)));
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    // закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
+
+  /* обновляем строки через курсор по col_uint (PK). */ {
+    SCOPED_TRACE("update.cursor-pk_uint");
+    // открываем курсор по col_uint: на всю таблицу, без фильтра
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_uint, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+
+    for (int m = 0; m < 8; ++m) {
+      const unsigned n = mesh_order4update(nn++, NNN);
+      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), change-mask: " +
+                   std::to_string(m));
+      crud_item *item = container[n].get();
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      fpta_value key = fpta_value_uint(item->pk_uint);
+      ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+      EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+      // ради проверки считаем повторы
+      size_t dups;
+      EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(1, dups);
+
+      ASSERT_EQ(FPTU_OK, fptu_clear(row));
+      if (m & 1)
+        item->se_str += "42";
+      if (m & 2)
+        item->se_real += 42;
+      if (m & 4)
+        item->time.fixedpoint += 42;
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
+                   ", str \"" + item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
+                                            fpta_value_str(item->se_str)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(item->se_real)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(item->time)));
+      /* пробуем обновить без одного поля */
+      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
+                                       cursor, fptu_take_noshrink(row)));
+
+      /* обновляем строку */
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                            fpta_value_uint(item->pk_uint)));
+      EXPECT_EQ(FPTA_OK, fpta_cursor_probe_and_update(
+                             cursor, fptu_take_noshrink(row)));
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    // закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
 
   // фиксируем транзакцию и измененные данные
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+
+  // начинаем транзакцию для проверочных удалений
+  EXPECT_EQ(FPTA_OK,
+            fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+  txn_guard.reset(txn);
+
+  // фиксируем транзакцию и удаление данных
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
   txn = nullptr;
 

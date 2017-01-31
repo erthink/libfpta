@@ -19,11 +19,6 @@
 
 #include "fast_positive/tables_internal.h"
 
-static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
-  return a.iov_len == b.iov_len &&
-         memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
-}
-
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level) {
   if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr ||
                !fpta_txn_validate(cursor->txn, min_level)))
@@ -170,13 +165,19 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
   while (rc == MDB_SUCCESS) {
     if (cursor->range_from_value.type != fpta_begin &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->range_from_key.mdbx, &cursor->current) < 0)
-      goto eof;
+                 &cursor->range_from_key.mdbx, &cursor->current) < 0) {
+      if (fpta_index_is_ordered(cursor->index.shove))
+        goto eof;
+      goto next;
+    }
 
     if (cursor->range_to_value.type != fpta_end &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->range_to_key.mdbx, &cursor->current) >= 0)
-      goto eof;
+                 &cursor->range_to_key.mdbx, &cursor->current) >= 0) {
+      if (fpta_index_is_ordered(cursor->index.shove))
+        goto eof;
+      goto next;
+    }
 
     if (!cursor->filter)
       return FPTA_SUCCESS;
@@ -192,6 +193,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
     if (fpta_filter_match(cursor->filter, mdbx_data))
       return FPTA_SUCCESS;
 
+  next:
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                          &mdbx_data.sys, mdbx_step_op);
   }
@@ -242,7 +244,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
     return FPTA_EOOPS;
 
   case fpta_first:
-    if (cursor->range_from_value.type == fpta_begin) {
+    if (cursor->range_from_value.type == fpta_begin ||
+        !fpta_index_is_ordered(cursor->index.shove)) {
       mdbx_seek_op = MDB_FIRST;
     } else {
       mdbx_seek_key = &cursor->range_from_key.mdbx;
@@ -252,7 +255,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
     break;
 
   case fpta_last:
-    if (cursor->range_to_value.type == fpta_end) {
+    if (cursor->range_to_value.type == fpta_end ||
+        !fpta_index_is_ordered(cursor->index.shove)) {
       mdbx_seek_op = MDB_LAST;
     } else {
       mdbx_seek_key = &cursor->range_to_key.mdbx;
@@ -518,8 +522,8 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 
     int rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                           &pk_key, nullptr, &old.sys, MDB_CURRENT);
-    if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
-        old.sys.iov_len > likely_enough) {
+    if (unlikely(rc == MDBX_RESULT_TRUE)) {
+      assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
       old.sys.iov_base = alloca(old.sys.iov_len);
       rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                         &pk_key, nullptr, &old.sys, MDB_CURRENT);
@@ -537,7 +541,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       return fpta_inconsistent_abort(cursor->txn, rc);
   }
 
-  if (mdbx_cursor_eof(cursor->mdbx_cursor) == 1)
+  if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE)
     cursor->set_eof(fpta_cursor::after_last);
   return FPTA_SUCCESS;
 }
@@ -625,9 +629,28 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
       return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
   }
 
+  /* Здесь не очевидный момент при обновлении с изменением PK:
+   *  - для обновления secondary индексов требуется как старое,
+   *    так и новое значения строки, а также оба значения PK.
+   *  - подготовленный old_pk_key содержит указатель на значение,
+   *    которое физически размещается в value в служебной таблице
+   *    secondary индекса, по которому открыт курсор.
+   *  - если сначала, вызовом fpta_secondary_upsert(), обновить
+   *    вспомогательные таблицы для secondary индексов, то указатель
+   *    внутри old_pk_key может стать невалидным, т.е. так мы потеряем
+   *    предыдущее значение PK.
+   *  - если же сначала просто обновить строку в основной таблице,
+   *    то будет утрачено её предыдущее значение, которое требуется
+   *    для обновления secondary индексов.
+   *
+   * Поэтому, чтобы не потерять старое значение PK и одновременно избежать
+   * лишних копирований, здесь используется mdbx_get_ex(). В свою очередь
+   * mdbx_get_ex() использует MDB_SET_KEY для получения как данных, так и
+   * данных ключа. */
+
   fptu_ro old;
-  rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
-                &old_pk_key, &old.sys);
+  rc = mdbx_get_ex(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                   &old_pk_key, &old.sys, nullptr);
   if (unlikely(rc != MDB_SUCCESS))
     return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 
@@ -636,6 +659,16 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
                           new_pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
+
+#if 0 /* LY: в данный момент нет необходимости */
+  if (old_pk_key.iov_len > 0 &&
+      mdbx_is_dirty(cursor->txn->mdbx_txn, old_pk_key.iov_base) !=
+          MDBX_RESULT_FALSE) {
+    void *buffer = alloca(old_pk_key.iov_len);
+    old_pk_key.iov_base =
+        memcpy(buffer, old_pk_key.iov_base, old_pk_key.iov_len);
+  }
+#endif
 
   rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, old_pk_key, old,
                              new_pk_key.mdbx, new_row_value,
