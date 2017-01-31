@@ -522,8 +522,8 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 
     int rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                           &pk_key, nullptr, &old.sys, MDB_CURRENT);
-    if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
-        old.sys.iov_len > likely_enough) {
+    if (unlikely(rc == MDBX_RESULT_TRUE)) {
+      assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
       old.sys.iov_base = alloca(old.sys.iov_len);
       rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                         &pk_key, nullptr, &old.sys, MDB_CURRENT);

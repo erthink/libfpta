@@ -411,8 +411,8 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
 
   rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx, &row.sys,
                     &old.sys, flags);
-  if (unlikely(rc == -1) && old.sys.iov_base == nullptr &&
-      old.sys.iov_len > likely_enough) {
+  if (unlikely(rc == MDBX_RESULT_TRUE)) {
+    assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
     old.sys.iov_base = alloca(old.sys.iov_len);
     rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
                       &row.sys, &old.sys, flags);
