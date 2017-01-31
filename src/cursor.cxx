@@ -660,6 +660,16 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
+#if 0 /* LY: в данный момент нет необходимости */
+  if (old_pk_key.iov_len > 0 &&
+      mdbx_is_dirty(cursor->txn->mdbx_txn, old_pk_key.iov_base) !=
+          MDBX_RESULT_FALSE) {
+    void *buffer = alloca(old_pk_key.iov_len);
+    old_pk_key.iov_base =
+        memcpy(buffer, old_pk_key.iov_base, old_pk_key.iov_len);
+  }
+#endif
+
   rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, old_pk_key, old,
                              new_pk_key.mdbx, new_row_value,
                              cursor->index.column_order);
