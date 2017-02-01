@@ -482,7 +482,6 @@ static int fpta_name_init(fpta_name *id, const char *name,
     return FPTA_EINVAL;
 
   memset(id, 0, sizeof(fpta_name));
-
   if (unlikely(!fpta_validate_name(name)))
     return FPTA_EINVAL;
 
@@ -492,7 +491,7 @@ static int fpta_name_init(fpta_name *id, const char *name,
   case fpta_table:
     id->shove = fpta_shove_name(name, fpta_table);
     id->table.pk = fpta_index_none | fptu_null;
-    // id->table.def = nullptr;
+    // id->table.def = nullptr; /* done by memset() */
     assert(fpta_id_validate(id, fpta_table));
     break;
   case fpta_column:
@@ -504,8 +503,8 @@ static int fpta_name_init(fpta_name *id, const char *name,
     break;
   }
 
-  // id->mdbx_dbi = 0;
-  // id->version = 0;
+  // id->mdbx_dbi = 0; /* done by memset() */
+  // id->version = 0; /* done by memset() */
   return FPTA_SUCCESS;
 }
 
@@ -530,6 +529,54 @@ void fpta_name_destroy(fpta_name *id) {
   if (fpta_id_validate(id, fpta_table))
     fpta_schema_free(id->table.def);
   memset(id, 0, sizeof(fpta_name));
+}
+
+int fpta_table_column_count(const fpta_name *table_id) {
+  if (unlikely(!fpta_id_validate(table_id, fpta_table)))
+    return -1;
+
+  const fpta_table_schema *schema = table_id->table.def;
+  if (unlikely(schema == nullptr))
+    return -1;
+  if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
+    return -1;
+  if (unlikely(schema->shove != table_id->shove))
+    return -1;
+  if (unlikely(table_id->version != schema->version))
+    return -1;
+
+  return schema->count;
+}
+
+int fpta_table_column_get(const fpta_name *table_id, unsigned column,
+                          fpta_name *column_id) {
+  if (unlikely(column_id == nullptr))
+    return EINVAL;
+
+  memset(column_id, 0, sizeof(fpta_name));
+  if (unlikely(!fpta_id_validate(table_id, fpta_table)))
+    return EINVAL;
+
+  const fpta_table_schema *schema = table_id->table.def;
+  if (unlikely(schema == nullptr))
+    return EINVAL;
+  if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
+    return FPTA_SCHEMA_CORRUPTED;
+  if (unlikely(schema->shove != table_id->shove))
+    return FPTA_SCHEMA_CORRUPTED;
+  if (unlikely(table_id->version != schema->version))
+    return FPTA_ETXNOUT;
+
+  if (column >= schema->count)
+    return EINVAL;
+  column_id->column.table = const_cast<fpta_name *>(table_id);
+  column_id->shove = schema->columns[column];
+  column_id->column.num = (int)column;
+  column_id->version = table_id->version;
+  // column_id->mdbx_dbi = 0; /* done by memset() */
+
+  assert(fpta_id_validate(column_id, fpta_column));
+  return FPTA_SUCCESS;
 }
 
 int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id) {
