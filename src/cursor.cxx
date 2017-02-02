@@ -503,6 +503,14 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     MDB_val pk_key;
     if (fpta_index_is_primary(cursor->index.shove)) {
       pk_key = cursor->current;
+      if (pk_key.iov_len > 0 &&
+          /* LY: FIXME тут можно убрать вызов mdbx_is_dirty() и просто
+           * всегда копировать ключ, так как это скорее всего дешевле. */
+          mdbx_is_dirty(cursor->txn->mdbx_txn, pk_key.iov_base) !=
+              MDBX_RESULT_FALSE) {
+        void *buffer = alloca(pk_key.iov_len);
+        pk_key.iov_base = memcpy(buffer, pk_key.iov_base, pk_key.iov_len);
+      }
     } else {
       int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
                                MDB_GET_CURRENT);
@@ -536,9 +544,11 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     if (unlikely(rc != MDB_SUCCESS))
       return fpta_inconsistent_abort(cursor->txn, rc);
 
-    rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
-    if (unlikely(rc != MDB_SUCCESS))
-      return fpta_inconsistent_abort(cursor->txn, rc);
+    if (!fpta_index_is_primary(cursor->index.shove)) {
+      rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
+      if (unlikely(rc != MDB_SUCCESS))
+        return fpta_inconsistent_abort(cursor->txn, rc);
+    }
   }
 
   if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE)
