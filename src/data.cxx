@@ -430,7 +430,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
 
 //----------------------------------------------------------------------------
 
-int fpta_del(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
+int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
