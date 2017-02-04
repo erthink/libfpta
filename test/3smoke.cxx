@@ -590,10 +590,11 @@ public:
   std::set<crud_item *, crud_item::less_pk> checker_pk_uint;
   std::set<crud_item *, crud_item::less_str> checker_str;
   std::set<crud_item *, crud_item::less_real> checker_real;
+  unsigned ndeleted;
 
   void Check(fpta_cursor *cursor) {
     int move_result = fpta_cursor_move(cursor, fpta_first);
-    if (container.size() == 0)
+    if (container.size() - ndeleted == 0)
       EXPECT_EQ(FPTA_NODATA, move_result);
     else {
       EXPECT_EQ(FPTA_OK, move_result);
@@ -606,6 +607,9 @@ public:
                      std::to_string(row));
         unsigned row_present = 0;
         for (const auto &item : container) {
+          if (!item)
+            /* пропускаем удаленные строки */
+            continue;
           fpta_value value;
           ASSERT_EQ(FPTA_OK, fpta_get_column(row, &col_uint, &value));
           if (item->pk_uint == value.uint) {
@@ -623,7 +627,7 @@ public:
         move_result = fpta_cursor_move(cursor, fpta_next);
         ASSERT_TRUE(move_result == FPTA_OK || move_result == FPTA_NODATA);
       } while (move_result == FPTA_OK);
-      EXPECT_EQ(container.size(), count);
+      EXPECT_EQ(container.size() - ndeleted, count);
     }
   }
 
@@ -685,6 +689,7 @@ public:
     // чистим
     ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
     ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    ndeleted = 0;
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -758,7 +763,7 @@ public:
   }
 
   static unsigned mesh_order4delete(unsigned n, unsigned NNN) {
-    return (5 * n + 37) % NNN;
+    return (5 * n + 13) % NNN;
   }
 };
 
@@ -794,8 +799,8 @@ TEST_F(SmokeCRUD, none) {
    *     - по одной через курсор по каждому индексу;
    *     - делаем это как для обновленных строк, так и для нетронутых.
    *     - попутно пробуем удалить несуществующие строки.
-   *     - попутно пробуем удалить через fpta_del() строки с существующим PK,
-   *       но различиями в других колонках.
+   *     - попутно пробуем удалить через fpta_delete() строки
+   *       с существующим PK, но различиями в других колонках.
    *     = итого: удаляем 8 строк, из которых 4 не были обновлены.
    *  5. Проверяем содержимое таблицы и состояние индексов:
    *     - читаем без курсора, fpta_get() для каждого индекса с контролем
@@ -928,8 +933,10 @@ TEST_F(SmokeCRUD, none) {
 
   //--------------------------------------------------------------------------
 
-  /* при добавлении значения полей были перемешаны, поэтому из container их
-   * можно брать просто последовательно. */
+  /* При добавлении строк значения полей были перемешаны (сгенерированы в
+   * нелинейном порядке), поэтому из container их можно брать просто
+   * последовательно. Однако, для параметризируемой стохастичности теста
+   * порядок будет еще раз перемешан посредством mesh_order4update(). */
   unsigned nn = 0;
 
   // начинаем транзакцию для проверочных обновлений
@@ -944,7 +951,7 @@ TEST_F(SmokeCRUD, none) {
     SCOPED_TRACE("update.without-cursor");
     for (int m = 0; m < 8; ++m) {
       const unsigned n = mesh_order4update(nn++, NNN);
-      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
@@ -996,7 +1003,7 @@ TEST_F(SmokeCRUD, none) {
 
     for (int m = 0; m < 8; ++m) {
       const unsigned n = mesh_order4update(nn++, NNN);
-      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
@@ -1063,7 +1070,7 @@ TEST_F(SmokeCRUD, none) {
 
     for (int m = 0; m < 8; ++m) {
       const unsigned n = mesh_order4update(nn++, NNN);
-      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
@@ -1086,7 +1093,7 @@ TEST_F(SmokeCRUD, none) {
          * только по ключу не возможно */
         ASSERT_EQ(FPTA_EMULTIVAL,
                   fpta_cursor_locate(cursor, true, &key, nullptr));
-        /* создаем фейковую строку с PK и искомым значением для поиска*/
+        /* создаем фейковую строку с PK и искомым значением для поиска */
         ASSERT_EQ(FPTU_OK, fptu_clear(row));
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_uint,
@@ -1099,6 +1106,7 @@ TEST_F(SmokeCRUD, none) {
       }
       EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
 
+      // проверяем кол-во повторов
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
       EXPECT_EQ(expected_dups, dups);
@@ -1152,7 +1160,7 @@ TEST_F(SmokeCRUD, none) {
 
     for (int m = 0; m < 8; ++m) {
       const unsigned n = mesh_order4update(nn++, NNN);
-      SCOPED_TRACE("step " + std::to_string(n) + " of [0.." +
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
@@ -1212,11 +1220,260 @@ TEST_F(SmokeCRUD, none) {
 
   //--------------------------------------------------------------------------
 
+  /* При добавлении строк значения полей были перемешаны (сгенерированы в
+   * нелинейном порядке), поэтому из container их можно брать просто
+   * последовательно. Однако, для параметризируемой стохастичности теста
+   * порядок будет еще раз перемешан посредством mesh_order4delete(). */
+  nn = 0;
+
+  /* за четыре подхода удаляем половину от добавленных строк. */
+  const int ndel = NNN / 2 / 4;
+
   // начинаем транзакцию для проверочных удалений
   EXPECT_EQ(FPTA_OK,
             fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
   ASSERT_NE(nullptr, txn);
   txn_guard.reset(txn);
+
+  /* удаляем строки без курсора */ {
+    SCOPED_TRACE("delete.without-cursor");
+
+    for (int i = 0; i < ndel; ++i) {
+      const unsigned n = mesh_order4delete(nn++, NNN);
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), step #" + std::to_string(i));
+      crud_item *item = container[n].get();
+      ASSERT_NE(nullptr, item);
+      SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+      ASSERT_EQ(FPTU_OK, fptu_clear(row));
+
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
+                                            fpta_value_str(item->se_str)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(item->se_real)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                            fpta_value_uint(item->pk_uint)));
+
+      /* пробуем удалить без одного поля */
+      EXPECT_EQ(MDB_NOTFOUND,
+                fpta_delete(txn, &table, fptu_take_noshrink(row)));
+      /* пробуем удалить с различием в данных (поле time) */
+      ASSERT_EQ(FPTA_OK,
+                fpta_upsert_column(row, &col_time,
+                                   fpta_value_datetime(fptu_now_fine())));
+      EXPECT_EQ(MDB_NOTFOUND,
+                fpta_delete(txn, &table, fptu_take_noshrink(row)));
+
+      /* пробуем удалить с другим различием в данных (поле real) */
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(item->time)));
+      ASSERT_EQ(FPTA_OK,
+                fpta_upsert_column(row, &col_real,
+                                   fpta_value_float(item->se_real + 42)));
+      EXPECT_EQ(MDB_NOTFOUND,
+                fpta_delete(txn, &table, fptu_take_noshrink(row)));
+
+      /* устряняем расхождение и удаляем */
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real,
+                                            fpta_value_float(item->se_real)));
+      EXPECT_EQ(FPTA_OK, fpta_delete(txn, &table, fptu_take_noshrink(row)));
+
+      container[n].reset();
+      ndeleted++;
+
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
+
+  /* удаляем строки через курсор по col_str. */ {
+    SCOPED_TRACE("delete.cursor-ordered_unique_reversed_str");
+    // открываем курсор по col_str: на всю таблицу, без фильтра
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+
+    for (int i = 0; i < ndel; ++i) {
+      const unsigned n = mesh_order4delete(nn++, NNN);
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), step #" + std::to_string(i));
+      crud_item *item = container[n].get();
+      ASSERT_NE(nullptr, item);
+      SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      fpta_value key = fpta_value_str(item->se_str);
+      ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+      EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+      // ради проверки считаем повторы
+      size_t dups;
+      EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(1, dups);
+
+      ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
+      container[n].reset();
+      ndeleted++;
+
+      ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
+      EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+      EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(FPTA_DEADBEEF, dups);
+
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    // закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
+
+  /* удаляем строки через курсор по col_real. */ {
+    SCOPED_TRACE("delete.cursor-se-unordered_withdups_real");
+    // открываем курсор по col_real: на всю таблицу, без фильтра
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_real, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+
+    for (int i = 0; i < ndel; ++i) {
+      const unsigned n = mesh_order4delete(nn++, NNN);
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), step #" + std::to_string(i));
+      crud_item *item = container[n].get();
+      ASSERT_NE(nullptr, item);
+      SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      // считаем сколько должно быть повторов
+      unsigned expected_dups = 0;
+      for (auto const &scan : container)
+        if (scan && item->se_real == scan->se_real)
+          expected_dups++;
+
+      fptu_ro row_value;
+      fpta_value key = fpta_value_float(item->se_real);
+      if (expected_dups == 1)
+        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+      else {
+        /* больше одного значения, точное позиционирование возможно
+         * только по ключу не возможно */
+        ASSERT_EQ(FPTA_EMULTIVAL,
+                  fpta_cursor_locate(cursor, true, &key, nullptr));
+        /* создаем фейковую строку с PK и искомым значением для поиска */
+        ASSERT_EQ(FPTU_OK, fptu_clear(row));
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_uint,
+                                     fpta_value_uint(item->pk_uint)));
+        ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real, key));
+        row_value = fptu_take_noshrink(row);
+        /* теперь поиск должен быть успешен */
+        ASSERT_EQ(FPTA_OK,
+                  fpta_cursor_locate(cursor, true, nullptr, &row_value));
+      }
+      EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+
+      // проверяем кол-во повторов
+      size_t dups;
+      EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(expected_dups, dups);
+
+      ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
+      container[n].reset();
+      ndeleted++;
+
+      if (--expected_dups == 0) {
+        ASSERT_EQ(FPTA_NODATA,
+                  fpta_cursor_locate(cursor, true, &key, nullptr));
+        EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+        EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
+        EXPECT_EQ(FPTA_DEADBEEF, dups);
+      } else {
+        if (expected_dups > 1) {
+          ASSERT_EQ(FPTA_EMULTIVAL,
+                    fpta_cursor_locate(cursor, true, &key, nullptr));
+          ASSERT_EQ(FPTA_OK,
+                    fpta_cursor_locate(cursor, false, &key, nullptr));
+        } else {
+          ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+        }
+
+        EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+        EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+        EXPECT_EQ(expected_dups, dups);
+      }
+
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    // закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
+
+  /* удаляем строки через курсор по col_uint (PK). */ {
+    SCOPED_TRACE("delete.cursor-pk_uint");
+    // открываем курсор по col_uint: на всю таблицу, без фильтра
+    fpta_cursor *cursor;
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_uint, fpta_value_begin(),
+                                        fpta_value_end(), nullptr,
+                                        fpta_unsorted_dont_fetch, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+
+    for (int i = 0; i < ndel; ++i) {
+      const unsigned n = mesh_order4delete(nn++, NNN);
+      SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
+                   std::to_string(NNN) + "), step #" + std::to_string(i));
+      crud_item *item = container[n].get();
+      ASSERT_NE(nullptr, item);
+      SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " +
+                   std::to_string(item->se_real) + ", time " +
+                   std::to_string(item->time));
+
+      fpta_value key = fpta_value_uint(item->pk_uint);
+      ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
+      EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
+      // ради проверки считаем повторы
+      size_t dups;
+      EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(1, dups);
+
+      ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
+      container[n].reset();
+      ndeleted++;
+
+      ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
+      EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+      EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
+      EXPECT_EQ(FPTA_DEADBEEF, dups);
+
+      ASSERT_NO_FATAL_FAILURE(Check());
+    }
+
+    // закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+
+    ASSERT_NO_FATAL_FAILURE(Check());
+  }
 
   // фиксируем транзакцию и удаление данных
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
@@ -1228,6 +1485,8 @@ TEST_F(SmokeCRUD, none) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_read, &txn));
   ASSERT_NE(nullptr, txn);
   txn_guard.reset(txn);
+
+  ASSERT_NO_FATAL_FAILURE(Check());
 
   // закрываем транзакцию
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));

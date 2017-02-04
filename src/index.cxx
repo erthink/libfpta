@@ -184,6 +184,20 @@ static int __hot fpta_idxcmp_fp64(const MDB_val *a, const MDB_val *b) {
   return negative ? -cmp : cmp;
 }
 
+static int fpta_idxcmp_tuple(const MDB_val *a, const MDB_val *b) {
+  switch (fptu_cmp_tuples(*(const fptu_ro *)a, *(const fptu_ro *)b)) {
+  case fptu_eq:
+    return 0;
+  case fptu_lt:
+    return -1;
+  case fptu_gt:
+    return 1;
+  default:
+    assert(0 && "incomparable tuples");
+    return 42;
+  }
+}
+
 static int fpta_idxcmp_mad(const MDB_val *a, const MDB_val *b) {
   (void)a;
   (void)b;
@@ -194,18 +208,20 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove) {
   fptu_type type = fpta_shove2type(shove);
   fpta_index_type index = fpta_shove2index(shove);
 
-  if (type >= fptu_96) {
-    if (!fpta_index_is_ordered(index))
-      return fpta_idxcmp_type<uint64_t>;
-    if (fpta_index_is_reverse(index))
-      return fpta_idxcmp_binary_last2first;
-    return fpta_idxcmp_binary_first2last;
-  }
-
   switch (type) {
   default:
+    if (type >= fptu_96) {
+      if (!fpta_index_is_ordered(index))
+        return fpta_idxcmp_type<uint64_t>;
+      if (fpta_index_is_reverse(index))
+        return fpta_idxcmp_binary_last2first;
+      return fpta_idxcmp_binary_first2last;
+    }
     assert(0 && "wrong type for index");
     return fpta_idxcmp_mad;
+
+  case fptu_nested:
+    return fpta_idxcmp_tuple;
   case fptu_fp32:
     static_assert(sizeof(float) == sizeof(int32_t), "something wrong");
     static_assert(sizeof(int) == 4, "something wrong");

@@ -145,7 +145,8 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
     return rc;
 
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto index = fpta_shove2index(table_id->table.def->columns[i]);
+    const auto shove = table_id->table.def->columns[i];
+    const auto index = fpta_shove2index(shove);
     if (index == fpta_index_none)
       break;
     assert(i < fpta_max_indexes);
@@ -153,7 +154,7 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
       continue;
 
     fpta_key fk_key_old;
-    rc = fpta_index_row2key(index, i, row_old, fk_key_old, false);
+    rc = fpta_index_row2key(shove, i, row_old, fk_key_old, false);
     if (unlikely(rc != MDB_SUCCESS))
       return rc;
 
