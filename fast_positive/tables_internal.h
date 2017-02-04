@@ -99,6 +99,17 @@ static __inline int mdbx_get_ex(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
                                 int *) {
   return ENOSYS;
 }
+
+static __inline int mdbx_is_dirty(const MDB_txn *, const void *) {
+  return ENOSYS;
+}
+
+static __inline int mdbx_dbi_open_ex(MDB_txn *, const char *, unsigned,
+                                     MDB_dbi *, MDB_cmp_func *,
+                                     MDB_cmp_func *) {
+  return ENOSYS;
+}
+
 static __inline int mdbx_get(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *) {
   return ENOSYS;
 }
@@ -184,6 +195,8 @@ enum stub_MDB_defs {
   MDB_SUCCESS,
   MDB_NOTFOUND,
   MDB_KEYEXIST,
+  MDBX_RESULT_TRUE,
+  MDBX_RESULT_FALSE,
 
   MDB_REVERSEKEY,
   MDB_DUPSORT,

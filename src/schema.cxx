@@ -545,7 +545,7 @@ int fpta_table_column_count(const fpta_name *table_id) {
   if (unlikely(table_id->version != schema->version))
     return -1;
 
-  return schema->count;
+  return (int)schema->count;
 }
 
 int fpta_table_column_get(const fpta_name *table_id, unsigned column,
