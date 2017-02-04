@@ -18,7 +18,12 @@
  */
 
 #include "fast_positive/tuples_internal.h"
-#include <cmath>
+#include <cinttypes> // for PRId64, PRIu64
+#include <cmath>     // for exp2()
+#include <cstdarg>   // for va_list
+#include <cstdio>    // for _vscprintf()
+#include <cstdlib>   // for snprintf()
+#include <ctime>     // for gmtime()
 
 #if defined(_WIN32) || defined(_WIN64)
 __extern_C __declspec(dllimport) __noreturn
@@ -33,23 +38,68 @@ void __assert_fail(const char *assertion, const char *filename, unsigned line,
 }
 #endif /* windows mustdie */
 
+namespace fptu {
+
+__cold std::string format(const char *fmt, ...) {
+  va_list ap, ones;
+  va_start(ap, fmt);
+  va_copy(ones, ap);
+#ifdef _MSC_VER
+  int needed = _vscprintf(fmt, ap);
+#else
+  int needed = vsnprintf(nullptr, 0, fmt, ap);
+#endif
+  assert(needed >= 0);
+  va_end(ap);
+  std::string result;
+  result.reserve((size_t)needed + 1);
+  result.resize((size_t)needed, '\0');
+#ifdef _MSC_VER
+  int actual = vsnprintf_s((char *)result.data(), result.capacity(),
+                           _TRUNCATE, fmt, ones);
+#else
+  int actual = vsnprintf((char *)result.data(), result.capacity(), fmt, ones);
+#endif
+  assert(actual == needed);
+  (void)actual;
+  va_end(ones);
+  return result;
+}
+
+__cold std::string hexadecimal(const void *data, size_t bytes) {
+  std::string result;
+  if (bytes > 0) {
+    result.reserve(bytes * 2);
+    const uint8_t *ptr = (const uint8_t *)data;
+    const uint8_t *const end = ptr + bytes;
+    do {
+      char high = *ptr >> 4;
+      char low = *ptr & 15;
+      result.push_back((high < 10) ? high + '0' : high - 10 + 'a');
+      result.push_back((low < 10) ? low + '0' : low - 10 + 'a');
+    } while (++ptr < end);
+  }
+  return result;
+}
+
+} /* namespace fptu */
+
+//----------------------------------------------------------------------------
+
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
-namespace std {
-
-__cold string to_string(fptu_error) { return FIXME; }
-
-__cold string to_string(const fptu_varlen &) { return FIXME; }
-
-__cold string to_string(const fptu_unit &) { return FIXME; }
-
-__cold string to_string(const fptu_field &) { return FIXME; }
-
-__cold string to_string(fptu_type type) {
+__cold const char *fptu_type_name(fptu_type type) {
   switch ((int /* hush 'not in enumerated' */)type) {
-  default:
-    return "invalid(fptu_type)" + to_string((int)type);
-
+  default: {
+    static __thread char buf[16];
+#ifdef _MSC_VER
+    _snprintf_s(buf, sizeof(buf), _TRUNCATE,
+#else
+    snprintf(buf, sizeof(buf),
+#endif
+                "invalid(%d)", type);
+    return buf;
+  }
   case fptu_null:
     return "null";
   case fptu_uint16:
@@ -118,8 +168,130 @@ __cold string to_string(fptu_type type) {
   }
 }
 
+namespace std {
+
+__cold string to_string(fptu_error) { return FIXME; }
+
+__cold string to_string(const fptu_varlen &) { return FIXME; }
+
+__cold string to_string(const fptu_unit &) { return FIXME; }
+
+__cold string to_string(const fptu_field &field) {
+  const auto type = fptu_get_type(field.ct);
+  auto payload = fptu_field_payload(&field);
+  switch ((int /* hush 'not in enumerated' */)type) {
+  default:
+  case fptu_null:
+    return fptu::format("{%u.%s}", fptu_get_col(field.ct),
+                        fptu_type_name(type));
+  case fptu_uint16:
+    return fptu::format("{%u.%s=%u}", fptu_get_col(field.ct),
+                        fptu_type_name(type),
+                        (unsigned)field.get_payload_uint16());
+  case fptu_int32:
+    return fptu::format("{%u.%s=%" PRId32 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->i32);
+  case fptu_uint32:
+    return fptu::format("{%u.%s=%" PRIu32 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->u32);
+  case fptu_fp32:
+    return fptu::format("{%u.%s=%g}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->fp32);
+  case fptu_int64:
+    return fptu::format("{%u.%s=%" PRId64 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->i64);
+  case fptu_uint64:
+    return fptu::format("{%u.%s=%" PRIu64 "}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->u64);
+  case fptu_fp64:
+    return fptu::format("{%u.%s=%.12g}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->fp64);
+  case fptu_datetime:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           to_string(payload->dt) + '}';
+  case fptu_96:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 96 / 8) + '}';
+  case fptu_128:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 128 / 8) + '}';
+  case fptu_160:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 160 / 8) + '}';
+  case fptu_256:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->fixbin, 256 / 8) + '}';
+  case fptu_cstr:
+    return fptu::format("{%u.%s=%s}", fptu_get_col(field.ct),
+                        fptu_type_name(type), payload->cstr);
+  case fptu_opaque:
+    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+                        fptu_type_name(type)) +
+           fptu::hexadecimal(payload->other.data,
+                             payload->other.varlen.opaque_bytes) +
+           '}';
+    break;
+  case fptu_nested:
+    return "{" FIXME "}";
+  case fptu_null | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_uint16 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_int32 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_uint32 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_fp32 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_int64 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_uint64 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_fp64 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_datetime | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_96 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_128 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_160 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_256 | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_cstr | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_opaque | fptu_farray:
+    return "{" FIXME "}";
+  case fptu_nested | fptu_farray:
+    return "{" FIXME "}";
+  }
+}
+
+__cold string to_string(fptu_type type) {
+  return string(fptu_type_name(type));
+}
+
 __cold string to_string(const fptu_rw &) { return FIXME; }
-__cold string to_string(const fptu_ro &) { return FIXME; }
+
+__cold string to_string(const fptu_ro &ro) {
+  const fptu_field *const begin = fptu_begin_ro(ro);
+  const fptu_field *const end = fptu_end_ro(ro);
+  string result = fptu::format("(%zi bytes, %ti fields, %p)={",
+                               ro.total_bytes, end - begin, ro.units);
+  for (auto i = begin; i != end; ++i) {
+    if (i != begin)
+      result.append(", ");
+    result.append(to_string(*i));
+  }
+  result.push_back('}');
+  return result;
+}
 
 __cold string to_string(fptu_lge lge) {
   switch (lge) {
@@ -144,6 +316,36 @@ __cold string to_string(fptu_lge lge) {
 
 __cold string to_string(const fptu_time &time) {
   const double scale = exp2(-32);
-  return std::to_string(time.fixedpoint * scale) + "_" FIXME;
+  char fractional[16];
+#ifdef _MSC_VER
+  _snprintf_s(fractional, sizeof(fractional), _TRUNCATE,
+#else
+  snprintf(fractional, sizeof(fractional),
+#endif
+              "%.9f", scale * (uint32_t)time.fixedpoint);
+  assert(fractional[0] == '0' || fractional[0] == '1');
+
+  time_t utc_sec = (time_t)(time.fixedpoint >> 32);
+  if (fractional[0] == '1')
+    /* учитываем перенос при округлении fractional */
+    utc_sec += 1;
+
+  struct tm utc_tm;
+#ifdef _MSC_VER
+  gmtime_s(&utc_tm, &utc_sec);
+#else
+  gmtime_r(&utc_sec, &utc_tm);
+#endif
+
+  char datetime[32];
+#ifdef _MSC_VER
+  _snprintf_s(datetime, sizeof(datetime), _TRUNCATE,
+#else
+  snprintf(datetime, sizeof(datetime),
+#endif
+              "%04d-%02d-%02d_%02d:%02d:%02d", utc_tm.tm_year + 1900,
+              utc_tm.tm_mon + 1, utc_tm.tm_mday, utc_tm.tm_hour,
+              utc_tm.tm_min, utc_tm.tm_sec);
+  return string(datetime) + (fractional + /* skip leading */ 1);
 }
-}
+} /* namespace std */

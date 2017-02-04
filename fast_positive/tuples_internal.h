@@ -67,9 +67,9 @@
 //----------------------------------------------------------------------------
 
 #ifndef __hot
-#	if defined(NDEBUG)
-#		if defined(__clang__)
-			/* cland case, just put frequently used functions in separate section */
+#	if defined(__OPTIMIZE__)
+#		if defined(__clang__) && !__has_attribute(hot)
+			/* just put frequently used functions in separate section */
 #			define __hot __attribute__((section("text.hot_fptu")))
 #		elif defined(__GNUC__)
 #			define __hot __attribute__((hot, optimize("O3")))
@@ -82,9 +82,9 @@
 #endif /* __hot */
 
 #ifndef __cold
-#	if defined(NDEBUG)
-#		if defined(__clang__)
-			/* cland case, just put infrequently used functions in separate section */
+#	if defined(__OPTIMIZE__)
+#		if defined(__clang__) && !__has_attribute(cold)
+			/* just put infrequently used functions in separate section */
 #			define __cold __attribute__((section("text.unlikely_fptu")))
 #		elif defined(__GNUC__)
 #			define __cold __attribute__((cold, optimize("Os")))
@@ -97,7 +97,7 @@
 #endif /* __cold */
 
 #ifndef __flatten
-#	if defined(NDEBUG) && (defined(__GNUC__) || __has_attribute(flatten))
+#	if defined(__OPTIMIZE__) && (defined(__GNUC__) || __has_attribute(flatten))
 #		define __flatten __attribute__((flatten))
 #	else
 #		define __flatten
@@ -255,6 +255,7 @@ typedef union fptu_payload {
   int32_t i32;
   uint64_t u64;
   int64_t i64;
+  fptu_time dt;
   float fp32;
   double fp64;
   char cstr[4];
