@@ -22,6 +22,8 @@
 #include <cmath>     // for exp2()
 #include <cstdarg>   // for va_list
 #include <cstdio>    // for _vscprintf()
+#include <cstdlib>   // for snprintf()
+#include <ctime>     // for gmtime()
 
 #if defined(_WIN32) || defined(_WIN64)
 __extern_C __declspec(dllimport) __noreturn
@@ -42,7 +44,7 @@ __cold std::string format(const char *fmt, ...) {
   va_list ap, ones;
   va_start(ap, fmt);
   va_copy(ones, ap);
-#ifdef MSVC
+#ifdef _MSC_VER
   int needed = _vscprintf(fmt, ap);
 #else
   int needed = vsnprintf(nullptr, 0, fmt, ap);
@@ -51,8 +53,8 @@ __cold std::string format(const char *fmt, ...) {
   va_end(ap);
   std::string result;
   result.reserve((size_t)needed + 1);
-  result.resize(needed, '\0');
-#ifdef MSVC
+  result.resize((size_t)needed, '\0');
+#ifdef _MSC_VER
   int actual = vsnprintf_s((char *)result.data(), result.capacity(),
                            _TRUNCATE, fmt, ones);
 #else
@@ -90,7 +92,12 @@ __cold const char *fptu_type_name(fptu_type type) {
   switch ((int /* hush 'not in enumerated' */)type) {
   default: {
     static __thread char buf[16];
-    snprintf(buf, sizeof(buf), "invalid(%d)", type);
+#ifdef _MSC_VER
+    _snprintf_s(buf, sizeof(buf), _TRUNCATE,
+#else
+    snprintf(buf, sizeof(buf),
+#endif
+                "invalid(%d)", type);
     return buf;
   }
   case fptu_null:
@@ -310,22 +317,35 @@ __cold string to_string(fptu_lge lge) {
 __cold string to_string(const fptu_time &time) {
   const double scale = exp2(-32);
   char fractional[16];
-  snprintf(fractional, sizeof(fractional), "%.9f",
-           scale * (uint32_t)time.fixedpoint);
+#ifdef _MSC_VER
+  _snprintf_s(fractional, sizeof(fractional), _TRUNCATE,
+#else
+  snprintf(fractional, sizeof(fractional),
+#endif
+              "%.9f", scale * (uint32_t)time.fixedpoint);
   assert(fractional[0] == '0' || fractional[0] == '1');
 
-  time_t utc_sec = time.fixedpoint >> 32;
+  time_t utc_sec = (time_t)(time.fixedpoint >> 32);
   if (fractional[0] == '1')
     /* учитываем перенос при округлении fractional */
     utc_sec += 1;
 
   struct tm utc_tm;
+#ifdef _MSC_VER
+  gmtime_s(&utc_tm, &utc_sec);
+#else
   gmtime_r(&utc_sec, &utc_tm);
+#endif
 
   char datetime[32];
-  snprintf(datetime, sizeof(datetime), "%04d-%02d-%02d_%02d:%02d:%02d",
-           utc_tm.tm_year + 1900, utc_tm.tm_mon + 1, utc_tm.tm_mday,
-           utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec);
+#ifdef _MSC_VER
+  _snprintf_s(datetime, sizeof(datetime), _TRUNCATE,
+#else
+  snprintf(datetime, sizeof(datetime),
+#endif
+              "%04d-%02d-%02d_%02d:%02d:%02d", utc_tm.tm_year + 1900,
+              utc_tm.tm_mon + 1, utc_tm.tm_mday, utc_tm.tm_hour,
+              utc_tm.tm_min, utc_tm.tm_sec);
   return string(datetime) + (fractional + /* skip leading */ 1);
 }
 } /* namespace std */
