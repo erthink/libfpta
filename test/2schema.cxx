@@ -99,6 +99,8 @@ TEST(Schema, Base) {
   /* Базовый тест создания таблицы.
    *
    * Сценарий:
+   *  - открываем базу в режиме неизменяемой схемы и пробуем начать
+   *    транзакцию уровня изменения схемы.
    *  - создаем и заполняем описание колонок.
    *  - создаем таблицу по сформированному описанию колонок.
    *  - затем в другой транзакции проверяем, что у созданной таблицы
@@ -116,6 +118,17 @@ TEST(Schema, Base) {
             fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
   ASSERT_NE(nullptr, db);
 
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(EPERM, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_EQ(nullptr, txn);
+  ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+
+  //------------------------------------------------------------------------
+
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
   fpta_column_set def;
   fpta_column_set_init(&def);
 
@@ -128,7 +141,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
   //------------------------------------------------------------------------
-  fpta_txn *txn = (fpta_txn *)&txn;
+
   EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, fpta_read, nullptr));
   EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, (fpta_level)0, &txn));
   EXPECT_EQ(nullptr, txn);

@@ -275,6 +275,7 @@ struct fpta_db {
   pthread_rwlock_t schema_rwlock;
   MDB_env *mdbx_env;
   MDB_dbi schema_dbi;
+  bool alterable_schema;
 
   pthread_mutex_t dbi_mutex;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];

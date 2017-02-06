@@ -130,7 +130,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
-                                       megabytes, false, &db));
+                                       megabytes, true, &db));
   ASSERT_NE(nullptr, db);
   db_quard.reset(db);
 
