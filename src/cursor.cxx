@@ -240,7 +240,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   MDB_cursor_op mdbx_seek_op, mdbx_step_op;
   switch (op) {
   default:
-    assert(false && "unexpecepted seek-op");
+    assert(false && "unexpected seek-op");
     return FPTA_EOOPS;
 
   case fpta_first:

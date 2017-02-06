@@ -694,7 +694,7 @@ public:
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
+              fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);
 
@@ -1320,14 +1320,16 @@ TEST_F(SmokeCRUD, none) {
       EXPECT_EQ(1, dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
-      container[n].reset();
-      ndeleted++;
-
       ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
       EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
       EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
       EXPECT_EQ(FPTA_DEADBEEF, dups);
 
+      /* LY: удалять элемент нужно после использования key, так как
+       * в key просто указатель на данные std::string, которые будут
+       * освобождены при удалении. */
+      container[n].reset();
+      ndeleted++;
       ASSERT_NO_FATAL_FAILURE(Check());
     }
 

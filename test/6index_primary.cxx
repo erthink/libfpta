@@ -72,7 +72,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
    *       строки с разным dup_id.
    *     - При заполнении таблицы производятся попытки обновить
    *       несуществующую запись, вставить дубликат по ключу или полный
-   *       дубликат записи, выполнить upsert для при не уникальном PK.
+   *       дубликат записи, выполнить upsert при не уникальном PK.
    *
    *  4. В отдельной транзакции открывается курсор, через который проверяется:
    *      - Итоговое количество строк.
@@ -130,7 +130,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
-                                       megabytes, false, &db));
+                                       megabytes, true, &db));
   ASSERT_NE(nullptr, db);
   db_quard.reset(db);
 
