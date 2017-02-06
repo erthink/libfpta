@@ -133,3 +133,19 @@ any_keygen::any_keygen(const init_tier &init, fptu_type type,
 
 any_keygen::any_keygen(fptu_type type, fpta_index_type index)
     : any_keygen(init_tier(type, index), type, index) {}
+
+//----------------------------------------------------------------------------
+
+/* простейший медленный тест на простоту,
+ * метод Миллера-Рабина будет излишен. */
+bool isPrime(unsigned number) {
+  if (number < 3)
+    return number == 2;
+  if (number % 2 == 0)
+    return false;
+  for (unsigned i = 3; (i * i) <= number; i += 2) {
+    if (number % i == 0)
+      return false;
+  }
+  return true;
+}

@@ -173,6 +173,10 @@ public:
   }
 
   virtual void SetUp() {
+    // нужно простое число, иначе сломается переупорядочивание
+    ASSERT_TRUE(isPrime(NNN));
+    // иначе не сможем проверить fptu_uint16
+    ASSERT_GE(UINT16_MAX, NNN);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     type = std::tr1::get<0>(GetParam());
     index = std::tr1::get<1>(GetParam());

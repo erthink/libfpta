@@ -86,6 +86,11 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   scoped_db_guard db_quard;
   scoped_txn_guard txn_guard;
 
+  // нужно простое число, иначе сломается переупорядочивание
+  ASSERT_TRUE(isPrime(NNN));
+  // иначе не сможем проверить fptu_uint16
+  ASSERT_GE(UINT16_MAX, NNN);
+
   SCOPED_TRACE("type " + std::to_string(type) + ", index " +
                std::to_string(index) +
                (valid ? ", (valid case)" : ", (invalid case)"));
