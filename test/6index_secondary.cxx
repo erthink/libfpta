@@ -194,6 +194,16 @@ public:
 
     pk_col_name = "pk_" + std::to_string(pk_type);
     se_col_name = "se_" + std::to_string(se_type);
+    // инициализируем идентификаторы колонок
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_init(&table, &col_se, se_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
+
     if (!valid_pk) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(),
                                                   pk_type, pk_index, &def));
@@ -246,16 +256,6 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
-
-    // инициализируем идентификаторы колонок
-    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
-    EXPECT_EQ(FPTA_OK,
-              fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
-    EXPECT_EQ(FPTA_OK,
-              fpta_column_init(&table, &col_se, se_col_name.c_str()));
-    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
-    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
-    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
 
     //------------------------------------------------------------------------
 
