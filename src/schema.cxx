@@ -579,6 +579,15 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
   return FPTA_SUCCESS;
 }
 
+int fpta_name_reset(fpta_name *name_id) {
+  if (unlikely(name_id == nullptr))
+    return EINVAL;
+
+  name_id->mdbx_dbi = 0;
+  name_id->version = 0;
+  return FPTA_SUCCESS;
+}
+
 int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id) {
   if (unlikely(name_id == nullptr))
     return FPTA_EINVAL;
