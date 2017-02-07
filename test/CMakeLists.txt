@@ -14,3 +14,4 @@ add_ut(fpta6_index_primary TIMEOUT 60 SOURCE 6index_primary.cxx keygen.cxx LIBRA
 add_ut(fpta6_index_secondary TIMEOUT 300 SOURCE 6index_secondary.cxx keygen.cxx LIBRARY fpta)
 add_ut(fpta7_cursor_primary TIMEOUT 120 SOURCE 7cursor_primary.cxx keygen.cxx tools.hpp LIBRARY fpta)
 add_ut(fpta7_cursor_secondary TIMEOUT 120 SOURCE 7cursor_secondary.cxx keygen.cxx tools.hpp LIBRARY fpta)
+add_ut(fpta9_crud TIMEOUT 120 SOURCE 9crud.cxx keygen.cxx tools.hpp LIBRARY fpta)
