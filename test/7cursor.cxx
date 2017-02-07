@@ -113,12 +113,16 @@ public:
 
     auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (fpta_index_is_unique(index))
+    size_t dups = 100500;
+    ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
+    if (fpta_index_is_unique(index)) {
       ASSERT_EQ(42, tuple_dup_id);
-    else {
+      ASSERT_EQ(1, dups);
+    } else {
       int expected_dup_id =
           (ordering & fpta_descending) ? n_dups - (dup + 1) : dup;
       ASSERT_EQ(expected_dup_id, tuple_dup_id);
+      ASSERT_EQ(n_dups, dups);
     }
   }
 
@@ -173,6 +177,10 @@ public:
   }
 
   virtual void SetUp() {
+    // нужно простое число, иначе сломается переупорядочивание
+    ASSERT_TRUE(isPrime(NNN));
+    // иначе не сможем проверить fptu_uint16
+    ASSERT_GE(UINT16_MAX, NNN);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     type = std::tr1::get<0>(GetParam());
     index = std::tr1::get<1>(GetParam());
@@ -257,6 +265,26 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    /* Для полноты тесты переоткрываем базу. В этом нет явной необходимости,
+     * но только так можно проверить работу некоторых механизмов.
+     *
+     * В частности:
+     *  - внутри движка создание таблицы одновременно приводит к открытию её
+     *    dbi-хендла, с размещением его во внутренних структурах.
+     *  - причем этот хендл будет жив до закрытии всей базы, либо до удаления
+     *    таблицы.
+     *  - поэтому для проверки кода открывающего существующую таблицы
+     *    необходимо закрыть и повторно открыть всю базу.
+     */
+    // закрываем базу
+    ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
+    db = nullptr;
+    // открываем заново
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
+                                         megabytes, false, &db));
+    ASSERT_NE(nullptr, db);
+    db_quard.reset(db);
 
     //------------------------------------------------------------------------
 
@@ -359,6 +387,8 @@ public:
     }
   }
 };
+
+constexpr int CursorPrimary::n_dups;
 
 TEST_P(CursorPrimary, basicMoves) {
   /* Проверка базовых перемещений курсора по первичному (primary) индексу.

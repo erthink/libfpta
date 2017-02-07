@@ -45,6 +45,9 @@ static constexpr double flt_pos_over =
 static_assert(flt_neg_over <= -FLT_MAX, "unexpected precision loss");
 static_assert(flt_pos_over >= FLT_MAX, "unexpected precision loss");
 
+/* простейший медленный тест на простоту */
+bool isPrime(unsigned number);
+
 //----------------------------------------------------------------------------
 
 inline bool is_valid4primary(fptu_type type, fpta_index_type index) {

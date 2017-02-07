@@ -42,26 +42,22 @@
 
 static int __hot fpta_idxcmp_binary_last2first(const MDB_val *a,
                                                const MDB_val *b) {
-  const uint8_t *pa, *pb, *end;
-
-  pa = (const uint8_t *)a->mv_data + a->mv_size;
-  pb = (const uint8_t *)b->mv_data + b->mv_size;
-  size_t shortest = (a->mv_size < b->mv_size) ? a->mv_size : b->mv_size;
-  end = pa - shortest;
+  const uint8_t *pa = (const uint8_t *)a->mv_data + a->mv_size;
+  const uint8_t *pb = (const uint8_t *)b->mv_data + b->mv_size;
+  const size_t shortest = (a->mv_size < b->mv_size) ? a->mv_size : b->mv_size;
+  const uint8_t *const stopper = pa - shortest;
 
 #if UNALIGNED_OK && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#if 1
-  if (shortest >= sizeof(unsigned long)) {
+  if (shortest >= sizeof(size_t)) {
     do {
-      pa -= sizeof(unsigned long);
-      pb -= sizeof(unsigned long);
-      int diff = fptu_cmp2int(*(unsigned long *)pa, *(unsigned long *)pb);
+      pa -= sizeof(size_t);
+      pb -= sizeof(size_t);
+      int diff = fptu_cmp2int(*(size_t *)pa, *(size_t *)pb);
       if (likely(diff))
         return diff;
-    } while (pa - sizeof(unsigned long) >= end);
+    } while (pa - sizeof(size_t) >= stopper);
   }
-  if (sizeof(unsigned) < sizeof(unsigned long) &&
-      pa - sizeof(unsigned) >= end) {
+  if (sizeof(unsigned) < sizeof(size_t) && pa - sizeof(unsigned) >= stopper) {
     pa -= sizeof(unsigned);
     pb -= sizeof(unsigned);
     int diff = fptu_cmp2int(*(unsigned *)pa, *(unsigned *)pb);
@@ -69,43 +65,16 @@ static int __hot fpta_idxcmp_binary_last2first(const MDB_val *a,
       return diff;
   }
   if (sizeof(unsigned short) < sizeof(unsigned) &&
-      pa - sizeof(unsigned short) >= end) {
+      pa - sizeof(unsigned short) >= stopper) {
     pa -= sizeof(unsigned short);
     pb -= sizeof(unsigned short);
     int diff = *(unsigned short *)pa - *(unsigned short *)pb;
     if (likely(diff))
       return diff;
   }
-#else
-  if (shortest >= sizeof(unsigned long)) {
-    do {
-      pa -= sizeof(unsigned long);
-      pb -= sizeof(unsigned long);
-      int diff = fptu_cmp2int(*(unsigned long *)pa, *(unsigned long *)pb);
-      if (likely(diff))
-        return diff;
-    } while (pa >= end - sizeof(unsigned long));
-  }
-  if (sizeof(unsigned) < sizeof(unsigned long) &&
-      shortest >= sizeof(unsigned)) {
-    pa -= sizeof(unsigned);
-    pb -= sizeof(unsigned);
-    int diff = fptu_cmp2int(*(unsigned *)pa, *(unsigned *)pb);
-    if (likely(diff))
-      return diff;
-  }
-  if (sizeof(unsigned short) < sizeof(unsigned) &&
-      shortest >= sizeof(unsigned short)) {
-    pa -= sizeof(unsigned short);
-    pb -= sizeof(unsigned short);
-    int diff = *(unsigned short *)pa - *(unsigned short *)pb;
-    if (likely(diff))
-      return diff;
-  }
-#endif
 #endif
 
-  while (pa != end) {
+  while (pa != stopper) {
     int diff = *--pa - *--pb;
     if (likely(diff))
       return diff;
@@ -117,9 +86,7 @@ static int __hot fpta_idxcmp_binary_first2last(const MDB_val *a,
                                                const MDB_val *b) {
   size_t shortest = (a->mv_size < b->mv_size) ? a->mv_size : b->mv_size;
   int diff = memcmp(a->mv_data, b->mv_data, shortest);
-  if (likely(diff))
-    return diff;
-  return fptu_cmp2int(a->mv_size, b->mv_size);
+  return likely(diff) ? diff : fptu_cmp2int(a->mv_size, b->mv_size);
 }
 
 template <typename T>

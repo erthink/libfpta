@@ -167,6 +167,10 @@ public:
   }
 
   virtual void SetUp() {
+    // нужно простое число, иначе сломается переупорядочивание
+    ASSERT_TRUE(isPrime(NNN));
+    // иначе не сможем проверить fptu_uint16
+    ASSERT_GE(UINT16_MAX, NNN * 2);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     pk_index = std::tr1::get<0>(GetParam());
     pk_type = std::tr1::get<1>(GetParam());
@@ -256,6 +260,34 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    /* Для полноты тесты переоткрываем базу. В этом нет явной необходимости,
+     * но только так можно проверить работу некоторых механизмов.
+     *
+     * В частности:
+     *  - внутри движка создание таблицы одновременно приводит к открытию её
+     *    dbi-хендла, с размещением его во внутренних структурах.
+     *  - причем этот хендл будет жив до закрытии всей базы, либо до удаления
+     *    таблицы.
+     *  - поэтому для проверки кода открывающего существующую таблицы
+     *    необходимо закрыть и повторно открыть всю базу.
+     */
+    // закрываем базу
+    ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
+    db = nullptr;
+    // открываем заново
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
+                                         megabytes, false, &db));
+    ASSERT_NE(nullptr, db);
+    db_quard.reset(db);
+
+    // сбрасываем привязку идентификаторов
+    EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&table));
+    EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_pk));
+    EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_se));
+    EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_order));
+    EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_dup_id));
+    EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_t1ha));
 
     //------------------------------------------------------------------------
 
@@ -412,9 +444,12 @@ TEST_P(IndexSecondary, basic) {
 
     auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (fpta_index_is_unique(se_index))
+    size_t dups = 100500;
+    ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
+    if (fpta_index_is_unique(se_index)) {
       ASSERT_EQ(42, tuple_dup_id);
-    else {
+      ASSERT_EQ(1, dups);
+    } else {
       /* Наличие дубликатов означает что для одного значения ключа
        * в базе есть несколько значений. Причем эти значения хранятся
        * в отдельном отсортированном под-дереве.
@@ -436,6 +471,7 @@ TEST_P(IndexSecondary, basic) {
         ASSERT_EQ(i & 1, tuple_dup_id);
       else
         ASSERT_EQ((i ^ 1) & 1, tuple_dup_id);
+      ASSERT_EQ(2, dups);
     }
 
     if (++i < n)
