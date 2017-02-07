@@ -33,7 +33,8 @@
  * Использовать тут большие значения смысла нет. Время работы тестов
  * растет примерно линейно (чуть быстрее), тогда как вероятность
  * проявления каких-либо ошибок растет в лучшем случае как Log(NNN),
- * а скорее даже как SquareRoot(Log(NNN)). */
+ * а скорее даже как SquareRoot(Log(NNN)).
+ */
 #if FPTA_CURSOR_UT_LONG
 static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/shm/
 #else
@@ -42,8 +43,9 @@ static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 
 #define TEST_DB_DIR "/dev/shm/"
 
-static const char testdb_name[] = TEST_DB_DIR "ut_cursor.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_cursor.fpta-lock";
+static const char testdb_name[] = TEST_DB_DIR "ut_cursor_primary.fpta";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_cursor_primary.fpta-lock";
 
 class CursorPrimary
     : public ::testing::TestWithParam<
@@ -70,10 +72,6 @@ public:
   unsigned n;
   std::unordered_map<int, int> reorder;
 
-  int first_dup_id() { return 0; }
-
-  int last_dup_id() { return -1; }
-
   void CheckPosition(int linear, int dup) {
     if (linear < 0)
       linear += reorder.size();
@@ -88,7 +86,7 @@ public:
     const auto expected_order = reorder[linear];
 
     SCOPED_TRACE("logical-order " + std::to_string(expected_order) + " [" +
-                 std::to_string(0) + "..." + std::to_string(NNN) + "]");
+                 std::to_string(0) + "..." + std::to_string(NNN) + ")");
 
     ASSERT_EQ(0, fpta_cursor_eof(cursor_guard.get()));
 
@@ -119,6 +117,16 @@ public:
       ASSERT_EQ(42, tuple_dup_id);
       ASSERT_EQ(1, dups);
     } else {
+      /* Следует пояснить (в том числе напомнить себе), почему порядок
+       * следования строк-дубликатов (с одинаковым значением PK) здесь
+       * совпадает с dup_id:
+       *  - При формировании строк-дубликатов, их кортежи полностью совпадают,
+       *    за исключением поля dup_id. При этом dup_id отличается только
+       *    одним байтом.
+       *  - В случае primary-индекса данные соответствующие одному значению
+       *    ключа сортируются при помощи компаратора fptu_cmp_tuples().
+       *    Однако, даже при сравнении посредством memcmp(), различие в
+       *    только в одном байте гарантирует нужный порядок. */
       int expected_dup_id =
           (ordering & fpta_descending) ? n_dups - (dup + 1) : dup;
       ASSERT_EQ(expected_dup_id, tuple_dup_id);
@@ -395,20 +403,20 @@ TEST_P(CursorPrimary, basicMoves) {
    *
    * Сценарий (общий для всех типов полей и всех видов первичных индексов):
    *  1. Создается тестовая база с одной таблицей, в которой четыре колонки:
-   *      - PK (primary key) с типом, для которого производится тестирование
-   *        работы индекса.
+   *      - "col_pk" (primary key) с типом, для которого производится
+   *        тестирование работы индекса.
    *      - Колонка "order", в которую записывается контрольный (ожидаемый)
-   *        порядковый номер следования строки, при сортировке по PK и
+   *        порядковый номер следования строки, при сортировке по col_pk и
    *        проверяемому виду индекса.
    *      - Колонка "dup_id", которая используется для идентификации
    *        дубликатов индексов допускающих не-уникальные ключи.
    *      - Колонка "t1ha", в которую записывается "контрольная сумма" от
-   *        ожидаемого порядка строки, типа PK и вида индекса. Принципиальной
-   *        необходимости в этой колонке нет, она используется как
-   *        "утяжелитель", а также для дополнительного контроля.
+   *        ожидаемого порядка строки, типа PK и вида индекса.
+   *        Принципиальной необходимости в этой колонке нет, она используется
+   *        как "утяжелитель", а также для дополнительного контроля.
    *
-   *  2. Для валидных комбинаций вида индекса и типа данных PK таблица
-   *     заполняется строками, значение PK в которых генерируется
+   *  2. Для валидных комбинаций вида индекса и типа данных col_pk таблица
+   *     заполняется строками, значение col_pk в которых генерируется
    *     соответствующим генератором значений:
    *      - Сами генераторы проверяются в одном из тестов 0corny.
    *      - Для индексов без уникальности для каждого ключа вставляется
@@ -458,15 +466,15 @@ TEST_P(CursorPrimary, basicMoves) {
 
   // переходим туда-сюда и к первой строке
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
 
   // пробуем уйти дальше последней строки
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_next));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
@@ -491,7 +499,7 @@ TEST_P(CursorPrimary, basicMoves) {
 
   // пробуем выйти за первую строку
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_prev));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
@@ -516,11 +524,11 @@ TEST_P(CursorPrimary, basicMoves) {
 
   // идем в конец и проверяем назад/вперед
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_next));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
@@ -528,24 +536,24 @@ TEST_P(CursorPrimary, basicMoves) {
   ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_prev));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
 #endif
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_next));
 
   // идем в начало и проверяем назад/вперед
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, -1));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
 #if FPTA_ENABLE_RETURN_INTO_RANGE
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
@@ -553,15 +561,15 @@ TEST_P(CursorPrimary, basicMoves) {
   ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_next));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
 #endif
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, -1));
   ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
 }
 
@@ -575,10 +583,10 @@ TEST_P(CursorPrimaryDups, dupMoves) {
    *
    * Сценарий (общий для всех типов полей и всех видов первичных индексов):
    *  1. Создается тестовая база с одной таблицей, в которой четыре колонки:
-   *      - PK (primary key) с типом, для которого производится тестирование
-   *        работы индекса.
+   *      - "col_pk" (primary key) с типом, для которого производится
+   *        тестирование работы индекса.
    *      - Колонка "order", в которую записывается контрольный (ожидаемый)
-   *        порядковый номер следования строки, при сортировке по PK и
+   *        порядковый номер следования строки, при сортировке по col_pk и
    *        проверяемому виду индекса.
    *      - Колонка "dup_id", которая используется для нумерации дубликатов.
    *      - Колонка "t1ha", в которую записывается "контрольная сумма" от
@@ -586,12 +594,12 @@ TEST_P(CursorPrimaryDups, dupMoves) {
    *        необходимости в этой колонке нет, она используется как
    *        "утяжелитель", а также для дополнительного контроля.
    *
-   *  2. Для валидных комбинаций вида индекса и типа данных PK таблица
+   *  2. Для валидных комбинаций вида индекса и типа данных col_pk таблица
    *     заполняется строками, значение PK в которых генерируется
    *     соответствующим генератором значений:
    *      - Сами генераторы проверяются в одном из тестов 0corny.
    *      - Для каждого значения ключа вставляется 5 строк с разным dup_id.
-   *      ? Дополнительно, для тестирования межстраничных переходов,
+   *      - FIXME: Дополнительно, для тестирования межстраничных переходов,
    *        генерируется длинная серия повторов, которая более чем в три раза
    *        превышает размер страницы БД.
    *
@@ -642,17 +650,17 @@ TEST_P(CursorPrimaryDups, dupMoves) {
   /* переходим туда-сюда и к первой строке, такие переходы уже проверялись
    * в предыдущем тесте, здесь же для проверки жизнеспособности курсора. */
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
 
   // к последнему, затем к первому дубликату первой строки
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, -1));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
 
   // вперед по дубликатам первой строки
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
@@ -796,12 +804,12 @@ TEST_P(CursorPrimaryDups, dupMoves) {
 
   // к последней строке
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
   // к первому, затем к последнему дубликату последней строки
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, first_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, last_dup_id()));
+  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
 
   // назад по дубликатам последней строки
   ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));

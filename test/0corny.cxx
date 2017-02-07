@@ -70,17 +70,29 @@ TEST(Corny, KeyGenerator) {
    *     - генерация ключей как фиксированной, так и переменной длины.
    */
   scalar_range_stepper<float>::test(42);
+  scalar_range_stepper<float>::test(42 * 5);
   scalar_range_stepper<float>::test(43);
+  scalar_range_stepper<float>::test(43 * 4);
   scalar_range_stepper<double>::test(42);
+  scalar_range_stepper<double>::test(42 * 5);
   scalar_range_stepper<double>::test(43);
+  scalar_range_stepper<double>::test(43 * 4);
   scalar_range_stepper<uint16_t>::test(42);
+  scalar_range_stepper<uint16_t>::test(42 * 5);
   scalar_range_stepper<uint16_t>::test(43);
+  scalar_range_stepper<uint16_t>::test(43 * 4);
   scalar_range_stepper<uint32_t>::test(42);
+  scalar_range_stepper<uint32_t>::test(42 * 5);
   scalar_range_stepper<uint32_t>::test(43);
+  scalar_range_stepper<uint32_t>::test(43 * 4);
   scalar_range_stepper<int32_t>::test(42);
+  scalar_range_stepper<int32_t>::test(42 * 5);
   scalar_range_stepper<int32_t>::test(43);
+  scalar_range_stepper<int32_t>::test(43 * 4);
   scalar_range_stepper<int64_t>::test(42);
+  scalar_range_stepper<int64_t>::test(42 * 5);
   scalar_range_stepper<int64_t>::test(43);
+  scalar_range_stepper<int64_t>::test(43 * 4);
 
   string_keygen_test<false>(1, 3);
   string_keygen_test<true>(1, 3);
@@ -91,8 +103,10 @@ TEST(Corny, KeyGenerator) {
 
   fixbin_stepper<11>::test(42);
   fixbin_stepper<11>::test(43);
+  varbin_stepper<fptu_cstr>::test(41 * 5);
   varbin_stepper<fptu_cstr>::test(421);
   varbin_stepper<fptu_cstr>::test(512);
+  varbin_stepper<fptu_opaque>::test(41 * 5);
   varbin_stepper<fptu_opaque>::test(421);
   varbin_stepper<fptu_opaque>::test(512);
 }
