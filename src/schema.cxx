@@ -205,7 +205,7 @@ int fpta_open_column(fpta_txn *txn, fpta_name *column_id) {
   fpta_shove_t dbi_shove =
       fpta_dbi_shove(table_id->shove, (unsigned)column_id->column.num);
   return fpta_dbi_open(txn, dbi_shove, &column_id->mdbx_dbi, 0,
-                       table_id->table.pk, column_id->shove);
+                       column_id->shove, table_id->table.pk);
 }
 
 int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
@@ -220,8 +220,8 @@ int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
       break;
 
     const fpta_shove_t dbi_shove = fpta_dbi_shove(table_id->shove, i);
-    int rc = fpta_dbi_open(txn, dbi_shove, &dbi_array[i], 0,
-                           table_id->table.pk, shove);
+    int rc = fpta_dbi_open(txn, dbi_shove, &dbi_array[i], 0, shove,
+                           table_id->table.pk);
     if (unlikely(rc != FPTA_SUCCESS))
       return rc;
   }
