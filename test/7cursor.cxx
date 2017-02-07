@@ -113,12 +113,16 @@ public:
 
     auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (fpta_index_is_unique(index))
+    size_t dups = 100500;
+    ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
+    if (fpta_index_is_unique(index)) {
       ASSERT_EQ(42, tuple_dup_id);
-    else {
+      ASSERT_EQ(1, dups);
+    } else {
       int expected_dup_id =
           (ordering & fpta_descending) ? n_dups - (dup + 1) : dup;
       ASSERT_EQ(expected_dup_id, tuple_dup_id);
+      ASSERT_EQ(n_dups, dups);
     }
   }
 
@@ -383,6 +387,8 @@ public:
     }
   }
 };
+
+constexpr int CursorPrimary::n_dups;
 
 TEST_P(CursorPrimary, basicMoves) {
   /* Проверка базовых перемещений курсора по первичному (primary) индексу.

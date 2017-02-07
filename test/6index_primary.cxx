@@ -342,9 +342,12 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
     auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (fpta_index_is_unique(index))
+    size_t dups = 100500;
+    ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
+    if (fpta_index_is_unique(index)) {
       ASSERT_EQ(42, tuple_dup_id);
-    else {
+      ASSERT_EQ(1, dups);
+    } else {
       /* Наличие дубликатов означает что для одного значения ключа
        * в базе есть несколько значений. Причем эти значения хранятся
        * в отдельном отсортированном под-дереве.
@@ -360,6 +363,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
        * Соответственно, строка с dup_id = 0 будет всегда идти первой.
        */
       ASSERT_EQ(i & 1, tuple_dup_id);
+      ASSERT_EQ(2, dups);
     }
 
     if (++i < n)
