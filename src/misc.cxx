@@ -36,8 +36,8 @@ __cold string to_string(fpta_value_type type) {
     return "signed_int";
   case fpta_unsigned_int:
     return "unsigned_int";
-  /* case  fpta_datetime:
-      return "datetime"; */
+  case fpta_datetime:
+    return "datetime";
   case fpta_float_point:
     return "float_point";
   case fpta_string:
