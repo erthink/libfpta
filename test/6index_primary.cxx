@@ -261,6 +261,33 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
   //------------------------------------------------------------------------
 
+  /* Для полноты тесты переоткрываем базу. В этом нет явной необходимости,
+   * но только так можно проверить работу некоторых механизмов.
+   *
+   * В частности:
+   *  - внутри движка создание таблицы одновременно приводит к открытию её
+   *    dbi-хендла, с размещением его во внутренних структурах.
+   *  - причем этот хендл будет жив до закрытии всей базы, либо до удаления
+   *    таблицы.
+   *  - поэтому для проверки кода открывающего существующую таблицы
+   *    необходимо закрыть и повторно открыть всю базу.
+   */
+  // закрываем базу
+  ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
+  db = nullptr;
+  // открываем заново
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
+                                       megabytes, false, &db));
+  ASSERT_NE(nullptr, db);
+  db_quard.reset(db);
+
+  // сбрасываем привязку идентификаторов
+  EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&table));
+  EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_pk));
+  EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_order));
+  EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_dup_id));
+  EXPECT_EQ(FPTA_SUCCESS, fpta_name_reset(&col_t1ha));
+
   // начинаем транзакцию чтения
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
   ASSERT_NE(nullptr, txn);
