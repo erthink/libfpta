@@ -6,6 +6,8 @@ by [Positive Technologies](https://www.ptsecurity.ru).
 *The Future will Positive. Всё будет хорошо.*
 [![Build Status](https://travis-ci.org/leo-yuriev/libfptu.svg?branch=master)](https://travis-ci.org/leo-yuriev/libfptu)
 
+English version by Google [is here](https://translate.googleusercontent.com/translate_c?act=url&ie=UTF8&sl=ru&tl=en&u=https://github.com/leo-yuriev/libfptu/tree/devel).
+
 
 ## Кратко
 
