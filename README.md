@@ -15,6 +15,9 @@ to 1000K simple SQL-like requests per second on each CPU core.
 *The Future will Positive. Всё будет хорошо.*
 [![Build Status](https://travis-ci.org/leo-yuriev/libfpta.svg?branch=master)](https://travis-ci.org/leo-yuriev/libfpta)
 
+English version by Google [is here](https://translate.googleusercontent.com/translate_c?act=url&ie=UTF8&sl=ru&tl=en&u=https://github.com/leo-yuriev/libfpta/tree/devel).
+
+
 ## Кратко
 
 "Позитивные Таблицы" (_ПТ_) является встраиваемым движком хранения,
