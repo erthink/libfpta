@@ -75,6 +75,9 @@ static int __inline pthread_mutex_destroy(struct pthread_mutex_t *) {
 #ifdef __linux__
 #include "libmdbx/mdbx.h"
 #else
+#ifdef _MSC_VER
+#pragma message("Windows would die, be ready ;)")
+#endif
 typedef struct stub_MDB_env MDB_env;
 typedef struct stub_MDB_txn MDB_txn;
 typedef struct stub_MDB_cursor MDB_cursor;
