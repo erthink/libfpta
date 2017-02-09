@@ -57,7 +57,7 @@ static int __hot fpta_idxcmp_binary_last2first(const MDB_val *a,
         return diff;
     } while (pa - sizeof(size_t) >= stopper);
   }
-  if (sizeof(unsigned) < sizeof(size_t) && pa - sizeof(unsigned) >= stopper) {
+  if (sizeof(unsigned) < sizeof(size_t) && pa >= stopper + sizeof(unsigned)) {
     pa -= sizeof(unsigned);
     pb -= sizeof(unsigned);
     int diff = fptu_cmp2int(*(unsigned *)pa, *(unsigned *)pb);
@@ -65,7 +65,7 @@ static int __hot fpta_idxcmp_binary_last2first(const MDB_val *a,
       return diff;
   }
   if (sizeof(unsigned short) < sizeof(unsigned) &&
-      pa - sizeof(unsigned short) >= stopper) {
+      pa >= stopper + sizeof(unsigned short)) {
     pa -= sizeof(unsigned short);
     pb -= sizeof(unsigned short);
     int diff = *(unsigned short *)pa - *(unsigned short *)pb;
