@@ -78,7 +78,7 @@ public:
   std::string pk_col_name;
   std::string se_col_name;
   fpta_name table, col_pk, col_se, col_order, col_dup_id, col_t1ha;
-  unsigned n;
+  unsigned n_records;
   std::unordered_map<int, int> reorder;
 
   void CheckPosition(int linear, int dup) {
@@ -148,7 +148,7 @@ public:
 
     any_keygen keygen_primary(pk_type, pk_index);
     any_keygen keygen_secondary(se_type, se_index);
-    n = 0;
+    n_records = 0;
     for (unsigned order = 0; order < NNN; ++order) {
       SCOPED_TRACE("order " + std::to_string(order));
 
@@ -181,7 +181,7 @@ public:
                                order_checksum(order, se_type, se_index)));
         ASSERT_EQ(FPTA_OK,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-        ++n;
+        ++n_records;
       } else {
         /* Пояснения относительно порядка следования строк-дубликатов (с
          * одинаковым значением PK) при просмотре через вторичный индекс:
@@ -209,7 +209,7 @@ public:
                                        order_checksum(order * NDUP + dup_id,
                                                       se_type, se_index)));
           ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take(row)));
-          ++n;
+          ++n_records;
         }
       }
     }
@@ -545,7 +545,7 @@ TEST_P(CursorSecondary, basicMoves) {
                (valid_cursor_ops ? ", (valid cursor case)"
                                  : ", (invalid cursor case)"));
 
-  ASSERT_GT(n, 5);
+  ASSERT_GT(n_records, 5);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -733,7 +733,7 @@ TEST_P(CursorSecondaryDups, dupMoves) {
                (valid_cursor_ops ? ", (valid cursor case)"
                                  : ", (invalid cursor case)"));
 
-  ASSERT_GT(n, 5);
+  ASSERT_GT(n_records, 5);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -1040,6 +1040,8 @@ TEST_P(CursorSecondaryDups, dupMoves) {
   ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 4));
 }
 
+//----------------------------------------------------------------------------
+
 #if GTEST_HAS_COMBINE
 
 INSTANTIATE_TEST_CASE_P(
@@ -1094,8 +1096,6 @@ TEST(CursorSecondaryDups, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {
 }
 
 #endif /* GTEST_HAS_COMBINE */
-
-//----------------------------------------------------------------------------
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

@@ -487,6 +487,8 @@ TEST_P(IndexSecondary, basic) {
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
 }
 
+//----------------------------------------------------------------------------
+
 #if GTEST_HAS_COMBINE
 INSTANTIATE_TEST_CASE_P(
     Combine, IndexSecondary,
@@ -515,8 +517,6 @@ INSTANTIATE_TEST_CASE_P(
 #else
 TEST(IndexSecondary, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 #endif /* GTEST_HAS_COMBINE */
-
-//----------------------------------------------------------------------------
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

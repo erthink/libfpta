@@ -399,6 +399,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   ASSERT_TRUE(unlink(testdb_name_lck) == 0);
 }
 
+//----------------------------------------------------------------------------
+
 template <typename TypeParam> class PrimaryIndex : public ::testing::Test {};
 TYPED_TEST_CASE_P(PrimaryIndex);
 
@@ -439,8 +441,6 @@ TYPED_TEST(PrimaryIndex, unordered_withdups) {
 TYPED_TEST(PrimaryIndex, reverse_withdups) {
   TestPrimary<TypeParam::type, fpta_primary_withdups_reversed>();
 }
-
-//----------------------------------------------------------------------------
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
