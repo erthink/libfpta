@@ -369,25 +369,34 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
     return rc;
 
   MDB_cursor_op mdbx_seek_op;
-  if (exactly) {
+  if (exactly || !fpta_cursor_is_ordered(cursor->options))
     mdbx_seek_op = row ? MDB_GET_BOTH : MDB_SET;
-  } else {
+  else
     mdbx_seek_op = row ? MDB_GET_BOTH_RANGE : MDB_SET_RANGE;
-  }
 
   rc = fpta_cursor_seek(cursor, mdbx_seek_op, MDB_NEXT, &seek_key.mdbx,
                         mdbx_seek_data);
-  if (likely(rc == FPTA_SUCCESS) && exactly && !row &&
+  if (likely(rc == FPTA_SUCCESS) && !mdbx_seek_data &&
       !fpta_index_is_unique(cursor->index.shove)) {
     size_t dups;
     if (unlikely(mdbx_cursor_count(cursor->mdbx_cursor, &dups) !=
                  MDB_SUCCESS))
       return FPTA_EOOPS;
-    if (unlikely(dups > 1))
-      /* возвращаем ошибку, если запрошено точное позиционирование
-       * по ключу (без указания полного значения строки) и с заданным
-       * значением ключа связано более одной строки. */
-      return FPTA_EMULTIVAL;
+    if (dups > 1) {
+      if (exactly) {
+        /* Возвращаем ошибку, если запрошено точное позиционирование
+         * по ключу (без указания полного значения строки) и с заданным
+         * значением ключа связано более одной строки. */
+        return FPTA_EMULTIVAL;
+      }
+      if (fpta_cursor_is_descending(cursor->options)) {
+        /* Если для курсора задана сортировка об обратном порядке, то
+         * переходим к последнему дубликату (последнему мульти-значению
+         * для одного значения ключа). */
+        rc = fpta_cursor_seek(cursor, MDB_LAST_DUP, MDB_PREV_DUP, nullptr,
+                              nullptr);
+      }
+    }
   }
   return rc;
 }
