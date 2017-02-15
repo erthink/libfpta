@@ -276,7 +276,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   int rc;
   if (txn->level == fpta_read) {
     // TODO: reuse txn with mdbx_txn_reset(), but pool needed...
-    rc = mdbx_txn_abort(txn->mdbx_txn);
+    rc = mdbx_txn_commit(txn->mdbx_txn);
   } else if (!abort) {
     if (txn->level == fpta_schema &&
         txn->schema_version == txn->data_version) {
