@@ -377,7 +377,6 @@ enum fpta_error {
   FPTA_ETXNOUT /* Transaction should be restared */,
   FPTA_ECURSOR /* Cursor not positioned */,
   FPTA_TOOMANY /* Too many columns or indexes */,
-  FPTA_EMULTIVAL /* Multiple values associated with a key. */,
   FPTA_WANNA_DIE,
 
   FPTA_EINVAL = EINVAL,
@@ -1191,11 +1190,6 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
  *    если точное значение ключа не найдено, то вне зависимости от значения
  *    аргумента exactly будет возвращена ошибка FPTA_NODATA, и курсор
  *    не будет установлен на какую-либо строку.
- *
- * Если запрошено точное позиционирование (аргумент exactly = true) и оно
- * не может быть выполнено из-за наличия нескольких значений для заданного
- * ключа, то будет возвращена специфическая ошибка FPTA_EMULTIVAL. При этом
- * курсор будет установлен на любое из этих значений.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,

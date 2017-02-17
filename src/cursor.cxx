@@ -377,26 +377,18 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
   rc = fpta_cursor_seek(cursor, mdbx_seek_op, MDB_NEXT, &seek_key.mdbx,
                         mdbx_seek_data);
   if (likely(rc == FPTA_SUCCESS) && !mdbx_seek_data &&
-      !fpta_index_is_unique(cursor->index.shove)) {
+      !fpta_index_is_unique(cursor->index.shove) &&
+      fpta_cursor_is_descending(cursor->options)) {
+    /* Если для курсора задана сортировка об обратном порядке, то
+     * переходим к последнему дубликату (последнему мульти-значению
+     * для одного значения ключа). */
     size_t dups;
     if (unlikely(mdbx_cursor_count(cursor->mdbx_cursor, &dups) !=
                  MDB_SUCCESS))
       return FPTA_EOOPS;
-    if (dups > 1) {
-      if (exactly) {
-        /* Возвращаем ошибку, если запрошено точное позиционирование
-         * по ключу (без указания полного значения строки) и с заданным
-         * значением ключа связано более одной строки. */
-        return FPTA_EMULTIVAL;
-      }
-      if (fpta_cursor_is_descending(cursor->options)) {
-        /* Если для курсора задана сортировка об обратном порядке, то
-         * переходим к последнему дубликату (последнему мульти-значению
-         * для одного значения ключа). */
-        rc = fpta_cursor_seek(cursor, MDB_LAST_DUP, MDB_PREV_DUP, nullptr,
-                              nullptr);
-      }
-    }
+    if (dups > 1)
+      rc = fpta_cursor_seek(cursor, MDB_LAST_DUP, MDB_PREV_DUP, nullptr,
+                            nullptr);
   }
   return rc;
 }

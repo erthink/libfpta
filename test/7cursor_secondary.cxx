@@ -1285,8 +1285,7 @@ TEST_P(CursorSecondary, locate) {
         unsigned const expected_dup_number = NDUP - expected_dups;
         SCOPED_TRACE("multi-val: n-dups " + std::to_string(expected_dups) +
                      ", here-dup " + std::to_string(expected_dup_number));
-        ASSERT_EQ(FPTA_EMULTIVAL,
-                  fpta_cursor_locate(cursor, true, &key, nullptr));
+        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
         ASSERT_NO_FATAL_FAILURE(CheckPosition(
             linear, expected_dup_number, expected_dups,
@@ -1332,14 +1331,7 @@ TEST_P(CursorSecondary, locate) {
                    std::to_string(expected_dups));
       fpta_value key = keygen.make(order, NNN);
 
-      if (expected_dups > 1) {
-        ASSERT_EQ(FPTA_EMULTIVAL,
-                  fpta_cursor_locate(cursor, true, &key, nullptr));
-        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
-      } else {
-        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
-      }
-
+      ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
       ASSERT_EQ(0, fpta_cursor_eof(cursor));
       size_t dups = 100500;
       ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));

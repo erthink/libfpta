@@ -1090,10 +1090,8 @@ TEST_F(SmokeCRUD, none) {
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
       else {
         /* больше одного значения, точное позиционирование возможно
-         * только по ключу не возможно */
-        ASSERT_EQ(FPTA_EMULTIVAL,
-                  fpta_cursor_locate(cursor, true, &key, nullptr));
-        /* создаем фейковую строку с PK и искомым значением для поиска */
+         * только по ключу не возможно, создаем фейковую строку с PK
+         * и искомым значением для поиска */
         ASSERT_EQ(FPTU_OK, fptu_clear(row));
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_uint,
@@ -1373,10 +1371,8 @@ TEST_F(SmokeCRUD, none) {
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
       else {
         /* больше одного значения, точное позиционирование возможно
-         * только по ключу не возможно */
-        ASSERT_EQ(FPTA_EMULTIVAL,
-                  fpta_cursor_locate(cursor, true, &key, nullptr));
-        /* создаем фейковую строку с PK и искомым значением для поиска */
+         * только по ключу не возможно, создаем фейковую строку с PK
+         * и искомым значением для поиска */
         ASSERT_EQ(FPTU_OK, fptu_clear(row));
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_uint,
@@ -1405,15 +1401,7 @@ TEST_F(SmokeCRUD, none) {
         EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
         EXPECT_EQ(FPTA_DEADBEEF, dups);
       } else {
-        if (expected_dups > 1) {
-          ASSERT_EQ(FPTA_EMULTIVAL,
-                    fpta_cursor_locate(cursor, true, &key, nullptr));
-          ASSERT_EQ(FPTA_OK,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
-        } else {
-          ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
-        }
-
+        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
         EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
         EXPECT_EQ(expected_dups, dups);
