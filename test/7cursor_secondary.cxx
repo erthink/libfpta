@@ -403,6 +403,7 @@ public:
     // формируем линейную карту, чтобы проще проверять переходы
     reorder.clear();
     reorder.reserve(NNN);
+    int prev_order = -1;
     for (int linear = 0; fpta_cursor_eof(cursor) == FPTA_OK; ++linear) {
       fptu_ro tuple;
       EXPECT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
@@ -429,18 +430,17 @@ public:
       if (error == FPTA_NODATA)
         break;
       ASSERT_EQ(FPTA_SUCCESS, error);
+
+      if (fpta_cursor_is_ordered(ordering) && linear > 0) {
+        if (fpta_cursor_is_ascending(ordering))
+          ASSERT_LE(prev_order, tuple_order);
+        else
+          ASSERT_GE(prev_order, tuple_order);
+      }
+      prev_order = tuple_order;
     }
 
     ASSERT_EQ(NNN, reorder.size());
-
-    if (fpta_cursor_is_ordered(ordering)) {
-      std::map<int, int> probe;
-      for (auto pair : reorder)
-        probe[pair.first] = pair.second;
-      ASSERT_EQ(probe.size(), reorder.size());
-      ASSERT_TRUE(
-          is_properly_ordered(probe, fpta_cursor_is_descending(ordering)));
-    }
 
     //------------------------------------------------------------------------
 

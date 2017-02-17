@@ -147,12 +147,12 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor_guard.get()));
 
     fptu_ro tuple;
-    EXPECT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
+    ASSERT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
     ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
 
     int error;
     fpta_value key;
-    ASSERT_EQ(FPTU_OK, fpta_cursor_key(cursor_guard.get(), &key));
+    ASSERT_EQ(FPTA_OK, fpta_cursor_key(cursor_guard.get(), &key));
     SCOPED_TRACE("key: " + std::to_string(key.type) + ", length " +
                  std::to_string(key.binary_length));
 
@@ -183,7 +183,8 @@ public:
 
     any_keygen keygen(type, index);
     n_records = 0;
-    for (unsigned order = 0; order < NNN; ++order) {
+    for (unsigned linear = 0; linear < NNN; ++linear) {
+      unsigned order = (163 + linear * 42101) % NNN;
       SCOPED_TRACE("order " + std::to_string(order));
       fpta_value value_pk = keygen.make(order, NNN);
       if (value_pk.type == fpta_end)
@@ -386,6 +387,7 @@ public:
     // формируем линейную карту, чтобы проще проверять переходы
     reorder.clear();
     reorder.reserve(NNN);
+    int prev_order = -1;
     for (int linear = 0; fpta_cursor_eof(cursor) == FPTA_OK; ++linear) {
       fptu_ro tuple;
       EXPECT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
@@ -406,18 +408,16 @@ public:
       if (error == FPTA_NODATA)
         break;
       ASSERT_EQ(FPTA_SUCCESS, error);
-    }
 
+      if (fpta_cursor_is_ordered(ordering) && linear > 0) {
+        if (fpta_cursor_is_ascending(ordering))
+          ASSERT_LE(prev_order, tuple_order);
+        else
+          ASSERT_GE(prev_order, tuple_order);
+      }
+      prev_order = tuple_order;
+    }
     ASSERT_EQ(NNN, reorder.size());
-
-    if (fpta_cursor_is_ordered(ordering)) {
-      std::map<int, int> probe;
-      for (auto pair : reorder)
-        probe[pair.first] = pair.second;
-      ASSERT_EQ(probe.size(), reorder.size());
-      ASSERT_TRUE(
-          is_properly_ordered(probe, fpta_cursor_is_descending(ordering)));
-    }
   }
 
   virtual void TearDown() {
