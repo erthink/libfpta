@@ -990,7 +990,7 @@ TEST_P(CursorPrimaryDups, dupMoves) {
 
 //----------------------------------------------------------------------------
 
-TEST_P(CursorPrimary, locate) {
+TEST_P(CursorPrimary, locate_and_delele) {
   /* Проверка позиционирования курсора по первичному (primary) индексу.
    *
    * Сценарий (общий для всех типов полей и всех видов первичных индексов):
@@ -1038,6 +1038,9 @@ TEST_P(CursorPrimary, locate) {
    *      - проверяется результирующая позиция курсора.
    *      - удаляется часть строк: текущая транзакция чтения закрывается,
    *        открывается пишущая, выполняется удаление, курсор переоткрывается.
+   *      - после каждого удаления проверяется что позиция курсора
+   *        соответствует ожиданиям (сделан переход к следующей записи
+   *        в порядке курсора).
    *      - итерации повторяются пока не будут удалены все строки.
    *      - при выполнении всех проверок и удалений строки выбираются
    *        в стохастическом порядке.
@@ -1256,7 +1259,7 @@ TEST_P(CursorPrimary, locate) {
       const auto linear = present.at(--i);
       const auto order = reorder.at(linear);
       auto expected_dups = dups_countdown.at(linear);
-      SCOPED_TRACE("linear " + std::to_string(linear) + ", order " +
+      SCOPED_TRACE("delete: linear " + std::to_string(linear) + ", order " +
                    std::to_string(order) + ", dups left " +
                    std::to_string(expected_dups));
       fpta_value key = keygen.make(order, NNN);
@@ -1272,6 +1275,38 @@ TEST_P(CursorPrimary, locate) {
       if (expected_dups == 0) {
         present.erase(present.begin() + i);
         dups_countdown.erase(linear);
+      }
+
+      // проверяем состояние курсора и его переход к следующей строке
+      if (present.empty()) {
+        ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+        ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
+        ASSERT_EQ(0, dups);
+      } else if (expected_dups) {
+        ASSERT_NO_FATAL_FAILURE(
+            CheckPosition(linear,
+                          /* см выше пояснение о expected_dup_number */
+                          n_dups - expected_dups, expected_dups));
+      } else if (fpta_cursor_is_ordered(ordering)) {
+        const auto lower_bound = dups_countdown.lower_bound(linear);
+        if (lower_bound != dups_countdown.end()) {
+          const auto expected_linear = lower_bound->first;
+          const auto expected_order = reorder[expected_linear];
+          expected_dups = lower_bound->second;
+          SCOPED_TRACE("after-delete: linear " +
+                       std::to_string(expected_linear) + ", order " +
+                       std::to_string(expected_order) + ", n-dups " +
+                       std::to_string(expected_dups));
+          ASSERT_NO_FATAL_FAILURE(
+              CheckPosition(expected_linear,
+                            /* см выше пояснение о expected_dup_number */
+                            n_dups - expected_dups, expected_dups));
+
+        } else {
+          ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+          ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
+          ASSERT_EQ(0, dups);
+        }
       }
     }
 
@@ -1292,7 +1327,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Combine(
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_96, fptu_128, fptu_160, fptu_datetime,
+                          fptu_datetime, fptu_96, fptu_128, fptu_160,
                           fptu_256, fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
         ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
@@ -1307,7 +1342,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Combine(
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_96, fptu_128, fptu_160, fptu_datetime,
+                          fptu_datetime, fptu_96, fptu_128, fptu_160,
                           fptu_256, fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
         ::testing::Values(fpta_primary_withdups,
