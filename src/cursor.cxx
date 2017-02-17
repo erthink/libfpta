@@ -230,8 +230,10 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
 
-  if (unlikely(op < fpta_first || op > fpta_key_prev))
+  if (unlikely(op < fpta_first || op > fpta_key_prev)) {
+    cursor->set_poor();
     return FPTA_EINVAL;
+  }
 
   if (fpta_cursor_is_descending(cursor->options))
     op = (fpta_seek_operations)(op ^ 1);
@@ -241,6 +243,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   switch (op) {
   default:
     assert(false && "unexpected seek-op");
+    cursor->set_poor();
     return FPTA_EOOPS;
 
   case fpta_first:
@@ -342,8 +345,10 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
 
-  if (unlikely((key && row) || (!key && !row)))
+  if (unlikely((key && row) || (!key && !row))) {
+    cursor->set_poor();
     return FPTA_EINVAL;
+  }
 
   fpta_key seek_key;
   MDB_val *mdbx_seek_data;
@@ -358,15 +363,19 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
     mdbx_seek_data = const_cast<MDB_val *>(&row->sys);
 
     if (fpta_index_is_secondary(cursor->index.shove)) {
-      if (unlikely(rc != FPTA_SUCCESS))
+      if (unlikely(rc != FPTA_SUCCESS)) {
+        cursor->set_poor();
         return rc;
+      }
       rc = fpta_index_row2key(cursor->table_id->table.pk, 0, *row, pk_key,
                               false);
       mdbx_seek_data = &pk_key.mdbx;
     }
   }
-  if (unlikely(rc != FPTA_SUCCESS))
+  if (unlikely(rc != FPTA_SUCCESS)) {
+    cursor->set_poor();
     return rc;
+  }
 
   MDB_cursor_op mdbx_seek_op;
   if (exactly || !fpta_cursor_is_ordered(cursor->options))
@@ -376,21 +385,33 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
 
   rc = fpta_cursor_seek(cursor, mdbx_seek_op, MDB_NEXT, &seek_key.mdbx,
                         mdbx_seek_data);
-  if (likely(rc == FPTA_SUCCESS) && !mdbx_seek_data &&
-      !fpta_index_is_unique(cursor->index.shove) &&
+  if (unlikely(rc != FPTA_SUCCESS)) {
+    cursor->set_poor();
+    return rc;
+  }
+
+  if (!mdbx_seek_data && !fpta_index_is_unique(cursor->index.shove) &&
       fpta_cursor_is_descending(cursor->options)) {
-    /* Если для курсора задана сортировка об обратном порядке, то
+    /* Если для курсора задана сортировка в обратном порядке, то
      * переходим к последнему дубликату (последнему мульти-значению
      * для одного значения ключа). */
     size_t dups;
     if (unlikely(mdbx_cursor_count(cursor->mdbx_cursor, &dups) !=
-                 MDB_SUCCESS))
+                 MDB_SUCCESS)) {
+      cursor->set_poor();
       return FPTA_EOOPS;
-    if (dups > 1)
+    }
+    if (dups > 1) {
       rc = fpta_cursor_seek(cursor, MDB_LAST_DUP, MDB_PREV_DUP, nullptr,
                             nullptr);
+      if (unlikely(rc != FPTA_SUCCESS)) {
+        cursor->set_poor();
+        return rc;
+      }
+    }
   }
-  return rc;
+
+  return FPTA_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
