@@ -733,8 +733,19 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     }
   }
 
-  if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE)
+  if (fpta_cursor_is_descending(cursor->options)) {
+    /* Для курсора с обратным порядком строк требуется перейти к предыдущей
+     * строке, в том числе подходящей под условие фильтрации. */
+    fpta_cursor_seek(cursor, MDB_PREV, MDB_PREV, nullptr, nullptr);
+  } else if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE) {
     cursor->set_eof(fpta_cursor::after_last);
+  } else {
+    /* Для курсора с прямым порядком строк требуется перейти
+     * к следующей строке подходящей под условие фильтрации, но
+     * не выполнять переход если текущая строка уже подходит под фильтр. */
+    fpta_cursor_seek(cursor, MDB_GET_CURRENT, MDB_NEXT, nullptr, nullptr);
+  }
+
   return FPTA_SUCCESS;
 }
 
