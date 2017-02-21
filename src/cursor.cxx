@@ -143,7 +143,8 @@ bailout:
 
 static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                             MDB_cursor_op mdbx_step_op,
-                            MDB_val *mdbx_seek_key, MDB_val *mdbx_seek_data) {
+                            const MDB_val *mdbx_seek_key,
+                            const MDB_val *mdbx_seek_data) {
   assert(mdbx_seek_key != &cursor->current);
   fptu_ro mdbx_data;
   int rc;
@@ -153,13 +154,77 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                          &mdbx_data.sys, mdbx_seek_op);
   } else {
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, mdbx_seek_key, mdbx_seek_data,
-                         mdbx_seek_op);
-    if (unlikely(rc != MDB_SUCCESS))
-      goto bailout;
+    /* Помещаем целевой ключ и данные (адреса и размер)
+     * в cursor->current и mdbx_data, это требуется для того чтобы:
+     *   - после возврата из mdbx_cursor_get() в cursor->current и mdbx_data
+     *     уже был указатели на ключ и данные в БД, без необходимости
+     *     еще одного вызова mdbx_cursor_get(MDB_GET_CURRENT).
+     *   - если передать непосредственно mdbx_seek_key и mdbx_seek_data,
+     *     то исходные значения будут потеряны (перезаписаны), что создаст
+     *     сложности при последующей корректировке позиции. Например, для
+     *     перемещения за lower_bound для descending в fpta_cursor_locate().
+     */
+    cursor->current.iov_len = mdbx_seek_key->iov_len;
+    static char NIL;
+    cursor->current.iov_base =
+        /* Замещаем nullptr для ключей нулевой длинны, так чтобы
+         * в курсоре стоящем на строке с ключом нулевой длины
+         * cursor->current.iov_base != nullptr, и тем самым курсор
+         * не попадал под критерий is_poor() */
+        mdbx_seek_key->iov_base ? mdbx_seek_key->iov_base : &NIL;
 
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                         &mdbx_data.sys, MDB_GET_CURRENT);
+    if (!mdbx_seek_data)
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
+                           mdbx_seek_op);
+    else {
+      mdbx_data.sys = *mdbx_seek_data;
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                           &mdbx_data.sys, mdbx_seek_op);
+      if (likely(rc == MDB_SUCCESS))
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                             &mdbx_data.sys, MDB_GET_CURRENT);
+    }
+
+    if (rc == MDB_SUCCESS) {
+      assert(cursor->current.iov_base != mdbx_seek_key->iov_base);
+      if (mdbx_seek_data)
+        assert(mdbx_data.sys.iov_base != mdbx_seek_data->iov_base);
+    }
+
+    if (fpta_cursor_is_descending(cursor->options) &&
+        (mdbx_seek_op == MDB_GET_BOTH_RANGE ||
+         mdbx_seek_op == MDB_SET_RANGE)) {
+      /* Корректировка перемещения для курсора с сортировкой по-убыванию.
+       *
+       * Внутри mdbx_cursor_get() выполняет позиционирование аналогично
+       * std::lower_bound() при сортировке по-возрастанию. Поэтому при
+       * поиске для курсора с сортировкой в обратном порядке необходимо
+       * выполнить махинации:
+       *  - Если ключ в фактически самой последней строке оказался меньше
+       *    искомого, то при результате MDB_NOTFOUND от mdbx_cursor_get()
+       *    следует к последней строке, что будет соответствовать переходу
+       *    к самой первой позиции при обратной сортировке.
+       *  - Если искомый ключ не найден и курсор стоит на фактически самой
+       *    первой строке, то следует вернуть результат "нет данных", что
+       *    будет соответствовать поведению lower_bound при сортировке
+       *    в обратном порядке.
+       *  - Если искомый ключ найден, то перейти к "первой" равной строке
+       *    в порядке курсора, что означает перейти к последнему дубликату.
+       *    По эстетическим соображениям этот переход реализован не здесь,
+       *    а в fpta_cursor_locate().
+       */
+      if (rc == MDB_SUCCESS &&
+          mdbx_cursor_on_first(cursor->mdbx_cursor) == MDBX_RESULT_TRUE &&
+          mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
+                   &cursor->current, mdbx_seek_key) < 0) {
+        goto eof;
+      } else if (rc == MDB_NOTFOUND &&
+                 mdbx_cursor_on_last(cursor->mdbx_cursor) ==
+                     MDBX_RESULT_TRUE) {
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                             &mdbx_data.sys, MDB_LAST);
+      }
+    }
   }
 
   while (rc == MDB_SUCCESS) {
@@ -198,7 +263,6 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                          &mdbx_data.sys, mdbx_step_op);
   }
 
-bailout:
   if (unlikely(rc != MDB_NOTFOUND)) {
     cursor->set_poor();
     return rc;
