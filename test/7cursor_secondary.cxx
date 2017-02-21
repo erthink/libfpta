@@ -83,14 +83,6 @@ public:
   unsigned n_records;
   std::unordered_map<int, int> reorder;
 
-  int order2linear(int order) const {
-    for (const auto &pair : reorder)
-      if (pair.second == order)
-        return pair.first;
-    EXPECT_TRUE(false);
-    return INT_MIN;
-  }
-
   void CheckPosition(int linear, int dup_id, int expected_n_dups = 0,
                      bool check_dup_id = true) {
     if (linear < 0) {
@@ -173,7 +165,7 @@ public:
     ASSERT_EQ(FPTU_OK, error);
     if ((check_dup_id && fpta_index_is_ordered(pk_index)) ||
         fpta_index_is_unique(se_index))
-      ASSERT_EQ(expected_dup_id, tuple_dup_id);
+      EXPECT_EQ(expected_dup_id, tuple_dup_id);
 
     auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
@@ -198,7 +190,8 @@ public:
     any_keygen keygen_primary(pk_type, pk_index);
     any_keygen keygen_secondary(se_type, se_index);
     n_records = 0;
-    for (unsigned order = 0; order < NNN; ++order) {
+    for (unsigned linear = 0; linear < NNN; ++linear) {
+      unsigned order = (239 + linear * 42929) % NNN;
       SCOPED_TRACE("order " + std::to_string(order));
 
       // теперь формируем кортеж
@@ -216,9 +209,8 @@ public:
       fpta_value value_se = keygen_secondary.make(order, NNN);
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
 
-      unsigned pk_reorder = (order + 79) * 11 % NNN;
       if (fpta_index_is_unique(se_index)) {
-        fpta_value value_pk = keygen_primary.make(pk_reorder, NNN);
+        fpta_value value_pk = keygen_primary.make(order, NNN);
         ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
 
         // вставляем одну запись с dup_id = 42
@@ -238,7 +230,7 @@ public:
                                                 fpta_value_uint(dup_id)));
           // обеспечиваем уникальный PK, но с возрастанием dup_id
           fpta_value value_pk =
-              keygen_primary.make(pk_reorder * NDUP + dup_id, NNN * NDUP);
+              keygen_primary.make(order * NDUP + dup_id, NNN * NDUP);
           ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
           // t1ha как "checksum" для order
           ASSERT_EQ(FPTA_OK,
@@ -1158,7 +1150,7 @@ TEST_P(CursorSecondary, locate) {
   std::map<int, int> dups_countdown;
   for (const auto &pair : reorder) {
     present.push_back(pair.first);
-    dups_countdown[pair.second] = fpta_index_is_unique(se_index) ? 1 : NDUP;
+    dups_countdown[pair.first] = fpta_index_is_unique(se_index) ? 1 : NDUP;
   }
   // сохраняем исходный полный набор
   auto initial = present;
@@ -1202,10 +1194,11 @@ TEST_P(CursorSecondary, locate) {
       ASSERT_EQ(1, reorder.count(linear));
       const auto order = reorder[linear];
       int expected_dups =
-          dups_countdown.count(order) ? dups_countdown.at(order) : 0;
-      SCOPED_TRACE("linear " + std::to_string(linear) + ", order " +
-                   std::to_string(order) +
-                   (dups_countdown.count(order) ? ", present" : ", deleted"));
+          dups_countdown.count(linear) ? dups_countdown.at(linear) : 0;
+      SCOPED_TRACE(
+          "linear " + std::to_string(linear) + ", order " +
+          std::to_string(order) +
+          (dups_countdown.count(linear) ? ", present" : ", deleted"));
 
       fpta_value key = keygen.make(order, NNN);
       size_t dups = 100500;
@@ -1225,11 +1218,11 @@ TEST_P(CursorSecondary, locate) {
            *  - в порядке курсора есть строки "после" запрошенного значения
            *    ключа (аналогично lower_bound и с учетом того, что строк
            *    с заданным значением ключа уже нет). */
-          const auto lower_bound = dups_countdown.lower_bound(order);
+          const auto lower_bound = dups_countdown.lower_bound(linear);
           if (fpta_cursor_is_ordered(ordering) &&
               lower_bound != dups_countdown.end()) {
-            const auto expected_order = lower_bound->first;
-            const auto expected_linear = order2linear(expected_order);
+            const auto expected_linear = lower_bound->first;
+            const auto expected_order = reorder[expected_linear];
             expected_dups = lower_bound->second;
             SCOPED_TRACE("lower-bound: linear " +
                          std::to_string(expected_linear) + ", order " +
@@ -1242,16 +1235,28 @@ TEST_P(CursorSecondary, locate) {
                               /* см ниже пояснение о expected_dup_number */
                               NDUP - expected_dups, expected_dups));
           } else {
-            ASSERT_EQ(FPTA_NODATA,
-                      fpta_cursor_locate(cursor, false, &key, nullptr));
+            if (fpta_cursor_is_ordered(ordering) ||
+                !FPTA_PROHIBIT_NEARBY4UNORDERED) {
+              ASSERT_EQ(FPTA_NODATA,
+                        fpta_cursor_locate(cursor, false, &key, nullptr));
+            } else {
+              ASSERT_EQ(FPTA_EINVAL,
+                        fpta_cursor_locate(cursor, false, &key, nullptr));
+            }
             ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
             ASSERT_EQ(FPTA_ECURSOR,
                       fpta_cursor_dups(cursor_guard.get(), &dups));
             ASSERT_EQ(FPTA_DEADBEEF, dups);
           }
         } else {
-          ASSERT_EQ(FPTA_NODATA,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          if (fpta_cursor_is_ordered(ordering) ||
+              !FPTA_PROHIBIT_NEARBY4UNORDERED) {
+            ASSERT_EQ(FPTA_NODATA,
+                      fpta_cursor_locate(cursor, false, &key, nullptr));
+          } else {
+            ASSERT_EQ(FPTA_EINVAL,
+                      fpta_cursor_locate(cursor, false, &key, nullptr));
+          }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR,
                     fpta_cursor_dups(cursor_guard.get(), &dups));
@@ -1259,8 +1264,18 @@ TEST_P(CursorSecondary, locate) {
         }
         continue;
       case 1:
-        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
-        ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
+        if (fpta_cursor_is_ordered(ordering) ||
+            !FPTA_PROHIBIT_NEARBY4UNORDERED) {
+          ASSERT_EQ(FPTA_OK,
+                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
+        } else {
+          ASSERT_EQ(FPTA_EINVAL,
+                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+          ASSERT_EQ(FPTA_ECURSOR,
+                    fpta_cursor_dups(cursor_guard.get(), &dups));
+        }
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
         break;
@@ -1287,14 +1302,21 @@ TEST_P(CursorSecondary, locate) {
                      ", here-dup " + std::to_string(expected_dup_number));
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
-        ASSERT_NO_FATAL_FAILURE(CheckPosition(
-            linear, expected_dup_number, expected_dups,
-            false /* выключаем контроль, так как FPTA_EMULTIVAL означает,
-                   * что курсор может стоять на любом из дубликатов */
-            ));
-        ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
         ASSERT_NO_FATAL_FAILURE(
             CheckPosition(linear, expected_dup_number, expected_dups));
+        if (fpta_cursor_is_ordered(ordering) ||
+            !FPTA_PROHIBIT_NEARBY4UNORDERED) {
+          ASSERT_EQ(FPTA_OK,
+                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_NO_FATAL_FAILURE(
+              CheckPosition(linear, expected_dup_number, expected_dups));
+        } else {
+          ASSERT_EQ(FPTA_EINVAL,
+                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
+          ASSERT_EQ(FPTA_ECURSOR,
+                    fpta_cursor_dups(cursor_guard.get(), &dups));
+        }
         break;
       }
     }
@@ -1325,7 +1347,7 @@ TEST_P(CursorSecondary, locate) {
     for (size_t i = present.size(); i > present.size() / 2;) {
       const auto linear = present.at(--i);
       const auto order = reorder.at(linear);
-      const auto expected_dups = dups_countdown.at(order);
+      const auto expected_dups = dups_countdown.at(linear);
       SCOPED_TRACE("linear " + std::to_string(linear) + ", order " +
                    std::to_string(order) + ", dups left " +
                    std::to_string(expected_dups));
@@ -1338,9 +1360,9 @@ TEST_P(CursorSecondary, locate) {
       ASSERT_EQ(expected_dups, dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
-      if (--dups_countdown.at(order) == 0) {
+      if (--dups_countdown.at(linear) == 0) {
         present.erase(present.begin() + i);
-        dups_countdown.erase(order);
+        dups_countdown.erase(linear);
       }
     }
 
