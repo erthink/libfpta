@@ -221,7 +221,7 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
 
   if (!fpta_index_is_ordered(shove)) {
     // хешируем ключ для неупорядоченного индекса
-    key.place.u64 = t1ha(key.mdbx.iov_base, key.mdbx.iov_len, shove);
+    key.place.u64 = t1ha(key.mdbx.iov_base, key.mdbx.iov_len, 2017);
     key.mdbx.iov_base = &key.place.u64;
     key.mdbx.iov_len = sizeof(key.place.u64);
     return FPTA_SUCCESS;

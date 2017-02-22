@@ -143,7 +143,8 @@ bailout:
 
 static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                             MDB_cursor_op mdbx_step_op,
-                            MDB_val *mdbx_seek_key, MDB_val *mdbx_seek_data) {
+                            const MDB_val *mdbx_seek_key,
+                            const MDB_val *mdbx_seek_data) {
   assert(mdbx_seek_key != &cursor->current);
   fptu_ro mdbx_data;
   int rc;
@@ -153,13 +154,77 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                          &mdbx_data.sys, mdbx_seek_op);
   } else {
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, mdbx_seek_key, mdbx_seek_data,
-                         mdbx_seek_op);
-    if (unlikely(rc != MDB_SUCCESS))
-      goto bailout;
+    /* Помещаем целевой ключ и данные (адреса и размер)
+     * в cursor->current и mdbx_data, это требуется для того чтобы:
+     *   - после возврата из mdbx_cursor_get() в cursor->current и mdbx_data
+     *     уже был указатели на ключ и данные в БД, без необходимости
+     *     еще одного вызова mdbx_cursor_get(MDB_GET_CURRENT).
+     *   - если передать непосредственно mdbx_seek_key и mdbx_seek_data,
+     *     то исходные значения будут потеряны (перезаписаны), что создаст
+     *     сложности при последующей корректировке позиции. Например, для
+     *     перемещения за lower_bound для descending в fpta_cursor_locate().
+     */
+    cursor->current.iov_len = mdbx_seek_key->iov_len;
+    static char NIL;
+    cursor->current.iov_base =
+        /* Замещаем nullptr для ключей нулевой длинны, так чтобы
+         * в курсоре стоящем на строке с ключом нулевой длины
+         * cursor->current.iov_base != nullptr, и тем самым курсор
+         * не попадал под критерий is_poor() */
+        mdbx_seek_key->iov_base ? mdbx_seek_key->iov_base : &NIL;
 
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                         &mdbx_data.sys, MDB_GET_CURRENT);
+    if (!mdbx_seek_data)
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
+                           mdbx_seek_op);
+    else {
+      mdbx_data.sys = *mdbx_seek_data;
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                           &mdbx_data.sys, mdbx_seek_op);
+      if (likely(rc == MDB_SUCCESS))
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                             &mdbx_data.sys, MDB_GET_CURRENT);
+    }
+
+    if (rc == MDB_SUCCESS) {
+      assert(cursor->current.iov_base != mdbx_seek_key->iov_base);
+      if (mdbx_seek_data)
+        assert(mdbx_data.sys.iov_base != mdbx_seek_data->iov_base);
+    }
+
+    if (fpta_cursor_is_descending(cursor->options) &&
+        (mdbx_seek_op == MDB_GET_BOTH_RANGE ||
+         mdbx_seek_op == MDB_SET_RANGE)) {
+      /* Корректировка перемещения для курсора с сортировкой по-убыванию.
+       *
+       * Внутри mdbx_cursor_get() выполняет позиционирование аналогично
+       * std::lower_bound() при сортировке по-возрастанию. Поэтому при
+       * поиске для курсора с сортировкой в обратном порядке необходимо
+       * выполнить махинации:
+       *  - Если ключ в фактически самой последней строке оказался меньше
+       *    искомого, то при результате MDB_NOTFOUND от mdbx_cursor_get()
+       *    следует к последней строке, что будет соответствовать переходу
+       *    к самой первой позиции при обратной сортировке.
+       *  - Если искомый ключ не найден и курсор стоит на фактически самой
+       *    первой строке, то следует вернуть результат "нет данных", что
+       *    будет соответствовать поведению lower_bound при сортировке
+       *    в обратном порядке.
+       *  - Если искомый ключ найден, то перейти к "первой" равной строке
+       *    в порядке курсора, что означает перейти к последнему дубликату.
+       *    По эстетическим соображениям этот переход реализован не здесь,
+       *    а в fpta_cursor_locate().
+       */
+      if (rc == MDB_SUCCESS &&
+          mdbx_cursor_on_first(cursor->mdbx_cursor) == MDBX_RESULT_TRUE &&
+          mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
+                   &cursor->current, mdbx_seek_key) < 0) {
+        goto eof;
+      } else if (rc == MDB_NOTFOUND &&
+                 mdbx_cursor_on_last(cursor->mdbx_cursor) ==
+                     MDBX_RESULT_TRUE) {
+        rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                             &mdbx_data.sys, MDB_LAST);
+      }
+    }
   }
 
   while (rc == MDB_SUCCESS) {
@@ -198,7 +263,6 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                          &mdbx_data.sys, mdbx_step_op);
   }
 
-bailout:
   if (unlikely(rc != MDB_NOTFOUND)) {
     cursor->set_poor();
     return rc;
@@ -230,8 +294,10 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
 
-  if (unlikely(op < fpta_first || op > fpta_key_prev))
+  if (unlikely(op < fpta_first || op > fpta_key_prev)) {
+    cursor->set_poor();
     return FPTA_EINVAL;
+  }
 
   if (fpta_cursor_is_descending(cursor->options))
     op = (fpta_seek_operations)(op ^ 1);
@@ -241,6 +307,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   switch (op) {
   default:
     assert(false && "unexpected seek-op");
+    cursor->set_poor();
     return FPTA_EOOPS;
 
   case fpta_first:
@@ -342,54 +409,169 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
 
-  if (unlikely((key && row) || (!key && !row)))
+  if (unlikely((key && row) || (!key && !row))) {
+    /* Должен быть выбран один из режимов поиска. */
+    cursor->set_poor();
     return FPTA_EINVAL;
+  }
 
-  fpta_key seek_key;
-  MDB_val *mdbx_seek_data;
-  fpta_key pk_key;
+  if (!fpta_cursor_is_ordered(cursor->options)) {
+    if (FPTA_PROHIBIT_NEARBY4UNORDERED && !exactly) {
+      /* Отвергаем неточный поиск для неупорядоченного курсора (и индекса). */
+      cursor->set_poor();
+      return FPTA_EINVAL;
+    }
+    /* Принудительно включаем точный поиск для курсора без сортировки. */
+    exactly = true;
+  }
+
+  /* устанавливаем базовый режим поиска */
+  MDB_cursor_op mdbx_seek_op = exactly ? MDB_SET_KEY : MDB_SET_RANGE;
+  const MDB_val *mdbx_seek_data = nullptr;
+
+  fpta_key seek_key, pk_key;
   int rc;
   if (key) {
+    /* Поиск по значению проиндексированной колонки, конвертируем его в ключ
+     * для поиска по индексу. Дополнительных данных для поиска нет. */
     rc = fpta_index_value2key(cursor->index.shove, *key, seek_key, false);
-    mdbx_seek_data = nullptr;
+    if (unlikely(rc != FPTA_SUCCESS)) {
+      cursor->set_poor();
+      return rc;
+    }
+    /* базовый режим поиска уже выставлен. */
   } else {
+    /* Поиск по "образу" строки, получаем из строки-кортежа значение
+     * проиндексированной колонки в формате ключа для поиска по индексу. */
     rc = fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
                             *row, seek_key, false);
-    mdbx_seek_data = const_cast<MDB_val *>(&row->sys);
+    if (unlikely(rc != FPTA_SUCCESS)) {
+      cursor->set_poor();
+      return rc;
+    }
 
     if (fpta_index_is_secondary(cursor->index.shove)) {
-      if (unlikely(rc != FPTA_SUCCESS))
-        return rc;
-      rc = fpta_index_row2key(cursor->table_id->table.pk, 0, *row, pk_key,
-                              false);
-      mdbx_seek_data = &pk_key.mdbx;
+      /* Курсор связан со вторичным индексом. Для уточнения поиска можем
+       * использовать только значение PK. */
+      if (fpta_index_is_unique(cursor->index.shove)) {
+        /* Не используем PK если вторичный индекс обеспечивает уникальность.
+         * Базовый режим поиска уже был выставлен. */
+      } else {
+        /* Извлекаем и используем значение PK только если связанный с
+         * курсором индекс допускает дубликаты. */
+        rc = fpta_index_row2key(cursor->table_id->table.pk, 0, *row, pk_key,
+                                false);
+        if (rc == FPTA_SUCCESS) {
+          /* Используем уточняющее значение PK только если в строке-образце
+           * есть соответствующая колонка. При этом игнорируем отсутствие
+           * колонки (ошибку FPTA_ROW_MISMATCH). */
+          mdbx_seek_data = &pk_key.mdbx;
+          mdbx_seek_op = exactly ? MDB_GET_BOTH : MDB_GET_BOTH_RANGE;
+        } else if (rc != FPTA_ROW_MISMATCH) {
+          cursor->set_poor();
+          return rc;
+        } else {
+          /* в строке нет колонки с PK, базовый режим поиска уже выставлен. */
+        }
+      }
+    } else {
+      /* Курсор связан с первичным индексом. Для уточнения поиска можем
+       * использовать только данные (значение) всей строки. Однако,
+       * делаем это ТОЛЬКО при неточном поиске по индексу с дубликатами,
+       * так как только в этом случае это выглядит рациональным:
+       *  - При точном поиске, отличие в значении любой колонки, включая
+       *    её отсутствие, даст отрицательный результат.
+       *    Соответственно, это породит кардинальные отличия от поведения
+       *    в других лучаях. Например, когда используется вторичный индекс.
+       *  - Фактически будет выполнятется не позиционирование курсора, а
+       *    некая комплекстная операция "найти заданную строку таблицы",
+       *    полезность которой сомнительна. */
+      if (!exactly && !fpta_index_is_unique(cursor->index.shove)) {
+        /* базовый режим поиска уже был выставлен, переключаем только
+         * для нечеткого поиска среди дубликатов (как описано выше). */
+        mdbx_seek_data = &row->sys;
+        mdbx_seek_op = MDB_GET_BOTH_RANGE;
+      }
     }
   }
-  if (unlikely(rc != FPTA_SUCCESS))
-    return rc;
 
-  MDB_cursor_op mdbx_seek_op;
-  if (exactly) {
-    mdbx_seek_op = row ? MDB_GET_BOTH : MDB_SET;
-  } else {
-    mdbx_seek_op = row ? MDB_GET_BOTH_RANGE : MDB_SET_RANGE;
+  rc = fpta_cursor_seek(cursor, mdbx_seek_op,
+                        fpta_cursor_is_descending(cursor->options) ? MDB_PREV
+                                                                   : MDB_NEXT,
+                        &seek_key.mdbx, mdbx_seek_data);
+  if (unlikely(rc != FPTA_SUCCESS)) {
+    cursor->set_poor();
+    return rc;
   }
 
-  rc = fpta_cursor_seek(cursor, mdbx_seek_op, MDB_NEXT, &seek_key.mdbx,
-                        mdbx_seek_data);
-  if (likely(rc == FPTA_SUCCESS) && exactly && !row &&
-      !fpta_index_is_unique(cursor->index.shove)) {
+  if (!fpta_cursor_is_descending(cursor->options))
+    return FPTA_SUCCESS;
+
+  /* Корректируем позицию при обратном порядке строк (fpta_descending) */
+  while (!exactly) {
+    /* При неточном поиске для курсора с обратной сортировкой нужно перейти
+     * на другую сторону от lower_bound, т.е. идти в обратном порядке
+     * до значения меньшего или равного целевому (с учетом фильтра). */
+    int cmp = mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
+                       &cursor->current, &seek_key.mdbx);
+
+    if (cmp < 0)
+      return FPTA_SUCCESS;
+
+    if (cmp == 0) {
+      if (!mdbx_seek_data) {
+        /* Поиск без уточнения по дубликатам. Если индекс допускает
+         * дубликаты, то следует перейти к последнему, что будет
+         * сделао ниже. */
+        break;
+      }
+
+      /* Неточный поиск с уточнением по дубликатам. Переход на другую
+       * сторону lower_bound следует делать с учетом сравнения данных. */
+      MDB_val mdbx_data;
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &mdbx_data,
+                           MDB_GET_CURRENT);
+      if (unlikely(rc != FPTA_SUCCESS)) {
+        cursor->set_poor();
+        return rc;
+      }
+
+      cmp = mdbx_dcmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
+                      &mdbx_data, mdbx_seek_data);
+      if (cmp <= 0)
+        return FPTA_SUCCESS;
+    }
+
+    rc = fpta_cursor_seek(cursor, MDB_PREV, MDB_PREV, nullptr, nullptr);
+    if (unlikely(rc != FPTA_SUCCESS)) {
+      cursor->set_poor();
+      return rc;
+    }
+  }
+
+  /* Для индекса с дубликатами нужно перейти к последней позиции с текущим
+   * ключом. */
+  if (!fpta_index_is_unique(cursor->index.shove)) {
     size_t dups;
     if (unlikely(mdbx_cursor_count(cursor->mdbx_cursor, &dups) !=
-                 MDB_SUCCESS))
+                 MDB_SUCCESS)) {
+      cursor->set_poor();
       return FPTA_EOOPS;
-    if (unlikely(dups > 1))
-      /* возвращаем ошибку, если запрошено точное позиционирование
-       * по ключу (без указания полного значения строки) и с заданным
-       * значением ключа связано более одной строки. */
-      return FPTA_EMULTIVAL;
+    }
+
+    if (dups > 1) {
+      /* Переходим к последнему дубликату (последнему мульти-значению
+       * для одного значения ключа), а если значение не подходит под
+       * фильтр, то двигаемся в обратном порядке дальше. */
+      rc = fpta_cursor_seek(cursor, MDB_LAST_DUP, MDB_PREV, nullptr, nullptr);
+      if (unlikely(rc != FPTA_SUCCESS)) {
+        cursor->set_poor();
+        return rc;
+      }
+    }
   }
-  return rc;
+
+  return FPTA_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
@@ -551,8 +733,19 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     }
   }
 
-  if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE)
+  if (fpta_cursor_is_descending(cursor->options)) {
+    /* Для курсора с обратным порядком строк требуется перейти к предыдущей
+     * строке, в том числе подходящей под условие фильтрации. */
+    fpta_cursor_seek(cursor, MDB_PREV, MDB_PREV, nullptr, nullptr);
+  } else if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE) {
     cursor->set_eof(fpta_cursor::after_last);
+  } else {
+    /* Для курсора с прямым порядком строк требуется перейти
+     * к следующей строке подходящей под условие фильтрации, но
+     * не выполнять переход если текущая строка уже подходит под фильтр. */
+    fpta_cursor_seek(cursor, MDB_GET_CURRENT, MDB_NEXT, nullptr, nullptr);
+  }
+
   return FPTA_SUCCESS;
 }
 
