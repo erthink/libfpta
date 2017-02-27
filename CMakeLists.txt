@@ -28,17 +28,16 @@ if(NOT CMAKE_BUILD_TYPE)
         "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
         FORCE)
 endif()
+option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
 
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
 
 include(cmake/utils.cmake)
-# include(cmake/pod2man.cmake)
 # the order is significant: we need to know os and compiler to configure libs
 include(cmake/arch.cmake)
 include(cmake/os.cmake)
 include(cmake/compiler.cmake)
-# include(cmake/atomic.cmake)
 include(cmake/profile.cmake)
 include(cmake/testing.cmake)
 
@@ -51,7 +50,7 @@ find_program(CLANG_FORMAT clang-format)
 
 option(ENABLE_VALGRIND "Enable integration with valgrind, a memory analyzing tool" OFF)
 
-set (PACKAGE "libfptu")
+set(PACKAGE "libfptu")
 
 check_function_exists(memmem HAVE_MEMMEM)
 check_function_exists(memrchr HAVE_MEMRCHR)

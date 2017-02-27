@@ -1,4 +1,4 @@
-add_library(fptu STATIC
+add_library(fptu SHARED
     ../fast_positive/defs.h
     ../fast_positive/tuples.h
     ../fast_positive/tuples_internal.h
