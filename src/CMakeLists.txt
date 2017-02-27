@@ -1,4 +1,4 @@
-add_library(fpta STATIC
+add_library(fpta SHARED
    ../fast_positive/tables.h
    ../fast_positive/tables_internal.h
    common.cxx

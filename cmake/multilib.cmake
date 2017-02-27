@@ -4,7 +4,7 @@ endif()
 
 set(_MULTILIB lib)
 # Comment from GNUInstallDirs.cmake:
-# Override this default 'lib' with 'lib64' iff:
+# Override this default 'lib' with 'lib64' if:
 #  - we are on Linux system but NOT cross-compiling
 #  - we are NOT on debian
 #  - we are on a 64 bits system
