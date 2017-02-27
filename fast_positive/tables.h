@@ -399,10 +399,69 @@ enum fpta_error {
   FPTA_ENOFIELD = ENOENT,
   FPTA_ENOMEM = ENOMEM,
   FPTA_EVALUE = EDOM /* Numeric value out of range*/,
-  FPTA_NODATA = -1 /* EOF */,
+  FPTA_NODATA = -1 /* No data or EOF was reached */,
   FPTA_ENOIMP = ENOSYS,
 
-  FPTA_DEADBEEF = 0xDeadBeef
+  FPTA_DEADBEEF = 0xDeadBeef /* Pseudo error for results by pointer,
+    mean `no value` returned */,
+
+  /************************************************* MDBX's error codes ***/
+  FPTA_KEYEXIST = -30799 /* key/data pair already exists */,
+
+  FPTA_NOTFOUND = -30798 /* key/data pair not found */,
+
+  FPTA_DB_REF = -30797 /* wrong page address/number,
+    this usually indicates corruption */,
+
+  FPTA_DB_DATA = -30796 /* Located page was wrong data */,
+
+  FPTA_DB_PANIC = -30795 /* Update of meta page failed
+    or environment had fatal error */,
+
+  FPTA_DB_MISMATCH = -30794 /* DB version mismatch with library */,
+
+  FPTA_DB_INVALID = -30793 /* File is not a valid LMDB file */,
+
+  FPTA_DB_FULL = -30792 /* Environment mapsize reached */,
+
+  FPTA_DBI_FULL = -30791 /* Too may DBI (maxdbs reached) */,
+
+  FPTA_READERS_FULL = -30790 /* Too many readerd (maxreaders reached) */,
+
+  FPTA_TXN_FULL = -30788 /* Transaction has too many dirty pages,
+    e.g. a lot of changes. */,
+
+  FPTA_CURSOR_FULL = -30787 /* Cursor stack too deep (mdbx internal) */,
+
+  FPTA_PAGE_FULL = -30786 /* Page has not enough space (mdbx internal) */,
+
+  FPTA_DB_RESIZED = -30785 /* Database contents grew
+    beyond environment mapsize */,
+
+  FPTA_DB_INCOMPAT = -30784 /* Operation and DB incompatible (mdbx internal),
+   This can mean:
+     - The operation expects an MDB_DUPSORT/MDB_DUPFIXED database.
+     - Opening a named DB when the unnamed DB has MDB_DUPSORT/MDB_INTEGERKEY.
+     - Accessing a data record as a database, or vice versa.
+     - The database was dropped and recreated with different flags. */,
+
+  FPTA_BAD_RSLOT = -30783 /* Invalid reuse of reader locktable slot */,
+
+  FPTA_BAD_TXN = -30782 /* Transaction must abort,
+    e.g. has a child, or is invalid */,
+
+  FPTA_BAD_VALSIZE = -30781 /* Unsupported size of key/DB name/data,
+    or wrong DUPFIXED size */,
+
+  FPTA_BAD_DBI = -30780 /* The specified DBI was changed unexpectedly */,
+
+  FPTA_DB_PROBLEM = -30779 /* Unexpected internal mdbx problem,
+    txn should abort */,
+
+  FPTA_EMULTIVAL = -30421 /* the mdbx_put() or mdbx_replace() was called
+    for a key, that has more that one associated value. */,
+
+  FPTA_EBADSIGN = -30420 /* wrong signature of a runtime object(s) */,
 };
 
 /* Возвращает краткое описание ошибки по её коду.
