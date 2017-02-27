@@ -34,13 +34,12 @@ option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
 # include(GNUInstallDirs)
 
 include(cmake/utils.cmake)
-# include(cmake/pod2man.cmake)
 # the order is significant: we need to know os and compiler to configure libs
 include(cmake/arch.cmake)
 include(cmake/os.cmake)
+include(cmake/profile.cmake)
 include(cmake/compiler.cmake)
 # include(cmake/atomic.cmake)
-include(cmake/profile.cmake)
 include(cmake/testing.cmake)
 
 find_program(ECHO echo)
@@ -49,10 +48,6 @@ find_program(GIT git)
 find_program(LD ld)
 find_program(CTAGS ctags)
 find_program(CLANG_FORMAT clang-format)
-
-option(ENABLE_VALGRIND "Enable integration with valgrind, a memory analyzing tool" OFF)
-
-set(PACKAGE "libfpta")
 
 check_function_exists(memmem HAVE_MEMMEM)
 check_function_exists(memrchr HAVE_MEMRCHR)
@@ -202,6 +197,8 @@ message (STATUS "")
 
 find_package(Threads REQUIRED)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
+
+set(PACKAGE "libfpta")
 
 # Specify where to look for include files.
 include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/submodules/libfptu" "${PROJECT_SOURCE_DIR}/submodules")
