@@ -129,6 +129,8 @@ any_keygen::any_keygen(const init_tier &init, fptu_type type,
   // страховка от опечаток в параметрах при инстанцировании шаблонов.
   assert(init.type == type);
   assert(init.index == index);
+  (void)type;
+  (void)index;
 }
 
 any_keygen::any_keygen(fptu_type type, fpta_index_type index)

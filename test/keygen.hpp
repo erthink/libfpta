@@ -247,6 +247,7 @@ bool string_keygen(const size_t len, uint32_t order, uint8_t *buf,
   constexpr unsigned first_mask = (1 << first_left) - 1;
   assert(len > 0);
   assert(order <= max_order);
+  (void)max_order;
 
   /* считаем ширину order */
   int width = 0;

@@ -184,6 +184,7 @@ bailout:
     err = pthread_rwlock_destroy(&db->schema_rwlock);
     assert(err == 0);
   }
+  (void)err;
 
   free(db);
   return (fpta_error)rc;
@@ -220,6 +221,7 @@ int fpta_db_close(fpta_db *db) {
     err = pthread_rwlock_destroy(&db->schema_rwlock);
     assert(err == 0);
   }
+  (void)err;
 
   free(db);
   return (fpta_error)rc;
@@ -264,6 +266,7 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
 bailout:
   err = fpta_db_unlock(db, level);
   assert(err == 0);
+  (void)err;
   fpta_txn_free(db, txn);
   *ptxn = nullptr;
   return (fpta_error)rc;
