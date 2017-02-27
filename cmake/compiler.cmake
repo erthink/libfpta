@@ -192,6 +192,10 @@ endif()
 #
 
 macro(setup_compile_flags)
+    # LY: reset C/CXX flags
+    set(CXX_FLAGS "")
+    set(C_FLAGS "")
+
     if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
         # Remove VALGRIND code and assertions in *any* type of release build.
         add_definitions("-DNDEBUG" "-DNVALGRIND")
@@ -221,10 +225,6 @@ macro(setup_compile_flags)
             add_compile_flags("C;CXX" "-fno-stack-protector")
         endif()
     endif()
-
-    # libfptu code is written in GNU C dialect.
-    # Additionally, compile it with more strict flags than the rest
-    # of the code.
 
     # Set standard
     if (HAVE_STD_C11)
@@ -274,6 +274,31 @@ macro(setup_compile_flags)
     if (HAVE_OPENMP)
         add_compile_flags("C;CXX" "-fopenmp")
     endif()
+
+    if (ENABLE_GCOV)
+	if (NOT HAVE_GCOV)
+	message (FATAL_ERROR
+	     "ENABLE_GCOV option requested but gcov library is not found")
+	endif()
+
+	add_compile_flags("C;CXX" "-fprofile-arcs" "-ftest-coverage")
+	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs")
+	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -ftest-coverage")
+	set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fprofile-arcs")
+	set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -ftest-coverage")
+
+       # add_library(gcov SHARED IMPORTED)
+    endif()
+
+    if (ENABLE_GPROF)
+	add_compile_flags("C;CXX" "-pg")
+    endif()
+
+    # LY: push C/CXX flags into the cache
+    set(CMAKE_CXX_FLAGS ${CXX_FLAGS} CACHE STRING "Flags used by the C++ compiler during all build types" FORCE)
+    set(CMAKE_C_FLAGS ${C_FLAGS} CACHE STRING "Flags used by the C compiler during all build types" FORCE)
+    unset(CXX_FLAGS)
+    unset(C_FLAGS)
 endmacro(setup_compile_flags)
 
 if (CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCC)

@@ -37,8 +37,8 @@ include(cmake/utils.cmake)
 # the order is significant: we need to know os and compiler to configure libs
 include(cmake/arch.cmake)
 include(cmake/os.cmake)
-include(cmake/compiler.cmake)
 include(cmake/profile.cmake)
+include(cmake/compiler.cmake)
 include(cmake/testing.cmake)
 
 find_program(ECHO echo)
@@ -171,7 +171,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 setup_compile_flags()
 
 #
-# info summary (used in server version output)
+# info summary (used in library version output)
 #
 set(FPTU_OPTIONS "-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
 set(FPTU_OPTIONS "${FPTU_OPTIONS} -DENABLE_BACKTRACE=${ENABLE_BACKTRACE}")

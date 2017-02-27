@@ -1,7 +1,7 @@
 macro(add_compile_flags langs)
     foreach(_lang ${langs})
         string (REPLACE ";" " " _flags "${ARGN}")
-        set ("CMAKE_${_lang}_FLAGS" "${CMAKE_${_lang}_FLAGS} ${_flags}")
+        set ("${_lang}_FLAGS" "${${_lang}_FLAGS} ${_flags}")
         unset (${_lang})
         unset (${_flags})
     endforeach()
