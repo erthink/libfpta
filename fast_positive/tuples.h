@@ -632,8 +632,8 @@ fptu_field *fptu_lookup(fptu_rw *pt, unsigned column, int type_or_filter);
  * для которых fptu_field_column() возвращает отрицательное значение. */
 const fptu_field *fptu_begin_ro(fptu_ro ro);
 const fptu_field *fptu_end_ro(fptu_ro ro);
-const fptu_field *fptu_begin(const fptu_rw *pt);
-const fptu_field *fptu_end(const fptu_rw *pt);
+const fptu_field *fptu_begin_rw(const fptu_rw *pt);
+const fptu_field *fptu_end_rw(const fptu_rw *pt);
 
 /* Итерация полей кортежа с заданным условие отбора, при этом
  * удаленные поля пропускаются.

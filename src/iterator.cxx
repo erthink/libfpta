@@ -90,11 +90,11 @@ __hot const fptu_field *fptu_end_ro(fptu_ro ro) {
 
 //----------------------------------------------------------------------------
 
-__hot const fptu_field *fptu_begin(const fptu_rw *pt) {
+__hot const fptu_field *fptu_begin_rw(const fptu_rw *pt) {
   return &pt->units[pt->head].field;
 }
 
-__hot const fptu_field *fptu_end(const fptu_rw *pt) {
+__hot const fptu_field *fptu_end_rw(const fptu_rw *pt) {
   return &pt->units[pt->pivot].field;
 }
 
@@ -102,8 +102,8 @@ __hot const fptu_field *fptu_end(const fptu_rw *pt) {
 
 size_t fptu_field_count(const fptu_rw *pt, unsigned column,
                         int type_or_filter) {
-  const fptu_field *end = fptu_end(pt);
-  const fptu_field *begin = fptu_begin(pt);
+  const fptu_field *end = fptu_end_rw(pt);
+  const fptu_field *begin = fptu_begin_rw(pt);
   const fptu_field *pf = fptu_first(begin, end, column, type_or_filter);
 
   size_t count;
@@ -127,8 +127,8 @@ size_t fptu_field_count_ro(fptu_ro ro, unsigned column, int type_or_filter) {
 
 size_t fptu_field_count_ex(const fptu_rw *pt, fptu_field_filter filter,
                            void *context, void *param) {
-  const fptu_field *end = fptu_end(pt);
-  const fptu_field *begin = fptu_begin(pt);
+  const fptu_field *end = fptu_end_rw(pt);
+  const fptu_field *begin = fptu_begin_rw(pt);
   const fptu_field *pf = fptu_first_ex(begin, end, filter, context, param);
 
   size_t count;
