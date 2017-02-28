@@ -1677,23 +1677,23 @@ int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
 /* Сервисные функции и классы для C++ (будет пополнять, существенно). */
 
 namespace std {
-string to_string(fpta_error);
+string to_string(const fpta_error errnum);
 string to_string(const fptu_time &);
-string to_string(fpta_value_type);
-string to_string(const fpta_value &);
-string to_string(fpta_durability);
-string to_string(fpta_level);
+string to_string(const fpta_value_type);
+string to_string(const fpta_value &value);
+string to_string(const fpta_durability durability);
+string to_string(const fpta_level level);
+string to_string(const fpta_index_type index);
+string to_string(const fpta_filter_bits bits);
+string to_string(const fpta_cursor_options op);
+string to_string(const fpta_seek_operations op);
+string to_string(const fpta_put_options op);
+string to_string(const fpta_name &);
+string to_string(const fpta_filter &);
+string to_string(const fpta_column_set &);
 string to_string(const fpta_db *);
 string to_string(const fpta_txn *);
-string to_string(fpta_index_type);
-string to_string(const fpta_column_set &);
-string to_string(const fpta_name &);
-string to_string(fpta_filter_bits);
-string to_string(const fpta_filter &);
-string to_string(fpta_cursor_options);
 string to_string(const fpta_cursor *);
-string to_string(fpta_seek_operations);
-string to_string(fpta_put_options);
 }
 
 static __inline fpta_value fpta_value_str(const std::string &str) {
