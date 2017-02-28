@@ -793,9 +793,7 @@ inline const fptu_field *end(const fptu_rw *rw) { return fptu_end_rw(rw); }
 } /* namespace fptu */
 
 namespace std {
-string to_string(fptu_error);
-string to_string(const fptu_varlen &);
-string to_string(const fptu_unit &);
+string to_string(fptu_error error);
 string to_string(fptu_type);
 string to_string(const fptu_field &);
 string to_string(const fptu_rw &);
