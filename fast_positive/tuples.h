@@ -765,6 +765,31 @@ std::string format(const char *fmt, ...)
 #endif
     ;
 std::string hexadecimal(const void *data, size_t bytes);
+
+inline const fptu_field *begin(const fptu_ro &ro) {
+  return fptu_begin_ro(ro);
+}
+
+inline const fptu_field *begin(const fptu_ro *ro) {
+  return fptu_begin_ro(*ro);
+}
+
+inline const fptu_field *begin(const fptu_rw &rw) {
+  return fptu_begin_rw(&rw);
+}
+
+inline const fptu_field *begin(const fptu_rw *rw) {
+  return fptu_begin_rw(rw);
+}
+
+inline const fptu_field *end(const fptu_ro &ro) { return fptu_end_ro(ro); }
+
+inline const fptu_field *end(const fptu_ro *ro) { return fptu_end_ro(*ro); }
+
+inline const fptu_field *end(const fptu_rw &rw) { return fptu_end_rw(&rw); }
+
+inline const fptu_field *end(const fptu_rw *rw) { return fptu_end_rw(rw); }
+
 } /* namespace fptu */
 
 namespace std {
