@@ -22,6 +22,81 @@
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
+static const char *__fpta_errstr(int errnum) {
+  switch (errnum) {
+  default:
+    return NULL;
+
+  case FPTA_SUCCESS:
+    return "FPTA: Success";
+
+  case FPTA_EOOPS:
+    return "FPTA: Internal unexpected Oops";
+
+  case FPTA_SCHEMA_CORRUPTED:
+    return "FPTA: Schema is invalid or corrupted";
+
+  case FPTA_ETYPE:
+    return "FPTA: Type mismatch (given value vs column/field or index)";
+
+  case FPTA_DATALEN_MISMATCH:
+    return "FPTA: Data length mismatch (given value vs data type)";
+
+  case FPTA_KEY_MISMATCH:
+    return "FPTA: Key mismatch while updating row via cursor";
+
+  case FPTA_COLUMN_MISSING:
+    return "FPTA: Required column missing";
+
+  case FPTA_INDEX_CORRUPTED:
+    return "FPTA: Index is inconsistent or corrupted";
+
+  case FPTA_NO_INDEX:
+    return "FPTA: No (such) index for given column";
+
+  case FPTA_SCHEMA_CHANGED:
+    return "FPTA: Schema changed (transaction should be restared)";
+
+  case FPTA_ECURSOR:
+    return "FPTA: Cursor is not positioned";
+
+  case FPTA_TOOMANY:
+    return "FPTA: Too many columns or indexes (limit reached)";
+
+  case FPTA_WANNA_DIE:
+    return "FPTA: Failure while transaction rollback (wanna die)";
+
+  case FPTA_EINVAL /* EINVAL */:
+    return "FPTA: Invalid argument";
+  case FPTA_ENOMEM /* ENOMEM */:
+    return "FPTA: Out of memory";
+  case FPTA_ENOIMP /* may == ENOSYS */:
+    return "FPTA: Not yet implemented";
+
+  case FPTA_NODATA /* -1, EOF */:
+    return "FPTA: No data or EOF was reached";
+
+  case FPTA_ENOSPACE /* FPTU_ENOSPACE, may == ENOSPC */:
+    return "FPTA: No space left in row/tuple";
+
+  case FPTA_ENOFIELD /* FPTU_ENOFIELD, may == ENOENT */:
+    return "FPTA: No such column/field";
+
+  case FPTA_EVALUE /* may == EDOM */:
+    return "FPTA: Value is invalid or out of range";
+  }
+}
+
+const char *fpta_strerror(int errnum) {
+  const char *msg = __fpta_errstr(errnum);
+  return msg ? msg : mdbx_strerror(errnum);
+}
+
+const char *fpta_strerror_r(int errnum, char *buf, size_t buflen) {
+  const char *msg = __fpta_errstr(errnum);
+  return msg ? msg : mdbx_strerror_r(errnum, buf, buflen);
+}
+
 namespace std {
 
 __cold string to_string(const fpta_error errnum) {

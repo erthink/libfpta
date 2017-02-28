@@ -464,10 +464,10 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
         if (rc == FPTA_SUCCESS) {
           /* Используем уточняющее значение PK только если в строке-образце
            * есть соответствующая колонка. При этом игнорируем отсутствие
-           * колонки (ошибку FPTA_ROW_MISMATCH). */
+           * колонки (ошибку FPTA_COLUMN_MISSING). */
           mdbx_seek_data = &pk_key.mdbx;
           mdbx_seek_op = exactly ? MDB_GET_BOTH : MDB_GET_BOTH_RANGE;
-        } else if (rc != FPTA_ROW_MISMATCH) {
+        } else if (rc != FPTA_COLUMN_MISSING) {
           cursor->set_poor();
           return rc;
         } else {
@@ -765,7 +765,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return rc;
 
   if (!fpta_is_same(cursor->current, column_key.mdbx))
-    return FPTA_ROW_MISMATCH;
+    return FPTA_KEY_MISMATCH;
 
   if (!fpta_table_has_secondary(cursor->table_id))
     return FPTA_SUCCESS;
@@ -816,7 +816,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return rc;
 
   if (!fpta_is_same(cursor->current, column_key.mdbx))
-    return FPTA_ROW_MISMATCH;
+    return FPTA_KEY_MISMATCH;
 
   if (!fpta_table_has_secondary(cursor->table_id))
     return mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,

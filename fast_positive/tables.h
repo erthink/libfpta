@@ -383,24 +383,39 @@ enum fpta_error {
   FPTA_OK = FPTA_SUCCESS,
   FPTA_ERRROR_BASE = 4242,
 
-  FPTA_EOOPS /* Internal unexpected Oops */,
-  FPTA_SCHEMA_CORRUPTED /* */,
-  FPTA_ETYPE /* Type mismatch */,
-  FPTA_DATALEN_MISMATCH,
-  FPTA_ROW_MISMATCH /* Row schema is mismatch */,
-  FPTA_INDEX_CORRUPTED,
-  FPTA_NO_INDEX,
-  FPTA_ETXNOUT /* Transaction should be restared */,
-  FPTA_ECURSOR /* Cursor not positioned */,
-  FPTA_TOOMANY /* Too many columns or indexes */,
-  FPTA_WANNA_DIE,
+  FPTA_EOOPS
+    /* Internal unexpected Oops */,
+  FPTA_SCHEMA_CORRUPTED
+    /* Schema is invalid or corrupted (internal error) */,
+  FPTA_ETYPE
+    /* Type mismatch (given value vs column/field or index) */,
+  FPTA_DATALEN_MISMATCH
+    /* Data length mismatch (given value vs data type) */,
+  FPTA_KEY_MISMATCH
+    /* Key mismatch while updating row via cursor */,
+  FPTA_COLUMN_MISSING
+    /* Required column missing */,
+  FPTA_INDEX_CORRUPTED
+    /* Index is inconsistent or corrupted (internal error) */,
+  FPTA_NO_INDEX
+    /* No (such) index for given column */,
+  FPTA_SCHEMA_CHANGED
+    /* Schema changed (transaction should be restared) */,
+  FPTA_ECURSOR
+    /* Cursor is not positioned */,
+  FPTA_TOOMANY
+    /* Too many columns or indexes (one of fpta's limits reached) */,
+  FPTA_WANNA_DIE
+    /* Failure while transaction rollback */,
 
-  FPTA_EINVAL = EINVAL,
-  FPTA_ENOFIELD = ENOENT,
-  FPTA_ENOMEM = ENOMEM,
-  FPTA_EVALUE = EDOM /* Numeric value out of range*/,
+  FPTA_ENOFIELD = FPTU_ENOFIELD,
+  FPTA_ENOSPACE = FPTU_ENOSPACE,
+
+  FPTA_EINVAL = EINVAL /* Invalid argument */,
+  FPTA_ENOMEM = ENOMEM /* Out of Memory */,
+  FPTA_ENOIMP = ENOSYS /* Not yet implemented */,
+  FPTA_EVALUE = EDOM /* Value is invalid or out of range */,
   FPTA_NODATA = -1 /* No data or EOF was reached */,
-  FPTA_ENOIMP = ENOSYS,
 
   FPTA_DEADBEEF = 0xDeadBeef /* Pseudo error for results by pointer,
     mean `no value` returned */,
@@ -418,7 +433,7 @@ enum fpta_error {
   FPTA_DB_PANIC = -30795 /* Update of meta page failed
     or environment had fatal error */,
 
-  FPTA_DB_MISMATCH = -30794 /* DB version mismatch with library */,
+  FPTA_DB_MISMATCH = -30794 /* DB version mismatch libmdbx */,
 
   FPTA_DB_INVALID = -30793 /* File is not a valid LMDB file */,
 
@@ -426,7 +441,7 @@ enum fpta_error {
 
   FPTA_DBI_FULL = -30791 /* Too may DBI (maxdbs reached) */,
 
-  FPTA_READERS_FULL = -30790 /* Too many readerd (maxreaders reached) */,
+  FPTA_READERS_FULL = -30790 /* Too many readers (maxreaders reached) */,
 
   FPTA_TXN_FULL = -30788 /* Transaction has too many dirty pages,
     e.g. a lot of changes. */,
@@ -471,24 +486,24 @@ enum fpta_error {
  *
  * Функция потоко-НЕ-безопасна в случае системной ошибки, так как при
  * этом вызывается потоко-НЕ-безопасная системная strerror(). */
-const char *fpta_strerror(int error);
+const char *fpta_strerror(int errnum);
 
 /* Потоко-безопасный вариант fpta_strerror().
  *
  * Функция потоко-безопасна в том числе в случае системной ошибки, так
  * как при этом вызывается потоко-безопасная системная strerror_r(). */
-int fpta_strerror_r(int errnum, char *buf, size_t buflen);
+const char *fpta_strerror_r(int errnum, char *buf, size_t buflen);
 
 /* Внутренняя функция, которая вызывается при фатальных ошибках и может
  * быть замещена на платформах с поддержкой __attribute__((weak)).
  * При таком замещении:
- *  - в err будет передан первичный код ошибки, в результате которой
- *    потребовалась отмена транзакции.
- *  - в fatal будет передан вторичный код ошибки, которая случилась
- *    при отмене транзакции.
+ *  - в errnum_initial будет передан первичный код ошибки,
+ *    в результате которой потребовалась отмена транзакции.
+ *  - в errnum_fatal будет передан вторичный код ошибки,
+ *    которая случилась при отмене транзакции и привела к панике.
  *  - возврат НУЛЯ приведет к вызову системной abort(), ИНАЧЕ выполнение
  *    будет продолжено с генерацией кода ошибки FPTA_WANNA_DIE. */
-int fpta_panic(int err, int fatal);
+int fpta_panic(int errnum_initial, int errnum_fatal);
 
 //----------------------------------------------------------------------------
 /* Открытие и закрытие БД */
@@ -1300,7 +1315,8 @@ int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
 /* Обновляет строку в текущей позиции курсора.
  *
  * ВАЖНО-1: При обновлении НЕ допускается изменение значения ключевой колонки,
- * которая была задана посредством column_id при открытии курсора.
+ * которая была задана посредством column_id при открытии курсора. При попытке
+ * выполнить такое обновление будет возвращена ошибка FPTA_KEY_MISMATCH.
  *
  * В противном случае возникает ряд вопросов по состоянию и дальнейшему
  * поведению курсора, в частности:

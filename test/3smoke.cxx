@@ -862,10 +862,10 @@ TEST_F(SmokeCRUD, none) {
 
       /* пытаемся вставить неполноценную строку, в которой сейчас
        * не хватает одного из индексируемых полей, поэтому вместо
-       * MDB_NOTFOUND должно быть возвращено FPTA_ROW_MISMATCH */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
+       * MDB_NOTFOUND должно быть возвращено FPTA_COLUMN_MISSING */
+      EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_upsert_row(
                                        txn, &table, fptu_take_noshrink(row)));
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_insert_row(
+      EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_insert_row(
                                        txn, &table, fptu_take_noshrink(row)));
 
       /* добавляем недостающее индексируемое поле */
@@ -978,7 +978,7 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
+      EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_upsert_row(
                                        txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем строку */
@@ -1039,8 +1039,8 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
-                                       cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
@@ -1128,8 +1128,8 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
-                                       cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
@@ -1194,8 +1194,8 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
-                                       cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,

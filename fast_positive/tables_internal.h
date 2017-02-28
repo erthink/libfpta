@@ -560,7 +560,7 @@ static __inline bool fpta_cursor_is_ascending(fpta_cursor_options op) {
   return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
 }
 
-int fpta_inconsistent_abort(fpta_txn *txn, int err);
+int fpta_inconsistent_abort(fpta_txn *txn, int errnum);
 
 static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
   return a.iov_len == b.iov_len &&

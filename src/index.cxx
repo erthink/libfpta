@@ -783,7 +783,7 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
   if (unlikely(field == nullptr))
-    return FPTA_ROW_MISMATCH;
+    return FPTA_COLUMN_MISSING;
 
   const fptu_payload *payload = fptu_field_payload(field);
   switch (type) {

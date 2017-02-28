@@ -323,13 +323,13 @@ int
 #if defined(__GNUC__) || __has_attribute(weak)
     __attribute__((weak))
 #endif
-    fpta_panic(int err, int fatal) {
-  (void)err;
-  (void)fatal;
+    fpta_panic(int errnum_initial, int errnum_fatal) {
+  (void)errnum_initial;
+  (void)errnum_fatal;
   return (FPTA_ENABLE_ABORT_ON_PANIC) ? 0 : -1;
 }
 
-int fpta_inconsistent_abort(fpta_txn *txn, int err) {
+int fpta_inconsistent_abort(fpta_txn *txn, int errnum) {
   /* Некоторые ошибки (например переполнение БД) могут происходить когда
    * мы выполнили лишь часть операций. В таких случаях можно лишь
    * прервать/откатить всю транзакцию, что и делает эта функция.
@@ -339,10 +339,10 @@ int fpta_inconsistent_abort(fpta_txn *txn, int err) {
 
   int rc = mdbx_txn_abort(txn->mdbx_txn);
   if (unlikely(rc != MDB_SUCCESS)) {
-    if (!fpta_panic(err, rc))
+    if (!fpta_panic(errnum, rc))
       abort();
-    err = FPTA_WANNA_DIE;
+    errnum = FPTA_WANNA_DIE;
   }
   txn->mdbx_txn = nullptr;
-  return err;
+  return errnum;
 }

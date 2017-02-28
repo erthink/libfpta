@@ -551,24 +551,24 @@ int fpta_table_column_count(const fpta_name *table_id) {
 int fpta_table_column_get(const fpta_name *table_id, unsigned column,
                           fpta_name *column_id) {
   if (unlikely(column_id == nullptr))
-    return EINVAL;
+    return FPTA_EINVAL;
 
   memset(column_id, 0, sizeof(fpta_name));
   if (unlikely(!fpta_id_validate(table_id, fpta_table)))
-    return EINVAL;
+    return FPTA_EINVAL;
 
   const fpta_table_schema *schema = table_id->table.def;
   if (unlikely(schema == nullptr))
-    return EINVAL;
+    return FPTA_EINVAL;
   if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
     return FPTA_SCHEMA_CORRUPTED;
   if (unlikely(schema->shove != table_id->shove))
     return FPTA_SCHEMA_CORRUPTED;
   if (unlikely(table_id->version != schema->version))
-    return FPTA_ETXNOUT;
+    return FPTA_SCHEMA_CHANGED;
 
   if (column >= schema->count)
-    return EINVAL;
+    return FPTA_EINVAL;
   column_id->column.table = const_cast<fpta_name *>(table_id);
   column_id->shove = schema->columns[column];
   column_id->column.num = (int)column;
@@ -581,7 +581,7 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
 
 int fpta_name_reset(fpta_name *name_id) {
   if (unlikely(name_id == nullptr))
-    return EINVAL;
+    return FPTA_EINVAL;
 
   name_id->mdbx_dbi = 0;
   name_id->version = 0;
@@ -610,7 +610,7 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     return FPTA_EINVAL;
 
   if (unlikely(table_id->version > txn->schema_version))
-    return FPTA_ETXNOUT;
+    return FPTA_SCHEMA_CHANGED;
 
   if (unlikely(table_id->version != txn->schema_version)) {
     table_id->mdbx_dbi = 0;
@@ -659,7 +659,7 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   }
 
   if (unlikely(column_id->version > table_id->version))
-    return FPTA_ETXNOUT;
+    return FPTA_SCHEMA_CHANGED;
 
   if (column_id->version != table_id->version) {
     column_id->column.num = -1;
