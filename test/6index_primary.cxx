@@ -42,8 +42,7 @@ static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #define TEST_DB_DIR "/dev/shm/"
 
 static const char testdb_name[] = TEST_DB_DIR "ut_index_primary.fpta";
-static const char testdb_name_lck[] =
-    TEST_DB_DIR "ut_index_primary.fpta-lock";
+static const char testdb_name_lck[] = TEST_DB_DIR "ut_index_primary.fpta-lock";
 
 template <fptu_type type, fpta_index_type index> void TestPrimary() {
   /* Тест первичных (primary) индексов.
@@ -103,18 +102,18 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   if (valid) {
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe(pk_col_name.c_str(), type, index, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
-                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
                                             fpta_index_none, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("t1ha", fptu_uint64,
-                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   } else {
     EXPECT_EQ(FPTA_EINVAL,
               fpta_column_describe(pk_col_name.c_str(), type, index, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
-                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     ASSERT_NE(FPTA_OK, fpta_column_set_validate(&def));
     return;
   }
@@ -135,8 +134,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 #endif
 
   fpta_db *db = nullptr;
-  EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
-                                       megabytes, true, &db));
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_async, 0644, megabytes, true, &db));
   ASSERT_NE(nullptr, db);
   db_quard.reset(db);
 
@@ -191,9 +190,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
               fpta_upsert_column(row, &col_order, fpta_value_sint(order)));
     ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, value_pk));
     // t1ha как "checksum" для order
-    ASSERT_EQ(FPTA_OK,
-              fpta_upsert_column(row, &col_t1ha,
-                                 order_checksum(order, type, index)));
+    ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_t1ha,
+                                          order_checksum(order, type, index)));
 
     // пытаемся обновить несуществующую запись
     ASSERT_EQ(MDB_NOTFOUND,
@@ -201,8 +199,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
     if (fpta_index_is_unique(index)) {
       // вставляем
-      ASSERT_EQ(FPTA_OK,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
       // проверяем что полный дубликат не вставляется
       ASSERT_EQ(MDB_KEYEXIST,
@@ -216,20 +213,17 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
       // проверяем что upsert и update работают,
       // сначала upsert с текущим dup_id = 1
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
       // теперь update c dup_id = 42, должен остаться только этот
       // вариант
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_dup_id, fpta_value_uint(42)));
-      ASSERT_EQ(FPTA_OK,
-                fpta_update_row(txn, &table, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(row)));
     } else {
       // вставляем c dup_id = 0
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_dup_id, fpta_value_uint(0)));
-      ASSERT_EQ(FPTA_OK,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
       // проверяем что полный дубликат не вставляется
       ASSERT_EQ(MDB_KEYEXIST,
@@ -238,8 +232,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       // обновляем dup_id и вставляем дубль по ключу
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-      ASSERT_EQ(FPTA_OK,
-                fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
 
       // проверяем что upsert отказывается обновлять строку,
@@ -277,8 +270,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
   db = nullptr;
   // открываем заново
-  EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644,
-                                       megabytes, false, &db));
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_async, 0644, megabytes, false, &db));
   ASSERT_NE(nullptr, db);
   db_quard.reset(db);
 
@@ -296,12 +289,12 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
   scoped_cursor_guard cursor_guard;
   fpta_cursor *cursor;
-  EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
-                                      fpta_value_end(), nullptr,
-                                      fpta_index_is_ordered(index)
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_pk, fpta_value_begin(), fpta_value_end(),
+                             nullptr, fpta_index_is_ordered(index)
                                           ? fpta_ascending_dont_fetch
                                           : fpta_unsorted_dont_fetch,
-                                      &cursor));
+                             &cursor));
   ASSERT_NE(nullptr, cursor);
   cursor_guard.reset(cursor);
 

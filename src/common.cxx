@@ -91,9 +91,8 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor) {
 
 //----------------------------------------------------------------------------
 
-int fpta_db_open(const char *path, fpta_durability durability,
-                 mode_t file_mode, size_t megabytes, bool alterable_schema,
-                 fpta_db **pdb) {
+int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
+                 size_t megabytes, bool alterable_schema, fpta_db **pdb) {
   if (unlikely(pdb == nullptr))
     return FPTA_EINVAL;
   *pdb = nullptr;
@@ -172,8 +171,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
 
 bailout:
   if (db->mdbx_env) {
-    int err =
-        mdbx_env_close_ex(db->mdbx_env, true /* don't touch/save/sync */);
+    int err = mdbx_env_close_ex(db->mdbx_env, true /* don't touch/save/sync */);
     assert(err == MDB_SUCCESS);
     (void)err;
   }
@@ -281,8 +279,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
     // TODO: reuse txn with mdbx_txn_reset(), but pool needed...
     rc = mdbx_txn_commit(txn->mdbx_txn);
   } else if (!abort) {
-    if (txn->level == fpta_schema &&
-        txn->schema_version == txn->data_version) {
+    if (txn->level == fpta_schema && txn->schema_version == txn->data_version) {
       rc = mdbx_canary_put(txn->mdbx_txn, nullptr);
       if (rc != MDB_SUCCESS) {
         int err = mdbx_txn_abort(txn->mdbx_txn);
@@ -305,8 +302,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   return (fpta_error)rc;
 }
 
-int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
-                              uint64_t *schema) {
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data, uint64_t *schema) {
   if (unlikely(!fpta_txn_validate(txn, fpta_read)))
     return FPTA_EINVAL;
 

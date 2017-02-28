@@ -200,18 +200,18 @@ TEST(Data, UpsertColumn) {
 
   EXPECT_EQ(FPTA_EINVAL,
             fpta_column_describe("null", fptu_null, fpta_index_none, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("uint16", fptu_uint16,
-                                          fpta_index_none, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("uint16", fptu_uint16, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("int32", fptu_int32, fpta_index_none, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("uint32", fptu_uint32,
-                                          fpta_index_none, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("uint32", fptu_uint32, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("fp32", fptu_fp32, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("int64", fptu_int64, fpta_index_none, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("uint64", fptu_uint64,
-                                          fpta_index_none, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("uint64", fptu_uint64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("fp64", fptu_fp64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
@@ -227,13 +227,13 @@ TEST(Data, UpsertColumn) {
 
   EXPECT_EQ(FPTA_OK, fpta_column_describe("string", fptu_cstr,
                                           fpta_primary_unique, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("opaque", fptu_opaque,
-                                          fpta_index_none, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("opaque", fptu_opaque, fpta_index_none, &def));
 
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("nested", fptu_nested,
-                                          fpta_index_none, &def));
-  EXPECT_EQ(FPTA_EINVAL, fpta_column_describe("farray", fptu_farray,
-                                              fpta_index_none, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("nested", fptu_nested, fpta_index_none, &def));
+  EXPECT_EQ(FPTA_EINVAL,
+            fpta_column_describe("farray", fptu_farray, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
   // создаем таблицу
@@ -304,9 +304,8 @@ TEST(Data, UpsertColumn) {
             fpta_upsert_column(pt, &col_uint16,
                                fpta_value_datetime(fptu_now_coarse())));
   // теперь плохие значения
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_uint16, fpta_value_uint(UINT16_MAX + 1l)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_uint16,
+                                            fpta_value_uint(UINT16_MAX + 1l)));
   EXPECT_EQ(FPTA_EVALUE,
             fpta_upsert_column(pt, &col_uint16, fpta_value_sint(-1)));
   // теперь подходящие значения, последнее должно остаться в силе
@@ -328,9 +327,8 @@ TEST(Data, UpsertColumn) {
             fpta_upsert_column(pt, &col_uint32,
                                fpta_value_datetime(fptu_now_coarse())));
   // теперь плохие значения
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_uint32, fpta_value_uint(UINT32_MAX + 1l)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_uint32,
+                                            fpta_value_uint(UINT32_MAX + 1l)));
   EXPECT_EQ(FPTA_EVALUE,
             fpta_upsert_column(pt, &col_uint32, fpta_value_sint(-1)));
   // теперь подходящие значения, последнее должно остаться в силе
@@ -352,27 +350,23 @@ TEST(Data, UpsertColumn) {
             fpta_upsert_column(pt, &col_int32,
                                fpta_value_datetime(fptu_now_coarse())));
   // теперь плохие значения
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_int32, fpta_value_uint(UINT32_MAX - 1l)));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_int32, fpta_value_uint(UINT32_MAX + 1l)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int32,
+                                            fpta_value_uint(UINT32_MAX - 1l)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int32,
+                                            fpta_value_uint(UINT32_MAX + 1l)));
   EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int32,
                                             fpta_value_uint(INT32_MAX + 1l)));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_int32, fpta_value_sint(UINT32_MAX - 1l)));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_int32, fpta_value_sint(UINT32_MAX + 1l)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int32,
+                                            fpta_value_sint(UINT32_MAX - 1l)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int32,
+                                            fpta_value_sint(UINT32_MAX + 1l)));
   EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int32,
                                             fpta_value_sint(INT32_MIN - 1l)));
   // теперь подходящие значения, последнее должно остаться в силе
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_int32, fpta_value_sint(INT32_MIN)));
-  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_int32,
-                                        fpta_value_sint(INT32_MIN + 1)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_int32, fpta_value_sint(INT32_MIN + 1)));
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_int32, fpta_value_sint(INT32_MAX)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_int32,
@@ -419,21 +413,20 @@ TEST(Data, UpsertColumn) {
             fpta_upsert_column(pt, &col_int64,
                                fpta_value_datetime(fptu_now_coarse())));
   // теперь плохие значения
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_upsert_column(pt, &col_int64, fpta_value_uint(INT64_MAX + 1ull)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_int64,
+                                            fpta_value_uint(INT64_MAX + 1ull)));
   EXPECT_EQ(FPTA_EVALUE,
             fpta_upsert_column(pt, &col_int64, fpta_value_uint(UINT64_MAX)));
   // теперь подходящие значения, последнее должно остаться в силе
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_int64, fpta_value_sint(0)));
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_int64, fpta_value_sint(INT64_MIN)));
-  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_int64,
-                                        fpta_value_sint(INT64_MIN + 1)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_int64, fpta_value_sint(INT64_MIN + 1)));
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_int64, fpta_value_sint(INT64_MAX)));
-  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_int64,
-                                        fpta_value_sint(INT64_MAX - 1)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_int64, fpta_value_sint(INT64_MAX - 1)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_int64,
                                         fpta_value_sint(-60585001468255361)));
 
@@ -441,14 +434,13 @@ TEST(Data, UpsertColumn) {
   // пробуем плохие типы
   EXPECT_EQ(FPTA_ETYPE,
             fpta_upsert_column(pt, &col_fp64, fpta_value_cstr("dummy")));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_upsert_column(pt, &col_fp64, fpta_value_sint(0)));
+  EXPECT_EQ(FPTA_ETYPE, fpta_upsert_column(pt, &col_fp64, fpta_value_sint(0)));
   EXPECT_EQ(FPTA_ETYPE,
             fpta_upsert_column(pt, &col_fp64,
                                fpta_value_datetime(fptu_now_coarse())));
   // теперь плохие значения
-  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_fp64,
-                                            fpta_value_float(std::nan(""))));
+  EXPECT_EQ(FPTA_EVALUE,
+            fpta_upsert_column(pt, &col_fp64, fpta_value_float(std::nan(""))));
   // теперь подходящие значения, последнее должно остаться в силе
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_fp64, fpta_value_float(HUGE_VAL)));
@@ -473,14 +465,13 @@ TEST(Data, UpsertColumn) {
   // пробуем плохие типы
   EXPECT_EQ(FPTA_ETYPE,
             fpta_upsert_column(pt, &col_fp32, fpta_value_cstr("dummy")));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_upsert_column(pt, &col_fp32, fpta_value_sint(0)));
+  EXPECT_EQ(FPTA_ETYPE, fpta_upsert_column(pt, &col_fp32, fpta_value_sint(0)));
   EXPECT_EQ(FPTA_ETYPE,
             fpta_upsert_column(pt, &col_fp32,
                                fpta_value_datetime(fptu_now_coarse())));
   // теперь плохие значения
-  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt, &col_fp32,
-                                            fpta_value_float(std::nan(""))));
+  EXPECT_EQ(FPTA_EVALUE,
+            fpta_upsert_column(pt, &col_fp32, fpta_value_float(std::nan(""))));
   EXPECT_EQ(FPTA_EVALUE,
             fpta_upsert_column(pt, &col_fp32, fpta_value_float(DBL_MAX)));
   EXPECT_EQ(FPTA_EVALUE,
@@ -555,12 +546,12 @@ TEST(Data, UpsertColumn) {
 
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_96, fpta_value_binary(_96, 96 / 8)));
-  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_128,
-                                        fpta_value_binary(_128, 128 / 8)));
-  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_160,
-                                        fpta_value_binary(_160, 160 / 8)));
-  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_256,
-                                        fpta_value_binary(_256, 256 / 8)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_128, fpta_value_binary(_128, 128 / 8)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_160, fpta_value_binary(_160, 160 / 8)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_256, fpta_value_binary(_256, 256 / 8)));
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt, &col_str, fpta_value_cstr("xyz-string")));
   EXPECT_EQ(FPTA_OK,
@@ -601,9 +592,8 @@ TEST(Data, UpsertColumn) {
   EXPECT_EQ(fptu_eq, fptu_cmp_96(row, col_96.column.num, _96));
   EXPECT_EQ(fptu_eq, fptu_cmp_128(row, col_128.column.num, _128));
   EXPECT_EQ(fptu_eq, fptu_cmp_160(row, col_160.column.num, _160));
-  EXPECT_EQ(
-      datetime.fixedpoint,
-      fptu_get_datetime(row, col_datetime.column.num, &error).fixedpoint);
+  EXPECT_EQ(datetime.fixedpoint,
+            fptu_get_datetime(row, col_datetime.column.num, &error).fixedpoint);
   EXPECT_EQ(FPTU_OK, error);
   EXPECT_EQ(fptu_eq, fptu_cmp_256(row, col_256.column.num, _256));
 
@@ -1071,8 +1061,7 @@ TEST(Data, Compare_fp64) {
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_float(INT64_MAX)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_sint(INT64_MAX / 2.0)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_uint(INT64_MAX / 2.0)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_uint(INT64_MAX + 2048ull)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_uint(INT64_MAX + 2048ull)));
   EXPECT_EQ(FPTU_OK, fptu_upsert_fp64(pt, 0, INT64_MIN));
   ASSERT_EQ(pf, fptu_lookup(pt, 0, fptu_fp64));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_sint(0)));
@@ -1082,8 +1071,7 @@ TEST(Data, Compare_fp64) {
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_uint(UINT64_MAX)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_float(INT64_MIN)));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_uint(UINT64_MAX - 1l)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_sint(INT64_MIN + 2048ull)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_sint(INT64_MIN + 2048ull)));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_uint(UINT64_MAX)));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_fp64(pt, 0, HUGE_VAL));
@@ -1434,11 +1422,9 @@ TEST(Data, Compare_binary) {
   ASSERT_NE(nullptr, pf);
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 0)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(zeros, 96 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 96 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(zeros, 96 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(zeros, 96 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 96 / 8 + 1)));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary("\xff", 1)));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_96(pt, 0, ones));
@@ -1446,11 +1432,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 0)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("\xff", 1)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 96 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(ones, 96 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(ones, 96 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 96 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 96 / 8 + 1)));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_96(pt, 0, _96));
   ASSERT_EQ(pf, fptu_lookup(pt, 0, fptu_96));
@@ -1492,11 +1476,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 0)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("\xff", 1)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 128 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(ones, 128 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(ones, 128 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 128 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 128 / 8 + 1)));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_128(pt, 0, _128));
   ASSERT_EQ(pf, fptu_lookup(pt, 0, fptu_128));
@@ -1504,11 +1486,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 2)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 128 / 8)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(_128, 128 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(_128, 128 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(_128, 128 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(_128, 128 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(_128, 128 / 8 + 1)));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 2)));
 
   EXPECT_EQ(fptu_ic, fpta_filter_cmp(pf, fpta_value_uint(42)));
@@ -1540,11 +1520,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 0)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("\xff", 1)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 160 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(ones, 160 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(ones, 160 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 160 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 160 / 8 + 1)));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_160(pt, 0, _160));
   ASSERT_EQ(pf, fptu_lookup(pt, 0, fptu_160));
@@ -1552,11 +1530,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 2)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 160 / 8)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(_160, 160 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(_160, 160 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(_160, 160 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(_160, 160 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(_160, 160 / 8 + 1)));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 2)));
 
   EXPECT_EQ(fptu_ic, fpta_filter_cmp(pf, fpta_value_uint(42)));
@@ -1588,11 +1564,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 0)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("\xff", 1)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 256 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(ones, 256 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(ones, 256 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(ones, 256 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 256 / 8 + 1)));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_256(pt, 0, _256));
   ASSERT_EQ(pf, fptu_lookup(pt, 0, fptu_256));
@@ -1600,11 +1574,9 @@ TEST(Data, Compare_binary) {
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary("", 1)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 2)));
   EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(zeros, 256 / 8)));
-  EXPECT_EQ(fptu_gt,
-            fpta_filter_cmp(pf, fpta_value_binary(_256, 256 / 8 - 1)));
+  EXPECT_EQ(fptu_gt, fpta_filter_cmp(pf, fpta_value_binary(_256, 256 / 8 - 1)));
   EXPECT_EQ(fptu_eq, fpta_filter_cmp(pf, fpta_value_binary(_256, 256 / 8)));
-  EXPECT_EQ(fptu_lt,
-            fpta_filter_cmp(pf, fpta_value_binary(_256, 256 / 8 + 1)));
+  EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(_256, 256 / 8 + 1)));
   EXPECT_EQ(fptu_lt, fpta_filter_cmp(pf, fpta_value_binary(ones, 2)));
 
   EXPECT_EQ(fptu_ic, fpta_filter_cmp(pf, fpta_value_uint(42)));

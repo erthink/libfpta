@@ -139,8 +139,7 @@ static __inline int mdbx_txn_renew(MDB_txn *) { return ENOSYS; }
 static __inline int mdbx_txn_reset(MDB_txn *) { return ENOSYS; }
 static __inline int mdbx_txn_abort(MDB_txn *) { return ENOSYS; }
 static __inline int mdbx_txn_commit(MDB_txn *) { return ENOSYS; }
-static __inline int mdbx_txn_begin(MDB_env *, MDB_txn *, unsigned,
-                                   MDB_txn **) {
+static __inline int mdbx_txn_begin(MDB_env *, MDB_txn *, unsigned, MDB_txn **) {
   return ENOSYS;
 }
 static __inline int mdbx_env_set_maxdbs(MDB_env *, MDB_dbi) { return ENOSYS; }
@@ -170,9 +169,7 @@ static __inline int mdbx_cursor_put(MDB_cursor *, MDB_val *, MDB_val *,
   return ENOSYS;
 }
 static __inline int mdbx_cursor_del(MDB_cursor *, unsigned) { return ENOSYS; }
-static __inline int mdbx_cursor_count(MDB_cursor *, size_t *) {
-  return ENOSYS;
-}
+static __inline int mdbx_cursor_count(MDB_cursor *, size_t *) { return ENOSYS; }
 static __inline int mdbx_cmp(MDB_txn *, MDB_dbi, const MDB_val *,
                              const MDB_val *) {
   return 0;
@@ -347,9 +344,7 @@ struct fpta_cursor {
     return current.iov_base ? FPTA_NODATA : FPTA_ECURSOR;
   }
 
-  bool is_before_first() const {
-    return current.iov_base == eof(before_first);
-  }
+  bool is_before_first() const { return current.iov_base == eof(before_first); }
   bool is_after_last() const { return current.iov_base == eof(after_last); }
   void set_eof(eof_mode mode) { current.iov_base = eof(mode); }
 #else

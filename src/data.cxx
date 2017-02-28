@@ -31,8 +31,7 @@ fpta_value fpta_field2value(const fptu_field *field) {
   switch (fptu_get_type(field->ct)) {
   default:
   case fptu_nested:
-    result.binary_length =
-        (unsigned)units2bytes(payload->other.varlen.brutto);
+    result.binary_length = (unsigned)units2bytes(payload->other.varlen.brutto);
     result.binary_data = (void *)payload->other.data;
     result.type = fpta_binary;
     break;
@@ -124,8 +123,8 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
   if (unlikely(column_id == nullptr || value == nullptr))
     return FPTA_EINVAL;
 
-  const fptu_field *field = fptu_lookup_ro(
-      row, (unsigned)column_id->column.num, fpta_name_coltype(column_id));
+  const fptu_field *field = fptu_lookup_ro(row, (unsigned)column_id->column.num,
+                                           fpta_name_coltype(column_id));
   *value = fpta_field2value(field);
   return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
@@ -158,8 +157,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_opaque:
     if (unlikely(value.type != fpta_binary))
       return FPTA_ETYPE;
-    return fptu_upsert_opaque(pt, col, value.binary_data,
-                              value.binary_length);
+    return fptu_upsert_opaque(pt, col, value.binary_data, value.binary_length);
 
   case fptu_null:
     return FPTA_EINVAL;
@@ -414,14 +412,14 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   if (unlikely(rc == MDBX_RESULT_TRUE)) {
     assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
     old.sys.iov_base = alloca(old.sys.iov_len);
-    rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
-                      &row.sys, &old.sys, flags);
+    rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx, &row.sys,
+                      &old.sys, flags);
   }
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
 
-  rc = fpta_secondary_upsert(txn, table_id, pk_key.mdbx, old, pk_key.mdbx,
-                             row, 0);
+  rc = fpta_secondary_upsert(txn, table_id, pk_key.mdbx, old, pk_key.mdbx, row,
+                             0);
   if (unlikely(rc != MDB_SUCCESS))
     return fpta_inconsistent_abort(txn, rc);
 
@@ -482,8 +480,7 @@ int fpta_get(fpta_txn *txn, fpta_name *column_id,
     return FPTA_NO_INDEX;
 
   fpta_key column_key;
-  rc = fpta_index_value2key(column_id->shove, *column_value, column_key,
-                            false);
+  rc = fpta_index_value2key(column_id->shove, *column_value, column_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -498,8 +495,7 @@ int fpta_get(fpta_txn *txn, fpta_name *column_id,
                     &row->sys);
 
   MDB_val pk_key;
-  rc =
-      mdbx_get(txn->mdbx_txn, column_id->mdbx_dbi, &column_key.mdbx, &pk_key);
+  rc = mdbx_get(txn->mdbx_txn, column_id->mdbx_dbi, &column_key.mdbx, &pk_key);
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
 

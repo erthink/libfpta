@@ -217,9 +217,9 @@ public:
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_dup_id, fpta_value_uint(42)));
         // t1ha как "checksum" для order
-        ASSERT_EQ(FPTA_OK, fpta_upsert_column(
-                               row, &col_t1ha,
-                               order_checksum(order, se_type, se_index)));
+        ASSERT_EQ(FPTA_OK,
+                  fpta_upsert_column(row, &col_t1ha,
+                                     order_checksum(order, se_type, se_index)));
         ASSERT_EQ(FPTA_OK,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
         ++n_records;
@@ -286,35 +286,33 @@ public:
     se_col_name = "se_" + std::to_string(se_type);
     // инициализируем идентификаторы колонок
     EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
-    EXPECT_EQ(FPTA_OK,
-              fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
-    EXPECT_EQ(FPTA_OK,
-              fpta_column_init(&table, &col_se, se_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, pk_col_name.c_str()));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_se, se_col_name.c_str()));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_order, "order"));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_dup_id, "dup_id"));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
 
     if (!valid_pk) {
-      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(),
-                                                  pk_type, pk_index, &def));
+      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
+                                                  pk_index, &def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
                                             pk_index, &def));
     if (!valid_se) {
-      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(),
-                                                  se_type, se_index, &def));
+      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
+                                                  se_index, &def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
                                             se_index, &def));
 
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
-                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
                                             fpta_index_none, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("t1ha", fptu_uint64,
-                                            fpta_index_none, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
@@ -377,16 +375,15 @@ public:
     // открываем курсор
     fpta_cursor *cursor;
     if (valid_cursor_ops) {
-      EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_se, fpta_value_begin(),
-                                          fpta_value_end(), nullptr, ordering,
-                                          &cursor));
+      EXPECT_EQ(FPTA_OK,
+                fpta_cursor_open(txn, &col_se, fpta_value_begin(),
+                                 fpta_value_end(), nullptr, ordering, &cursor));
       ASSERT_NE(nullptr, cursor);
       cursor_guard.reset(cursor);
     } else {
       EXPECT_EQ(FPTA_NO_INDEX,
                 fpta_cursor_open(txn, &col_se, fpta_value_begin(),
-                                 fpta_value_end(), nullptr, ordering,
-                                 &cursor));
+                                 fpta_value_end(), nullptr, ordering, &cursor));
       cursor_guard.reset(cursor);
       ASSERT_EQ(nullptr, cursor);
       return;
@@ -569,10 +566,10 @@ TEST_P(CursorSecondary, basicMoves) {
                std::to_string(se_index) +
                (valid_index_ops ? ", (valid case)" : ", (invalid case)"));
 
-  SCOPED_TRACE("ordering " + std::to_string(ordering) + ", index " +
-               std::to_string(se_index) +
-               (valid_cursor_ops ? ", (valid cursor case)"
-                                 : ", (invalid cursor case)"));
+  SCOPED_TRACE(
+      "ordering " + std::to_string(ordering) + ", index " +
+      std::to_string(se_index) +
+      (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
   ASSERT_GT(n_records, 5);
   fpta_cursor *const cursor = cursor_guard.get();
@@ -757,10 +754,10 @@ TEST_P(CursorSecondaryDups, dupMoves) {
                std::to_string(se_index) +
                (valid_index_ops ? ", (valid case)" : ", (invalid case)"));
 
-  SCOPED_TRACE("ordering " + std::to_string(ordering) + ", index " +
-               std::to_string(se_index) +
-               (valid_cursor_ops ? ", (valid cursor case)"
-                                 : ", (invalid cursor case)"));
+  SCOPED_TRACE(
+      "ordering " + std::to_string(ordering) + ", index " +
+      std::to_string(se_index) +
+      (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
   ASSERT_GT(n_records, 5);
   fpta_cursor *const cursor = cursor_guard.get();
@@ -1140,10 +1137,10 @@ TEST_P(CursorSecondary, locate_and_delele) {
                std::to_string(se_index) +
                (valid_index_ops ? ", (valid case)" : ", (invalid case)"));
 
-  SCOPED_TRACE("ordering " + std::to_string(ordering) + ", index " +
-               std::to_string(se_index) +
-               (valid_cursor_ops ? ", (valid cursor case)"
-                                 : ", (invalid cursor case)"));
+  SCOPED_TRACE(
+      "ordering " + std::to_string(ordering) + ", index " +
+      std::to_string(se_index) +
+      (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
   ASSERT_GT(n_records, 5);
   /* заполняем present "номерами" значений ключа существующих записей,
@@ -1183,11 +1180,11 @@ TEST_P(CursorSecondary, locate_and_delele) {
 
     // открываем курсор для чтения
     fpta_cursor *cursor = nullptr;
-    EXPECT_EQ(FPTA_OK, fpta_cursor_open(
-                           txn_guard.get(), &col_se, fpta_value_begin(),
-                           fpta_value_end(), nullptr,
-                           (fpta_cursor_options)(ordering | fpta_dont_fetch),
-                           &cursor));
+    EXPECT_EQ(FPTA_OK,
+              fpta_cursor_open(
+                  txn_guard.get(), &col_se, fpta_value_begin(),
+                  fpta_value_end(), nullptr,
+                  (fpta_cursor_options)(ordering | fpta_dont_fetch), &cursor));
     ASSERT_NE(nullptr, cursor);
     cursor_guard.reset(cursor);
 
@@ -1198,10 +1195,9 @@ TEST_P(CursorSecondary, locate_and_delele) {
       const auto order = reorder[linear];
       int expected_dups =
           dups_countdown.count(linear) ? dups_countdown.at(linear) : 0;
-      SCOPED_TRACE(
-          "linear " + std::to_string(linear) + ", order " +
-          std::to_string(order) +
-          (dups_countdown.count(linear) ? ", present" : ", deleted"));
+      SCOPED_TRACE("linear " + std::to_string(linear) + ", order " +
+                   std::to_string(order) +
+                   (dups_countdown.count(linear) ? ", present" : ", deleted"));
 
       fpta_value key = keygen.make(order, NNN);
       size_t dups = 100500;
@@ -1209,8 +1205,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       case 0:
         /* все значения уже были удалены,
          * точный поиск (exactly=true) должен вернуть "нет данных" */
-        ASSERT_EQ(FPTA_NODATA,
-                  fpta_cursor_locate(cursor, true, &key, nullptr));
+        ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         ASSERT_EQ(FPTA_DEADBEEF, dups);
@@ -1261,23 +1256,20 @@ TEST_P(CursorSecondary, locate_and_delele) {
                       fpta_cursor_locate(cursor, false, &key, nullptr));
           }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-          ASSERT_EQ(FPTA_ECURSOR,
-                    fpta_cursor_dups(cursor_guard.get(), &dups));
+          ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
           ASSERT_EQ(FPTA_DEADBEEF, dups);
         }
         continue;
       case 1:
         if (fpta_cursor_is_ordered(ordering) ||
             !FPTA_PROHIBIT_NEARBY4UNORDERED) {
-          ASSERT_EQ(FPTA_OK,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
         } else {
           ASSERT_EQ(FPTA_EINVAL,
                     fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-          ASSERT_EQ(FPTA_ECURSOR,
-                    fpta_cursor_dups(cursor_guard.get(), &dups));
+          ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         }
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
@@ -1309,16 +1301,14 @@ TEST_P(CursorSecondary, locate_and_delele) {
             CheckPosition(linear, expected_dup_number, expected_dups));
         if (fpta_cursor_is_ordered(ordering) ||
             !FPTA_PROHIBIT_NEARBY4UNORDERED) {
-          ASSERT_EQ(FPTA_OK,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_NO_FATAL_FAILURE(
               CheckPosition(linear, expected_dup_number, expected_dups));
         } else {
           ASSERT_EQ(FPTA_EINVAL,
                     fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-          ASSERT_EQ(FPTA_ECURSOR,
-                    fpta_cursor_dups(cursor_guard.get(), &dups));
+          ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         }
         break;
       }
@@ -1418,25 +1408,23 @@ INSTANTIATE_TEST_CASE_P(
     Combine, CursorSecondary,
     ::testing::Combine(
         ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_withdups,
-                          fpta_primary_withdups_reversed,
+                          fpta_primary_withdups, fpta_primary_withdups_reversed,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_96, fptu_128, fptu_160, fptu_datetime,
-                          fptu_256, fptu_cstr, fptu_opaque
+                          fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
+                          fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_unique,
-                          fpta_secondary_unique_reversed,
+        ::testing::Values(fpta_secondary_unique, fpta_secondary_unique_reversed,
                           fpta_secondary_withdups,
                           fpta_secondary_withdups_reversed,
                           fpta_secondary_unique_unordered,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_96, fptu_128, fptu_160, fptu_datetime,
-                          fptu_256, fptu_cstr, fptu_opaque
+                          fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
+                          fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
 
@@ -1447,23 +1435,22 @@ INSTANTIATE_TEST_CASE_P(
                           fpta_primary_unique_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_datetime, fptu_96, fptu_128, fptu_160,
-                          fptu_256, fptu_cstr, fptu_opaque
+                          fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
+                          fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
         ::testing::Values(fpta_secondary_withdups,
                           fpta_secondary_withdups_reversed,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_datetime, fptu_96, fptu_128, fptu_160,
-                          fptu_256, fptu_cstr, fptu_opaque
+                          fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
+                          fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
 #else
 
 TEST(CursorSecondary, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
-TEST(CursorSecondaryDups, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {
-}
+TEST(CursorSecondaryDups, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 
 #endif /* GTEST_HAS_COMBINE */
 

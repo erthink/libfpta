@@ -92,11 +92,10 @@ public:
                                             secondary ? fpta_primary
                                                       : fpta_primary_withdups,
                                             &def));
-    EXPECT_EQ(FPTA_OK,
-              fpta_column_describe("se_opaque_dups", fptu_opaque,
-                                   secondary ? fpta_secondary_withdups
-                                             : fpta_index_none,
-                                   &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("se_opaque_dups", fptu_opaque,
+                                            secondary ? fpta_secondary_withdups
+                                                      : fpta_index_none,
+                                            &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("col_uint", fptu_uint64,
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -243,10 +242,9 @@ TEST_P(CrudSimple, Nulls) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, empty_binary));
     else {
       std::string value = std::to_string(val_case);
-      ASSERT_EQ(
-          FPTA_OK,
-          fpta_upsert_column(
-              row, &col_se, fpta_value_binary(value.data(), value.length())));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(
+                             row, &col_se,
+                             fpta_value_binary(value.data(), value.length())));
     }
 
     ASSERT_STREQ(nullptr, fptu_check(row));
@@ -308,8 +306,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Combine(::testing::Values(true, false),
                        ::testing::Values(1, 2, 3, 4, 5, 6, 7, 8, 9),
                        ::testing::Values(0, 1, 2, 3, 4, 5, 6, 7, 8),
-                       ::testing::Values(0, 1, 2),
-                       ::testing::Values(0, 1, 2)));
+                       ::testing::Values(0, 1, 2), ::testing::Values(0, 1, 2)));
 #else
 TEST(CrudSimple, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 #endif /* GTEST_HAS_COMBINE */

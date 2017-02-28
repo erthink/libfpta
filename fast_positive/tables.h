@@ -54,18 +54,18 @@ typedef unsigned mode_t;
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
 #pragma warning(disable : 4127 /* условное выражение является константой */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
 #pragma pack(push, 1)
 #endif /* windows mustdie */
@@ -221,19 +221,19 @@ typedef enum fpta_value_type {
                     * или отсутствия колонки/поля в строке. */
   fpta_signed_int, /* Integer со знаком, задается в int64_t */
   fpta_unsigned_int, /* Беззнаковый integer, задается в uint64_t */
-  fpta_datetime, /* Время в форме fptu_time */
+  fpta_datetime,    /* Время в форме fptu_time */
   fpta_float_point, /* Плавающая точка, задается в double */
   fpta_string, /* Строка utf8, задается адресом и длиной,
                 * без терминирующего нуля!
                 * (объяснение см внутри fpta_value) */
   fpta_binary, /* Бинарные данные, задается адресом и длиной */
   fpta_shoved, /* Преобразованный длинный ключ из индекса. */
-  fpta_begin,  /* Псевдо-тип, всегда меньше любого значения.
-                * Используется при открытии курсора для выборки
-                * первой записи посредством range_from. */
-  fpta_end,    /* Псевдо-тип, всегда больше любого значения.
-                * Используется при открытии курсора для выборки
-                * последней записи посредством range_to. */
+  fpta_begin, /* Псевдо-тип, всегда меньше любого значения.
+               * Используется при открытии курсора для выборки
+               * первой записи посредством range_from. */
+  fpta_end, /* Псевдо-тип, всегда больше любого значения.
+             * Используется при открытии курсора для выборки
+             * последней записи посредством range_to. */
 } fpta_value_type;
 
 /* Структура-контейнер для представления значений.
@@ -324,8 +324,7 @@ static __inline fpta_value fpta_value_cstr(const char *value) {
 
 /* Конструктор value со строковым значением
  * строка не копируется и не хранится внутри. */
-static __inline fpta_value fpta_value_string(const char *text,
-                                             size_t length) {
+static __inline fpta_value fpta_value_string(const char *text, size_t length) {
   assert(strnlen(text, length) == length);
   assert(length < INT_MAX);
   fpta_value r;
@@ -337,8 +336,7 @@ static __inline fpta_value fpta_value_string(const char *text,
 
 /* Конструктор value с бинарным/opaque значением,
  * даные не копируются и не хранятся внутри. */
-static __inline fpta_value fpta_value_binary(const void *data,
-                                             size_t length) {
+static __inline fpta_value fpta_value_binary(const void *data, size_t length) {
   assert(length < INT_MAX);
   fpta_value r;
   r.type = fpta_binary;
@@ -384,29 +382,29 @@ enum fpta_error {
   FPTA_ERRROR_BASE = 4242,
 
   FPTA_EOOPS
-    /* Internal unexpected Oops */,
+  /* Internal unexpected Oops */,
   FPTA_SCHEMA_CORRUPTED
-    /* Schema is invalid or corrupted (internal error) */,
+  /* Schema is invalid or corrupted (internal error) */,
   FPTA_ETYPE
-    /* Type mismatch (given value vs column/field or index) */,
+  /* Type mismatch (given value vs column/field or index) */,
   FPTA_DATALEN_MISMATCH
-    /* Data length mismatch (given value vs data type) */,
+  /* Data length mismatch (given value vs data type) */,
   FPTA_KEY_MISMATCH
-    /* Key mismatch while updating row via cursor */,
+  /* Key mismatch while updating row via cursor */,
   FPTA_COLUMN_MISSING
-    /* Required column missing */,
+  /* Required column missing */,
   FPTA_INDEX_CORRUPTED
-    /* Index is inconsistent or corrupted (internal error) */,
+  /* Index is inconsistent or corrupted (internal error) */,
   FPTA_NO_INDEX
-    /* No (such) index for given column */,
+  /* No (such) index for given column */,
   FPTA_SCHEMA_CHANGED
-    /* Schema changed (transaction should be restared) */,
+  /* Schema changed (transaction should be restared) */,
   FPTA_ECURSOR
-    /* Cursor is not positioned */,
+  /* Cursor is not positioned */,
   FPTA_TOOMANY
-    /* Too many columns or indexes (one of fpta's limits reached) */,
+  /* Too many columns or indexes (one of fpta's limits reached) */,
   FPTA_WANNA_DIE
-    /* Failure while transaction rollback */,
+  /* Failure while transaction rollback */,
 
   FPTA_ENOFIELD = FPTU_ENOFIELD,
   FPTA_ENOSPACE = FPTU_ENOSPACE,
@@ -576,9 +574,8 @@ typedef enum fpta_durability {
  * позволяет отказаться от захвата pthread_rwlock_t в процессе работы.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_db_open(const char *path, fpta_durability durability,
-                 mode_t file_mode, size_t megabytes, bool alterable_schema,
-                 fpta_db **db);
+int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
+                 size_t megabytes, bool alterable_schema, fpta_db **db);
 
 /* Закрывает ранее открытую базу.
  *
@@ -690,8 +687,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort);
  * и версию схемы (которая действует внутри транзакции).
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
-                              uint64_t *schema);
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data, uint64_t *schema);
 
 //----------------------------------------------------------------------------
 /* Управление схемой:
@@ -779,15 +775,13 @@ typedef enum fpta_index_type {
   fpta_primary_unique_unordered = fpta_primary_unique - fpta_index_fordered,
 
   /* неупорядоченный с повторами */
-  fpta_primary_withdups_unordered =
-      fpta_primary_withdups - fpta_index_fordered,
+  fpta_primary_withdups_unordered = fpta_primary_withdups - fpta_index_fordered,
 
   /* строки и binary сравниваются с конца, с контролем уникальности */
   fpta_primary_unique_reversed = fpta_primary_unique - fpta_index_fobverse,
 
   /* строки и binary сравниваются с конца, с повторами */
-  fpta_primary_withdups_reversed =
-      fpta_primary_withdups - fpta_index_fobverse,
+  fpta_primary_withdups_reversed = fpta_primary_withdups - fpta_index_fobverse,
 
   /* базовый вариант для основного индекса */
   fpta_primary = fpta_primary_unique_obverse,
@@ -815,16 +809,14 @@ typedef enum fpta_index_type {
   fpta_secondary_unique_obverse = fpta_secondary_unique,
 
   /* неупорядоченный, с контролем уникальности */
-  fpta_secondary_unique_unordered =
-      fpta_secondary_unique - fpta_index_fordered,
+  fpta_secondary_unique_unordered = fpta_secondary_unique - fpta_index_fordered,
 
   /* неупорядоченный с повторами */
   fpta_secondary_withdups_unordered =
       fpta_secondary_withdups - fpta_index_fordered,
 
   /* строки и binary сравниваются с конца, с контролем уникальности */
-  fpta_secondary_unique_reversed =
-      fpta_secondary_unique - fpta_index_fobverse,
+  fpta_secondary_unique_reversed = fpta_secondary_unique - fpta_index_fobverse,
 
   /* строки и binary сравниваются с конца, с повторами */
   fpta_secondary_withdups_reversed =
@@ -969,8 +961,7 @@ static __inline fptu_type fpta_name_coltype(const fpta_name *column_id) {
 }
 
 /* Возвращает тип индекса колонки из дескриптора имени */
-static __inline fpta_index_type
-fpta_name_colindex(const fpta_name *column_id) {
+static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
   return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
 }
 
@@ -1183,10 +1174,9 @@ typedef enum fpta_cursor_options {
  * не изменяться до закрытия курсора и всех его клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
-                     fpta_value range_from, fpta_value range_to,
-                     fpta_filter *filter, fpta_cursor_options op,
-                     fpta_cursor **cursor);
+int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
+                     fpta_value range_to, fpta_filter *filter,
+                     fpta_cursor_options op, fpta_cursor **cursor);
 int fpta_cursor_close(fpta_cursor *cursor);
 
 /* Проверяет наличие за курсором данных.
@@ -1295,8 +1285,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
  *    использовано значение колонки соответствующей первичному ключу.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
-                       const fpta_value *key, const fptu_ro *row);
+int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
+                       const fptu_ro *row);
 
 /* Возвращает внутреннее значение ключа, которое соответствует
  * текущей позиции курсора.
@@ -1465,8 +1455,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op);
 
 static __inline int fpta_probe_and_put(fpta_txn *txn, fpta_name *table_id,
-                                       fptu_ro row_value,
-                                       fpta_put_options op) {
+                                       fptu_ro row_value, fpta_put_options op) {
   int rc = fpta_validate_put(txn, table_id, row_value, op);
   if (rc == FPTA_SUCCESS)
     rc = fpta_put(txn, table_id, row_value, op);
@@ -1519,8 +1508,7 @@ static __inline int fpta_update_row(fpta_txn *txn, fpta_name *table_id,
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_validate_update_row(fpta_txn *txn,
-                                             fpta_name *table_id,
+static __inline int fpta_validate_update_row(fpta_txn *txn, fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_update);
 }
@@ -1577,8 +1565,7 @@ static __inline int fpta_insert_row(fpta_txn *txn, fpta_name *table_id,
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_validate_insert_row(fpta_txn *txn,
-                                             fpta_name *table_id,
+static __inline int fpta_validate_insert_row(fpta_txn *txn, fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_insert);
 }
@@ -1638,8 +1625,7 @@ static __inline int fpta_upsert_row(fpta_txn *txn, fpta_name *table_id,
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-static __inline int fpta_validate_upsert_row(fpta_txn *txn,
-                                             fpta_name *table_id,
+static __inline int fpta_validate_upsert_row(fpta_txn *txn, fpta_name *table_id,
                                              fptu_ro row_value) {
   return fpta_validate_put(txn, table_id, row_value, fpta_upsert);
 }

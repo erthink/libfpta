@@ -80,15 +80,15 @@ TEST(Schema, Trivia) {
 
   EXPECT_EQ(EEXIST, fpta_column_describe("column_b", fptu_cstr,
                                          fpta_primary_unique, &def));
-  EXPECT_EQ(EEXIST, fpta_column_describe("column_a", fptu_cstr,
-                                         fpta_secondary, &def));
+  EXPECT_EQ(EEXIST,
+            fpta_column_describe("column_a", fptu_cstr, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("column_b", fptu_cstr,
-                                          fpta_secondary, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("column_b", fptu_cstr, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
-  EXPECT_EQ(EEXIST, fpta_column_describe("column_b", fptu_fp64,
-                                         fpta_secondary, &def));
+  EXPECT_EQ(EEXIST,
+            fpta_column_describe("column_b", fptu_fp64, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   EXPECT_EQ(FPTA_OK, fpta_column_describe("column_c", fptu_uint16,
                                           fpta_secondary, &def));
