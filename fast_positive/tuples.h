@@ -752,6 +752,8 @@ fptu_lge fptu_cmp_binary(const void *left_data, size_t left_len,
 fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right);
 fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 
+const char *fptu_type_name(const fptu_type);
+
 #ifdef __cplusplus
 }
 
@@ -793,12 +795,12 @@ inline const fptu_field *end(const fptu_rw *rw) { return fptu_end_rw(rw); }
 } /* namespace fptu */
 
 namespace std {
-string to_string(fptu_error error);
-string to_string(fptu_type);
+string to_string(const fptu_error error);
+string to_string(const fptu_type);
 string to_string(const fptu_field &);
 string to_string(const fptu_rw &);
 string to_string(const fptu_ro &);
-string to_string(fptu_lge);
+string to_string(const fptu_lge);
 string to_string(const fptu_time &time);
 } /* namespace std */
 
@@ -808,8 +810,6 @@ bool operator>=(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<(const fptu_lge &, const fptu_lge &) = delete;
 bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
 #endif /* __cplusplus */
-
-const char *fptu_type_name(fptu_type);
 
 #ifdef _MSC_VER
 #pragma pack(pop)

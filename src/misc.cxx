@@ -86,7 +86,7 @@ __cold std::string hexadecimal(const void *data, size_t bytes) {
 
 //----------------------------------------------------------------------------
 
-__cold const char *fptu_type_name(fptu_type type) {
+__cold const char *fptu_type_name(const fptu_type type) {
   switch ((int /* hush 'not in enumerated' */)type) {
   default: {
     static __thread char buf[16];
@@ -168,7 +168,7 @@ __cold const char *fptu_type_name(fptu_type type) {
 
 namespace std {
 
-__cold string to_string(fptu_error error) {
+__cold string to_string(const fptu_error error) {
   switch (error) {
   case FPTU_SUCCESS:
     return "FPTU_SUCCESS";
@@ -388,7 +388,7 @@ __cold string to_string(const fptu_field &field) {
   }
 }
 
-__cold string to_string(fptu_type type) {
+__cold string to_string(const fptu_type type) {
   return string(fptu_type_name(type));
 }
 
@@ -426,7 +426,7 @@ __cold string to_string(const fptu_rw &rw) {
   return result;
 }
 
-__cold string to_string(fptu_lge lge) {
+__cold string to_string(const fptu_lge lge) {
   switch (lge) {
   default:
     return fptu::format("invalid(fptu_lge)%i", (int)lge);
