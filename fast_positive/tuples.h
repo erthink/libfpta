@@ -467,6 +467,8 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf);
 
 //----------------------------------------------------------------------------
 
+extern const char fptu_empty_cstr[];
+
 /* Вставка или обновление существующего поля.
  *
  * В случае коллекций, когда в кортеже более одного поля с соответствующим
@@ -495,7 +497,7 @@ int fptu_upsert_string(fptu_rw *pt, unsigned column, const char *text,
 static __inline int fptu_upsert_cstr(fptu_rw *pt, unsigned col,
                                      const char *value) {
   if (value == nullptr)
-    value = "";
+    value = fptu_empty_cstr;
 
   return fptu_upsert_string(pt, col, value, strlen(value));
 }
@@ -544,7 +546,7 @@ int fptu_insert_string(fptu_rw *pt, unsigned column, const char *text,
 static __inline int fptu_insert_cstr(fptu_rw *pt, unsigned col,
                                      const char *value) {
   if (value == nullptr)
-    value = "";
+    value = fptu_empty_cstr;
 
   return fptu_insert_string(pt, col, value, strlen(value));
 }
@@ -591,7 +593,7 @@ int fptu_update_string(fptu_rw *pt, unsigned column, const char *text,
 static __inline int fptu_update_cstr(fptu_rw *pt, unsigned col,
                                      const char *value) {
   if (value == nullptr)
-    value = "";
+    value = fptu_empty_cstr;
 
   return fptu_update_string(pt, col, value, strlen(value));
 }

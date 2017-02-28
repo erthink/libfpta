@@ -19,6 +19,8 @@
 
 #include "fast_positive/tuples_internal.h"
 
+const char fptu_empty_cstr[1] = {'\0'};
+
 const uint8_t fptu_internal_map_t2b[fptu_cstr] = {
     /* void */ 0,
     /* uint16 */ 0,
