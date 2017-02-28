@@ -171,13 +171,13 @@ namespace std {
 __cold string to_string(const fptu_error error) {
   switch (error) {
   case FPTU_SUCCESS:
-    return "FPTU_SUCCESS";
+    return "FPTU: Success";
   case FPTU_ENOFIELD:
-    return "FPTU_ENOFIELD";
+    return "FPTU: No such field (ENOENT)";
   case FPTU_EINVAL:
-    return "FPTU_EINVAL";
+    return "FPTU: Invalid argument (EINVAL)";
   case FPTU_ENOSPACE:
-    return "FPTU_ENOSPACE";
+    return "FPTU: No space left in tuple (ENOSPC)";
   default:
     return fptu::format("invalid(fptu_error)%i", (int)error);
   }
