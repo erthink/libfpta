@@ -1,3 +1,2 @@
 BasedOnStyle: LLVM
 Standard: Cpp11
-ColumnLimit: 78

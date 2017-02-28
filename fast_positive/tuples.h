@@ -53,7 +53,7 @@ extern "C" {
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
 #pragma pack(push, 1)
 #endif /* windows mustdie */
@@ -175,8 +175,7 @@ enum fptu_bits {
   // маска для получения типа из идентификатора поля/колонки
   fptu_ty_mask = ((size_t)1 << fptu_typeid_bits) - 1,
   // маска резервных битов в идентификаторе поля/колонки
-  fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1)
-                 << fptu_typeid_bits,
+  fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1) << fptu_typeid_bits,
 
   // сдвиг для получения тега-номера из идентификатора поля/колонки
   fptu_co_shift = fptu_typeid_bits + fptu_ct_reserve_bits,
@@ -202,8 +201,8 @@ enum fptu_bits {
   // так чтобы при любом базовом типе не превышались другие лимиты
   fptu_max_array = fptu_max_opaque_bytes / 32,
   // буфер достаточного размера для любого кортежа
-  fptu_buffer_enought = sizeof(fptu_rw) + fptu_max_tuple_bytes +
-                        fptu_max_fields * fptu_unit_size,
+  fptu_buffer_enought =
+      sizeof(fptu_rw) + fptu_max_tuple_bytes + fptu_max_fields * fptu_unit_size,
   // предельный размер, превышение которого считается ошибкой
   fptu_buffer_limit = fptu_max_tuple_bytes * 2
 };
@@ -246,8 +245,8 @@ typedef enum fptu_type {
   // pseudo types for lookup and filtering
   fptu_filter = 1 << (fptu_null | fptu_farray),
   fptu_any = -1, // match any type
-  fptu_any_int = fptu_filter | (1 << fptu_int32) |
-                 (1 << fptu_int64), // match int32/int64
+  fptu_any_int =
+      fptu_filter | (1 << fptu_int32) | (1 << fptu_int64), // match int32/int64
   fptu_any_uint = fptu_filter | (1 << fptu_uint16) | (1 << fptu_uint32) |
                   (1 << fptu_uint64), // match uint16/uint32/uint64
   fptu_any_fp =
@@ -363,8 +362,7 @@ size_t fptu_space(size_t items, size_t data_bytes);
  *
  * Возвращает указатель на созданный в буфере объект, либо nullptr, если
  * заданы неверные параметры или размер буфера недостаточен. */
-fptu_rw *fptu_init(void *buffer_space, size_t buffer_bytes,
-                   size_t items_limit);
+fptu_rw *fptu_init(void *buffer_space, size_t buffer_bytes, size_t items_limit);
 
 /* Выделяет через malloc() и инициализирует кортеж достаточный для
  * размещения заданного кол-ва полей и данных.
@@ -646,10 +644,8 @@ const fptu_field *fptu_next(const fptu_field *from, const fptu_field *end,
 /* Итерация полей кортежа с заданным внешним фильтром, при этом
  * удаленные поля пропускаются.
  * Семантика type_or_filter указана в описании fptu_erase(). */
-typedef bool fptu_field_filter(const fptu_field *, void *context,
-                               void *param);
-const fptu_field *fptu_first_ex(const fptu_field *begin,
-                                const fptu_field *end,
+typedef bool fptu_field_filter(const fptu_field *, void *context, void *param);
+const fptu_field *fptu_first_ex(const fptu_field *begin, const fptu_field *end,
                                 fptu_field_filter filter, void *context,
                                 void *param);
 const fptu_field *fptu_next_ex(const fptu_field *begin, const fptu_field *end,
@@ -657,8 +653,7 @@ const fptu_field *fptu_next_ex(const fptu_field *begin, const fptu_field *end,
                                void *param);
 /* Подсчет количества полей по заданному номеру колонки и типу,
  * либо маски типов .*/
-size_t fptu_field_count(const fptu_rw *pt, unsigned column,
-                        int type_or_filter);
+size_t fptu_field_count(const fptu_rw *pt, unsigned column, int type_or_filter);
 size_t fptu_field_count_ro(fptu_ro ro, unsigned column, int type_or_filter);
 
 /* Подсчет количества полей задаваемой функцией-фильтром. */
@@ -768,21 +763,13 @@ std::string format(const char *fmt, ...)
     ;
 std::string hexadecimal(const void *data, size_t bytes);
 
-inline const fptu_field *begin(const fptu_ro &ro) {
-  return fptu_begin_ro(ro);
-}
+inline const fptu_field *begin(const fptu_ro &ro) { return fptu_begin_ro(ro); }
 
-inline const fptu_field *begin(const fptu_ro *ro) {
-  return fptu_begin_ro(*ro);
-}
+inline const fptu_field *begin(const fptu_ro *ro) { return fptu_begin_ro(*ro); }
 
-inline const fptu_field *begin(const fptu_rw &rw) {
-  return fptu_begin_rw(&rw);
-}
+inline const fptu_field *begin(const fptu_rw &rw) { return fptu_begin_rw(&rw); }
 
-inline const fptu_field *begin(const fptu_rw *rw) {
-  return fptu_begin_rw(rw);
-}
+inline const fptu_field *begin(const fptu_rw *rw) { return fptu_begin_rw(rw); }
 
 inline const fptu_field *end(const fptu_ro &ro) { return fptu_end_ro(ro); }
 

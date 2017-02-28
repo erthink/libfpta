@@ -36,16 +36,14 @@ TEST(Fetch, Invalid) {
   EXPECT_EQ(nullptr, fptu_fetch(ro, space_exactly_noitems,
                                 sizeof(space_exactly_noitems), 1));
   EXPECT_EQ(nullptr,
-            fptu_fetch(ro, space_exactly_noitems,
-                       sizeof(space_exactly_noitems), fptu_max_fields));
-  EXPECT_EQ(nullptr,
-            fptu_fetch(ro, nullptr, sizeof(space_exactly_noitems), 0));
+            fptu_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems),
+                       fptu_max_fields));
+  EXPECT_EQ(nullptr, fptu_fetch(ro, nullptr, sizeof(space_exactly_noitems), 0));
   EXPECT_EQ(nullptr, fptu_fetch(ro, space_exactly_noitems,
                                 sizeof(space_exactly_noitems) - 1, 0));
   EXPECT_EQ(nullptr, fptu_fetch(ro, space_exactly_noitems, 0, 0));
   EXPECT_EQ(nullptr, fptu_fetch(ro, space_exactly_noitems, 0, 1));
-  EXPECT_EQ(nullptr,
-            fptu_fetch(ro, space_exactly_noitems, 0, fptu_max_fields));
+  EXPECT_EQ(nullptr, fptu_fetch(ro, space_exactly_noitems, 0, fptu_max_fields));
   EXPECT_EQ(nullptr,
             fptu_fetch(ro, space_exactly_noitems, 0, fptu_max_fields * 2));
   EXPECT_EQ(nullptr, fptu_fetch(ro, space_exactly_noitems, 0, ~0u));
@@ -59,8 +57,7 @@ TEST(Fetch, Invalid) {
                                 fptu_buffer_limit + 1, fptu_max_fields));
 
   fptu_rw *pt;
-  pt =
-      fptu_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), 0);
+  pt = fptu_fetch(ro, space_exactly_noitems, sizeof(space_exactly_noitems), 0);
   ASSERT_NE(nullptr, pt);
   EXPECT_STREQ(nullptr, fptu_check(pt));
   pt = fptu_fetch(ro, space_maximum, sizeof(space_maximum), 0);
@@ -69,8 +66,8 @@ TEST(Fetch, Invalid) {
   pt = fptu_fetch(ro, space_maximum, sizeof(space_maximum), 1);
   ASSERT_NE(nullptr, pt);
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  pt = fptu_fetch(ro, space_maximum, sizeof(space_maximum),
-                  fptu_max_fields / 2);
+  pt =
+      fptu_fetch(ro, space_maximum, sizeof(space_maximum), fptu_max_fields / 2);
   ASSERT_NE(nullptr, pt);
   EXPECT_STREQ(nullptr, fptu_check(pt));
   pt = fptu_fetch(ro, space_maximum, sizeof(space_maximum), fptu_max_fields);
@@ -244,8 +241,7 @@ TEST(Fetch, Variate) {
           ", fetch.more_items " + std::to_string(more_items));
       fetched_pt = fptu_fetch(origin_ro, fetched_space, bytes, more_items);
       if (more_items > fptu_max_fields ||
-          bytes <
-              fptu_space(origin_items + more_items, origin_payload_bytes)) {
+          bytes < fptu_space(origin_items + more_items, origin_payload_bytes)) {
         EXPECT_EQ(nullptr, fetched_pt);
       } else {
         EXPECT_NE(nullptr, fetched_pt);
@@ -253,18 +249,18 @@ TEST(Fetch, Variate) {
       if (!fetched_pt)
         continue;
 
-      EXPECT_GE(0, (int)fptu_check_and_get_buffer_size(origin_ro, more_items,
-                                                       0, nullptr));
+      EXPECT_GE(0, (int)fptu_check_and_get_buffer_size(origin_ro, more_items, 0,
+                                                       nullptr));
       const char *error = "clean me";
-      EXPECT_GE(bytes, fptu_check_and_get_buffer_size(origin_ro, more_items,
-                                                      0, &error));
+      EXPECT_GE(bytes, fptu_check_and_get_buffer_size(origin_ro, more_items, 0,
+                                                      &error));
       EXPECT_STREQ(nullptr, error);
       EXPECT_STREQ(nullptr, fptu_check(fetched_pt));
       fetched_ro = fptu_take_noshrink(fetched_pt);
       ASSERT_STREQ(nullptr, fptu_check_ro(fetched_ro));
       ASSERT_EQ(origin_ro.total_bytes, fetched_ro.total_bytes);
-      EXPECT_EQ(0, memcmp(origin_ro.units, fetched_ro.units,
-                          origin_ro.total_bytes));
+      EXPECT_EQ(
+          0, memcmp(origin_ro.units, fetched_ro.units, origin_ro.total_bytes));
 
       if (more_items + origin_items >= fptu_max_fields) {
         EXPECT_EQ(origin_pt->pivot, fetched_pt->pivot);
@@ -286,8 +282,8 @@ TEST(Fetch, Variate) {
         EXPECT_EQ(fptu_unit_size * (n + 1), origin_ro.total_bytes);
 
         origin_items = fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro);
-        origin_payload_bytes = origin_ro.total_bytes -
-                               units2bytes(origin_items) - fptu_unit_size;
+        origin_payload_bytes =
+            origin_ro.total_bytes - units2bytes(origin_items) - fptu_unit_size;
         SCOPED_TRACE("origin.items " + std::to_string(origin_items) +
                      ", origin.payload_bytes " +
                      std::to_string(origin_payload_bytes) + ", fetch.space " +
@@ -340,8 +336,8 @@ TEST(Fetch, Variate) {
         EXPECT_EQ(fptu_unit_size * (n + n + 1), origin_ro.total_bytes);
 
         origin_items = fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro);
-        origin_payload_bytes = origin_ro.total_bytes -
-                               units2bytes(origin_items) - fptu_unit_size;
+        origin_payload_bytes =
+            origin_ro.total_bytes - units2bytes(origin_items) - fptu_unit_size;
         SCOPED_TRACE("origin.items " + std::to_string(origin_items) +
                      ", origin.payload_bytes " +
                      std::to_string(origin_payload_bytes) + ", fetch.space " +

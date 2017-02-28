@@ -126,8 +126,8 @@ TEST(Shrink, Shuffle) {
 
         ASSERT_STREQ(nullptr, fptu_check(pt));
         EXPECT_EQ(0, fptu_junkspace(pt));
-        EXPECT_EQ(count, fptu_field_count_ex(pt, field_filter_any, nullptr,
-                                             nullptr));
+        EXPECT_EQ(count,
+                  fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
         int present_mask = create_mask;
         int i = order.next();
@@ -160,13 +160,13 @@ TEST(Shrink, Shuffle) {
                      std::to_string(present_mask));
 
         ASSERT_STREQ(nullptr, fptu_check(pt));
-        ASSERT_EQ(count, fptu_field_count_ex(pt, field_filter_any, nullptr,
-                                             nullptr));
+        ASSERT_EQ(count,
+                  fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
         fptu_shrink(pt);
         ASSERT_STREQ(nullptr, fptu_check(pt));
-        ASSERT_EQ(count, fptu_field_count_ex(pt, field_filter_any, nullptr,
-                                             nullptr));
+        ASSERT_EQ(count,
+                  fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
         EXPECT_EQ(0, pt->junk);
 
         if (count) {

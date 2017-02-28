@@ -37,9 +37,8 @@ __hot const fptu_field *fptu_first(const fptu_field *begin,
   return end;
 }
 
-__hot const fptu_field *fptu_next(const fptu_field *from,
-                                  const fptu_field *end, unsigned column,
-                                  int type_or_filter) {
+__hot const fptu_field *fptu_next(const fptu_field *from, const fptu_field *end,
+                                  unsigned column, int type_or_filter) {
   return fptu_first(from + 1, end, column, type_or_filter);
 }
 
@@ -132,8 +131,7 @@ size_t fptu_field_count_ex(const fptu_rw *pt, fptu_field_filter filter,
   const fptu_field *pf = fptu_first_ex(begin, end, filter, context, param);
 
   size_t count;
-  for (count = 0; pf != end;
-       pf = fptu_next_ex(pf, end, filter, context, param))
+  for (count = 0; pf != end; pf = fptu_next_ex(pf, end, filter, context, param))
     count++;
 
   return count;
@@ -146,8 +144,7 @@ size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
   const fptu_field *pf = fptu_first_ex(begin, end, filter, context, param);
 
   size_t count;
-  for (count = 0; pf != end;
-       pf = fptu_next_ex(pf, end, filter, context, param))
+  for (count = 0; pf != end; pf = fptu_next_ex(pf, end, filter, context, param))
     count++;
 
   return count;

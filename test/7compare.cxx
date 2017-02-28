@@ -124,14 +124,12 @@ TEST(Compare, EmptyNull) {
 
 TEST(Compare, Base) {
   char space4major[fptu_buffer_enought];
-  fptu_rw *major =
-      fptu_init(space4major, sizeof(space4major), fptu_max_fields);
+  fptu_rw *major = fptu_init(space4major, sizeof(space4major), fptu_max_fields);
   ASSERT_NE(nullptr, major);
   ASSERT_STREQ(nullptr, fptu_check(major));
 
   char space4minor[fptu_buffer_enought];
-  fptu_rw *minor =
-      fptu_init(space4minor, sizeof(space4minor), fptu_max_fields);
+  fptu_rw *minor = fptu_init(space4minor, sizeof(space4minor), fptu_max_fields);
   ASSERT_NE(nullptr, minor);
   ASSERT_STREQ(nullptr, fptu_check(minor));
 

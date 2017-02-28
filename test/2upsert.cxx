@@ -322,10 +322,8 @@ TEST(Upsert, Base) {
   EXPECT_EQ(1354824703, fptu_get_uint32(ro, 1, nullptr));
   EXPECT_EQ(-8782211, fptu_get_int32(ro, 42, nullptr));
   EXPECT_EQ(15047220096467327, fptu_get_uint64(ro, 111, nullptr));
-  EXPECT_EQ(-60585001468255361,
-            fptu_get_int64(ro, fptu_max_cols / 3, nullptr));
-  EXPECT_EQ(3.1415926535897932,
-            fptu_get_fp64(ro, fptu_max_cols - 3, nullptr));
+  EXPECT_EQ(-60585001468255361, fptu_get_int64(ro, fptu_max_cols / 3, nullptr));
+  EXPECT_EQ(3.1415926535897932, fptu_get_fp64(ro, fptu_max_cols - 3, nullptr));
   EXPECT_EQ((float)2.7182818284590452354,
             fptu_get_fp32(ro, fptu_max_cols - 4, nullptr));
   EXPECT_STREQ("abc", fptu_get_cstr(ro, fptu_max_cols - 1, nullptr));
@@ -408,13 +406,12 @@ TEST(Upsert, Overwrite) {
     EXPECT_EQ((uint64_t)(n * m * m * m), fptu_get_uint64(ro, 5, nullptr));
 
     // overwrite field#0 and check all
-    SCOPED_TRACE("touch field #0, len " +
-                 std::to_string(opaque_iov(0, p, 23).iov_len) + "=>" +
-                 std::to_string(opaque_iov(0, n, 23).iov_len) + ", n " +
-                 std::to_string(n) + ", space " +
-                 std::to_string(fptu_space4items(pt)) + "/" +
-                 std::to_string(fptu_space4data(pt)) + ", junk " +
-                 std::to_string(fptu_junkspace(pt)));
+    SCOPED_TRACE(
+        "touch field #0, len " + std::to_string(opaque_iov(0, p, 23).iov_len) +
+        "=>" + std::to_string(opaque_iov(0, n, 23).iov_len) + ", n " +
+        std::to_string(n) + ", space " + std::to_string(fptu_space4items(pt)) +
+        "/" + std::to_string(fptu_space4data(pt)) + ", junk " +
+        std::to_string(fptu_junkspace(pt)));
     ASSERT_EQ(FPTU_OK, fptu_upsert_opaque_iov(pt, 0, opaque_iov(0, n, 23)));
     ASSERT_STREQ(nullptr, fptu_check(pt));
     ro = fptu_take_noshrink(pt);

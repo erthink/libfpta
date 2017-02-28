@@ -55,8 +55,8 @@ __cold std::string format(const char *fmt, ...) {
   result.reserve((size_t)needed + 1);
   result.resize((size_t)needed, '\0');
 #ifdef _MSC_VER
-  int actual = vsnprintf_s((char *)result.data(), result.capacity(),
-                           _TRUNCATE, fmt, ones);
+  int actual = vsnprintf_s((char *)result.data(), result.capacity(), _TRUNCATE,
+                           fmt, ones);
 #else
   int actual = vsnprintf((char *)result.data(), result.capacity(), fmt, ones);
 #endif
@@ -187,10 +187,9 @@ template <typename native>
 static inline std::string
 array2str_native(unsigned ct, const fptu_payload *payload, const char *name,
                  const char *comma_fmt) {
-  std::string result =
-      fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
-                   payload->other.varlen.array_length,
-                   units2bytes(payload->other.varlen.brutto));
+  std::string result = fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
+                                    payload->other.varlen.array_length,
+                                    units2bytes(payload->other.varlen.brutto));
 
   const native *array = (const native *)&payload->other.data[1];
   for (unsigned i = 0; i < payload->other.varlen.array_length; ++i)
@@ -201,10 +200,9 @@ array2str_native(unsigned ct, const fptu_payload *payload, const char *name,
 
 static std::string array2str_fixbin(unsigned ct, const fptu_payload *payload,
                                     const char *name, unsigned itemsize) {
-  std::string result =
-      fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
-                   payload->other.varlen.array_length,
-                   units2bytes(payload->other.varlen.brutto));
+  std::string result = fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
+                                    payload->other.varlen.array_length,
+                                    units2bytes(payload->other.varlen.brutto));
 
   const uint8_t *array = (const uint8_t *)&payload->other.data[1];
   for (unsigned i = 0; i < payload->other.varlen.array_length; ++i) {
@@ -300,15 +298,13 @@ __cold string to_string(const fptu_field &field) {
   case fptu_int32 | fptu_farray:
     return array2str_native<int32_t>(field.ct, payload, "int32", ",%" PRId32);
   case fptu_uint32 | fptu_farray:
-    return array2str_native<uint32_t>(field.ct, payload, "uint32",
-                                      ",%" PRIu32);
+    return array2str_native<uint32_t>(field.ct, payload, "uint32", ",%" PRIu32);
   case fptu_fp32 | fptu_farray:
     return array2str_native<float>(field.ct, payload, "fp32", ",%g");
   case fptu_int64 | fptu_farray:
     return array2str_native<int64_t>(field.ct, payload, "int64", ",%" PRId64);
   case fptu_uint64 | fptu_farray:
-    return array2str_native<uint64_t>(field.ct, payload, "uint64",
-                                      ",%" PRIu64);
+    return array2str_native<uint64_t>(field.ct, payload, "uint64", ",%" PRIu64);
   case fptu_fp64 | fptu_farray:
     return array2str_native<double>(field.ct, payload, "fp64", ",%.12g");
 
@@ -395,8 +391,8 @@ __cold string to_string(const fptu_type type) {
 __cold string to_string(const fptu_ro &ro) {
   const fptu_field *const begin = fptu::begin(ro);
   const fptu_field *const end = fptu::end(ro);
-  string result = fptu::format("(%zi bytes, %ti fields, %p)={",
-                               ro.total_bytes, end - begin, ro.units);
+  string result = fptu::format("(%zi bytes, %ti fields, %p)={", ro.total_bytes,
+                               end - begin, ro.units);
   for (auto i = begin; i != end; ++i) {
     if (i != begin)
       result.append(", ");
@@ -477,8 +473,8 @@ __cold string to_string(const fptu_time &time) {
   snprintf(datetime, sizeof(datetime),
 #endif
               "%04d-%02d-%02d_%02d:%02d:%02d", utc_tm.tm_year + 1900,
-              utc_tm.tm_mon + 1, utc_tm.tm_mday, utc_tm.tm_hour,
-              utc_tm.tm_min, utc_tm.tm_sec);
+              utc_tm.tm_mon + 1, utc_tm.tm_mday, utc_tm.tm_hour, utc_tm.tm_min,
+              utc_tm.tm_sec);
   return string(datetime) + (fractional + /* skip leading */ 1);
 }
 

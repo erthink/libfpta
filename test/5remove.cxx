@@ -239,9 +239,8 @@ TEST(Remove, Shuffle) {
         removed_count += present;
 
         ASSERT_STREQ(nullptr, fptu_check(pt));
-        ASSERT_EQ(
-            created_count - removed_count,
-            fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+        ASSERT_EQ(created_count - removed_count,
+                  fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
       }
 
       ASSERT_EQ(0, fptu_junkspace(pt));

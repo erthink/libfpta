@@ -21,16 +21,15 @@
 #include <fast_positive/tuples.h>
 
 #ifdef _MSC_VER
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
 #endif /* windows mustdie */
 
 #include <stdio.h>
 
-static void print_value(const char *caption, const char *comment,
-                        long value) {
+static void print_value(const char *caption, const char *comment, long value) {
   printf("%-20s = %ld\t// %s\n", caption, value, comment);
 }
 
@@ -56,21 +55,18 @@ int main(int argc, char *argv[]) {
   printf("// производные константы и параметры:\n");
   print_value("fptu_unit_shift", "log2(fptu_unit_size)", fptu_unit_shift);
   print_value("fptu_limit", "базовый лимит значений", fptu_limit);
-  print_value("fptu_co_bits", "ширина тега-номера поля/колонки",
-              fptu_co_bits);
+  print_value("fptu_co_bits", "ширина тега-номера поля/колонки", fptu_co_bits);
   print_mask("fptu_ty_mask",
              "маска для получения типа из идентификатора поля/колонки",
              fptu_ty_mask);
   print_mask("fptu_fr_mask",
              "маска резервных битов в идентификаторе поля/колонки",
              fptu_fr_mask);
-  print_value(
-      "fptu_co_shift",
-      "сдвиг для получения тега-номера из идентификатора поля/колонки",
-      fptu_co_shift);
+  print_value("fptu_co_shift",
+              "сдвиг для получения тега-номера из идентификатора поля/колонки",
+              fptu_co_shift);
   print_value("fptu_co_dead",
-              "значение тега-номера для удаленных полей/колонок",
-              fptu_co_dead);
+              "значение тега-номера для удаленных полей/колонок", fptu_co_dead);
   print_value("fptu_lt_bits", "кол-во бит доступных для хранения размера "
                               "массива дескрипторов полей",
               fptu_lt_bits);

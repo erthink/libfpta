@@ -22,28 +22,25 @@
 
 TEST(Init, Invalid) {
   EXPECT_EQ(nullptr, fptu_init(nullptr, 0, 0));
-  EXPECT_EQ(nullptr, fptu_init(nullptr, fptu_max_tuple_bytes / 2,
-                               fptu_max_fields / 2));
   EXPECT_EQ(nullptr,
-            fptu_init(nullptr, fptu_max_tuple_bytes, fptu_max_fields));
+            fptu_init(nullptr, fptu_max_tuple_bytes / 2, fptu_max_fields / 2));
+  EXPECT_EQ(nullptr, fptu_init(nullptr, fptu_max_tuple_bytes, fptu_max_fields));
   EXPECT_EQ(nullptr, fptu_init(nullptr, ~0u, ~0u));
 
   char space_exactly_noitems[sizeof(fptu_rw)];
-  EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems,
-                               sizeof(space_exactly_noitems), 1));
   EXPECT_EQ(nullptr,
-            fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems),
-                      fptu_max_fields));
+            fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems), 1));
+  EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems,
+                               sizeof(space_exactly_noitems), fptu_max_fields));
   EXPECT_EQ(nullptr, fptu_init(nullptr, sizeof(space_exactly_noitems), 0));
-  EXPECT_NE(nullptr, fptu_init(space_exactly_noitems,
-                               sizeof(space_exactly_noitems), 0));
+  EXPECT_NE(nullptr,
+            fptu_init(space_exactly_noitems, sizeof(space_exactly_noitems), 0));
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems,
                                sizeof(space_exactly_noitems) - 1, 0));
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, 0));
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, 1));
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, fptu_max_fields));
-  EXPECT_EQ(nullptr,
-            fptu_init(space_exactly_noitems, 0, fptu_max_fields * 2));
+  EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, fptu_max_fields * 2));
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, ~0u));
 
   char space_maximum[fptu_buffer_enought];

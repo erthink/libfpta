@@ -34,8 +34,7 @@ TEST(Trivia, Apriory) {
   ASSERT_TRUE(FPT_IS_POWER2(fptu_unit_size));
   ASSERT_EQ(fptu_unit_size, 1 << fptu_unit_shift);
 
-  ASSERT_EQ(fptu_bits,
-            fptu_typeid_bits + fptu_ct_reserve_bits + fptu_co_bits);
+  ASSERT_EQ(fptu_bits, fptu_typeid_bits + fptu_ct_reserve_bits + fptu_co_bits);
   ASSERT_EQ(fptu_bits, fptu_lx_bits + fptu_lt_bits);
 
   ASSERT_LE(fptu_max_cols, fptu_max_fields);
@@ -81,8 +80,7 @@ TEST(Trivia, Apriory) {
             fptu_internal_map_t2u[fptu_null]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_uint16)),
             fptu_internal_map_t2u[fptu_uint16]);
-  ASSERT_EQ(bytes2units(ct_elem_size(fptu_16)),
-            fptu_internal_map_t2u[fptu_16]);
+  ASSERT_EQ(bytes2units(ct_elem_size(fptu_16)), fptu_internal_map_t2u[fptu_16]);
 
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_int32)),
             fptu_internal_map_t2u[fptu_int32]);
@@ -90,8 +88,7 @@ TEST(Trivia, Apriory) {
             fptu_internal_map_t2u[fptu_uint32]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_fp32)),
             fptu_internal_map_t2u[fptu_fp32]);
-  ASSERT_EQ(bytes2units(ct_elem_size(fptu_32)),
-            fptu_internal_map_t2u[fptu_32]);
+  ASSERT_EQ(bytes2units(ct_elem_size(fptu_32)), fptu_internal_map_t2u[fptu_32]);
 
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_int64)),
             fptu_internal_map_t2u[fptu_int64]);
@@ -99,11 +96,9 @@ TEST(Trivia, Apriory) {
             fptu_internal_map_t2u[fptu_uint64]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_fp64)),
             fptu_internal_map_t2u[fptu_fp64]);
-  ASSERT_EQ(bytes2units(ct_elem_size(fptu_64)),
-            fptu_internal_map_t2u[fptu_64]);
+  ASSERT_EQ(bytes2units(ct_elem_size(fptu_64)), fptu_internal_map_t2u[fptu_64]);
 
-  ASSERT_EQ(bytes2units(ct_elem_size(fptu_96)),
-            fptu_internal_map_t2u[fptu_96]);
+  ASSERT_EQ(bytes2units(ct_elem_size(fptu_96)), fptu_internal_map_t2u[fptu_96]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_128)),
             fptu_internal_map_t2u[fptu_128]);
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_160)),

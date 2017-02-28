@@ -152,7 +152,6 @@ __hot fptu_ro fptu_take_noshrink(const fptu_rw *pt) {
   payload->other.varlen.tuple_items = (uint16_t)(pt->pivot - pt->head);
   // TODO: support for ordered tuples
   tuple.units = (const fptu_unit *)payload;
-  tuple.total_bytes =
-      (size_t)((char *)&pt->units[pt->tail] - (char *)payload);
+  tuple.total_bytes = (size_t)((char *)&pt->units[pt->tail] - (char *)payload);
   return tuple;
 }
