@@ -39,6 +39,13 @@
 
 #include "fast_positive/config.h"
 #include "fast_positive/defs.h"
+
+#if defined(fpta_EXPORTS)
+#define FPTA_API __dll_export
+#else
+#define FPTA_API __dll_import
+#endif
+
 #include "fast_positive/tuples.h"
 
 #include <assert.h> // for assert()
@@ -240,7 +247,7 @@ typedef enum fpta_value_type {
  *
  * В том числе для передачи ключей (проиндексированных полей)
  * и значений для сравнения в условия больше/меньше/равно/не-равно. */
-typedef struct fpta_value {
+typedef struct FPTA_API fpta_value {
   fpta_value_type type;
   unsigned binary_length;
   union {
@@ -484,13 +491,13 @@ enum fpta_error {
  *
  * Функция потоко-НЕ-безопасна в случае системной ошибки, так как при
  * этом вызывается потоко-НЕ-безопасная системная strerror(). */
-const char *fpta_strerror(int errnum);
+FPTA_API const char *fpta_strerror(int errnum);
 
 /* Потоко-безопасный вариант fpta_strerror().
  *
  * Функция потоко-безопасна в том числе в случае системной ошибки, так
  * как при этом вызывается потоко-безопасная системная strerror_r(). */
-const char *fpta_strerror_r(int errnum, char *buf, size_t buflen);
+FPTA_API const char *fpta_strerror_r(int errnum, char *buf, size_t buflen);
 
 /* Внутренняя функция, которая вызывается при фатальных ошибках и может
  * быть замещена на платформах с поддержкой __attribute__((weak)).
@@ -501,7 +508,7 @@ const char *fpta_strerror_r(int errnum, char *buf, size_t buflen);
  *    которая случилась при отмене транзакции и привела к панике.
  *  - возврат НУЛЯ приведет к вызову системной abort(), ИНАЧЕ выполнение
  *    будет продолжено с генерацией кода ошибки FPTA_WANNA_DIE. */
-int fpta_panic(int errnum_initial, int errnum_fatal);
+FPTA_API int fpta_panic(int errnum_initial, int errnum_fatal);
 
 //----------------------------------------------------------------------------
 /* Открытие и закрытие БД */
@@ -574,8 +581,9 @@ typedef enum fpta_durability {
  * позволяет отказаться от захвата pthread_rwlock_t в процессе работы.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
-                 size_t megabytes, bool alterable_schema, fpta_db **db);
+FPTA_API int fpta_db_open(const char *path, fpta_durability durability,
+                          mode_t file_mode, size_t megabytes,
+                          bool alterable_schema, fpta_db **db);
 
 /* Закрывает ранее открытую базу.
  *
@@ -583,7 +591,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
  * курсоры и завершены все транзакции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_db_close(fpta_db *db);
+FPTA_API int fpta_db_close(fpta_db *db);
 
 //----------------------------------------------------------------------------
 /* Инициация и завершение транзакций. */
@@ -668,7 +676,8 @@ typedef enum fpta_level {
 /* Инициация транзакции заданного уровня.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **txn);
+FPTA_API int fpta_transaction_begin(fpta_db *db, fpta_level level,
+                                    fpta_txn **txn);
 
 /* Завершение транзакции.
  *
@@ -679,7 +688,7 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **txn);
  * с ней курсоры.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_transaction_end(fpta_txn *txn, bool abort);
+FPTA_API int fpta_transaction_end(fpta_txn *txn, bool abort);
 
 /* Получение версии данных и схемы.
  *
@@ -687,7 +696,8 @@ int fpta_transaction_end(fpta_txn *txn, bool abort);
  * и версию схемы (которая действует внутри транзакции).
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_transaction_versions(fpta_txn *txn, uint64_t *data, uint64_t *schema);
+FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
+                                       uint64_t *schema);
 
 //----------------------------------------------------------------------------
 /* Управление схемой:
@@ -830,7 +840,7 @@ typedef enum fpta_index_type {
 typedef uint64_t fpta_shove_t;
 
 /* Набор колонок для создания таблицы */
-typedef struct fpta_column_set {
+typedef struct FPTA_API fpta_column_set {
   /* Счетчик заполненных описателей. */
   unsigned count;
   /* Упакованное внутреннее описание колонок. */
@@ -838,7 +848,7 @@ typedef struct fpta_column_set {
 } fpta_column_set;
 
 /* Вспомогательная функция, проверяет корректность имени */
-bool fpta_validate_name(const char *name);
+FPTA_API bool fpta_validate_name(const char *name);
 
 /* Вспомогательная функция для создания описания колонок.
  *
@@ -848,13 +858,14 @@ bool fpta_validate_name(const char *name);
  * Начинаться имя должно с буквы. Регистр символов не различается.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_column_describe(const char *column_name, enum fptu_type data_type,
-                         enum fpta_index_type index_type,
-                         fpta_column_set *column_set);
+FPTA_API int fpta_column_describe(const char *column_name,
+                                  enum fptu_type data_type,
+                                  enum fpta_index_type index_type,
+                                  fpta_column_set *column_set);
 
 /* Инициализирует column_set перед заполнением посредством
  * fpta_column_describe(). */
-void fpta_column_set_init(fpta_column_set *column_set);
+FPTA_API void fpta_column_set_init(fpta_column_set *column_set);
 
 /* Создание таблицы.
  *
@@ -871,8 +882,8 @@ void fpta_column_set_init(fpta_column_set *column_set);
  * фиксации транзакции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_table_create(fpta_txn *txn, const char *table_name,
-                      fpta_column_set *column_set);
+FPTA_API int fpta_table_create(fpta_txn *txn, const char *table_name,
+                               fpta_column_set *column_set);
 
 /* Удаление таблицы.
  *
@@ -881,7 +892,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
  * фиксации транзакции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_table_drop(fpta_txn *txn, const char *table_name);
+FPTA_API int fpta_table_drop(fpta_txn *txn, const char *table_name);
 
 //----------------------------------------------------------------------------
 /* Отслеживание версий схемы,
@@ -936,7 +947,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name);
 struct fpta_table_schema;
 
 /* Операционный идентификатор таблицы или колонки. */
-typedef struct fpta_name {
+typedef struct FPTA_API fpta_name {
   uint64_t version; /* версия схемы для кэширования. */
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
@@ -977,9 +988,9 @@ static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
  * игнорируется, и обрабатывается только table_id.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id);
-int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
-                             fpta_name *column_id);
+FPTA_API int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id);
+FPTA_API int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
+                                      fpta_name *column_id);
 
 /* Сбрасывает закэшированное состояние идентификатора.
  *
@@ -989,7 +1000,7 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
  * без полной инициализации, но с новым экземпляром базы.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_name_reset(fpta_name *name_id);
+FPTA_API int fpta_name_reset(fpta_name *name_id);
 
 /* Инициализирует операционный идентификатор таблицы.
  *
@@ -999,7 +1010,7 @@ int fpta_name_reset(fpta_name *name_id);
  * дайджеста MD5 для переданного имени.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_table_init(fpta_name *table_id, const char *name);
+FPTA_API int fpta_table_init(fpta_name *table_id, const char *name);
 
 /* Инициализирует операционный идентификатор колонки.
  *
@@ -1012,11 +1023,11 @@ int fpta_table_init(fpta_name *table_id, const char *name);
  * дайджеста MD5 для переданного имени.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
-                     const char *name);
+FPTA_API int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
+                              const char *name);
 
 /* Разрушает операционный идентификаторы таблиц и колонок. */
-void fpta_name_destroy(fpta_name *id);
+FPTA_API void fpta_name_destroy(fpta_name *id);
 
 /* Возвращает количество колонок в таблице.
  *
@@ -1029,7 +1040,7 @@ void fpta_name_destroy(fpta_name *id);
  * В случае успеха возвращает не-отрицательное количество колонок, либо
  * отрицательное значение как индикатор ошибки, при этом код ошибки
  * не специфицируется. */
-int fpta_table_column_count(const fpta_name *table_id);
+FPTA_API int fpta_table_column_count(const fpta_name *table_id);
 
 /* Возвращает информацию о колонке в таблице.
  *
@@ -1044,8 +1055,8 @@ int fpta_table_column_count(const fpta_name *table_id);
  * но и обязательно обновлен посредством fpta_name_refresh().
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_table_column_get(const fpta_name *table_id, unsigned column,
-                          fpta_name *column_id);
+FPTA_API int fpta_table_column_get(const fpta_name *table_id, unsigned column,
+                                   fpta_name *column_id);
 
 //----------------------------------------------------------------------------
 /* Управление фильтрами. */
@@ -1072,7 +1083,7 @@ typedef enum fpta_filter_bits {
  *
  * Текущую реализацию можно считать базовым вариантом для быстрого старта,
  * который в последствии может быть доработан. */
-typedef struct fpta_filter {
+typedef struct FPTA_API fpta_filter {
   fpta_filter_bits type;
 
   union {
@@ -1116,7 +1127,7 @@ typedef struct fpta_filter {
  *
  * Предполагается внутреннее использование, но функция также
  * доступна извне. */
-bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
+FPTA_API bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
 
 //----------------------------------------------------------------------------
 /* Управление курсорами. */
@@ -1174,10 +1185,11 @@ typedef enum fpta_cursor_options {
  * не изменяться до закрытия курсора и всех его клонов/копий.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
-                     fpta_value range_to, fpta_filter *filter,
-                     fpta_cursor_options op, fpta_cursor **cursor);
-int fpta_cursor_close(fpta_cursor *cursor);
+FPTA_API int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
+                              fpta_value range_from, fpta_value range_to,
+                              fpta_filter *filter, fpta_cursor_options op,
+                              fpta_cursor **cursor);
+FPTA_API int fpta_cursor_close(fpta_cursor *cursor);
 
 /* Проверяет наличие за курсором данных.
  *
@@ -1188,7 +1200,7 @@ int fpta_cursor_close(fpta_cursor *cursor);
  * При наличии данных возвращает 0. При отсутствии данных или неустановленном
  * курсоре FPTA_NODATA (EOF). Иначе код ошибки.
  */
-int fpta_cursor_eof(fpta_cursor *cursor);
+FPTA_API int fpta_cursor_eof(fpta_cursor *cursor);
 
 /* Возвращает количество строк попадающих в условие выборки курсора.
  *
@@ -1204,7 +1216,8 @@ int fpta_cursor_eof(fpta_cursor *cursor);
  * Если limit равен 0, то поиск производится до первой подходящей строки.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_count(fpta_cursor *cursor, size_t *count, size_t limit);
+FPTA_API int fpta_cursor_count(fpta_cursor *cursor, size_t *count,
+                               size_t limit);
 
 /* Считает и возвращает количество дубликатов для ключа в текущей
  * позиции курсора, БЕЗ учета фильтра заданного при открытии курсора.
@@ -1214,11 +1227,11 @@ int fpta_cursor_count(fpta_cursor *cursor, size_t *count, size_t limit);
  * соответствующий индекс не требует уникальности.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_dups(fpta_cursor *cursor, size_t *dups);
+FPTA_API int fpta_cursor_dups(fpta_cursor *cursor, size_t *dups);
 
 /* Возвращает строку таблицы, на которой стоит курсор.
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *tuple);
+FPTA_API int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *tuple);
 
 /* Варианты перемещения курсора. */
 typedef enum fpta_seek_operations {
@@ -1249,7 +1262,7 @@ typedef enum fpta_seek_operations {
  * с учетом фильтра, заданных при открытии курсора.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
+FPTA_API int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
 
 /* Перемещение курсора к заданному ключу или к строке с аналогичным
  * значением ключевой колонки.
@@ -1285,8 +1298,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op);
  *    использовано значение колонки соответствующей первичному ключу.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
-                       const fptu_ro *row);
+FPTA_API int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
+                                const fpta_value *key, const fptu_ro *row);
 
 /* Возвращает внутреннее значение ключа, которое соответствует
  * текущей позиции курсора.
@@ -1297,7 +1310,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
  * значение с хэшем в конце.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
+FPTA_API int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
 
 //----------------------------------------------------------------------------
 /* Манипуляция данными через курсоры. */
@@ -1337,7 +1350,7 @@ int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key);
  *     прерывание транзакции требуется для согласованности данных и индексов.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value);
+FPTA_API int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value);
 
 /* Проверяет соблюдение ограничений (constraints) перед обновлением
  * строки в текущей позиции курсора.
@@ -1347,7 +1360,8 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value);
  * которые приводят к прерыванию транзакции.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value);
+FPTA_API int fpta_cursor_validate_update(fpta_cursor *cursor,
+                                         fptu_ro new_row_value);
 
 static __inline int fpta_cursor_probe_and_update(fpta_cursor *cursor,
                                                  fptu_ro new_row_value) {
@@ -1363,7 +1377,7 @@ static __inline int fpta_cursor_probe_and_update(fpta_cursor *cursor,
  * За курсором должна быть текущая запись, иначе будет возвращена ошибка.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_cursor_delete(fpta_cursor *cursor);
+FPTA_API int fpta_cursor_delete(fpta_cursor *cursor);
 
 //----------------------------------------------------------------------------
 /* Манипуляция данными без курсоров. */
@@ -1381,8 +1395,8 @@ int fpta_cursor_delete(fpta_cursor *cursor);
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_get(fpta_txn *txn, fpta_name *column_id,
-             const fpta_value *column_value, fptu_ro *row);
+FPTA_API int fpta_get(fpta_txn *txn, fpta_name *column_id,
+                      const fpta_value *column_value, fptu_ro *row);
 
 /* Опции при помещении или обновлении данных, т.е. для fpta_put(). */
 typedef enum fpta_put_options {
@@ -1434,8 +1448,8 @@ typedef enum fpta_put_options {
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
-             fpta_put_options op);
+FPTA_API int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
+                      fpta_put_options op);
 
 /* Базовая функция для проверки соблюдения ограничений (constraints) перед
  * вставкой и обновлением строк таблицы.
@@ -1451,8 +1465,8 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
-                      fpta_put_options op);
+FPTA_API int fpta_validate_put(fpta_txn *txn, fpta_name *table_id,
+                               fptu_ro row_value, fpta_put_options op);
 
 static __inline int fpta_probe_and_put(fpta_txn *txn, fpta_name *table_id,
                                        fptu_ro row_value, fpta_put_options op) {
@@ -1644,13 +1658,13 @@ static __inline int fpta_probe_and_upsert_row(fpta_txn *txn,
  * Предварительный вызов fpta_name_refresh() не обязателен.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
+FPTA_API int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
 
 //----------------------------------------------------------------------------
 /* Манипуляция данными внутри строк. */
 
 /* Конвертирует поле кортежа в "контейнер" fpta_value. */
-fpta_value fpta_field2value(const fptu_field *pf);
+FPTA_API fpta_value fpta_field2value(const fptu_field *pf);
 
 /* Обновляет или добавляет в кортеж значение колонки.
  *
@@ -1659,8 +1673,8 @@ fpta_value fpta_field2value(const fptu_field *pf);
  * Внутри функции column_id не обновляется.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
-                       fpta_value value);
+FPTA_API int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
+                                fpta_value value);
 
 /* Получает значение указанной колонки из переданной строки.
  *
@@ -1669,8 +1683,20 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
  * Внутри функции column_id не обновляется.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
-                    fpta_value *value);
+FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
+                             fpta_value *value);
+
+//----------------------------------------------------------------------------
+/* Некоторые внутренние служебные функции.
+ * Доступны для специальных случаев, в том числе для тестов. */
+
+FPTA_API int fpta_column_set_validate(fpta_column_set *column_set);
+FPTA_API void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask);
+FPTA_API fptu_lge __fpta_filter_cmp(const fptu_field *pf,
+                                    const fpta_value *right);
+FPTA_API int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
+                                    void *key);
+FPTA_API void *__fpta_index_shove2comparator(fpta_shove_t shove);
 
 #ifdef __cplusplus
 }
@@ -1679,23 +1705,22 @@ int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
 /* Сервисные функции и классы для C++ (будет пополнять, существенно). */
 
 namespace std {
-string to_string(const fpta_error errnum);
-string to_string(const fptu_time &);
-string to_string(const fpta_value_type);
-string to_string(const fpta_value &value);
-string to_string(const fpta_durability durability);
-string to_string(const fpta_level level);
-string to_string(const fpta_index_type index);
-string to_string(const fpta_filter_bits bits);
-string to_string(const fpta_cursor_options op);
-string to_string(const fpta_seek_operations op);
-string to_string(const fpta_put_options op);
-string to_string(const fpta_name &);
-string to_string(const fpta_filter &);
-string to_string(const fpta_column_set &);
-string to_string(const fpta_db *);
-string to_string(const fpta_txn *);
-string to_string(const fpta_cursor *);
+FPTA_API string to_string(const fpta_error errnum);
+FPTA_API string to_string(const fpta_value_type);
+FPTA_API string to_string(const fpta_value &value);
+FPTA_API string to_string(const fpta_durability durability);
+FPTA_API string to_string(const fpta_level level);
+FPTA_API string to_string(const fpta_index_type index);
+FPTA_API string to_string(const fpta_filter_bits bits);
+FPTA_API string to_string(const fpta_cursor_options op);
+FPTA_API string to_string(const fpta_seek_operations op);
+FPTA_API string to_string(const fpta_put_options op);
+FPTA_API string to_string(const fpta_name &);
+FPTA_API string to_string(const fpta_filter &);
+FPTA_API string to_string(const fpta_column_set &);
+FPTA_API string to_string(const fpta_db *);
+FPTA_API string to_string(const fpta_txn *);
+FPTA_API string to_string(const fpta_cursor *);
 }
 
 static __inline fpta_value fpta_value_str(const std::string &str) {

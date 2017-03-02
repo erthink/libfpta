@@ -208,6 +208,10 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove) {
   }
 }
 
+void *__fpta_index_shove2comparator(fpta_shove_t shove) {
+  return (void *)fpta_index_shove2comparator(shove);
+}
+
 static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
                                     bool copy) {
   static_assert(fpta_max_keylen % sizeof(uint64_t) == 0,
@@ -623,6 +627,11 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
   return fpta_normalize_key(shove, key, copy);
 }
 
+int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
+                           void *key) {
+  return fpta_index_value2key(shove, *value, *(fpta_key *)key, true);
+}
+
 //----------------------------------------------------------------------------
 
 int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
@@ -772,7 +781,7 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
 __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
                              const fptu_ro &row, fpta_key &key, bool copy) {
 #ifndef NDEBUG
-  fpta_pollute(&key, sizeof(key));
+  fpta_pollute(&key, sizeof(key), 0);
 #endif
 
   fptu_type type = fpta_shove2type(shove);

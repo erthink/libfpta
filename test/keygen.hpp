@@ -46,6 +46,17 @@ bool isPrime(unsigned number);
 
 //----------------------------------------------------------------------------
 
+static __inline int value2key(fpta_shove_t shove, const fpta_value &value,
+                              fpta_key &key) {
+  return __fpta_index_value2key(shove, &value, &key);
+}
+
+static __inline MDB_cmp_func *shove2comparator(fpta_shove_t shove) {
+  return (MDB_cmp_func *)__fpta_index_shove2comparator(shove);
+}
+
+//----------------------------------------------------------------------------
+
 inline bool is_valid4primary(fptu_type type, fpta_index_type index) {
   if (index == fpta_index_none || fpta_index_is_secondary(index))
     return false;
@@ -120,8 +131,8 @@ template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
   }
 
   probe_key(const fpta_value &value) {
-    fpta_pollute(&key, sizeof(key));
-    EXPECT_EQ(FPTA_OK, fpta_index_value2key(shove(), value, key, true));
+    fpta_pollute(&key, sizeof(key), 0);
+    EXPECT_EQ(FPTA_OK, value2key(shove(), value, key));
   }
 
   const probe_key &operator=(const probe_key &) = delete;
@@ -130,7 +141,7 @@ template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
   probe_key(const probe_key &&ones) = delete;
 
   int compare(const probe_key &right) const {
-    auto comparator = fpta_index_shove2comparator(shove());
+    auto comparator = shove2comparator(shove());
     return comparator(&key.mdbx, &right.key.mdbx);
   }
 

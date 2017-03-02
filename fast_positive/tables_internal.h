@@ -153,6 +153,9 @@ static __inline int mdbx_env_open(MDB_env *, const char *, unsigned, mode_t) {
 }
 static __inline int mdbx_env_create(MDB_env **) { return ENOSYS; }
 static __inline const char *mdbx_strerror(int) { return "ENOSYS"; }
+static __inline const char *mdbx_strerror_r(int, char *, size_t) {
+  return "ENOSYS";
+}
 static __inline int mdbx_cursor_open(MDB_txn *, MDB_dbi, MDB_cursor **) {
   return ENOSYS;
 }
@@ -181,6 +184,9 @@ static __inline int mdbx_dcmp(MDB_txn *, MDB_dbi, const MDB_val *,
 static __inline int mdbx_env_set_userctx(MDB_env *, void *) { return ENOSYS; }
 static __inline int mdbx_env_set_mapsize(MDB_env *, size_t) { return ENOSYS; }
 static __inline int mdbx_env_close_ex(MDB_env *, int) { return ENOSYS; }
+
+static __inline int mdbx_cursor_on_first(MDB_cursor *) { return ENOSYS; }
+static __inline int mdbx_cursor_on_last(MDB_cursor *) { return ENOSYS; }
 
 enum stub_MDB_defs {
   MDB_NOSUBDIR,
@@ -240,8 +246,6 @@ enum stub_MDB_defs {
 extern "C" char *gets(char *);
 #endif
 
-void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask = 0);
-
 //----------------------------------------------------------------------------
 
 struct fpta_table_schema {
@@ -294,7 +298,7 @@ struct fpta_txn {
 struct fpta_key {
   fpta_key() {
 #ifndef NDEBUG
-    fpta_pollute(this, sizeof(fpta_key));
+    fpta_pollute(this, sizeof(fpta_key), 0);
 #endif
   }
   fpta_key(const fpta_key &) = delete;
@@ -463,10 +467,8 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor);
 
 //----------------------------------------------------------------------------
 
-fptu_lge fpta_filter_cmp(const fptu_field *pf, const fpta_value &right);
 bool fpta_filter_validate(const fpta_filter *filter);
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
-int fpta_column_set_validate(fpta_column_set *column_set);
 bool fpta_schema_validate(const MDB_val def);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {

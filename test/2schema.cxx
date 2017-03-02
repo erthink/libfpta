@@ -155,7 +155,7 @@ TEST(Schema, Base) {
   //------------------------------------------------------------------------
   fpta_name table, col_pk, col_a, col_b, probe_get;
 
-  fpta_pollute(&table, sizeof(table)); // чтобы valrind не ругался
+  fpta_pollute(&table, sizeof(table), 0); // чтобы valrind не ругался
   EXPECT_GT(0, fpta_table_column_count(&table));
   EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 0, &probe_get));
 
