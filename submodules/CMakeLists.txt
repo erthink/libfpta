@@ -5,6 +5,12 @@ add_library(t1ha STATIC
    t1ha/t1ha.c
 )
 
+if (CC_HAS_ARCH_NATIVE)
+   target_compile_options(t1ha PRIVATE "-march=native")
+endif()
+
+###
+
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     message (WARNING "Sorry, but Windows MUST DIE, so only a stub will be provided.")
 else()

@@ -124,6 +124,7 @@ check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
 check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
 check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
 check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
+check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
 
 #
 # Check for an omp support
