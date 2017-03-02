@@ -153,7 +153,7 @@
 #ifndef __aligned
 #	if defined(__GNUC__) || defined(__clang__)
 #		define __aligned(N) __attribute__((aligned(N)))
-#	elif defined(__MSC_VER)
+#	elif defined(_MSC_VER)
 #		define __aligned(N) __declspec(align(N))
 #	else
 #		define __aligned(N)
@@ -354,10 +354,6 @@ template <typename type>
 static __inline int fptu_cmp2int(type left, type right) {
   return (right > left) ? -1 : left > right;
 }
-
-bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end);
-uint16_t *fptu_tags(uint16_t *const first, const fptu_field *const begin,
-                    const fptu_field *const end);
 
 template <typename iterator>
 static __inline fptu_lge

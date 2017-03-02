@@ -48,10 +48,6 @@ find_program(LD ld)
 find_program(CTAGS ctags)
 find_program(CLANG_FORMAT clang-format)
 
-option(ENABLE_VALGRIND "Enable integration with valgrind, a memory analyzing tool" OFF)
-
-set(PACKAGE "libfptu")
-
 check_function_exists(memmem HAVE_MEMMEM)
 check_function_exists(memrchr HAVE_MEMRCHR)
 check_function_exists(uuidgen HAVE_UUIDGEN)
@@ -200,6 +196,8 @@ message (STATUS "")
 
 find_package(Threads REQUIRED)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
+
+set(PACKAGE "libfptu")
 
 # Specify where to look for include files.
 include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
