@@ -91,9 +91,8 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor) {
 
 //----------------------------------------------------------------------------
 
-int fpta_db_open(const char *path, fpta_durability durability,
-                 mode_t file_mode, size_t megabytes, bool alterable_schema,
-                 fpta_db **pdb) {
+int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
+                 size_t megabytes, bool alterable_schema, fpta_db **pdb) {
   if (unlikely(pdb == nullptr))
     return FPTA_EINVAL;
   *pdb = nullptr;
@@ -172,8 +171,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
 
 bailout:
   if (db->mdbx_env) {
-    int err =
-        mdbx_env_close_ex(db->mdbx_env, true /* don't touch/save/sync */);
+    int err = mdbx_env_close_ex(db->mdbx_env, true /* don't touch/save/sync */);
     assert(err == MDB_SUCCESS);
     (void)err;
   }
@@ -281,8 +279,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
     // TODO: reuse txn with mdbx_txn_reset(), but pool needed...
     rc = mdbx_txn_commit(txn->mdbx_txn);
   } else if (!abort) {
-    if (txn->level == fpta_schema &&
-        txn->schema_version == txn->data_version) {
+    if (txn->level == fpta_schema && txn->schema_version == txn->data_version) {
       rc = mdbx_canary_put(txn->mdbx_txn, nullptr);
       if (rc != MDB_SUCCESS) {
         int err = mdbx_txn_abort(txn->mdbx_txn);
@@ -305,8 +302,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   return (fpta_error)rc;
 }
 
-int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
-                              uint64_t *schema) {
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data, uint64_t *schema) {
   if (unlikely(!fpta_txn_validate(txn, fpta_read)))
     return FPTA_EINVAL;
 
@@ -323,13 +319,13 @@ int
 #if defined(__GNUC__) || __has_attribute(weak)
     __attribute__((weak))
 #endif
-    fpta_panic(int err, int fatal) {
-  (void)err;
-  (void)fatal;
+    fpta_panic(int errnum_initial, int errnum_fatal) {
+  (void)errnum_initial;
+  (void)errnum_fatal;
   return (FPTA_ENABLE_ABORT_ON_PANIC) ? 0 : -1;
 }
 
-int fpta_inconsistent_abort(fpta_txn *txn, int err) {
+int fpta_inconsistent_abort(fpta_txn *txn, int errnum) {
   /* Некоторые ошибки (например переполнение БД) могут происходить когда
    * мы выполнили лишь часть операций. В таких случаях можно лишь
    * прервать/откатить всю транзакцию, что и делает эта функция.
@@ -339,10 +335,10 @@ int fpta_inconsistent_abort(fpta_txn *txn, int err) {
 
   int rc = mdbx_txn_abort(txn->mdbx_txn);
   if (unlikely(rc != MDB_SUCCESS)) {
-    if (!fpta_panic(err, rc))
+    if (!fpta_panic(errnum, rc))
       abort();
-    err = FPTA_WANNA_DIE;
+    errnum = FPTA_WANNA_DIE;
   }
   txn->mdbx_txn = nullptr;
-  return err;
+  return errnum;
 }

@@ -37,26 +37,21 @@ TEST(Value2Key, Invalid) {
   };
 
   fpta_key key;
-  EXPECT_EQ(FPTA_EOOPS, fpta_index_value2key(
-                            fpta_column_shove(0, fptu_cstr, fpta_index_none),
-                            fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_EOOPS, fpta_index_value2key(
-                            fpta_column_shove(0, fptu_null, fpta_primary),
-                            fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_EOOPS,
+            value2key(fpta_column_shove(0, fptu_cstr, fpta_index_none),
+                      fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_EOOPS, value2key(fpta_column_shove(0, fptu_null, fpta_primary),
+                                  fpta_value_cstr("42"), key));
 
-  for (auto type = fptu_null; type <= fptu_nested;
-       type = fptu_type(type + 1)) {
+  for (auto type = fptu_null; type <= fptu_nested; type = fptu_type(type + 1)) {
     for (auto index : index_cases) {
       SCOPED_TRACE("type " + std::to_string(type));
       SCOPED_TRACE("index " + std::to_string(index));
 
       const auto valid = fpta_column_shove(0, type, index);
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(valid, fpta_value_null(), key));
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(valid, fpta_value_begin(), key));
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(valid, fpta_value_end(), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(valid, fpta_value_null(), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(valid, fpta_value_begin(), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(valid, fpta_value_end(), key));
     }
   }
 }
@@ -90,44 +85,29 @@ TEST(Value2Key, uint16) {
       fpta_column_shove(0, fptu_uint16, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_uint(UINT16_MAX - 1), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_uint(UINT16_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_uint(UINT16_MAX + 1), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
-
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_uint(UINT16_MAX - 1), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_uint(UINT16_MAX), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_uint(UINT16_MAX + 1), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT16_MAX - 1), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT16_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_sint(-42), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_sint(UINT16_MAX + 1), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+            value2key(ordered, fpta_value_uint(UINT16_MAX + 1), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
+
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_uint(UINT16_MAX - 1), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT16_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_uint(UINT16_MAX + 1), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_sint(UINT16_MAX + 1), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_uint16> probe;
@@ -167,44 +147,29 @@ TEST(Value2Key, uint32) {
       fpta_column_shove(0, fptu_uint32, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_uint(UINT32_MAX - 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_uint(UINT32_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_uint(UINT32_MAX + 1l), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
-
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_uint(UINT32_MAX - 1l), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_uint(UINT32_MAX), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_uint(UINT32_MAX + 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_sint(-42), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_sint(UINT32_MAX + 1l), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+            value2key(ordered, fpta_value_uint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
+
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_uint(UINT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT32_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_uint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_sint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_uint32> probe;
@@ -244,40 +209,25 @@ TEST(Value2Key, uint64) {
       fpta_column_shove(0, fptu_uint64, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_uint(UINT64_MAX - 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_uint(UINT64_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT64_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT64_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
   EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_uint(UINT64_MAX - 1l), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_uint(UINT64_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_sint(-42), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_sint(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(INT64_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+            value2key(unordered, fpta_value_uint(UINT64_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT64_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_uint64> probe;
@@ -317,57 +267,37 @@ TEST(Value2Key, int32) {
       fpta_column_shove(0, fptu_int32, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_sint(INT32_MIN - 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_sint(INT32_MIN), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_sint(INT32_MIN + 1), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_sint(INT32_MAX - 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_sint(INT32_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_sint(INT32_MAX + 1l), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(ordered, fpta_value_sint(INT32_MIN - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MIN + 1), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(ordered, fpta_value_sint(INT32_MAX + 1l), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_sint(INT32_MIN - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MIN + 1), key));
   EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_sint(INT32_MIN - 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(INT32_MIN), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_sint(INT32_MIN + 1), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_sint(INT32_MAX - 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(INT32_MAX), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_sint(INT32_MAX + 1l), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(INT32_MAX), key));
-  EXPECT_EQ(
-      FPTA_EVALUE,
-      fpta_index_value2key(unordered, fpta_value_uint(INT32_MAX + 1l), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+            value2key(unordered, fpta_value_sint(INT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_sint(INT32_MAX + 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(INT32_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE,
+            value2key(unordered, fpta_value_uint(INT32_MAX + 1l), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_int32> probe;
@@ -408,39 +338,24 @@ TEST(Value2Key, int64) {
       fpta_column_shove(0, fptu_int64, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_sint(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_sint(INT64_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT64_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_sint(INT64_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_uint(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(INT64_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_uint(INT64_MAX + 1ull),
-                                 key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+            value2key(unordered, fpta_value_uint(INT64_MAX + 1ull), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_int64> probe;
@@ -483,83 +398,45 @@ TEST(Value2Key, fp64) {
       fpta_column_shove(0, fptu_fp64, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT64_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(FLT_MAX), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_float(flt_pos_over), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-FLT_MAX), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_float(flt_neg_over), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(DBL_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-DBL_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(flt_pos_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-FLT_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(flt_neg_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(DBL_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-DBL_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(INT64_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(FLT_MAX), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_float(flt_pos_over), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-FLT_MAX), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_float(flt_neg_over), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(DBL_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-DBL_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(flt_pos_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-FLT_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(flt_neg_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(DBL_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-DBL_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_fp64> probe;
@@ -629,121 +506,74 @@ TEST(Value2Key, fp32) {
       fpta_column_shove(0, fptu_fp32, fpta_primary_unique_unordered);
   fpta_key key;
 
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT64_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT16_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT16_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(FLT_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_float(flt_pos_over), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-FLT_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_float(flt_neg_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT16_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT16_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(ordered, fpta_value_float(DBL_MAX), key));
+            value2key(ordered, fpta_value_float(flt_pos_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-FLT_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(ordered, fpta_value_float(-DBL_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_float(flt_pos_below), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         ordered, fpta_value_float(flt_neg_below), key));
+            value2key(ordered, fpta_value_float(flt_neg_over), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(ordered, fpta_value_float(DBL_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(ordered, fpta_value_float(-DBL_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(flt_pos_below), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(flt_neg_below), key));
 #if FPTA_PROHIBIT_LOSS_PRECISION
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(ordered, fpta_value_float(DBL_MIN), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(ordered, fpta_value_float(-DBL_MIN), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(ordered, fpta_value_float(INT32_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(ordered, fpta_value_float(DBL_MIN), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(ordered, fpta_value_float(-DBL_MIN), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(ordered, fpta_value_float(INT32_MAX), key));
 #else
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(-DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT32_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT32_MAX), key));
 #endif
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(ordered, fpta_value_float(INT32_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT32_MIN), key));
 
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(INT64_MAX), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(FLT_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             unordered, fpta_value_float(flt_pos_over), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-FLT_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-FLT_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             ordered, fpta_value_float(flt_neg_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-HUGE_VAL), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_float(DBL_MAX), key));
+            value2key(unordered, fpta_value_float(flt_pos_over), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-FLT_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-FLT_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_float(-DBL_MAX), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_float(flt_pos_below), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                         unordered, fpta_value_float(flt_neg_below), key));
+            value2key(ordered, fpta_value_float(flt_neg_over), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_float(DBL_MAX), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_float(-DBL_MAX), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_float(flt_pos_below), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_float(flt_neg_below), key));
 #if FPTA_PROHIBIT_LOSS_PRECISION
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_float(DBL_MIN), key));
+  EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_float(-DBL_MIN), key));
   EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_float(DBL_MIN), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_index_value2key(unordered, fpta_value_float(-DBL_MIN), key));
-  EXPECT_EQ(FPTA_EVALUE, fpta_index_value2key(
-                             unordered, fpta_value_float(INT32_MAX), key));
+            value2key(unordered, fpta_value_float(INT32_MAX), key));
 #else
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(unordered, fpta_value_float(-DBL_MIN), key));
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(INT32_MAX), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-DBL_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT32_MAX), key));
 #endif
-  EXPECT_EQ(FPTA_OK, fpta_index_value2key(unordered,
-                                          fpta_value_float(INT32_MIN), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT32_MIN), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_fp32> probe;
@@ -810,43 +640,28 @@ TEST(Value2Key, datetime) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered =
-      fpta_column_shove(0, fptu_datetime, fpta_primary_unique);
+  const auto ordered = fpta_column_shove(0, fptu_datetime, fpta_primary_unique);
   const auto unordered =
       fpta_column_shove(0, fptu_datetime, fpta_primary_unique_unordered);
   fpta_key key;
 
   EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(
-                ordered, fpta_value_datetime(fptu_now_coarse()), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_null(), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(ordered, fpta_value_binary("42", 2), key));
+            value2key(ordered, fpta_value_datetime(fptu_now_coarse()), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_null(), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
   EXPECT_EQ(FPTA_OK,
-            fpta_index_value2key(
-                unordered, fpta_value_datetime(fptu_now_coarse()), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_null(), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_sint(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_float(42), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_index_value2key(unordered, fpta_value_binary("42", 2), key));
+            value2key(unordered, fpta_value_datetime(fptu_now_coarse()), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_null(), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_uint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_sint(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_datetime> probe;
@@ -959,50 +774,37 @@ TYPED_TEST(Value2Key_AllString, basic) {
     const auto shove = fpta_column_shove(0, type, index);
     fpta_key key;
 
-    EXPECT_EQ(FPTA_ETYPE,
-              fpta_index_value2key(shove, fpta_value_uint(42), key));
-    EXPECT_EQ(FPTA_ETYPE,
-              fpta_index_value2key(shove, fpta_value_sint(42), key));
-    EXPECT_EQ(FPTA_ETYPE,
-              fpta_index_value2key(shove, fpta_value_float(42), key));
-    EXPECT_EQ(FPTA_ETYPE,
-              fpta_index_value2key(shove, fpta_value_begin(), key));
-    EXPECT_EQ(FPTA_ETYPE, fpta_index_value2key(shove, fpta_value_end(), key));
-    EXPECT_EQ(FPTA_ETYPE,
-              fpta_index_value2key(shove, fpta_value_null(), key));
+    EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_uint(42), key));
+    EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_sint(42), key));
+    EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_float(42), key));
+    EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_begin(), key));
+    EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_end(), key));
+    EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_null(), key));
 
     if (ct_is_fixedsize(type)) {
-      EXPECT_EQ(FPTA_DATALEN_MISMATCH,
-                fpta_index_value2key(
-                    shove, fpta_value_binary(nullptr, keylen_min - 1), key));
-      EXPECT_EQ(FPTA_DATALEN_MISMATCH,
-                fpta_index_value2key(
-                    shove, fpta_value_binary(nullptr, keylen_max + 1), key));
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(shove, fpta_value_cstr(nullptr), key));
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(shove, fpta_value_cstr("42"), key));
+      EXPECT_EQ(
+          FPTA_DATALEN_MISMATCH,
+          value2key(shove, fpta_value_binary(nullptr, keylen_min - 1), key));
+      EXPECT_EQ(
+          FPTA_DATALEN_MISMATCH,
+          value2key(shove, fpta_value_binary(nullptr, keylen_max + 1), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_cstr(nullptr), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_cstr("42"), key));
     } else if (is_string) {
-      EXPECT_EQ(FPTA_OK,
-                fpta_index_value2key(shove, fpta_value_cstr(nullptr), key));
-      EXPECT_EQ(FPTA_ETYPE, fpta_index_value2key(
-                                shove, fpta_value_binary(nullptr, 0), key));
+      EXPECT_EQ(FPTA_OK, value2key(shove, fpta_value_cstr(nullptr), key));
+      EXPECT_EQ(FPTA_ETYPE,
+                value2key(shove, fpta_value_binary(nullptr, 0), key));
       auto hack = fpta_value_cstr(nullptr);
       hack.binary_length = 1;
-      EXPECT_EQ(FPTA_EINVAL, fpta_index_value2key(shove, hack, key));
-      EXPECT_EQ(FPTA_OK,
-                fpta_index_value2key(shove, fpta_value_cstr("42"), key));
+      EXPECT_EQ(FPTA_EINVAL, value2key(shove, hack, key));
+      EXPECT_EQ(FPTA_OK, value2key(shove, fpta_value_cstr("42"), key));
     } else {
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(shove, fpta_value_cstr(nullptr), key));
-      EXPECT_EQ(FPTA_OK, fpta_index_value2key(
-                             shove, fpta_value_binary(nullptr, 0), key));
-      EXPECT_EQ(FPTA_EINVAL, fpta_index_value2key(
-                                 shove, fpta_value_binary(nullptr, 1), key));
-      EXPECT_EQ(FPTA_ETYPE,
-                fpta_index_value2key(shove, fpta_value_cstr("42"), key));
-      EXPECT_EQ(FPTA_OK,
-                fpta_index_value2key(shove, fpta_value_binary("42", 2), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_cstr(nullptr), key));
+      EXPECT_EQ(FPTA_OK, value2key(shove, fpta_value_binary(nullptr, 0), key));
+      EXPECT_EQ(FPTA_EINVAL,
+                value2key(shove, fpta_value_binary(nullptr, 1), key));
+      EXPECT_EQ(FPTA_ETYPE, value2key(shove, fpta_value_cstr("42"), key));
+      EXPECT_EQ(FPTA_OK, value2key(shove, fpta_value_binary("42", 2), key));
     }
   }
 
@@ -1064,8 +866,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
       expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
       expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
       expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique_unordered>(value_right,
-                                                     value_right);
+      expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
 
       value_left = fpta_value_binstr<type>(reverse, keylen);
       value_right = fpta_value_binstr<type>(reverse + offset, keylen);
@@ -1077,8 +878,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
       expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
       expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
       expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique_unordered>(value_right,
-                                                     value_right);
+      expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
     }
   }
 }
@@ -1132,8 +932,7 @@ TYPED_TEST(Value2Key_AllString, normal_keys) {
       unsigned order_hipart = 0;
       do {
         unsigned order = order_lopart + order_hipart;
-        bool key_is_too_short =
-            string_keygen<is_string>(keylen, order, keybuf);
+        bool key_is_too_short = string_keygen<is_string>(keylen, order, keybuf);
         if (key_is_too_short)
           break;
 
@@ -1212,8 +1011,7 @@ TYPED_TEST(Value2Key_VariableString, long_keys) {
   probe(fpta_value_binstr<type>(ones, keylen_max), INT_MAX);
 
   unsigned order_lopart = 0;
-  for (auto keylen = keylen_min; keylen <= keylen_max;
-       keylen += keylen_step) {
+  for (auto keylen = keylen_min; keylen <= keylen_max; keylen += keylen_step) {
     ++order_lopart;
     for (unsigned order_hipart = 0; order_hipart < INT_MAX / 2;) {
       order_hipart += order_hipart / 3 + 1234567;

@@ -61,10 +61,10 @@ TEST(SmokeIndex, Primary) {
   fpta_column_set def;
   fpta_column_set_init(&def);
 
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
-                                          fpta_primary, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("a_uint", fptu_uint64,
-                                          fpta_index_none, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("pk_str_uniq", fptu_cstr, fpta_primary, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("a_uint", fptu_uint64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("b_fp", fptu_fp64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -98,10 +98,8 @@ TEST(SmokeIndex, Primary) {
   ASSERT_STREQ(nullptr, fptu_check(pt1));
 
   // ради проверки пытаемся сделать нехорошее (добавить поля с нарушениями)
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_upsert_column(pt1, &col_pk, fpta_value_uint(12)));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_upsert_column(pt1, &col_a, fpta_value_sint(-34)));
+  EXPECT_EQ(FPTA_ETYPE, fpta_upsert_column(pt1, &col_pk, fpta_value_uint(12)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt1, &col_a, fpta_value_sint(-34)));
   EXPECT_EQ(FPTA_ETYPE,
             fpta_upsert_column(pt1, &col_b, fpta_value_cstr("string")));
 
@@ -109,19 +107,16 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt1, &col_pk, fpta_value_cstr("pk-string")));
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_a, fpta_value_sint(34)));
-  EXPECT_EQ(FPTA_OK,
-            fpta_upsert_column(pt1, &col_b, fpta_value_float(56.78)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_b, fpta_value_float(56.78)));
   ASSERT_STREQ(nullptr, fptu_check(pt1));
 
   // создаем еще один кортеж для второй записи
   fptu_rw *pt2 = fptu_alloc(3, 42);
   ASSERT_NE(nullptr, pt2);
   ASSERT_STREQ(nullptr, fptu_check(pt2));
-  EXPECT_EQ(FPTA_OK,
-            fpta_upsert_column(pt2, &col_pk, fpta_value_cstr("zzz")));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt2, &col_pk, fpta_value_cstr("zzz")));
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt2, &col_a, fpta_value_sint(90)));
-  EXPECT_EQ(FPTA_OK,
-            fpta_upsert_column(pt2, &col_b, fpta_value_float(12.34)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt2, &col_b, fpta_value_float(12.34)));
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
   // пытаемся обновить несуществующую запись
@@ -151,9 +146,9 @@ TEST(SmokeIndex, Primary) {
 
   // открываем простейщий курсор: на всю таблицу, без фильтра
   fpta_cursor *cursor;
-  EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_pk, fpta_value_begin(),
-                                      fpta_value_end(), nullptr,
-                                      fpta_unsorted_dont_fetch, &cursor));
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_pk, fpta_value_begin(), fpta_value_end(),
+                             nullptr, fpta_unsorted_dont_fetch, &cursor));
   ASSERT_NE(nullptr, cursor);
 
   // узнам сколько записей за курсором (в таблице).
@@ -289,10 +284,10 @@ TEST(SmokeIndex, Secondary) {
   fpta_column_set def;
   fpta_column_set_init(&def);
 
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
-                                          fpta_primary, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("a_uint", fptu_uint64,
-                                          fpta_secondary, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("pk_str_uniq", fptu_cstr, fpta_primary, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("a_uint", fptu_uint64, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("b_fp", fptu_fp64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -326,10 +321,8 @@ TEST(SmokeIndex, Secondary) {
   ASSERT_STREQ(nullptr, fptu_check(pt1));
 
   // ради проверки пытаемся сделать нехорошее (добавить поля с нарушениями)
-  EXPECT_EQ(FPTA_ETYPE,
-            fpta_upsert_column(pt1, &col_pk, fpta_value_uint(12)));
-  EXPECT_EQ(FPTA_EVALUE,
-            fpta_upsert_column(pt1, &col_a, fpta_value_sint(-34)));
+  EXPECT_EQ(FPTA_ETYPE, fpta_upsert_column(pt1, &col_pk, fpta_value_uint(12)));
+  EXPECT_EQ(FPTA_EVALUE, fpta_upsert_column(pt1, &col_a, fpta_value_sint(-34)));
   EXPECT_EQ(FPTA_ETYPE,
             fpta_upsert_column(pt1, &col_b, fpta_value_cstr("string")));
 
@@ -337,19 +330,16 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt1, &col_pk, fpta_value_cstr("pk-string")));
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_a, fpta_value_sint(34)));
-  EXPECT_EQ(FPTA_OK,
-            fpta_upsert_column(pt1, &col_b, fpta_value_float(56.78)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_b, fpta_value_float(56.78)));
   ASSERT_STREQ(nullptr, fptu_check(pt1));
 
   // создаем еще один кортеж для второй записи
   fptu_rw *pt2 = fptu_alloc(3, 42);
   ASSERT_NE(nullptr, pt2);
   ASSERT_STREQ(nullptr, fptu_check(pt2));
-  EXPECT_EQ(FPTA_OK,
-            fpta_upsert_column(pt2, &col_pk, fpta_value_cstr("zzz")));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt2, &col_pk, fpta_value_cstr("zzz")));
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt2, &col_a, fpta_value_sint(90)));
-  EXPECT_EQ(FPTA_OK,
-            fpta_upsert_column(pt2, &col_b, fpta_value_float(12.34)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt2, &col_b, fpta_value_float(12.34)));
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
   // пытаемся обновить несуществующую запись
@@ -379,9 +369,9 @@ TEST(SmokeIndex, Secondary) {
 
   // открываем простейщий курсор: на всю таблицу, без фильтра
   fpta_cursor *cursor;
-  EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_a, fpta_value_begin(),
-                                      fpta_value_end(), nullptr,
-                                      fpta_unsorted_dont_fetch, &cursor));
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_a, fpta_value_begin(), fpta_value_end(),
+                             nullptr, fpta_unsorted_dont_fetch, &cursor));
   ASSERT_NE(nullptr, cursor);
 
   // узнам сколько записей за курсором (в таблице).
@@ -640,9 +630,9 @@ public:
       scoped_cursor_guard guard;
       fpta_cursor *cursor;
       EXPECT_EQ(FPTA_OK,
-                fpta_cursor_open(txn_guard.get(), &col_uint,
-                                 fpta_value_begin(), fpta_value_end(),
-                                 nullptr, fpta_unsorted_dont_fetch, &cursor));
+                fpta_cursor_open(txn_guard.get(), &col_uint, fpta_value_begin(),
+                                 fpta_value_end(), nullptr,
+                                 fpta_unsorted_dont_fetch, &cursor));
       ASSERT_NE(cursor, nullptr);
       guard.reset(cursor);
       ASSERT_NO_FATAL_FAILURE(Check(cursor));
@@ -654,9 +644,9 @@ public:
       scoped_cursor_guard guard;
       fpta_cursor *cursor;
       EXPECT_EQ(FPTA_OK,
-                fpta_cursor_open(txn_guard.get(), &col_str,
-                                 fpta_value_begin(), fpta_value_end(),
-                                 nullptr, fpta_unsorted_dont_fetch, &cursor));
+                fpta_cursor_open(txn_guard.get(), &col_str, fpta_value_begin(),
+                                 fpta_value_end(), nullptr,
+                                 fpta_unsorted_dont_fetch, &cursor));
       ASSERT_NE(cursor, nullptr);
       guard.reset(cursor);
       ASSERT_NO_FATAL_FAILURE(Check(cursor));
@@ -668,9 +658,9 @@ public:
       scoped_cursor_guard guard;
       fpta_cursor *cursor;
       EXPECT_EQ(FPTA_OK,
-                fpta_cursor_open(txn_guard.get(), &col_real,
-                                 fpta_value_begin(), fpta_value_end(),
-                                 nullptr, fpta_unsorted_dont_fetch, &cursor));
+                fpta_cursor_open(txn_guard.get(), &col_real, fpta_value_begin(),
+                                 fpta_value_end(), nullptr,
+                                 fpta_unsorted_dont_fetch, &cursor));
       ASSERT_NE(cursor, nullptr);
       guard.reset(cursor);
       ASSERT_NO_FATAL_FAILURE(Check(cursor));
@@ -812,8 +802,7 @@ TEST_F(SmokeCRUD, none) {
 
   // начинаем транзакцию для вставки данных
   fpta_txn *txn = nullptr;
-  EXPECT_EQ(FPTA_OK,
-            fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
   ASSERT_NE(nullptr, txn);
   txn_guard.reset(txn);
 
@@ -840,15 +829,13 @@ TEST_F(SmokeCRUD, none) {
       unsigned pk_uint_value = mesh_order4uint(i, NNN);
       unsigned order_se_str = mesh_order4str(i, NNN);
       unsigned order_se_real = mesh_order4real(i, NNN);
-      double se_real_value =
-          mapdup_order2key(order_se_real, NNN) / (double)NNN;
+      double se_real_value = mapdup_order2key(order_se_real, NNN) / (double)NNN;
 
-      SCOPED_TRACE("add: row " + std::to_string(i) + " of [0.." +
-                   std::to_string(NNN) + "), orders: " +
-                   std::to_string(pk_uint_value) + " / " +
-                   std::to_string(order_se_str) + " / " +
-                   std::to_string(order_se_real) + " (" +
-                   std::to_string(se_real_value) + ")");
+      SCOPED_TRACE(
+          "add: row " + std::to_string(i) + " of [0.." + std::to_string(NNN) +
+          "), orders: " + std::to_string(pk_uint_value) + " / " +
+          std::to_string(order_se_str) + " / " + std::to_string(order_se_real) +
+          " (" + std::to_string(se_real_value) + ")");
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
 
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
@@ -862,11 +849,11 @@ TEST_F(SmokeCRUD, none) {
 
       /* пытаемся вставить неполноценную строку, в которой сейчас
        * не хватает одного из индексируемых полей, поэтому вместо
-       * MDB_NOTFOUND должно быть возвращено FPTA_ROW_MISMATCH */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
-                                       txn, &table, fptu_take_noshrink(row)));
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_insert_row(
-                                       txn, &table, fptu_take_noshrink(row)));
+       * MDB_NOTFOUND должно быть возвращено FPTA_COLUMN_MISSING */
+      EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_upsert_row(
+                                         txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_insert_row(
+                                         txn, &table, fptu_take_noshrink(row)));
 
       /* добавляем недостающее индексируемое поле */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
@@ -890,19 +877,18 @@ TEST_F(SmokeCRUD, none) {
       datetime.fixedpoint = 0;
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(datetime)));
-      EXPECT_EQ(FPTA_OK,
-                fpta_update_row(txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем поле `time`, проверяя как update, так и upsert. */
       datetime = fptu_now_fine();
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(datetime)));
       if (i & 2)
-        EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(
-                               txn, &table, fptu_take_noshrink(row)));
+        EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(txn, &table,
+                                                     fptu_take_noshrink(row)));
       else
-        EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(
-                               txn, &table, fptu_take_noshrink(row)));
+        EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn, &table,
+                                                     fptu_take_noshrink(row)));
 
       /* еще раз пробуем вставить дубликат */
       EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
@@ -940,8 +926,7 @@ TEST_F(SmokeCRUD, none) {
   unsigned nn = 0;
 
   // начинаем транзакцию для проверочных обновлений
-  EXPECT_EQ(FPTA_OK,
-            fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
   ASSERT_NE(nullptr, txn);
   txn_guard.reset(txn);
 
@@ -955,10 +940,9 @@ TEST_F(SmokeCRUD, none) {
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
-      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
       if (m & 1)
         item->se_str += "42";
@@ -966,10 +950,9 @@ TEST_F(SmokeCRUD, none) {
         item->se_real += 42;
       if (m & 4)
         item->time.fixedpoint += 42;
-      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
                                             fpta_value_str(item->se_str)));
@@ -978,8 +961,8 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_probe_and_upsert_row(
-                                       txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_upsert_row(
+                                         txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
@@ -1007,10 +990,9 @@ TEST_F(SmokeCRUD, none) {
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
-      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       fpta_value key = fpta_value_str(item->se_str);
       ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
@@ -1027,10 +1009,9 @@ TEST_F(SmokeCRUD, none) {
         item->se_real += 42;
       if (m & 4)
         item->time.fixedpoint += 42;
-      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
                                             fpta_value_str(item->se_str)));
@@ -1039,14 +1020,14 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
-                                       cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
                                             fpta_value_uint(item->pk_uint)));
-      ASSERT_EQ(FPTA_OK, fpta_cursor_probe_and_update(
-                             cursor, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       ASSERT_NO_FATAL_FAILURE(Check());
     }
@@ -1074,10 +1055,9 @@ TEST_F(SmokeCRUD, none) {
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
-      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       // считаем сколько должно быть повторов
       unsigned expected_dups = 0;
@@ -1093,9 +1073,8 @@ TEST_F(SmokeCRUD, none) {
          * только по ключу не возможно, создаем фейковую строку с PK
          * и искомым значением для поиска */
         ASSERT_EQ(FPTU_OK, fptu_clear(row));
-        ASSERT_EQ(FPTA_OK,
-                  fpta_upsert_column(row, &col_uint,
-                                     fpta_value_uint(item->pk_uint)));
+        ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                              fpta_value_uint(item->pk_uint)));
         ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real, key));
         fptu_ro row_value = fptu_take_noshrink(row);
         /* теперь поиск должен быть успешен */
@@ -1116,10 +1095,9 @@ TEST_F(SmokeCRUD, none) {
         item->se_str += "42";
       if (m & 4)
         item->time.fixedpoint += 42;
-      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
                                             fpta_value_uint(item->pk_uint)));
@@ -1128,14 +1106,14 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
-                                       cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
                                             fpta_value_str(item->se_str)));
-      ASSERT_EQ(FPTA_OK, fpta_cursor_probe_and_update(
-                             cursor, fptu_take_noshrink(row)));
+      ASSERT_EQ(FPTA_OK,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
       ASSERT_NO_FATAL_FAILURE(Check());
     }
 
@@ -1162,10 +1140,9 @@ TEST_F(SmokeCRUD, none) {
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
       crud_item *item = container[n].get();
-      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-src: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       fpta_value key = fpta_value_uint(item->pk_uint);
       ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
@@ -1182,10 +1159,9 @@ TEST_F(SmokeCRUD, none) {
         item->se_real += 42;
       if (m & 4)
         item->time.fixedpoint += 42;
-      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) +
-                   ", str \"" + item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+      SCOPED_TRACE("row-dst: pk " + std::to_string(item->pk_uint) + ", str \"" +
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
                                             fpta_value_str(item->se_str)));
@@ -1194,14 +1170,14 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(item->time)));
       /* пробуем обновить без одного поля */
-      EXPECT_EQ(FPTA_ROW_MISMATCH, fpta_cursor_probe_and_update(
-                                       cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_COLUMN_MISSING,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
 
       /* обновляем строку */
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
                                             fpta_value_uint(item->pk_uint)));
-      EXPECT_EQ(FPTA_OK, fpta_cursor_probe_and_update(
-                             cursor, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_OK,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
       ASSERT_NO_FATAL_FAILURE(Check());
     }
 
@@ -1228,8 +1204,7 @@ TEST_F(SmokeCRUD, none) {
   const int ndel = NNN / 2 / 4;
 
   // начинаем транзакцию для проверочных удалений
-  EXPECT_EQ(FPTA_OK,
-            fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
   ASSERT_NE(nullptr, txn);
   txn_guard.reset(txn);
 
@@ -1243,9 +1218,8 @@ TEST_F(SmokeCRUD, none) {
       crud_item *item = container[n].get();
       ASSERT_NE(nullptr, item);
       SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                   item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
 
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_str,
@@ -1305,9 +1279,8 @@ TEST_F(SmokeCRUD, none) {
       crud_item *item = container[n].get();
       ASSERT_NE(nullptr, item);
       SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                   item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       fpta_value key = fpta_value_str(item->se_str);
       ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
@@ -1355,9 +1328,8 @@ TEST_F(SmokeCRUD, none) {
       crud_item *item = container[n].get();
       ASSERT_NE(nullptr, item);
       SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                   item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       // считаем сколько должно быть повторов
       unsigned expected_dups = 0;
@@ -1374,9 +1346,8 @@ TEST_F(SmokeCRUD, none) {
          * только по ключу не возможно, создаем фейковую строку с PK
          * и искомым значением для поиска */
         ASSERT_EQ(FPTU_OK, fptu_clear(row));
-        ASSERT_EQ(FPTA_OK,
-                  fpta_upsert_column(row, &col_uint,
-                                     fpta_value_uint(item->pk_uint)));
+        ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_uint,
+                                              fpta_value_uint(item->pk_uint)));
         ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_real, key));
         row_value = fptu_take_noshrink(row);
         /* теперь поиск должен быть успешен */
@@ -1395,8 +1366,7 @@ TEST_F(SmokeCRUD, none) {
       ndeleted++;
 
       if (--expected_dups == 0) {
-        ASSERT_EQ(FPTA_NODATA,
-                  fpta_cursor_locate(cursor, true, &key, nullptr));
+        ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
         EXPECT_EQ(FPTA_DEADBEEF, dups);
@@ -1434,9 +1404,8 @@ TEST_F(SmokeCRUD, none) {
       crud_item *item = container[n].get();
       ASSERT_NE(nullptr, item);
       SCOPED_TRACE("row: pk " + std::to_string(item->pk_uint) + ", str \"" +
-                   item->se_str + "\", real " +
-                   std::to_string(item->se_real) + ", time " +
-                   std::to_string(item->time));
+                   item->se_str + "\", real " + std::to_string(item->se_real) +
+                   ", time " + std::to_string(item->time));
 
       fpta_value key = fpta_value_uint(item->pk_uint);
       ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));

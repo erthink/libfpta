@@ -135,8 +135,8 @@ static __hot fptu_lge fpta_cmp_datetime(const fptu_field *left,
   return fptu_cmp2lge(payload->u64, right.fixedpoint);
 }
 
-static __hot fptu_lge fpta_cmp_string(const fptu_field *left,
-                                      const char *right, size_t length) {
+static __hot fptu_lge fpta_cmp_string(const fptu_field *left, const char *right,
+                                      size_t length) {
   auto payload = fptu_field_payload(left);
 
   switch (fptu_get_type(left->ct)) {
@@ -206,8 +206,8 @@ static __hot fptu_lge fpta_cmp_binary(const fptu_field *left,
 
 //----------------------------------------------------------------------------
 
-__hot fptu_lge fpta_filter_cmp(const fptu_field *pf,
-                               const fpta_value &right) {
+static __hot fptu_lge fpta_filter_cmp(const fptu_field *pf,
+                                      const fpta_value &right) {
   if ((unlikely(pf == nullptr)))
     return (right.type == fpta_null) ? fptu_eq : fptu_ic;
 
@@ -238,6 +238,10 @@ __hot fptu_lge fpta_filter_cmp(const fptu_field *pf,
     assert(false);
     return fptu_ic;
   }
+}
+
+fptu_lge __fpta_filter_cmp(const fptu_field *pf, const fpta_value *right) {
+  return fpta_filter_cmp(pf, *right);
 }
 
 __hot bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple) {

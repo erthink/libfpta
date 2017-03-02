@@ -139,8 +139,7 @@ static __inline int mdbx_txn_renew(MDB_txn *) { return ENOSYS; }
 static __inline int mdbx_txn_reset(MDB_txn *) { return ENOSYS; }
 static __inline int mdbx_txn_abort(MDB_txn *) { return ENOSYS; }
 static __inline int mdbx_txn_commit(MDB_txn *) { return ENOSYS; }
-static __inline int mdbx_txn_begin(MDB_env *, MDB_txn *, unsigned,
-                                   MDB_txn **) {
+static __inline int mdbx_txn_begin(MDB_env *, MDB_txn *, unsigned, MDB_txn **) {
   return ENOSYS;
 }
 static __inline int mdbx_env_set_maxdbs(MDB_env *, MDB_dbi) { return ENOSYS; }
@@ -154,6 +153,9 @@ static __inline int mdbx_env_open(MDB_env *, const char *, unsigned, mode_t) {
 }
 static __inline int mdbx_env_create(MDB_env **) { return ENOSYS; }
 static __inline const char *mdbx_strerror(int) { return "ENOSYS"; }
+static __inline const char *mdbx_strerror_r(int, char *, size_t) {
+  return "ENOSYS";
+}
 static __inline int mdbx_cursor_open(MDB_txn *, MDB_dbi, MDB_cursor **) {
   return ENOSYS;
 }
@@ -170,9 +172,7 @@ static __inline int mdbx_cursor_put(MDB_cursor *, MDB_val *, MDB_val *,
   return ENOSYS;
 }
 static __inline int mdbx_cursor_del(MDB_cursor *, unsigned) { return ENOSYS; }
-static __inline int mdbx_cursor_count(MDB_cursor *, size_t *) {
-  return ENOSYS;
-}
+static __inline int mdbx_cursor_count(MDB_cursor *, size_t *) { return ENOSYS; }
 static __inline int mdbx_cmp(MDB_txn *, MDB_dbi, const MDB_val *,
                              const MDB_val *) {
   return 0;
@@ -184,6 +184,9 @@ static __inline int mdbx_dcmp(MDB_txn *, MDB_dbi, const MDB_val *,
 static __inline int mdbx_env_set_userctx(MDB_env *, void *) { return ENOSYS; }
 static __inline int mdbx_env_set_mapsize(MDB_env *, size_t) { return ENOSYS; }
 static __inline int mdbx_env_close_ex(MDB_env *, int) { return ENOSYS; }
+
+static __inline int mdbx_cursor_on_first(MDB_cursor *) { return ENOSYS; }
+static __inline int mdbx_cursor_on_last(MDB_cursor *) { return ENOSYS; }
 
 enum stub_MDB_defs {
   MDB_NOSUBDIR,
@@ -243,8 +246,6 @@ enum stub_MDB_defs {
 extern "C" char *gets(char *);
 #endif
 
-void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask = 0);
-
 //----------------------------------------------------------------------------
 
 struct fpta_table_schema {
@@ -297,7 +298,7 @@ struct fpta_txn {
 struct fpta_key {
   fpta_key() {
 #ifndef NDEBUG
-    fpta_pollute(this, sizeof(fpta_key));
+    fpta_pollute(this, sizeof(fpta_key), 0);
 #endif
   }
   fpta_key(const fpta_key &) = delete;
@@ -347,9 +348,7 @@ struct fpta_cursor {
     return current.iov_base ? FPTA_NODATA : FPTA_ECURSOR;
   }
 
-  bool is_before_first() const {
-    return current.iov_base == eof(before_first);
-  }
+  bool is_before_first() const { return current.iov_base == eof(before_first); }
   bool is_after_last() const { return current.iov_base == eof(after_last); }
   void set_eof(eof_mode mode) { current.iov_base = eof(mode); }
 #else
@@ -468,10 +467,8 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor);
 
 //----------------------------------------------------------------------------
 
-fptu_lge fpta_filter_cmp(const fptu_field *pf, const fpta_value &right);
 bool fpta_filter_validate(const fpta_filter *filter);
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
-int fpta_column_set_validate(fpta_column_set *column_set);
 bool fpta_schema_validate(const MDB_val def);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
@@ -560,7 +557,7 @@ static __inline bool fpta_cursor_is_ascending(fpta_cursor_options op) {
   return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
 }
 
-int fpta_inconsistent_abort(fpta_txn *txn, int err);
+int fpta_inconsistent_abort(fpta_txn *txn, int errnum);
 
 static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
   return a.iov_len == b.iov_len &&

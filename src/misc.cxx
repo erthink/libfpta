@@ -18,17 +18,96 @@
  */
 
 #include "fast_positive/tables_internal.h"
+#include <cinttypes> // for PRId64, PRIu64
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
+static const char *__fpta_errstr(int errnum) {
+  switch (errnum) {
+  default:
+    return NULL;
+
+  case FPTA_SUCCESS:
+    return "FPTA: Success";
+
+  case FPTA_EOOPS:
+    return "FPTA: Internal unexpected Oops";
+
+  case FPTA_SCHEMA_CORRUPTED:
+    return "FPTA: Schema is invalid or corrupted";
+
+  case FPTA_ETYPE:
+    return "FPTA: Type mismatch (given value vs column/field or index)";
+
+  case FPTA_DATALEN_MISMATCH:
+    return "FPTA: Data length mismatch (given value vs data type)";
+
+  case FPTA_KEY_MISMATCH:
+    return "FPTA: Key mismatch while updating row via cursor";
+
+  case FPTA_COLUMN_MISSING:
+    return "FPTA: Required column missing";
+
+  case FPTA_INDEX_CORRUPTED:
+    return "FPTA: Index is inconsistent or corrupted";
+
+  case FPTA_NO_INDEX:
+    return "FPTA: No (such) index for given column";
+
+  case FPTA_SCHEMA_CHANGED:
+    return "FPTA: Schema changed (transaction should be restared)";
+
+  case FPTA_ECURSOR:
+    return "FPTA: Cursor is not positioned";
+
+  case FPTA_TOOMANY:
+    return "FPTA: Too many columns or indexes (limit reached)";
+
+  case FPTA_WANNA_DIE:
+    return "FPTA: Failure while transaction rollback (wanna die)";
+
+  case FPTA_EINVAL /* EINVAL */:
+    return "FPTA: Invalid argument";
+  case FPTA_ENOMEM /* ENOMEM */:
+    return "FPTA: Out of memory";
+  case FPTA_ENOIMP /* may == ENOSYS */:
+    return "FPTA: Not yet implemented";
+
+  case FPTA_NODATA /* -1, EOF */:
+    return "FPTA: No data or EOF was reached";
+
+  case FPTA_ENOSPACE /* FPTU_ENOSPACE, may == ENOSPC */:
+    return "FPTA: No space left in row/tuple";
+
+  case FPTA_ENOFIELD /* FPTU_ENOFIELD, may == ENOENT */:
+    return "FPTA: No such column/field";
+
+  case FPTA_EVALUE /* may == EDOM */:
+    return "FPTA: Value is invalid or out of range";
+  }
+}
+
+const char *fpta_strerror(int errnum) {
+  const char *msg = __fpta_errstr(errnum);
+  return msg ? msg : mdbx_strerror(errnum);
+}
+
+const char *fpta_strerror_r(int errnum, char *buf, size_t buflen) {
+  const char *msg = __fpta_errstr(errnum);
+  return msg ? msg : mdbx_strerror_r(errnum, buf, buflen);
+}
+
 namespace std {
 
-__cold string to_string(fpta_error) { return FIXME; }
+__cold string to_string(const fpta_error errnum) {
+  /* FIXME: use fpta_strerror_r() ? */
+  return fpta_strerror(errnum);
+}
 
-__cold string to_string(fpta_value_type type) {
+__cold string to_string(const fpta_value_type type) {
   switch (type) {
   default:
-    return "invalid(fpta_value_type)" + to_string((int)type);
+    return fptu::format("invalid(fpta_value_type)%i", (int)type);
 
   case fpta_null:
     return "null";
@@ -53,23 +132,77 @@ __cold string to_string(fpta_value_type type) {
   }
 }
 
-__cold string to_string(const fpta_value) { return FIXME; }
+__cold string to_string(const fpta_value &value) {
+  switch (value.type) {
+  default:
+    return fptu::format("invalid(fpta_value_type)%i", (int)value.type);
 
-__cold string to_string(fpta_durability) { return FIXME; }
+  case fpta_null:
+    return "null";
+  case fpta_begin:
+    return "<begin>";
+  case fpta_end:
+    return "<end>";
 
-__cold string to_string(fpta_level) { return FIXME; }
+  case fpta_signed_int:
+    return fptu::format("%-" PRId64, value.sint);
 
-__cold string to_string(const fpta_db *) { return FIXME; }
+  case fpta_unsigned_int:
+    return fptu::format("%" PRIu64, value.sint);
 
-__cold string to_string(const fpta_txn *) { return FIXME; }
+  case fpta_datetime:
+    return to_string(value.datetime);
 
-__cold string to_string(fpta_index_type index) {
+  case fpta_float_point:
+    return fptu::format("%.10g", value.fp);
+
+  case fpta_string:
+    return fptu::format("\"%.*s\"", value.binary_length,
+                        (const char *)value.binary_data);
+
+  case fpta_binary:
+    return fptu::hexadecimal(value.binary_data, value.binary_length);
+
+  case fpta_shoved:
+    return "@" + fptu::hexadecimal(value.binary_data, value.binary_length);
+  }
+}
+
+__cold string to_string(const fpta_durability durability) {
+  switch (durability) {
+  default:
+    return fptu::format("invalid(fpta_durability)%i", (int)durability);
+  case fpta_readonly:
+    return "mode-readonly";
+  case fpta_sync:
+    return "mode-sync";
+  case fpta_lazy:
+    return "mode-lazy";
+  case fpta_async:
+    return "mode-async";
+  }
+}
+
+__cold string to_string(const fpta_level level) {
+  switch (level) {
+  default:
+    return fptu::format("invalid(fpta_level)%i", (int)level);
+  case fpta_read:
+    return "level-read";
+  case fpta_write:
+    return "level-write";
+  case fpta_schema:
+    return "level-schema";
+  }
+}
+
+__cold string to_string(const fpta_index_type index) {
   switch (index) {
   default:
-    return "invalid(fpta_index_type)" + to_string((int)index);
+    return fptu::format("invalid(fpta_index_type)%i", (int)index);
 
   case fpta_index_none:
-    return "none";
+    return "index-none";
 
   case fpta_primary_withdups:
     return "primary-withdups-obverse";
@@ -99,20 +232,43 @@ __cold string to_string(fpta_index_type index) {
   }
 }
 
-__cold string to_string(const fpta_column_set &) { return FIXME; }
+__cold string to_string(const fpta_schema_item item) {
+  switch (item) {
+  default:
+    return fptu::format("invalid(fpta_schema_item)%i", (int)item);
+  case fpta_table:
+    return "table";
+  case fpta_column:
+    return "column";
+  }
+}
 
-__cold string to_string(const fpta_name &) { return FIXME; }
+__cold string to_string(const fpta_filter_bits bits) {
+  switch (bits) {
+  default:
+    return fptu::format("invalid(fpta_filter_bits)%i", (int)bits);
+  case fpta_node_not:
+    return "NOT";
+  case fpta_node_or:
+    return "OR";
+  case fpta_node_and:
+    return "AND";
+  case fpta_node_fn:
+    return "FN()";
+  case fpta_node_lt:
+  case fpta_node_gt:
+  case fpta_node_le:
+  case fpta_node_ge:
+  case fpta_node_eq:
+  case fpta_node_ne:
+    return to_string((fptu_lge)bits);
+  }
+}
 
-__cold string to_string(fpta_schema_item) { return FIXME; }
-
-__cold string to_string(fpta_filter_bits) { return FIXME; }
-
-__cold string to_string(const fpta_filter &) { return FIXME; }
-
-__cold string to_string(fpta_cursor_options op) {
+__cold string to_string(const fpta_cursor_options op) {
   switch (op) {
   default:
-    return "invalid(fpta_cursor_options)" + to_string((int)op);
+    return fptu::format("invalid(fpta_cursor_options)%i", (int)op);
   case fpta_unsorted:
     return "unsorted";
   case fpta_ascending:
@@ -128,11 +284,57 @@ __cold string to_string(fpta_cursor_options op) {
   }
 }
 
+__cold string to_string(const fpta_seek_operations op) {
+  switch (op) {
+  default:
+    return fptu::format("invalid(fpta_seek_operations)%i", (int)op);
+  case fpta_first:
+    return "row.first";
+  case fpta_last:
+    return "row.last";
+  case fpta_next:
+    return "row.next";
+  case fpta_prev:
+    return "row.prev";
+  case fpta_dup_first:
+    return "dup.first";
+  case fpta_dup_last:
+    return "dup.last";
+  case fpta_dup_next:
+    return "dup.next";
+  case fpta_dup_prev:
+    return "dup.prev";
+  case fpta_key_next:
+    return "key.next";
+  case fpta_key_prev:
+    return "key.prev";
+  }
+}
+
+__cold string to_string(const fpta_put_options op) {
+  switch (op) {
+  default:
+    return fptu::format("invalid(fpta_put_options)%i", (int)op);
+  case fpta_insert:
+    return "insert";
+  case fpta_update:
+    return "update";
+  case fpta_upsert:
+    return "upsert";
+  }
+}
+
+__cold string to_string(const fpta_name &) { return FIXME; }
+
+__cold string to_string(const fpta_column_set &) { return FIXME; }
+
+__cold string to_string(const fpta_filter &) { return FIXME; }
+
+__cold string to_string(const fpta_db *) { return FIXME; }
+
+__cold string to_string(const fpta_txn *) { return FIXME; }
+
 __cold string to_string(const fpta_cursor *) { return FIXME; }
-
-__cold string to_string(fpta_seek_operations) { return FIXME; }
-
-__cold string to_string(fpta_put_options) { return FIXME; }
 }
 
 void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {

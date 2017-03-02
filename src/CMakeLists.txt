@@ -11,6 +11,10 @@ add_library(fpta SHARED
    misc.cxx
 )
 
+if (CC_HAS_VISIBILITY)
+   target_compile_options(fpta PRIVATE "-fvisibility=hidden")
+endif()
+
 if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
    target_link_libraries(fpta mdbx)
 endif()

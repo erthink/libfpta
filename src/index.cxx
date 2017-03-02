@@ -21,19 +21,18 @@
 
 //----------------------------------------------------------------------------
 
-#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) ||         \
+#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) ||           \
     !defined(__ORDER_BIG_ENDIAN__)
 #error __BYTE_ORDER__ should be defined.
 #endif
 
-#if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__ &&                             \
+#if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__ &&                               \
     __BYTE_ORDER__ != __ORDER_BIG_ENDIAN__
 #error Unsupported byte order.
 #endif
 
 #if !defined(UNALIGNED_OK)
-#if defined(__i386) || defined(__x86_64) || defined(_M_IX86) ||              \
-    defined(_M_X64)
+#if defined(__i386) || defined(__x86_64) || defined(_M_IX86) || defined(_M_X64)
 #define UNALIGNED_OK 1
 #else
 #define UNALIGNED_OK 0
@@ -146,8 +145,7 @@ static int __hot fpta_idxcmp_fp64(const MDB_val *a, const MDB_val *b) {
   if ((negative ^ vb) < 0)
     return negative ? -1 : 1;
 
-  int cmp =
-      fptu_cmp2int(va & 0x7fffFFFFffffFFFFll, vb & 0x7fffFFFFffffFFFFll);
+  int cmp = fptu_cmp2int(va & 0x7fffFFFFffffFFFFll, vb & 0x7fffFFFFffffFFFFll);
   return negative ? -cmp : cmp;
 }
 
@@ -210,6 +208,10 @@ __hot MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove) {
   }
 }
 
+void *__fpta_index_shove2comparator(fpta_shove_t shove) {
+  return (void *)fpta_index_shove2comparator(shove);
+}
+
 static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
                                     bool copy) {
   static_assert(fpta_max_keylen % sizeof(uint64_t) == 0,
@@ -262,8 +264,7 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
            fpta_max_keylen);
   }
 
-  static_assert(sizeof(key.place.longkey_msb) ==
-                    sizeof(key.place.longkey_lsb),
+  static_assert(sizeof(key.place.longkey_msb) == sizeof(key.place.longkey_lsb),
                 "something wrong");
   key.mdbx.mv_size = sizeof(key.place.longkey_msb);
   key.mdbx.mv_data = &key.place.longkey_msb;
@@ -278,8 +279,7 @@ static __inline unsigned shove2dbiflags(fpta_shove_t shove) {
   assert(type != fptu_null);
   assert(index != fpta_index_none);
 
-  unsigned dbi_flags =
-      fpta_index_is_unique(index) ? 0u : (unsigned)MDB_DUPSORT;
+  unsigned dbi_flags = fpta_index_is_unique(index) ? 0u : (unsigned)MDB_DUPSORT;
   if (type < fptu_96 || !fpta_index_is_ordered(index))
     dbi_flags |= MDB_INTEGERKEY;
   else if (fpta_index_is_reverse(index))
@@ -372,12 +372,12 @@ bool fpta_index_unordered_is_compat(fptu_type data_type,
       0,
 
       /* fpta_signed_int */
-      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-          1 << fptu_int32 | 1 << fptu_int64,
+      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 | 1 << fptu_int32 |
+          1 << fptu_int64,
 
       /* fpta_unsigned_int */
-      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-          1 << fptu_int32 | 1 << fptu_int64,
+      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 | 1 << fptu_int32 |
+          1 << fptu_int64,
 
       /* fpta_date_time */
       1 << fptu_datetime,
@@ -627,6 +627,11 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
   return fpta_normalize_key(shove, key, copy);
 }
 
+int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
+                           void *key) {
+  return fpta_index_value2key(shove, *value, *(fpta_key *)key, true);
+}
+
 //----------------------------------------------------------------------------
 
 int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
@@ -776,14 +781,14 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
 __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
                              const fptu_ro &row, fpta_key &key, bool copy) {
 #ifndef NDEBUG
-  fpta_pollute(&key, sizeof(key));
+  fpta_pollute(&key, sizeof(key), 0);
 #endif
 
   fptu_type type = fpta_shove2type(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
   if (unlikely(field == nullptr))
-    return FPTA_ROW_MISMATCH;
+    return FPTA_COLUMN_MISSING;
 
   const fptu_payload *payload = fptu_field_payload(field);
   switch (type) {

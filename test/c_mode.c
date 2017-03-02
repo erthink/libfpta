@@ -21,9 +21,9 @@
 #include <fast_positive/tables.h>
 
 #ifdef _MSC_VER
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(                                                             \
+#pragma warning(                                                               \
     disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
 #endif /* windows mustdie */
 

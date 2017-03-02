@@ -37,10 +37,9 @@ int fpta_cursor_close(fpta_cursor *cursor) {
   return FPTA_SUCCESS;
 }
 
-int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
-                     fpta_value range_from, fpta_value range_to,
-                     fpta_filter *filter, fpta_cursor_options op,
-                     fpta_cursor **pcursor) {
+int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
+                     fpta_value range_to, fpta_filter *filter,
+                     fpta_cursor_options op, fpta_cursor **pcursor) {
   if (unlikely(pcursor == nullptr))
     return FPTA_EINVAL;
   *pcursor = nullptr;
@@ -151,8 +150,8 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
 
   if (likely(mdbx_seek_key == NULL)) {
     assert(mdbx_seek_data == NULL);
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                         &mdbx_data.sys, mdbx_seek_op);
+    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &mdbx_data.sys,
+                         mdbx_seek_op);
   } else {
     /* Помещаем целевой ключ и данные (адреса и размер)
      * в cursor->current и mdbx_data, это требуется для того чтобы:
@@ -192,8 +191,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
     }
 
     if (fpta_cursor_is_descending(cursor->options) &&
-        (mdbx_seek_op == MDB_GET_BOTH_RANGE ||
-         mdbx_seek_op == MDB_SET_RANGE)) {
+        (mdbx_seek_op == MDB_GET_BOTH_RANGE || mdbx_seek_op == MDB_SET_RANGE)) {
       /* Корректировка перемещения для курсора с сортировкой по-убыванию.
        *
        * Внутри mdbx_cursor_get() выполняет позиционирование аналогично
@@ -219,8 +217,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                    &cursor->current, mdbx_seek_key) < 0) {
         goto eof;
       } else if (rc == MDB_NOTFOUND &&
-                 mdbx_cursor_on_last(cursor->mdbx_cursor) ==
-                     MDBX_RESULT_TRUE) {
+                 mdbx_cursor_on_last(cursor->mdbx_cursor) == MDBX_RESULT_TRUE) {
         rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                              &mdbx_data.sys, MDB_LAST);
       }
@@ -249,8 +246,8 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
 
     if (fpta_index_is_secondary(cursor->index.shove)) {
       MDB_val pk_key = mdbx_data.sys;
-      rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
-                    &pk_key, &mdbx_data.sys);
+      rc = mdbx_get(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi, &pk_key,
+                    &mdbx_data.sys);
       if (unlikely(rc != MDB_SUCCESS))
         return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
     }
@@ -259,8 +256,8 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
       return FPTA_SUCCESS;
 
   next:
-    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                         &mdbx_data.sys, mdbx_step_op);
+    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &mdbx_data.sys,
+                         mdbx_step_op);
   }
 
   if (unlikely(rc != MDB_NOTFOUND)) {
@@ -404,8 +401,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
                           nullptr);
 }
 
-int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
-                       const fpta_value *key, const fptu_ro *row) {
+int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
+                       const fptu_ro *row) {
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
 
@@ -464,10 +461,10 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
         if (rc == FPTA_SUCCESS) {
           /* Используем уточняющее значение PK только если в строке-образце
            * есть соответствующая колонка. При этом игнорируем отсутствие
-           * колонки (ошибку FPTA_ROW_MISMATCH). */
+           * колонки (ошибку FPTA_COLUMN_MISSING). */
           mdbx_seek_data = &pk_key.mdbx;
           mdbx_seek_op = exactly ? MDB_GET_BOTH : MDB_GET_BOTH_RANGE;
-        } else if (rc != FPTA_ROW_MISMATCH) {
+        } else if (rc != FPTA_COLUMN_MISSING) {
           cursor->set_poor();
           return rc;
         } else {
@@ -536,8 +533,8 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly,
         return rc;
       }
 
-      cmp = mdbx_dcmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                      &mdbx_data, mdbx_seek_data);
+      cmp = mdbx_dcmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi, &mdbx_data,
+                      mdbx_seek_data);
       if (cmp <= 0)
         return FPTA_SUCCESS;
     }
@@ -765,7 +762,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return rc;
 
   if (!fpta_is_same(cursor->current, column_key.mdbx))
-    return FPTA_ROW_MISMATCH;
+    return FPTA_KEY_MISMATCH;
 
   if (!fpta_table_has_secondary(cursor->table_id))
     return FPTA_SUCCESS;
@@ -816,7 +813,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return rc;
 
   if (!fpta_is_same(cursor->current, column_key.mdbx))
-    return FPTA_ROW_MISMATCH;
+    return FPTA_KEY_MISMATCH;
 
   if (!fpta_table_has_secondary(cursor->table_id))
     return mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,

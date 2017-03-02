@@ -80,15 +80,15 @@ TEST(Schema, Trivia) {
 
   EXPECT_EQ(EEXIST, fpta_column_describe("column_b", fptu_cstr,
                                          fpta_primary_unique, &def));
-  EXPECT_EQ(EEXIST, fpta_column_describe("column_a", fptu_cstr,
-                                         fpta_secondary, &def));
+  EXPECT_EQ(EEXIST,
+            fpta_column_describe("column_a", fptu_cstr, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("column_b", fptu_cstr,
-                                          fpta_secondary, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("column_b", fptu_cstr, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
-  EXPECT_EQ(EEXIST, fpta_column_describe("column_b", fptu_fp64,
-                                         fpta_secondary, &def));
+  EXPECT_EQ(EEXIST,
+            fpta_column_describe("column_b", fptu_fp64, fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   EXPECT_EQ(FPTA_OK, fpta_column_describe("column_c", fptu_uint16,
                                           fpta_secondary, &def));
@@ -155,9 +155,9 @@ TEST(Schema, Base) {
   //------------------------------------------------------------------------
   fpta_name table, col_pk, col_a, col_b, probe_get;
 
-  fpta_pollute(&table, sizeof(table)); // чтобы valrind не ругался
+  fpta_pollute(&table, sizeof(table), 0); // чтобы valrind не ругался
   EXPECT_GT(0, fpta_table_column_count(&table));
-  EXPECT_EQ(EINVAL, fpta_table_column_get(&table, 0, &probe_get));
+  EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 0, &probe_get));
 
   EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "tAbLe_1"));
   EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_1"));
@@ -166,7 +166,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_b, "second_FP"));
 
   EXPECT_GT(0, fpta_table_column_count(&table));
-  EXPECT_EQ(EINVAL, fpta_table_column_get(&table, 0, &probe_get));
+  EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 0, &probe_get));
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
   ASSERT_NE(nullptr, txn);
@@ -182,7 +182,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(0, memcmp(&probe_get, &col_a, sizeof(fpta_name)));
   EXPECT_EQ(FPTA_OK, fpta_table_column_get(&table, 2, &probe_get));
   EXPECT_EQ(0, memcmp(&probe_get, &col_b, sizeof(fpta_name)));
-  EXPECT_EQ(EINVAL, fpta_table_column_get(&table, 3, &probe_get));
+  EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 3, &probe_get));
 
   EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.shove));
   EXPECT_EQ(fpta_primary_unique, fpta_name_colindex(&col_pk));

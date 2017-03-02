@@ -123,6 +123,8 @@ check_c_compiler_flag("-fno-stack-protector" CC_HAS_FNO_STACK_PROTECTOR)
 check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
 check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
 check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
+check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
+check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
 
 #
 # Check for an omp support
@@ -254,10 +256,6 @@ macro(setup_compile_flags)
         add_compile_flags("CXX"
             "-Wno-invalid-offsetof"
         )
-    endif()
-
-    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
-        add_compile_flags("C;CXX" "-march=native")
     endif()
 
     add_definitions("-D__STDC_FORMAT_MACROS=1")

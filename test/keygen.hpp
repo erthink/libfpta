@@ -30,23 +30,30 @@
 #include <vector>
 
 /* "хорошие" значения float: близкие к представимым, но НЕ превосходящие их */
-static constexpr float flt_neg_below =
-    -FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
-static constexpr float flt_pos_below =
-    FLT_MAX - (double)FLT_MAX * FLT_EPSILON;
+static constexpr float flt_neg_below = -FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
+static constexpr float flt_pos_below = FLT_MAX - (double)FLT_MAX * FLT_EPSILON;
 static_assert(flt_neg_below > -FLT_MAX, "unexpected precision loss");
 static_assert(flt_pos_below < FLT_MAX, "unexpected precision loss");
 
 /* "плохие" значения float: немного вне представимого диапазона */
-static constexpr double flt_neg_over =
-    -FLT_MAX - (double)FLT_MAX * FLT_EPSILON;
-static constexpr double flt_pos_over =
-    FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
+static constexpr double flt_neg_over = -FLT_MAX - (double)FLT_MAX * FLT_EPSILON;
+static constexpr double flt_pos_over = FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
 static_assert(flt_neg_over <= -FLT_MAX, "unexpected precision loss");
 static_assert(flt_pos_over >= FLT_MAX, "unexpected precision loss");
 
 /* простейший медленный тест на простоту */
 bool isPrime(unsigned number);
+
+//----------------------------------------------------------------------------
+
+static __inline int value2key(fpta_shove_t shove, const fpta_value &value,
+                              fpta_key &key) {
+  return __fpta_index_value2key(shove, &value, &key);
+}
+
+static __inline MDB_cmp_func *shove2comparator(fpta_shove_t shove) {
+  return (MDB_cmp_func *)__fpta_index_shove2comparator(shove);
+}
 
 //----------------------------------------------------------------------------
 
@@ -63,8 +70,7 @@ inline bool is_valid4primary(fptu_type type, fpta_index_type index) {
   return true;
 }
 
-inline bool is_valid4cursor(fpta_index_type index,
-                            fpta_cursor_options cursor) {
+inline bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor) {
   if (index == fpta_index_none)
     return false;
 
@@ -125,8 +131,8 @@ template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
   }
 
   probe_key(const fpta_value &value) {
-    fpta_pollute(&key, sizeof(key));
-    EXPECT_EQ(FPTA_OK, fpta_index_value2key(shove(), value, key, true));
+    fpta_pollute(&key, sizeof(key), 0);
+    EXPECT_EQ(FPTA_OK, value2key(shove(), value, key));
   }
 
   const probe_key &operator=(const probe_key &) = delete;
@@ -135,17 +141,13 @@ template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
   probe_key(const probe_key &&ones) = delete;
 
   int compare(const probe_key &right) const {
-    auto comparator = fpta_index_shove2comparator(shove());
+    auto comparator = shove2comparator(shove());
     return comparator(&key.mdbx, &right.key.mdbx);
   }
 
-  bool operator==(const probe_key &right) const {
-    return compare(right) == 0;
-  }
+  bool operator==(const probe_key &right) const { return compare(right) == 0; }
 
-  bool operator!=(const probe_key &right) const {
-    return compare(right) != 0;
-  }
+  bool operator!=(const probe_key &right) const { return compare(right) != 0; }
 
   bool operator<(const probe_key &right) const { return compare(right) < 0; }
 
@@ -285,8 +287,7 @@ void string_keygen_test(const size_t keylen_min, const size_t keylen_max) {
 
   SCOPED_TRACE(std::string("string_keygen_test: ") +
                (printable ? "string" : "binary") + ", keylen " +
-               std::to_string(keylen_min) + "..." +
-               std::to_string(keylen_max));
+               std::to_string(keylen_min) + "..." + std::to_string(keylen_max));
 
   uint8_t buffer_a[keylen_max + 1];
   uint8_t *prev = buffer_a;
@@ -357,9 +358,9 @@ struct scalar_range_stepper {
     const int scope_pos =
         N - scope_neg - 1 - std::numeric_limits<type>::has_infinity * 2;
 
-    assert((!std::is_signed<type>() ||
-            std::numeric_limits<type>::lowest() < 0) &&
-           "expected lowest() < 0 for signed types");
+    assert(
+        (!std::is_signed<type>() || std::numeric_limits<type>::lowest() < 0) &&
+        "expected lowest() < 0 for signed types");
     assert(scope_pos > 1 && "seems N is too small");
     assert(std::numeric_limits<type>::max() > (double)scope_pos &&
            "seems N is too big");
@@ -651,8 +652,7 @@ struct keygen<index, fptu_96> : public fixbin_stepper<96 / 8>,
                                 keygen_base<index, fptu_96> {
   static constexpr fptu_type type = fptu_96;
   static fpta_value make(int order, unsigned const N) {
-    return fixbin_stepper<96 / 8>::make(order, fpta_index_is_reverse(index),
-                                        N);
+    return fixbin_stepper<96 / 8>::make(order, fpta_index_is_reverse(index), N);
   }
 };
 
@@ -697,8 +697,8 @@ template <fpta_index_type index>
 struct keygen<index, fptu_cstr> : public varbin_stepper<fptu_cstr> {
   static constexpr fptu_type type = fptu_cstr;
   static fpta_value make(int order, unsigned const N) {
-    return varbin_stepper<fptu_cstr>::make(order,
-                                           fpta_index_is_reverse(index), N);
+    return varbin_stepper<fptu_cstr>::make(order, fpta_index_is_reverse(index),
+                                           N);
   }
 };
 
@@ -744,9 +744,7 @@ class any_keygen {
 
 public:
   any_keygen(fptu_type type, fpta_index_type index);
-  fpta_value make(int order, unsigned const N) const {
-    return maker(order, N);
-  }
+  fpta_value make(int order, unsigned const N) const { return maker(order, N); }
 };
 
 //----------------------------------------------------------------------------

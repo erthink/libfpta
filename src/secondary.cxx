@@ -86,10 +86,10 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
       /* Старой версии нет, выполняется добавление новой строки */
       assert(pk_key_old.iov_base == pk_key_new.iov_base);
       /* Вставляем новую пару в secondary индекс */
-      rc = mdbx_put(txn->mdbx_txn, dbi[i], &fk_key_new.mdbx, &pk_key_new,
-                    fpta_index_is_unique(index)
-                        ? MDB_NODUPDATA | MDB_NOOVERWRITE
-                        : MDB_NODUPDATA);
+      rc =
+          mdbx_put(txn->mdbx_txn, dbi[i], &fk_key_new.mdbx, &pk_key_new,
+                   fpta_index_is_unique(index) ? MDB_NODUPDATA | MDB_NOOVERWRITE
+                                               : MDB_NODUPDATA);
       if (unlikely(rc != MDB_SUCCESS))
         return rc;
 
