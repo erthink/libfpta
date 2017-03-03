@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <functional>
 
-bool __hot fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
+__hot bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
   if (likely(end > begin + 1)) {
     /* При формировании кортежа дескрипторы полей физически размещаются
      * в обратном порядке. Считаем что они в правильном порядке, когда
