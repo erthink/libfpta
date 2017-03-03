@@ -26,9 +26,10 @@
 #include <ctime>     // for gmtime()
 
 #if defined(_WIN32) || defined(_WIN64)
-__extern_C __declspec(dllimport) __noreturn
-    void __cdecl _assert(char const *message, char const *filename,
-                         unsigned line);
+
+__extern_C __declspec(dllimport) void __cdecl _assert(char const *message,
+                                                      char const *filename,
+                                                      unsigned line);
 
 void __assert_fail(const char *assertion, const char *filename, unsigned line,
                    const char *function) {
@@ -185,7 +186,7 @@ __cold string to_string(const fptu_error error) {
 
 template <typename native>
 static inline std::string
-array2str_native(unsigned ct, const fptu_payload *payload, const char *name,
+array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
                  const char *comma_fmt) {
   std::string result = fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
                                     payload->other.varlen.array_length,
@@ -198,7 +199,7 @@ array2str_native(unsigned ct, const fptu_payload *payload, const char *name,
   return result + "}";
 }
 
-static std::string array2str_fixbin(unsigned ct, const fptu_payload *payload,
+static std::string array2str_fixbin(uint16_t ct, const fptu_payload *payload,
                                     const char *name, unsigned itemsize) {
   std::string result = fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
                                     payload->other.varlen.array_length,
