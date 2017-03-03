@@ -123,6 +123,7 @@ check_c_compiler_flag("-fno-stack-protector" CC_HAS_FNO_STACK_PROTECTOR)
 check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
 check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
 check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
+check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
 
 #
 # Check for an omp support
@@ -192,6 +193,10 @@ endif()
 #
 
 macro(setup_compile_flags)
+    # LY: reset C/CXX flags
+    set(CXX_FLAGS "")
+    set(C_FLAGS "")
+
     if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
         # Remove VALGRIND code and assertions in *any* type of release build.
         add_definitions("-DNDEBUG" "-DNVALGRIND")
@@ -221,10 +226,6 @@ macro(setup_compile_flags)
             add_compile_flags("C;CXX" "-fno-stack-protector")
         endif()
     endif()
-
-    # libfptu code is written in GNU C dialect.
-    # Additionally, compile it with more strict flags than the rest
-    # of the code.
 
     # Set standard
     if (HAVE_STD_C11)
@@ -256,17 +257,13 @@ macro(setup_compile_flags)
         )
     endif()
 
-    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
-        add_compile_flags("C;CXX" "-march=native")
-    endif()
-
     add_definitions("-D__STDC_FORMAT_MACROS=1")
     add_definitions("-D__STDC_LIMIT_MACROS=1")
     add_definitions("-D__STDC_CONSTANT_MACROS=1")
 
     # Only add -Werror if it's a debug build, done by developers.
     # Release builds should not cause extra trouble.
-    if (CC_HAS_WERROR AND (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if (CC_HAS_WERROR AND (CMAKE_BUILD_TYPE STREQUAL "Debug")
         AND HAVE_STD_C11 AND HAVE_STD_CXX11)
         add_compile_flags("C;CXX" "-Werror")
     endif()
@@ -274,6 +271,31 @@ macro(setup_compile_flags)
     if (HAVE_OPENMP)
         add_compile_flags("C;CXX" "-fopenmp")
     endif()
+
+    if (ENABLE_GCOV)
+	if (NOT HAVE_GCOV)
+	message (FATAL_ERROR
+	     "ENABLE_GCOV option requested but gcov library is not found")
+	endif()
+
+	add_compile_flags("C;CXX" "-fprofile-arcs" "-ftest-coverage")
+	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs")
+	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -ftest-coverage")
+	set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fprofile-arcs")
+	set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -ftest-coverage")
+
+       # add_library(gcov SHARED IMPORTED)
+    endif()
+
+    if (ENABLE_GPROF)
+	add_compile_flags("C;CXX" "-pg")
+    endif()
+
+    # LY: push C/CXX flags into the cache
+    set(CMAKE_CXX_FLAGS ${CXX_FLAGS} CACHE STRING "Flags used by the C++ compiler during all build types" FORCE)
+    set(CMAKE_C_FLAGS ${C_FLAGS} CACHE STRING "Flags used by the C compiler during all build types" FORCE)
+    unset(CXX_FLAGS)
+    unset(C_FLAGS)
 endmacro(setup_compile_flags)
 
 if (CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCC)

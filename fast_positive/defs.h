@@ -173,26 +173,10 @@
 #	endif
 #endif
 
-#ifndef __hidden
-#	if defined(__GNUC__) || __has_attribute(visibility)
-#		define __hidden __attribute__((visibility("hidden")))
-#	else
-#		define __hidden
-#	endif
-#endif
-
-#ifndef __public
-#	if defined(__GNUC__) || __has_attribute(visibility)
-#		define __public __attribute__((visibility("default")))
-#	else
-#		define __public
-#	endif
-#endif
-
 #ifndef __noreturn
 #	if defined(__GNUC__) || __has_attribute(noreturn)
 #		define __noreturn __attribute__((noreturn))
-#	elif defined(__MSC_VER)
+#	elif defined(_MSC_VER)
 #		define __noreturn __declspec(noreturn)
 #	else
 #		define __noreturn
@@ -202,7 +186,7 @@
 #ifndef __nothrow
 #	if defined(__GNUC__) || __has_attribute(nothrow)
 #		define __nothrow __attribute__((nothrow))
-#	elif defined(__MSC_VER)
+#	elif defined(_MSC_VER)
 #		define __nothrow __declspec(nothrow)
 #	else
 #		define __nothrow
@@ -238,3 +222,41 @@
 #		define __const_function
 #	endif
 #endif /* __const_function */
+
+#ifndef __dll_hidden
+#	if defined(__GNUC__) || __has_attribute(visibility)
+#		define __hidden __attribute__((visibility("hidden")))
+#	else
+#		define __hidden
+#	endif
+#endif /* __dll_hidden */
+
+#ifndef __dll_export
+#	if defined(_WIN32) || defined(__CYGWIN__)
+#		if defined(__GNUC__) || __has_attribute(dllexport)
+#			define __dll_export __attribute__((dllexport))
+#		elif defined(_MSC_VER)
+#			define __dll_export __declspec(dllexport)
+#		else
+#			define __dll_export
+#		endif
+#	elif defined(__GNUC__) || __has_attribute(visibility)
+#		define __dll_export __attribute__((visibility("default")))
+#	else
+#		define __dll_export
+#	endif
+#endif /* __dll_export */
+
+#ifndef __dll_import
+#	if defined(_WIN32) || defined(__CYGWIN__)
+#		if defined(__GNUC__) || __has_attribute(dllimport)
+#			define __dll_import __attribute__((dllimport))
+#		elif defined(_MSC_VER)
+#			define __dll_import __declspec(dllimport)
+#		else
+#			define __dll_import
+#		endif
+#	else
+#		define __dll_import
+#	endif
+#endif /* __dll_import */

@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <functional>
 
-bool __hot fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
+__hot bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
   if (likely(end > begin + 1)) {
     /* При формировании кортежа дескрипторы полей физически размещаются
      * в обратном порядке. Считаем что они в правильном порядке, когда
@@ -87,8 +87,7 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
   const unsigned blank =
       (have & fptu_fr_mask) ? 0u : (unsigned)fptu_ct_reserve_bits +
                                        ((have & fptu_farray) ? 0u : 1u);
-  const unsigned lo_part =
-      (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
+  const unsigned lo_part = (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
   const unsigned hi_part = lo_part ^ UINT16_MAX;
   assert((lo_part >> blank) >= (have & lo_part));
   const auto top = (have & lo_part) + ((have & hi_part) >> blank) + 1;

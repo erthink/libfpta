@@ -28,8 +28,7 @@ static bool field_filter_any(const fptu_field *, void *context, void *param) {
   return true;
 }
 
-static bool field_filter_none(const fptu_field *, void *context,
-                              void *param) {
+static bool field_filter_none(const fptu_field *, void *context, void *param) {
   (void)context;
   (void)param;
   return false;
@@ -44,15 +43,14 @@ TEST(Iterate, Empty) {
   EXPECT_EQ(0, fptu_space4items(pt));
   EXPECT_EQ(0, fptu_space4data(pt));
   EXPECT_EQ(0, fptu_junkspace(pt));
-  ASSERT_EQ(fptu_end(pt), fptu_begin(pt));
+  ASSERT_EQ(fptu_end_rw(pt), fptu_begin_rw(pt));
 
-  const fptu_field *end = fptu_end(pt);
+  const fptu_field *end = fptu_end_rw(pt);
   EXPECT_EQ(end, fptu_first(end, end, 0, fptu_any));
   EXPECT_EQ(end, fptu_next(end, end, 0, fptu_any));
   EXPECT_EQ(end, fptu_first_ex(end, end, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(end, fptu_next_ex(end, end, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(end,
-            fptu_first_ex(end, end, field_filter_none, nullptr, nullptr));
+  EXPECT_EQ(end, fptu_first_ex(end, end, field_filter_none, nullptr, nullptr));
   EXPECT_EQ(end, fptu_next_ex(end, end, field_filter_none, nullptr, nullptr));
 
   EXPECT_EQ(0, fptu_field_count(pt, 0, fptu_any));
@@ -62,13 +60,11 @@ TEST(Iterate, Empty) {
   fptu_ro ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
   ASSERT_EQ(fptu_end_ro(ro), fptu_begin_ro(ro));
-  EXPECT_EQ(fptu_end(pt), fptu_end_ro(ro));
-  EXPECT_EQ(fptu_begin(pt), fptu_begin_ro(ro));
+  EXPECT_EQ(fptu_end_rw(pt), fptu_end_ro(ro));
+  EXPECT_EQ(fptu_begin_rw(pt), fptu_begin_ro(ro));
   EXPECT_EQ(0, fptu_field_count_ro(ro, 0, fptu_any));
-  EXPECT_EQ(0,
-            fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0,
-            fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
+  EXPECT_EQ(0, fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0, fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
 }
 
 TEST(Iterate, Simple) {
@@ -79,43 +75,39 @@ TEST(Iterate, Simple) {
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 0));
   ASSERT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(1, fptu_end(pt) - fptu_begin(pt));
+  EXPECT_EQ(1, fptu_end_rw(pt) - fptu_begin_rw(pt));
 
-  const fptu_field *end = fptu_end(pt);
-  const fptu_field *begin = fptu_begin(pt);
+  const fptu_field *end = fptu_end_rw(pt);
+  const fptu_field *begin = fptu_begin_rw(pt);
   fptu_ro ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
 
   EXPECT_EQ(begin,
             fptu_first_ex(begin, end, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(end,
-            fptu_next_ex(begin, end, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(end, fptu_next_ex(begin, end, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(begin, fptu_first(begin, end, 0, fptu_any));
   EXPECT_EQ(end, fptu_next(begin, end, 0, fptu_any));
 
   EXPECT_EQ(end,
             fptu_first_ex(begin, end, field_filter_none, nullptr, nullptr));
-  EXPECT_EQ(end,
-            fptu_next_ex(begin, end, field_filter_none, nullptr, nullptr));
+  EXPECT_EQ(end, fptu_next_ex(begin, end, field_filter_none, nullptr, nullptr));
   EXPECT_EQ(end, fptu_first(begin, end, 1, fptu_any));
   EXPECT_EQ(end, fptu_next(begin, end, 1, fptu_any));
 
-  EXPECT_EQ(fptu_end(pt), fptu_end_ro(ro));
-  EXPECT_EQ(fptu_begin(pt), fptu_begin_ro(ro));
+  EXPECT_EQ(fptu_end_rw(pt), fptu_end_ro(ro));
+  EXPECT_EQ(fptu_begin_rw(pt), fptu_begin_ro(ro));
 
   EXPECT_EQ(1, fptu_field_count(pt, 0, fptu_any));
   EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(1, fptu_field_count_ro(ro, 0, fptu_any));
-  EXPECT_EQ(1,
-            fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(1, fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_none, nullptr, nullptr));
-  EXPECT_EQ(0,
-            fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
+  EXPECT_EQ(0, fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_null(pt, 1));
   ASSERT_STREQ(nullptr, fptu_check(pt));
-  end = fptu_end(pt);
-  begin = fptu_begin(pt);
+  end = fptu_end_rw(pt);
+  begin = fptu_begin_rw(pt);
   ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
 
@@ -129,18 +121,16 @@ TEST(Iterate, Simple) {
   EXPECT_EQ(2, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(1, fptu_field_count_ro(ro, 0, fptu_any));
   EXPECT_EQ(1, fptu_field_count_ro(ro, 1, fptu_any));
-  EXPECT_EQ(2,
-            fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(2, fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_none, nullptr, nullptr));
-  EXPECT_EQ(0,
-            fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
+  EXPECT_EQ(0, fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
 
   for (unsigned n = 1; n < 11; n++) {
     SCOPED_TRACE("n = " + std::to_string(n));
     EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 2, 42));
     ASSERT_STREQ(nullptr, fptu_check(pt));
-    end = fptu_end(pt);
-    begin = fptu_begin(pt);
+    end = fptu_end_rw(pt);
+    begin = fptu_begin_rw(pt);
     ro = fptu_take_noshrink(pt);
     ASSERT_STREQ(nullptr, fptu_check_ro(ro));
 
@@ -154,8 +144,7 @@ TEST(Iterate, Simple) {
     EXPECT_EQ(0, fptu_field_count(pt, 2, fptu_null));
     EXPECT_EQ(2 + n,
               fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-    EXPECT_EQ(0,
-              fptu_field_count_ex(pt, field_filter_none, nullptr, nullptr));
+    EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_none, nullptr, nullptr));
 
     EXPECT_EQ(1, fptu_field_count_ro(ro, 0, fptu_any));
     EXPECT_EQ(1, fptu_field_count_ro(ro, 0, fptu_null));
@@ -164,10 +153,10 @@ TEST(Iterate, Simple) {
     EXPECT_EQ(0, fptu_field_count_ro(ro, 3, fptu_uint32));
     EXPECT_EQ(2 + n,
               fptu_field_count_ro_ex(ro, field_filter_any, nullptr, nullptr));
-    EXPECT_EQ(
-        0, fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
+    EXPECT_EQ(0,
+              fptu_field_count_ro_ex(ro, field_filter_none, nullptr, nullptr));
 
-    EXPECT_EQ(2 + n, fptu_end(pt) - fptu_begin(pt));
+    EXPECT_EQ(2 + n, fptu_end_rw(pt) - fptu_begin_rw(pt));
   }
 }
 

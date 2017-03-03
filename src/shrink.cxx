@@ -27,8 +27,8 @@ enum {
 };
 
 static unsigned fptu_state(const fptu_rw *pt) {
-  const fptu_field *const begin = fptu_begin(pt);
-  const fptu_field *const end = fptu_end(pt);
+  const fptu_field *const begin = fptu_begin_rw(pt);
+  const fptu_field *const end = fptu_end_rw(pt);
   const char *prev_payload = (const char *)end;
   unsigned prev_ct = 0;
 

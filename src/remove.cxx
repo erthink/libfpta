@@ -19,8 +19,7 @@
 
 #include "fast_positive/tuples_internal.h"
 
-static __inline bool fptu_is_tailed(fptu_rw *pt, fptu_field *pf,
-                                    size_t units) {
+static __inline bool fptu_is_tailed(fptu_rw *pt, fptu_field *pf, size_t units) {
   assert(pf == &pt->units[pt->head].field);
 
   return units == 0 ||

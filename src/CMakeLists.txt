@@ -1,4 +1,4 @@
-add_library(fptu STATIC
+add_library(fptu SHARED
     ../fast_positive/defs.h
     ../fast_positive/tuples.h
     ../fast_positive/tuples_internal.h
@@ -14,6 +14,11 @@ add_library(fptu STATIC
     iterator.cxx
     sort.cxx
     time.cxx
+    data.cxx
 )
 
 target_link_libraries(fptu ${LIB_MATH} ${CMAKE_THREAD_LIBS_INIT})
+
+if (CC_HAS_VISIBILITY)
+   target_compile_options(fptu PRIVATE "-fvisibility=hidden")
+endif()

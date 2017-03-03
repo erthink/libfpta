@@ -19,9 +19,10 @@
 
 #include "fast_positive/tuples_internal.h"
 
-static __hot const char *
-fptu_field_check(const fptu_field *pf, const char *pivot, const char *detent,
-                 size_t &payload_units, const char *&prev_payload) {
+static __hot const char *fptu_field_check(const fptu_field *pf,
+                                          const char *pivot, const char *detent,
+                                          size_t &payload_units,
+                                          const char *&prev_payload) {
   payload_units = 0;
   if (unlikely(detent < (const char *)pf + fptu_unit_size))
     return "field.header > detent";
@@ -161,8 +162,7 @@ const char *fptu_check(const fptu_rw *pt) {
   if (unlikely(pt->pivot - pt->head > fptu_max_fields))
     return "tuple.n_cols > fptu_max_fields";
 
-  if (unlikely(pt->tail - pt->head >
-               fptu_max_tuple_bytes / fptu_unit_size - 1))
+  if (unlikely(pt->tail - pt->head > fptu_max_tuple_bytes / fptu_unit_size - 1))
     return "tuple.size > max_bytes";
 
   if (unlikely(pt->junk > pt->tail - pt->head))

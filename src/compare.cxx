@@ -97,8 +97,8 @@ fptu_lge fptu_cmp_opaque_iov(fptu_ro ro, unsigned column,
 
 //----------------------------------------------------------------------------
 
-static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
-                                          const fptu_field *right) {
+__hot static fptu_lge fptu_cmp_fields_same_type(const fptu_field *left,
+                                                const fptu_field *right) {
   assert(left != nullptr && right != nullptr);
   assert(fptu_get_type(left->ct) == fptu_get_type(right->ct));
 
@@ -169,34 +169,15 @@ fptu_lge fptu_cmp_fields(const fptu_field *left, const fptu_field *right) {
 
 //----------------------------------------------------------------------------
 
-fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
-#ifdef NDEBUG /* только при выключенной отладке, ради тестирования */
-  // fastpath если кортежи полностью равны "как есть"
-  if (left.sys.iov_len == right.sys.iov_len &&
-      memcmp(left.sys.iov_base, right.sys.iov_base, left.sys.iov_len) == 0)
-    return fptu_eq;
-#endif /* NDEBUG */
-
-  // начало и конец дескрипторов слева
-  const auto l_begin = fptu_begin_ro(left);
-  const auto l_end = fptu_end_ro(left);
+// сравнение посредством фильтрации и сортировки тэгов
+static __hot fptu_lge fptu_cmp_tuples_slowpath(const fptu_field *const l_begin,
+                                               const fptu_field *const l_end,
+                                               const fptu_field *const r_begin,
+                                               const fptu_field *const r_end) {
+  assert(l_end > l_begin);
+  assert(r_end > r_begin);
   const auto l_size = l_end - l_begin;
-
-  // начало и конец дескрипторов справа
-  const auto r_begin = fptu_begin_ro(right);
-  const auto r_end = fptu_end_ro(right);
   const auto r_size = r_end - r_begin;
-
-  // fastpath если хотя-бы один из кортежей пуст
-  if (l_size == 0 || r_size == 0)
-    return fptu_cmp2lge(l_size, r_size);
-
-  if (likely(fptu_is_ordered(l_begin, l_end) &&
-             fptu_is_ordered(r_begin, r_end))) {
-    // TODO: fastpath если оба кортежа уже упорядоченные.
-  } else {
-    // TODO: account perfomance penalty.
-  }
 
 // буфер на стеке под сортированные теги полей
 #ifdef __GNUC__
@@ -229,7 +210,9 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
 
     // если слева и справа разные теги
     if (*tags_l != *tags_r)
-      return fptu_cmp2lge(*tags_l, *tags_r);
+      /* "обратный результат", так как `*tags_r > *tags_l` означает, что в
+       * `tags_r` отсутствует тэг (поле), которое есть в `tags_l` */
+      return fptu_cmp2lge(*tags_r, *tags_l);
 
     /* сканируем и сравниваем все поля с текущим тегом, в каждом кортеже
      * таких полей может быть несколько, ибо поддерживаются коллекции.
@@ -293,18 +276,81 @@ fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
         ;
 
       // если дошли до конца слева или справа
-      {
-        const bool left_depleted = (field_l < l_begin);
-        const bool right_depleted = (field_r < r_begin);
-        if (left_depleted | right_depleted) {
-          if (left_depleted != right_depleted)
-            return left_depleted ? fptu_lt : fptu_gt;
-          break;
-        }
+      const bool left_depleted = (field_l < l_begin);
+      const bool right_depleted = (field_r < r_begin);
+      if (left_depleted | right_depleted) {
+        if (left_depleted != right_depleted)
+          return left_depleted ? fptu_lt : fptu_gt;
+        break;
       }
     }
 
-    tags_l++;
-    tags_r++;
+    ++tags_l, ++tags_r;
   }
+}
+
+// когда в обоих кортежах поля уже упорядоченные по тегам.
+static __hot fptu_lge fptu_cmp_tuples_fastpath(const fptu_field *const l_begin,
+                                               const fptu_field *const l_end,
+                                               const fptu_field *const r_begin,
+                                               const fptu_field *const r_end) {
+  // кортежи не пустые
+  assert(l_end > l_begin && r_end > r_begin);
+  // кортежи не перекрываются, либо полностью совпадают (в юнит-тестах с NDEBUG)
+  assert(l_begin > r_end || r_begin > l_end ||
+         (l_begin == r_begin && l_end == r_end));
+  // кортежи упорядоченны
+  assert(fptu_is_ordered(l_begin, l_end));
+  assert(fptu_is_ordered(r_begin, r_end));
+
+  // идем по полям, которые упорядочены по тегам
+  auto l = l_end, r = r_end;
+  for (;;) {
+    --l, --r;
+
+    // если уперлись в конец слева или справа
+    const bool left_depleted = (l < l_begin);
+    const bool right_depleted = (r < r_begin);
+    if (left_depleted | right_depleted)
+      return fptu_cmp2lge(!left_depleted, !right_depleted);
+
+    // если слева и справа у полей разные теги
+    if (l->ct != r->ct)
+      /* "обратный результат", так как `r->ct > l->ct` означает, что в
+       * `r` отсутствует тэг (поле), которое есть в `l` */
+      return fptu_cmp2lge(r->ct, l->ct);
+
+    fptu_lge cmp = fptu_cmp_fields_same_type(l, r);
+    if (cmp != fptu_eq)
+      return cmp;
+  }
+}
+
+__hot fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right) {
+#ifdef NDEBUG /* только при выключенной отладке, ради тестирования */
+  // fastpath если кортежи полностью равны "как есть"
+  if (left.sys.iov_len == right.sys.iov_len &&
+      memcmp(left.sys.iov_base, right.sys.iov_base, left.sys.iov_len) == 0)
+    return fptu_eq;
+#endif /* NDEBUG */
+
+  // начало и конец дескрипторов слева
+  const auto l_begin = fptu_begin_ro(left);
+  const auto l_end = fptu_end_ro(left);
+
+  // начало и конец дескрипторов справа
+  const auto r_begin = fptu_begin_ro(right);
+  const auto r_end = fptu_end_ro(right);
+
+  // fastpath если хотя-бы один из кортежей пуст
+  if (unlikely(l_begin == l_end || r_begin == r_end))
+    return fptu_cmp2lge(l_begin != l_end, r_begin != r_end);
+
+  // fastpath если оба кортежа уже упорядоченные.
+  if (likely(fptu_is_ordered(l_begin, l_end) &&
+             fptu_is_ordered(r_begin, r_end)))
+    return fptu_cmp_tuples_fastpath(l_begin, l_end, r_begin, r_end);
+
+  // TODO: account perfomance penalty.
+  return fptu_cmp_tuples_slowpath(l_begin, l_end, r_begin, r_end);
 }

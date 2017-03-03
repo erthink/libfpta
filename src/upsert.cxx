@@ -56,8 +56,7 @@ static __hot fptu_field *fptu_append(fptu_rw *pt, unsigned ct, size_t units) {
   return pf;
 }
 
-static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct,
-                                      size_t units) {
+static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct, size_t units) {
   fptu_field *pf = fptu_lookup_ct(pt, ct);
   if (pf) {
     size_t avail = fptu_field_units(pf);
@@ -321,8 +320,7 @@ int fptu_upsert_opaque(fptu_rw *pt, unsigned col, const void *value,
     return FPTU_EINVAL;
 
   size_t units = bytes2units(bytes) + 1;
-  fptu_field *pf =
-      fptu_emplace(pt, fptu_pack_coltype(col, fptu_opaque), units);
+  fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_opaque), units);
   if (unlikely(pf == nullptr))
     return FPTU_ENOSPACE;
 
@@ -356,8 +354,7 @@ int fptu_upsert_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
   if (unlikely(ro.total_bytes != units2bytes(units)))
     return FPTU_EINVAL;
 
-  fptu_field *pf =
-      fptu_emplace(pt, fptu_pack_coltype(col, fptu_nested), units);
+  fptu_field *pf = fptu_emplace(pt, fptu_pack_coltype(col, fptu_nested), units);
   if (unlikely(pf == nullptr))
     return FPTU_ENOSPACE;
 
@@ -791,8 +788,7 @@ int fptu_insert_opaque(fptu_rw *pt, unsigned col, const void *value,
     return FPTU_EINVAL;
 
   size_t units = bytes2units(bytes) + 1;
-  fptu_field *pf =
-      fptu_append(pt, fptu_pack_coltype(col, fptu_opaque), units);
+  fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_opaque), units);
   if (unlikely(pf == nullptr))
     return FPTU_ENOSPACE;
 
@@ -826,8 +822,7 @@ int fptu_insert_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
   if (unlikely(ro.total_bytes != units2bytes(units)))
     return FPTU_EINVAL;
 
-  fptu_field *pf =
-      fptu_append(pt, fptu_pack_coltype(col, fptu_nested), units);
+  fptu_field *pf = fptu_append(pt, fptu_pack_coltype(col, fptu_nested), units);
   if (unlikely(pf == nullptr))
     return FPTU_ENOSPACE;
 
