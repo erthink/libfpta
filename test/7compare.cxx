@@ -88,18 +88,24 @@ TEST(Compare, FetchTags) {
 }
 
 void probe(const fptu_rw *major_rw, const fptu_rw *minor_rw) {
-  EXPECT_STREQ(nullptr, fptu_check(major_rw));
-  EXPECT_STREQ(nullptr, fptu_check(minor_rw));
+  ASSERT_STREQ(nullptr, fptu_check(major_rw));
+  ASSERT_STREQ(nullptr, fptu_check(minor_rw));
 
   const auto major = fptu_take_noshrink(major_rw);
   const auto minor = fptu_take_noshrink(minor_rw);
-  EXPECT_STREQ(nullptr, fptu_check_ro(major));
-  EXPECT_STREQ(nullptr, fptu_check_ro(minor));
+  ASSERT_STREQ(nullptr, fptu_check_ro(major));
+  ASSERT_STREQ(nullptr, fptu_check_ro(minor));
 
-  EXPECT_EQ(fptu_eq, fptu_cmp_tuples(major, major));
-  EXPECT_EQ(fptu_eq, fptu_cmp_tuples(minor, minor));
-  EXPECT_EQ(fptu_gt, fptu_cmp_tuples(major, minor));
-  EXPECT_EQ(fptu_lt, fptu_cmp_tuples(minor, major));
+  fptu_lge eq1, eq2, gt, lt;
+  EXPECT_EQ(fptu_eq, eq1 = fptu_cmp_tuples(major, major));
+  EXPECT_EQ(fptu_eq, eq2 = fptu_cmp_tuples(minor, minor));
+  EXPECT_EQ(fptu_gt, gt = fptu_cmp_tuples(major, minor));
+  EXPECT_EQ(fptu_lt, lt = fptu_cmp_tuples(minor, major));
+
+  bool all_ok = (fptu_eq == eq1) && (fptu_eq == eq2) && (fptu_gt == gt) &&
+                (fptu_lt == lt);
+
+  ASSERT_TRUE(all_ok);
 }
 
 TEST(Compare, EmptyNull) {
@@ -153,9 +159,164 @@ TEST(Compare, Base) {
   probe(major, minor);
   ASSERT_EQ(FPTU_OK, fptu_clear(major));
   ASSERT_EQ(FPTU_OK, fptu_clear(minor));
+
+  // разный набор и значения полей
+  EXPECT_EQ(FPTU_OK, fptu_insert_uint16(minor, 1, 2));
+  EXPECT_EQ(FPTU_OK, fptu_insert_uint16(major, 1, 3));
+  EXPECT_EQ(FPTU_OK, fptu_insert_int32(major, 0, 1));
+  probe(major, minor);
+  ASSERT_EQ(FPTU_OK, fptu_clear(major));
+  ASSERT_EQ(FPTU_OK, fptu_clear(minor));
 }
 
-TEST(Compare, Shuffle) { /* TODO */
+TEST(Compare, Shuffle) {
+  /* Проверка сравнения для разумного количества вариантов наполнения кортежей.
+   *
+   * Сценарий:
+   *  1. Для major и minor перебираем все варианты заполнения полями.
+   *      - есть 6 условных элементов: 2 пары плюс 2 поля с различными
+   *        тегами/типами (всего 4 варианта тегов);
+   *      - для этих 6 элементов перебираются все комбинации присутствия
+   *        каждого элемента (64 варианта) и все варианты порядка
+   *        добавления (720 комбинаций).
+   *  2. При переборе комбинаций всегда обеспечивается что major > minor,
+   *      а именно в major всегда есть либо дополнительные поля, либо поля
+   *      значение которых больше аналогичных в minor.
+   *  3. Для каждой комбинации проверяется корректность сравнения.
+   *     В результате проверяются все fast/slow-path пути сравнения кортежей
+   */
+  ASSERT_TRUE(shuffle6::selftest());
+
+  char space4minor[fptu_buffer_enought];
+  fptu_rw *minor = fptu_init(space4minor, sizeof(space4minor), fptu_max_fields);
+  ASSERT_NE(nullptr, minor);
+  ASSERT_STREQ(nullptr, fptu_check(minor));
+
+  char space4major[fptu_buffer_enought];
+  fptu_rw *major = fptu_init(space4major, sizeof(space4major), fptu_max_fields);
+  ASSERT_NE(nullptr, major);
+  ASSERT_STREQ(nullptr, fptu_check(major));
+
+  // 64 * 64/2 * 720 * 720 = порядка 1,061,683,200 комбинаций
+  for (unsigned minor_mask = 0; minor_mask < 64; ++minor_mask) {
+    for (unsigned minor_order = 0; minor_order < shuffle6::factorial;
+         ++minor_order) {
+      ASSERT_EQ(FPTU_OK, fptu_clear(minor));
+
+      std::string minor_pattern;
+      shuffle6 minor_shuffle(minor_order);
+      auto pending_mask = minor_mask;
+      while (pending_mask && !minor_shuffle.empty()) {
+        auto i = minor_shuffle.next();
+        if (pending_mask & (1 << i)) {
+          pending_mask -= 1 << i;
+          switch (i) {
+          default:
+            ASSERT_TRUE(false);
+          case 4:
+            ASSERT_EQ(FPTU_OK, fptu_insert_uint32(minor, 1, 0));
+            minor_pattern += " A0";
+            break;
+          case 5:
+            ASSERT_EQ(FPTU_OK, fptu_insert_uint32(minor, 1, 1));
+            minor_pattern += " A1";
+            break;
+          case 2:
+            ASSERT_EQ(FPTU_OK, fptu_insert_int64(minor, 2, 2));
+            minor_pattern += " B2";
+            break;
+          case 3:
+            ASSERT_EQ(FPTU_OK, fptu_insert_int64(minor, 2, 3));
+            minor_pattern += " B3";
+            break;
+          case 1:
+            ASSERT_EQ(FPTU_OK, fptu_insert_cstr(minor, 3, "4"));
+            minor_pattern += " C4";
+            break;
+          case 0:
+            ASSERT_EQ(FPTU_OK, fptu_insert_fp32(minor, 4, 5));
+            minor_pattern += " D5";
+            break;
+          }
+        } else {
+          /* пропускаем перестановки, в которых отсутствующие
+           * в текущей present-mask элементы идут раньше присутствующих */
+          break;
+        }
+      }
+
+      if (pending_mask == 0) {
+        SCOPED_TRACE("minor: present-mask " + std::to_string(minor_mask) +
+                     ", shuffle # " + std::to_string(minor_order));
+        for (unsigned major_mask = minor_mask + 1; major_mask < 64;
+             ++major_mask) {
+
+          if (((minor_mask >> 2) & 3) == 3 && ((major_mask >> 2) & 3) < 3)
+            /* пропускаем варианты major < minor по первой паре элементов */
+            continue;
+
+          if (((minor_mask >> 4) & 3) == 3 && ((major_mask >> 4) & 3) < 3)
+            /* пропускаем варианты major < minor по второй паре элементов */
+            continue;
+
+          for (unsigned major_order = 0; major_order < shuffle6::factorial;
+               ++major_order) {
+            ASSERT_EQ(FPTU_OK, fptu_clear(major));
+
+            std::string major_pattern;
+            shuffle6 major_shuffle(major_order);
+            pending_mask = major_mask;
+            while (pending_mask && !major_shuffle.empty()) {
+              auto i = major_shuffle.next();
+              if (pending_mask & (1 << i)) {
+                pending_mask -= 1 << i;
+                switch (i) {
+                default:
+                  ASSERT_TRUE(false);
+                case 4:
+                  ASSERT_EQ(FPTU_OK, fptu_insert_uint32(major, 1, 1));
+                  major_pattern += " A1";
+                  break;
+                case 5:
+                  ASSERT_EQ(FPTU_OK, fptu_insert_uint32(major, 1, 2));
+                  major_pattern += " A2";
+                  break;
+                case 2:
+                  ASSERT_EQ(FPTU_OK, fptu_insert_int64(major, 2, 3));
+                  major_pattern += " B3";
+                  break;
+                case 3:
+                  ASSERT_EQ(FPTU_OK, fptu_insert_int64(major, 2, 4));
+                  major_pattern += " B4";
+                  break;
+                case 1:
+                  ASSERT_EQ(FPTU_OK, fptu_insert_cstr(major, 3, "5"));
+                  major_pattern += " C5";
+                  break;
+                case 0:
+                  ASSERT_EQ(FPTU_OK, fptu_insert_fp32(major, 4, 6));
+                  major_pattern += " D6";
+                  break;
+                }
+              } else {
+                /* пропускаем перестановки, в которых отсутствующие
+                 * в текущей present-mask элементы идут раньше присутствующих */
+                break;
+              }
+            }
+
+            if (pending_mask == 0) {
+              SCOPED_TRACE("major: present-mask " + std::to_string(major_mask) +
+                           ", shuffle # " + std::to_string(major_order));
+              SCOPED_TRACE("patterns: minor [" + minor_pattern + " ], major [" +
+                           major_pattern + " ]");
+              ASSERT_NO_FATAL_FAILURE(probe(major, minor));
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 int main(int argc, char **argv) {
