@@ -210,7 +210,9 @@ static __hot fptu_lge fptu_cmp_tuples_slowpath(const fptu_field *const l_begin,
 
     // если слева и справа разные теги
     if (*tags_l != *tags_r)
-      return fptu_cmp2lge(*tags_l, *tags_r);
+      /* "обратный результат", так как `*tags_r > *tags_l` означает, что в
+       * `tags_r` отсутствует тэг (поле), которое есть в `tags_l` */
+      return fptu_cmp2lge(*tags_r, *tags_l);
 
     /* сканируем и сравниваем все поля с текущим тегом, в каждом кортеже
      * таких полей может быть несколько, ибо поддерживаются коллекции.
@@ -314,7 +316,9 @@ static __hot fptu_lge fptu_cmp_tuples_fastpath(const fptu_field *const l_begin,
 
     // если слева и справа у полей разные теги
     if (l->ct != r->ct)
-      return fptu_cmp2lge(l->ct, r->ct);
+      /* "обратный результат", так как `r->ct > l->ct` означает, что в
+       * `r` отсутствует тэг (поле), которое есть в `l` */
+      return fptu_cmp2lge(r->ct, l->ct);
 
     fptu_lge cmp = fptu_cmp_fields_same_type(l, r);
     if (cmp != fptu_eq)
