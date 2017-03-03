@@ -169,7 +169,13 @@ TEST(Compare, Base) {
   ASSERT_EQ(FPTU_OK, fptu_clear(minor));
 }
 
-TEST(Compare, Shuffle) {
+#ifdef __OPTIMIZE__
+TEST(Compare, Shuffle)
+#else
+/* LY: Без оптимизации выполняется до 3 минут */
+TEST(Compare, DISABLED_Shuffle)
+#endif
+{
   /* Проверка сравнения для разумного количества вариантов наполнения кортежей.
    *
    * Сценарий:
