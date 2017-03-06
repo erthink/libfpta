@@ -420,6 +420,7 @@ public:
         break;
       ASSERT_EQ(FPTA_SUCCESS, error);
 
+      // проверяем упорядоченность
       if (fpta_cursor_is_ordered(ordering) && linear > 0) {
         if (fpta_cursor_is_ascending(ordering))
           ASSERT_LE(prev_order, tuple_order);
@@ -686,6 +687,8 @@ TEST_P(CursorSecondary, basicMoves) {
 
 //----------------------------------------------------------------------------
 
+/* Другое имя класса требуется для инстанцирования другого (меньшего)
+ * набора комбинаций в INSTANTIATE_TEST_CASE_P. */
 class CursorSecondaryDups : public CursorSecondary {};
 
 TEST_P(CursorSecondaryDups, dupMoves) {
@@ -745,7 +748,7 @@ TEST_P(CursorSecondaryDups, dupMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
-  if (!valid_index_ops || !valid_cursor_ops)
+  if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(se_index))
     return;
 
   SCOPED_TRACE("pk_type " + std::to_string(pk_type) + ", pk_index " +
@@ -1314,7 +1317,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       }
     }
 
-    // закрываем читащий курсор и транзакцию
+    // закрываем читающий курсор и транзакцию
     ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
     cursor = nullptr;
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));

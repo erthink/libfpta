@@ -73,6 +73,8 @@ public:
   unsigned n_records;
   std::unordered_map<int, int> reorder;
 
+  static unsigned mesh(unsigned n) { return (163 + n * 42101) % NNN; }
+
   void CheckPosition(int linear, int dup_id, int expected_n_dups = 0,
                      bool check_dup_id = true) {
     if (linear < 0) {
@@ -175,7 +177,7 @@ public:
     any_keygen keygen(type, index);
     n_records = 0;
     for (unsigned linear = 0; linear < NNN; ++linear) {
-      unsigned order = (163 + linear * 42101) % NNN;
+      unsigned order = mesh(linear);
       SCOPED_TRACE("order " + std::to_string(order));
       fpta_value value_pk = keygen.make(order, NNN);
       if (value_pk.type == fpta_end)
@@ -397,6 +399,7 @@ public:
         break;
       ASSERT_EQ(FPTA_SUCCESS, error);
 
+      // проверяем упорядоченность
       if (fpta_cursor_is_ordered(ordering) && linear > 0) {
         if (fpta_cursor_is_ascending(ordering))
           ASSERT_LE(prev_order, tuple_order);
@@ -609,6 +612,8 @@ TEST_P(CursorPrimary, basicMoves) {
 
 //----------------------------------------------------------------------------
 
+/* Другое имя класса требуется для инстанцирования другого (меньшего)
+ * набора комбинаций в INSTANTIATE_TEST_CASE_P. */
 class CursorPrimaryDups : public CursorPrimary {};
 
 TEST_P(CursorPrimaryDups, dupMoves) {
@@ -665,7 +670,7 @@ TEST_P(CursorPrimaryDups, dupMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
-  if (!valid_index_ops || !valid_cursor_ops)
+  if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(index))
     return;
 
   SCOPED_TRACE("type " + std::to_string(type) + ", index " +
@@ -1221,7 +1226,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
       }
     }
 
-    // закрываем читащий курсор и транзакцию
+    // закрываем читающий курсор и транзакцию
     ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
     cursor = nullptr;
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
