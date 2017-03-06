@@ -676,8 +676,10 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 
   if (!fpta_table_has_secondary(cursor->table_id)) {
     int rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
-    if (unlikely(rc != FPTA_SUCCESS))
+    if (unlikely(rc != FPTA_SUCCESS)) {
+      cursor->set_poor();
       return rc;
+    }
   } else {
     MDB_val pk_key;
     if (fpta_index_is_primary(cursor->index.shove)) {
@@ -693,8 +695,10 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     } else {
       int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
                                MDB_GET_CURRENT);
-      if (unlikely(rc != MDB_SUCCESS))
+      if (unlikely(rc != MDB_SUCCESS)) {
+        cursor->set_poor();
         return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+      }
     }
 
     fptu_ro old;
@@ -715,18 +719,24 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                         &pk_key, nullptr, &old.sys, MDB_CURRENT);
     }
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDB_SUCCESS)) {
+      cursor->set_poor();
       return rc;
+    }
 
     rc = fpta_secondary_remove(cursor->txn, cursor->table_id, pk_key, old,
                                cursor->index.column_order);
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDB_SUCCESS)) {
+      cursor->set_poor();
       return fpta_inconsistent_abort(cursor->txn, rc);
+    }
 
     if (!fpta_index_is_primary(cursor->index.shove)) {
       rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
-      if (unlikely(rc != MDB_SUCCESS))
+      if (unlikely(rc != MDB_SUCCESS)) {
+        cursor->set_poor();
         return fpta_inconsistent_abort(cursor->txn, rc);
+      }
     }
   }
 
@@ -815,9 +825,13 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(cursor->table_id))
-    return mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
-                           &new_row_value.sys, MDB_CURRENT | MDB_NODUPDATA);
+  if (!fpta_table_has_secondary(cursor->table_id)) {
+    rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
+                         &new_row_value.sys, MDB_CURRENT | MDB_NODUPDATA);
+    if (unlikely(rc != MDB_SUCCESS))
+      cursor->set_poor();
+    return rc;
+  }
 
   MDB_val old_pk_key;
   if (fpta_index_is_primary(cursor->index.shove)) {
@@ -825,8 +839,10 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   } else {
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &old_pk_key,
                          MDB_GET_CURRENT);
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDB_SUCCESS)) {
+      cursor->set_poor();
       return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+    }
   }
 
   /* Здесь не очевидный момент при обновлении с изменением PK:
@@ -851,8 +867,10 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   fptu_ro old;
   rc = mdbx_get_ex(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                    &old_pk_key, &old.sys, nullptr);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDB_SUCCESS)) {
+    cursor->set_poor();
     return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+  }
 
   fpta_key new_pk_key;
   rc = fpta_index_row2key(cursor->table_id->table.pk, 0, new_row_value,
@@ -873,21 +891,27 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, old_pk_key, old,
                              new_pk_key.mdbx, new_row_value,
                              cursor->index.column_order);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDB_SUCCESS)) {
+    cursor->set_poor();
     return fpta_inconsistent_abort(cursor->txn, rc);
+  }
 
   const bool pk_changed = !fpta_is_same(old_pk_key, new_pk_key.mdbx);
   if (pk_changed) {
     rc = mdbx_del(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                   &old_pk_key, nullptr);
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDB_SUCCESS)) {
+      cursor->set_poor();
       return fpta_inconsistent_abort(cursor->txn, rc);
+    }
 
     rc = mdbx_put(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
                   &new_pk_key.mdbx, &new_row_value.sys,
                   MDB_NODUPDATA | MDB_NOOVERWRITE);
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDB_SUCCESS)) {
+      cursor->set_poor();
       return fpta_inconsistent_abort(cursor->txn, rc);
+    }
 
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
                          &new_pk_key.mdbx, MDB_CURRENT | MDB_NODUPDATA);
@@ -897,8 +921,11 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
                   &new_pk_key.mdbx, &new_row_value.sys,
                   MDB_CURRENT | MDB_NODUPDATA);
   }
-  if (unlikely(rc != MDB_SUCCESS))
+
+  if (unlikely(rc != MDB_SUCCESS)) {
+    cursor->set_poor();
     return fpta_inconsistent_abort(cursor->txn, rc);
+  }
 
   return FPTA_SUCCESS;
 }
