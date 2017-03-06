@@ -689,6 +689,12 @@ FPTA_API int fpta_transaction_begin(fpta_db *db, fpta_level level,
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_transaction_end(fpta_txn *txn, bool abort);
+static __inline int fpta_transaction_commit(fpta_txn *txn) {
+  return fpta_transaction_end(txn, false);
+}
+static __inline int fpta_transaction_abort(fpta_txn *txn) {
+  return fpta_transaction_end(txn, true);
+}
 
 /* Получение версии данных и схемы.
  *
