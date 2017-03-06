@@ -828,6 +828,13 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_table_has_secondary(cursor->table_id)) {
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
                          &new_row_value.sys, MDB_CURRENT | MDB_NODUPDATA);
+    if (likely(rc == MDB_SUCCESS) &&
+        /* актуализируем текущий ключ, если он был в грязной странице, то при
+         * изменении мог быть перемещен с перезаписью старого значения */
+        mdbx_is_dirty(cursor->txn->mdbx_txn, cursor->current.iov_base)) {
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
+                           MDB_GET_CURRENT);
+    }
     if (unlikely(rc != MDB_SUCCESS))
       cursor->set_poor();
     return rc;
@@ -922,6 +929,13 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
                   MDB_CURRENT | MDB_NODUPDATA);
   }
 
+  if (likely(rc == MDB_SUCCESS) &&
+      /* актуализируем текущий ключ, если он был в грязной странице, то при
+       * изменении мог быть перемещен с перезаписью старого значения */
+      mdbx_is_dirty(cursor->txn->mdbx_txn, cursor->current.iov_base)) {
+    rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
+                         MDB_GET_CURRENT);
+  }
   if (unlikely(rc != MDB_SUCCESS)) {
     cursor->set_poor();
     return fpta_inconsistent_abort(cursor->txn, rc);
