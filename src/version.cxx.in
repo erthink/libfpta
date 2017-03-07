@@ -1,0 +1,42 @@
+/*
+ * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ *
+ * This file is part of libfpta, aka "Fast Positive Tables".
+ *
+ * libfpta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * libfpta is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "fast_positive/tables.h"
+
+#if FPTA_VERSION_MAJOR != @FPTA_VERSION_MAJOR@ || FPTA_VERSION_MINOR != @FPTA_VERSION_MINOR@
+#error "API version mismatch!"
+#endif
+
+const struct fpta_version_info fpta_version = {
+  @FPTA_VERSION_MAJOR@, @FPTA_VERSION_MINOR@, @FPTA_VERSION_RELEASE@, @FPTA_VERSION_REVISION@,
+  {
+    "@FPTA_GIT_TIMESTAMP@",
+    "@FPTA_GIT_TREE@",
+    "@FPTA_GIT_COMMIT@",
+    "@FPTA_GIT_DESCRIBE@"
+  }
+};
+
+const struct fpta_build_info fpta_build = {
+  "@FPTA_BUILD_TIMESTAMP@",
+  "@FPTA_BUILD_TAGRET@",
+  "@FPTA_BUILD_OPTIONS@",
+  "@FPTA_BUILD_COMPILER@",
+  "@FPTA_BUILD_FLAGS@"
+};

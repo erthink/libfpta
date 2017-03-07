@@ -37,6 +37,9 @@
 #ifndef FAST_POSITIVE_TABLES_H
 #define FAST_POSITIVE_TABLES_H
 
+#define FPTA_VERSION_MAJOR 0
+#define FPTA_VERSION_MINOR 0
+
 #include "fast_positive/config.h"
 #include "fast_positive/defs.h"
 
@@ -1704,6 +1707,30 @@ FPTA_API fptu_lge __fpta_filter_cmp(const fptu_field *pf,
 FPTA_API int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
                                     void *key);
 FPTA_API void *__fpta_index_shove2comparator(fpta_shove_t shove);
+
+typedef struct fpta_version_info {
+  uint8_t major;
+  uint8_t minor;
+  uint16_t release;
+  uint32_t revision;
+  struct {
+    const char *datetime;
+    const char *tree;
+    const char *commit;
+    const char *describe;
+  } git;
+} fpta_version_info;
+
+typedef struct fpta_build_info {
+  const char *datetime;
+  const char *target;
+  const char *options;
+  const char *compiler;
+  const char *flags;
+} fpta_build_info;
+
+extern FPTA_API const struct fpta_version_info fpta_version;
+extern FPTA_API const struct fpta_build_info fpta_build;
 
 #ifdef __cplusplus
 }
