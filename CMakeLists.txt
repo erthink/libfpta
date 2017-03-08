@@ -40,6 +40,20 @@ include(cmake/os.cmake)
 include(cmake/profile.cmake)
 include(cmake/compiler.cmake)
 # include(cmake/atomic.cmake)
+
+find_program(VALGRIND valgrind)
+if(VALGRIND)
+  # LY: cmake is ugly and nasty.
+  #      - therefore memcheck-options should be defined before including ctest;
+  #      - otherwise ctest may ignore it.
+  set(MEMORYCHECK_SUPPRESSIONS_FILE
+    "${PROJECT_SOURCE_DIR}/test/valgrind_suppress.txt"
+    CACHE FILEPATH "Suppressions file for Valgrind" FORCE)
+  set(MEMORYCHECK_COMMAND_OPTIONS
+    "--trace-children=yes --leak-check=full --track-origins=yes --error-exitcode=42 --error-markers=@ --errors-for-leak-kinds=definite --fair-sched=yes --suppressions=${MEMORYCHECK_SUPPRESSIONS_FILE}"
+    CACHE STRING "Valgrind options" FORCE)
+  set(VALGRIND_COMMAND_OPTIONS "${MEMORYCHECK_COMMAND_OPTIONS}" CACHE STRING "Valgrind options" FORCE)
+endif()
 include(cmake/testing.cmake)
 
 find_program(ECHO echo)
