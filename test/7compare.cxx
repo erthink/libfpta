@@ -203,6 +203,7 @@ TEST(Compare, DISABLED_Shuffle)
   ASSERT_NE(nullptr, major);
   ASSERT_STREQ(nullptr, fptu_check(major));
 
+  time_t start_timestamp = time(nullptr);
   // 64 * 64/2 * 720 * 720 = порядка 1,061,683,200 комбинаций
   for (unsigned minor_mask = 0; minor_mask < 64; ++minor_mask) {
     for (unsigned minor_order = 0; minor_order < shuffle6::factorial;
@@ -317,6 +318,15 @@ TEST(Compare, DISABLED_Shuffle)
               SCOPED_TRACE("patterns: minor [" + minor_pattern + " ], major [" +
                            major_pattern + " ]");
               ASSERT_NO_FATAL_FAILURE(probe(major, minor));
+
+              time_t now_timestamp = time(nullptr);
+              if (now_timestamp - start_timestamp > 42 &&
+                  fptu_is_under_valgrind())
+                /* Под Valgrind тест может работать ОЧЕНЬ долго, но крайне
+                 * маловероятно что будут найдены какие-либо проблемы после
+                 * нескольких итераций.
+                 * Поэтому через 42 секунды прекращаем валять дурака. */
+                return;
             }
           }
         }

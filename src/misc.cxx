@@ -43,11 +43,10 @@ bool fptu_is_under_valgrind(void) {
 #ifdef RUNNING_ON_VALGRIND
   if (RUNNING_ON_VALGRIND)
     return true;
-#else
+#endif
   const char *str = getenv("RUNNING_ON_VALGRIND");
   if (str)
     return strcmp(str, "0") != 0;
-#endif
   return false;
 }
 
