@@ -804,6 +804,7 @@ FPTU_API bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end);
 FPTU_API uint16_t *fptu_tags(uint16_t *const first,
                              const fptu_field *const begin,
                              const fptu_field *const end);
+FPTU_API bool fptu_is_under_valgrind(void);
 
 typedef struct fptu_version_info {
   uint8_t major;
