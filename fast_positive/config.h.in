@@ -26,3 +26,4 @@
 #cmakedefine HAVE_TIMEVAL_TV_USEC
 #cmakedefine HAVE_TIMESPEC_TV_NSEC
 #cmakedefine CMAKE_HAVE_PTHREAD_H
+#cmakedefine HAVE_VALGRIND_MEMCHECK_H
