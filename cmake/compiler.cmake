@@ -198,11 +198,6 @@ macro(setup_compile_flags)
     set(CXX_FLAGS "")
     set(C_FLAGS "")
 
-    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        # Remove VALGRIND code and assertions in *any* type of release build.
-        add_definitions("-DNDEBUG" "-DNVALGRIND")
-    endif()
-
     if (CC_HAS_FNO_COMMON)
         add_compile_flags("C;CXX" "-fno-common")
     endif()
