@@ -28,6 +28,7 @@ if(NOT CMAKE_BUILD_TYPE)
     "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
     FORCE)
 endif()
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
 
 # Define GNU standard installation directories
