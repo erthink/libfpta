@@ -124,6 +124,7 @@ check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
 check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
 check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
 check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
+check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
 
 #
 # Check for an omp support
@@ -196,11 +197,6 @@ macro(setup_compile_flags)
     # LY: reset C/CXX flags
     set(CXX_FLAGS "")
     set(C_FLAGS "")
-
-    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        # Remove VALGRIND code and assertions in *any* type of release build.
-        add_definitions("-DNDEBUG" "-DNVALGRIND")
-    endif()
 
     if (CC_HAS_FNO_COMMON)
         add_compile_flags("C;CXX" "-fno-common")

@@ -39,6 +39,17 @@ void __assert_fail(const char *assertion, const char *filename, unsigned line,
 }
 #endif /* windows mustdie */
 
+bool fptu_is_under_valgrind(void) {
+#ifdef RUNNING_ON_VALGRIND
+  if (RUNNING_ON_VALGRIND)
+    return true;
+#endif
+  const char *str = getenv("RUNNING_ON_VALGRIND");
+  if (str)
+    return strcmp(str, "0") != 0;
+  return false;
+}
+
 namespace fptu {
 
 __cold std::string format(const char *fmt, ...) {

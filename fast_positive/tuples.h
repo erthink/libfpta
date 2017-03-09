@@ -29,6 +29,9 @@
 #ifndef FAST_POSITIVE_TUPLES_H
 #define FAST_POSITIVE_TUPLES_H
 
+#define FPTU_VERSION_MAJOR 0
+#define FPTU_VERSION_MINOR 0
+
 #include "fast_positive/config.h"
 #include "fast_positive/defs.h"
 
@@ -801,6 +804,31 @@ FPTU_API bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end);
 FPTU_API uint16_t *fptu_tags(uint16_t *const first,
                              const fptu_field *const begin,
                              const fptu_field *const end);
+FPTU_API bool fptu_is_under_valgrind(void);
+
+typedef struct fptu_version_info {
+  uint8_t major;
+  uint8_t minor;
+  uint16_t release;
+  uint32_t revision;
+  struct {
+    const char *datetime;
+    const char *tree;
+    const char *commit;
+    const char *describe;
+  } git;
+} fptu_version_info;
+
+typedef struct fptu_build_info {
+  const char *datetime;
+  const char *target;
+  const char *options;
+  const char *compiler;
+  const char *flags;
+} fptu_build_info;
+
+extern FPTU_API const struct fptu_version_info fptu_version;
+extern FPTU_API const struct fptu_build_info fptu_build;
 
 //----------------------------------------------------------------------------
 /* Сервисные функции и классы для C++ (будет существенно пополнятся). */

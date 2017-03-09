@@ -64,6 +64,30 @@
 #include <limits.h>
 #include <string.h>
 
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+        /* Get debugging help from Valgrind */
+#       include <valgrind/memcheck.h>
+#       ifndef VALGRIND_DISABLE_ADDR_ERROR_REPORTING_IN_RANGE
+                /* LY: available since Valgrind 3.10 */
+#               define VALGRIND_DISABLE_ADDR_ERROR_REPORTING_IN_RANGE(a,s)
+#               define VALGRIND_ENABLE_ADDR_ERROR_REPORTING_IN_RANGE(a,s)
+#       endif
+#else
+#       define VALGRIND_CREATE_MEMPOOL(h,r,z)
+#       define VALGRIND_DESTROY_MEMPOOL(h)
+#       define VALGRIND_MEMPOOL_TRIM(h,a,s)
+#       define VALGRIND_MEMPOOL_ALLOC(h,a,s)
+#       define VALGRIND_MEMPOOL_FREE(h,a)
+#       define VALGRIND_MEMPOOL_CHANGE(h,a,b,s)
+#       define VALGRIND_MAKE_MEM_NOACCESS(a,s)
+#       define VALGRIND_MAKE_MEM_DEFINED(a,s)
+#       define VALGRIND_MAKE_MEM_UNDEFINED(a,s)
+#       define VALGRIND_DISABLE_ADDR_ERROR_REPORTING_IN_RANGE(a,s)
+#       define VALGRIND_ENABLE_ADDR_ERROR_REPORTING_IN_RANGE(a,s)
+#       define VALGRIND_CHECK_MEM_IS_ADDRESSABLE(a,s) (0)
+#       define VALGRIND_CHECK_MEM_IS_DEFINED(a,s) (0)
+#endif /* HAVE_VALGRIND_MEMCHECK_H */
+
 //----------------------------------------------------------------------------
 
 #ifndef __hot

@@ -17,16 +17,26 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#cmakedefine HAVE_MEMMEM
-#cmakedefine HAVE_MEMRCHR
-#cmakedefine HAVE_UUIDGEN
-#cmakedefine HAVE_UNISTD_H
-#cmakedefine HAVE_SYS_UIO_H
-#cmakedefine HAVE_SYS_STAT_H
-#cmakedefine HAVE_TIMEVAL_TV_USEC
-#cmakedefine HAVE_TIMESPEC_TV_NSEC
-#cmakedefine CMAKE_HAVE_PTHREAD_H
-#cmakedefine HAVE_VALGRIND_MEMCHECK_H
-#cmakedefine ENABLE_VALGRIND
-#cmakedefine ENABLE_GPROF
-#cmakedefine ENABLE_GCOV
+#include "fast_positive/tuples.h"
+
+#if FPTU_VERSION_MAJOR != @FPTU_VERSION_MAJOR@ || FPTU_VERSION_MINOR != @FPTU_VERSION_MINOR@
+#error "API version mismatch!"
+#endif
+
+const struct fptu_version_info fptu_version = {
+  @FPTU_VERSION_MAJOR@, @FPTU_VERSION_MINOR@, @FPTU_VERSION_RELEASE@, @FPTU_VERSION_REVISION@,
+  {
+    "@FPTU_GIT_TIMESTAMP@",
+    "@FPTU_GIT_TREE@",
+    "@FPTU_GIT_COMMIT@",
+    "@FPTU_GIT_DESCRIBE@"
+  }
+};
+
+const struct fptu_build_info fptu_build = {
+  "@FPTU_BUILD_TIMESTAMP@",
+  "@FPTU_BUILD_TAGRET@",
+  "@FPTU_BUILD_OPTIONS@",
+  "@FPTU_BUILD_COMPILER@",
+  "@FPTU_BUILD_FLAGS@"
+};
