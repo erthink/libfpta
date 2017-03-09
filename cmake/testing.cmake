@@ -36,6 +36,12 @@ if(GTEST_FOUND)
     enable_testing ()
     set(UT_INCLUDE_DIRECTORIES ${GTEST_INCLUDE_DIRS})
     set(UT_LIBRARIES ${GTEST_BOTH_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+    if(MEMORYCHECK_COMMAND OR CMAKE_MEMORYCHECK_COMMAND)
+        add_custom_target(test_memcheck
+            COMMAND ${CMAKE_CTEST_COMMAND}
+            --force-new-ctest-process --test-action memcheck
+            COMMAND ${CAT} "${CMAKE_BINARY_DIR}/Testing/Temporary/MemoryChecker.*.log")
+    endif()
 else()
     set(UT_INCLUDE_DIRECTORIES "")
     set(UT_LIBRARIES "")
@@ -84,6 +90,11 @@ function(add_gtest name)
         if(NOT params_DISABLED)
             add_test(${name} ${target})
             if(params_TIMEOUT)
+                if(MEMORYCHECK_COMMAND OR CMAKE_MEMORYCHECK_COMMAND)
+                    # FIXME: unless there are any other ideas how to fix the
+                    #        timeouts problem when testing under Valgrind.
+                    math(EXPR params_TIMEOUT "${params_TIMEOUT} * 42")
+                endif()
                 set_tests_properties(${name} PROPERTIES TIMEOUT ${params_TIMEOUT})
             endif()
         endif()

@@ -20,7 +20,12 @@ add_library(mdbx STATIC
    libmdbx/mdbx.c
 )
 
-set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG")
+if(ENABLE_VALGRIND)
+    set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG -DENABLE_VALGRIND")
+else()
+    set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG")
+endif()
+
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(mdbx_chk libmdbx/mdbx_chk.c)

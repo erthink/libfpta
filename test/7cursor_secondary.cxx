@@ -420,6 +420,7 @@ public:
         break;
       ASSERT_EQ(FPTA_SUCCESS, error);
 
+      // проверяем упорядоченность
       if (fpta_cursor_is_ordered(ordering) && linear > 0) {
         if (fpta_cursor_is_ascending(ordering))
           ASSERT_LE(prev_order, tuple_order);
@@ -686,6 +687,8 @@ TEST_P(CursorSecondary, basicMoves) {
 
 //----------------------------------------------------------------------------
 
+/* Другое имя класса требуется для инстанцирования другого (меньшего)
+ * набора комбинаций в INSTANTIATE_TEST_CASE_P. */
 class CursorSecondaryDups : public CursorSecondary {};
 
 TEST_P(CursorSecondaryDups, dupMoves) {
@@ -745,7 +748,7 @@ TEST_P(CursorSecondaryDups, dupMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
-  if (!valid_index_ops || !valid_cursor_ops)
+  if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(se_index))
     return;
 
   SCOPED_TRACE("pk_type " + std::to_string(pk_type) + ", pk_index " +
@@ -1314,7 +1317,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       }
     }
 
-    // закрываем читащий курсор и транзакцию
+    // закрываем читающий курсор и транзакцию
     ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
     cursor = nullptr;
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
@@ -1397,6 +1400,237 @@ TEST_P(CursorSecondary, locate_and_delele) {
     cursor = nullptr;
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+  }
+}
+
+//----------------------------------------------------------------------------
+
+TEST_P(CursorSecondary, update_and_KeyMismatch) {
+  /* Проверка обновления через курсор, в том числе с попытками изменить
+   * значение "курсорной" колонки.
+   *
+   * Сценарий (общий для всех комбинаций всех типов полей, всех видов
+   * первичных и вторичных индексов, всех видов курсоров):
+   *  1. Создается тестовая база с одной таблицей, в которой пять колонок:
+   *      - "col_pk" (primary key) с типом, для которого производится
+   *        тестирование работы первичного индекса.
+   *      - "col_se" (secondary key) с типом, для которого производится
+   *        тестирование работы вторичного индекса.
+   *      - Колонка "order", в которую записывается контрольный (ожидаемый)
+   *        порядковый номер следования строки, при сортировке по col_se и
+   *        проверяемому виду индекса.
+   *      - Колонка "dup_id", которая используется для идентификации
+   *        дубликатов индексов допускающих не-уникальные ключи.
+   *      - Колонка "t1ha", в которую записывается "контрольная сумма" от
+   *        ожидаемого порядка строки, типа col_se и вида индекса.
+   *        Принципиальной необходимости в этой колонке нет, она используется
+   *        как "утяжелитель", а также для дополнительного контроля.
+   *
+   *  2. Для валидных комбинаций вида индекса и типов данных таблица
+   *     заполняется строками, значения col_pk и col_se в которых
+   *     генерируется соответствующими генераторами значений:
+   *      - Сами генераторы проверяются в одном из тестов 0corny.
+   *      - Для индексов без уникальности для каждого ключа вставляется
+   *        5 строк с разным dup_id.
+   *
+   *  3. Перебираются все комбинации индексов, типов колонок и видов курсора.
+   *     Для НЕ валидных комбинаций контролируются коды ошибок.
+   *
+   *  4. Для валидных комбинаций индекса и типа курсора, после заполнения
+   *     в отдельной транзакции формируется "карта" верификации перемещений:
+   *      - "карта" строится как неупорядоченное отображение линейных номеров
+   *        строк в порядке просмотра через курсор, на пары из ожидаемых
+   *        (контрольных) значений колонки "order" и "dup_id".
+   *      - при построении "карты" все строки читаются последовательно через
+   *        проверяемый курсор.
+   *      - для построенной "карты" проверяется размер (что прочитали все
+   *        строки и только по одному разу) и соответствия порядка строк
+   *        типу курсора (возрастание/убывание).
+   *
+   * 5. Примерно половина строк (без учета дубликатов) изменяется
+   *    через курсор:
+   *      - в качестве критерия изменять/не-менять используется
+   *        младший бит значения колонки "t1ha".
+   *      - в изменяемых строках инвертируется знак колонки "ордер",
+   *        а колонка"dup_id" устанавливается в 4242.
+   *      - при каждом реальном обновлении делается две попытки обновить
+   *        строку с изменением значения ключевой "курсорной" колонки.
+   *
+   * 6. Выполняется проверка всех строк, как исходных, так и измененных.
+   *    Измененные строки ищутся по значению колонки "dup_id".
+   */
+  if (!valid_index_ops || !valid_cursor_ops)
+    return;
+
+  SCOPED_TRACE("pk_type " + std::to_string(pk_type) + ", pk_index " +
+               std::to_string(pk_index) + ", se_type " +
+               std::to_string(se_type) + ", se_index " +
+               std::to_string(se_index) +
+               (valid_index_ops ? ", (valid case)" : ", (invalid case)"));
+
+  SCOPED_TRACE(
+      "ordering " + std::to_string(ordering) + ", index " +
+      std::to_string(se_index) +
+      (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
+
+  ASSERT_GT(n_records, 5);
+
+  any_keygen keygen(se_type, se_index);
+  const unsigned expected_dups = fpta_index_is_unique(se_index) ? 1 : NDUP;
+
+  // закрываем читающий курсор и транзакцию
+  ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+
+  // начинаем пишущую транзакцию для изменений
+  fpta_txn *txn = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+  txn_guard.reset(txn);
+
+  // открываем курсор для изменения
+  fpta_cursor *cursor = nullptr;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_se, fpta_value_begin(),
+                             fpta_value_end(), nullptr, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+
+  // обновляем половину строк
+  for (unsigned order = 0; order < NNN; ++order) {
+    SCOPED_TRACE("order " + std::to_string(order));
+    fpta_value value_se = keygen.make(order, NNN);
+
+    ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &value_se, nullptr));
+    ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor_guard.get()));
+
+    fptu_ro tuple;
+    ASSERT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
+    ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
+
+    int error;
+    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    ASSERT_EQ(FPTU_OK, error);
+    ASSERT_EQ(order, tuple_order);
+
+    auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+    ASSERT_EQ(FPTU_OK, error);
+
+    auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
+    ASSERT_EQ(FPTU_OK, error);
+
+    const auto checksum =
+        order_checksum(fpta_index_is_unique(se_index)
+                           ? tuple_order
+                           : tuple_order * NDUP + tuple_dup_id,
+                       se_type, se_index)
+            .uint;
+    ASSERT_EQ(checksum, tuple_checksum);
+
+    if (checksum & 1) {
+      uint8_t buffer[fpta_max_keylen * 42 + sizeof(fptu_rw)];
+      fptu_rw *row = fptu_fetch(tuple, buffer, sizeof(buffer), 1);
+      ASSERT_NE(nullptr, row);
+      ASSERT_STREQ(nullptr, fptu_check(row));
+
+      // инвертируем знак order и пытаемся обновить строку с изменением ключа
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_order,
+                                            fpta_value_sint(-tuple_order)));
+      value_se = keygen.make((order + 42) % NNN, NNN);
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
+      ASSERT_EQ(FPTA_KEY_MISMATCH,
+                fpta_cursor_probe_and_update(cursor, fptu_take(row)));
+
+      // восстанавливаем значение ключа и обновляем строку
+      value_se = keygen.make(order, NNN);
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
+      // для простоты контроля среди дубликатов устанавливаем dup_id = 4242
+      ASSERT_EQ(FPTA_OK,
+                fpta_upsert_column(row, &col_dup_id, fpta_value_sint(4242)));
+      if (!fpta_index_is_unique(se_index)) {
+        const auto t1ha =
+            order_checksum(tuple_order * NDUP + 4242, se_type, se_index);
+        ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_t1ha, t1ha));
+      }
+      ASSERT_EQ(FPTA_OK, fpta_cursor_probe_and_update(cursor, fptu_take(row)));
+
+      // для проверки еще раз пробуем "сломать" ключ
+      value_se = keygen.make((order + 24) % NNN, NNN);
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, value_se));
+      ASSERT_EQ(FPTA_KEY_MISMATCH,
+                fpta_cursor_probe_and_update(cursor, fptu_take_noshrink(row)));
+
+      size_t ndups;
+      ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &ndups));
+      ASSERT_EQ(expected_dups, ndups);
+    }
+  }
+
+  // завершаем транзакцию изменения
+  ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+  ASSERT_EQ(FPTA_OK, fpta_transaction_commit(txn_guard.release()));
+  txn = nullptr;
+
+  // начинаем транзакцию чтения если предыдущая закрыта
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_read, &txn));
+  ASSERT_NE(nullptr, txn);
+  txn_guard.reset(txn);
+
+  // открываем курсор для чтения
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_se, fpta_value_begin(),
+                             fpta_value_end(), nullptr,
+                             (fpta_cursor_options)(ordering | fpta_dont_fetch),
+                             &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+
+  // проверяем обновления
+  for (unsigned order = 0; order < NNN; ++order) {
+    SCOPED_TRACE("order " + std::to_string(order));
+    const fpta_value value_se = keygen.make(order, NNN);
+    fptu_ro tuple;
+    int error;
+    uint64_t tuple_dup_id;
+
+    ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &value_se, nullptr));
+    ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor_guard.get()));
+
+    size_t ndups;
+    ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &ndups));
+    ASSERT_EQ(expected_dups, ndups);
+
+    for (;;) {
+      ASSERT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
+      ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
+
+      tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+      ASSERT_EQ(FPTU_OK, error);
+
+      auto checksum = order_checksum(fpta_index_is_unique(se_index)
+                                         ? order
+                                         : order * NDUP + tuple_dup_id,
+                                     se_type, se_index)
+                          .uint;
+
+      auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
+      ASSERT_EQ(FPTU_OK, error);
+      ASSERT_EQ(checksum, tuple_checksum);
+
+      // идем по строкам-дубликатом до той, которую обновляли
+      if (tuple_dup_id != 4242 && (checksum & 1))
+        ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
+      else
+        break;
+    }
+
+    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    ASSERT_EQ(FPTU_OK, error);
+    int expected_order = order;
+    if (tuple_dup_id == 4242)
+      expected_order = -expected_order;
+    EXPECT_EQ(expected_order, tuple_order);
   }
 }
 

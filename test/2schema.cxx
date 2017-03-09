@@ -202,6 +202,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
+  // разрушаем привязанные идентификаторы
   fpta_name_destroy(&table);
   fpta_name_destroy(&col_pk);
 

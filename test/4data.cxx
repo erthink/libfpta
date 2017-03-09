@@ -608,6 +608,23 @@ TEST(Data, UpsertColumn) {
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
   txn = nullptr;
 
+  // разрушаем привязанные идентификаторы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_uint16);
+  fpta_name_destroy(&col_uint32);
+  fpta_name_destroy(&col_int32);
+  fpta_name_destroy(&col_fp32);
+  fpta_name_destroy(&col_uint64);
+  fpta_name_destroy(&col_int64);
+  fpta_name_destroy(&col_fp64);
+  fpta_name_destroy(&col_96);
+  fpta_name_destroy(&col_128);
+  fpta_name_destroy(&col_160);
+  fpta_name_destroy(&col_datetime);
+  fpta_name_destroy(&col_256);
+  fpta_name_destroy(&col_str);
+  fpta_name_destroy(&col_opaque);
+
   // закрываем и удаляем базу
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
   ASSERT_TRUE(unlink(testdb_name) == 0);

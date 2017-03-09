@@ -17,13 +17,26 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#cmakedefine HAVE_MEMMEM
-#cmakedefine HAVE_MEMRCHR
-#cmakedefine HAVE_UUIDGEN
-#cmakedefine HAVE_UNISTD_H
-#cmakedefine HAVE_SYS_UIO_H
-#cmakedefine HAVE_SYS_STAT_H
-#cmakedefine HAVE_TIMEVAL_TV_USEC
-#cmakedefine HAVE_TIMESPEC_TV_NSEC
-#cmakedefine CMAKE_HAVE_PTHREAD_H
-#cmakedefine HAVE_VALGRIND_MEMCHECK_H
+#include "fast_positive/tables.h"
+
+#if FPTA_VERSION_MAJOR != @FPTA_VERSION_MAJOR@ || FPTA_VERSION_MINOR != @FPTA_VERSION_MINOR@
+#error "API version mismatch!"
+#endif
+
+const struct fpta_version_info fpta_version = {
+  @FPTA_VERSION_MAJOR@, @FPTA_VERSION_MINOR@, @FPTA_VERSION_RELEASE@, @FPTA_VERSION_REVISION@,
+  {
+    "@FPTA_GIT_TIMESTAMP@",
+    "@FPTA_GIT_TREE@",
+    "@FPTA_GIT_COMMIT@",
+    "@FPTA_GIT_DESCRIBE@"
+  }
+};
+
+const struct fpta_build_info fpta_build = {
+  "@FPTA_BUILD_TIMESTAMP@",
+  "@FPTA_BUILD_TAGRET@",
+  "@FPTA_BUILD_OPTIONS@",
+  "@FPTA_BUILD_COMPILER@",
+  "@FPTA_BUILD_FLAGS@"
+};
