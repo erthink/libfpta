@@ -302,14 +302,15 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   return (fpta_error)rc;
 }
 
-int fpta_transaction_versions(fpta_txn *txn, uint64_t *data, uint64_t *schema) {
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
+                              uint64_t *schema_version) {
   if (unlikely(!fpta_txn_validate(txn, fpta_read)))
     return FPTA_EINVAL;
 
   if (likely(data))
     *data = txn->data_version;
-  if (likely(schema))
-    *schema = txn->schema_version;
+  if (likely(schema_version))
+    *schema_version = txn->schema_version;
   return FPTA_SUCCESS;
 }
 

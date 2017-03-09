@@ -458,17 +458,73 @@ static int fpta_schema_read(fpta_txn *txn, fpta_shove_t shove,
       return rc;
   }
 
-  MDB_val data, key;
-  key.mv_size = sizeof(shove);
-  key.mv_data = &shove;
-  rc = mdbx_get(txn->mdbx_txn, db->schema_dbi, &key, &data);
+  MDB_val mdbx_data, mdbx_key;
+  mdbx_key.mv_size = sizeof(shove);
+  mdbx_key.mv_data = &shove;
+  rc = mdbx_get(txn->mdbx_txn, db->schema_dbi, &mdbx_key, &mdbx_data);
   if (rc != MDB_SUCCESS)
     return rc;
 
-  if (!fpta_schema_validate(data))
+  if (!fpta_schema_validate(mdbx_data))
     return FPTA_SCHEMA_CORRUPTED;
 
-  return fpta_schema_dup(data, def);
+  return fpta_schema_dup(mdbx_data, def);
+}
+
+int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
+  if (!info || !fpta_txn_validate(txn, fpta_read))
+    return FPTA_EINVAL;
+  memset(info, 0, sizeof(fpta_schema_info));
+
+  int rc;
+  fpta_db *db = txn->db;
+  if (db->schema_dbi < 1) {
+    rc = fpta_schema_open(txn, false);
+    if (rc != MDB_SUCCESS)
+      return rc;
+  }
+
+  MDB_cursor *mdbx_cursor;
+  rc = mdbx_cursor_open(txn->mdbx_txn, db->schema_dbi, &mdbx_cursor);
+  if (rc != MDB_SUCCESS)
+    return rc;
+
+  MDB_val mdbx_data, mdbx_key;
+  rc = mdbx_cursor_get(mdbx_cursor, &mdbx_key, &mdbx_data, MDB_FIRST);
+  while (rc == MDB_SUCCESS) {
+    if (info->tables_count >= fpta_tables_max) {
+      rc = FPTA_SCHEMA_CORRUPTED;
+      break;
+    }
+
+    fpta_name *id = &info->tables_names[info->tables_count];
+    if (mdbx_key.iov_len != sizeof(fpta_shove_t)) {
+      rc = FPTA_SCHEMA_CORRUPTED;
+      break;
+    }
+
+    memcpy(&id->shove, mdbx_key.iov_base, sizeof(id->shove));
+    // id->table.pk = fpta_index_none | fptu_null; /* done by memset() */
+    assert(id->table.pk == (fpta_index_none | fptu_null));
+    // id->table.def = nullptr; /* done by memset() */
+    assert(id->table.def == nullptr);
+
+    if (!fpta_id_validate(id, fpta_table)) {
+      rc = FPTA_SCHEMA_CORRUPTED;
+      break;
+    }
+
+    if (!fpta_schema_validate(mdbx_data)) {
+      rc = FPTA_SCHEMA_CORRUPTED;
+      break;
+    }
+
+    info->tables_count += 1;
+    rc = mdbx_cursor_get(mdbx_cursor, &mdbx_key, &mdbx_data, MDB_NEXT);
+  }
+
+  mdbx_cursor_close(mdbx_cursor);
+  return (rc == MDB_NOTFOUND) ? (int)FPTA_SUCCESS : rc;
 }
 
 //----------------------------------------------------------------------------
@@ -487,8 +543,10 @@ static int fpta_name_init(fpta_name *id, const char *name,
     return FPTA_EINVAL;
   case fpta_table:
     id->shove = fpta_shove_name(name, fpta_table);
-    id->table.pk = fpta_index_none | fptu_null;
+    // id->table.pk = fpta_index_none | fptu_null; /* done by memset() */
+    assert(id->table.pk == (fpta_index_none | fptu_null));
     // id->table.def = nullptr; /* done by memset() */
+    assert(id->table.def == nullptr);
     assert(fpta_id_validate(id, fpta_table));
     break;
   case fpta_column:
