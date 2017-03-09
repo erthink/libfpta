@@ -2,7 +2,8 @@ add_subdirectory(libfptu/src)
 add_subdirectory(libfptu/test)
 
 add_library(t1ha STATIC
-   t1ha/t1ha.c
+   t1ha/src/t1ha0.c
+   t1ha/src/t1ha1.c
 )
 
 if (CC_HAS_ARCH_NATIVE)
