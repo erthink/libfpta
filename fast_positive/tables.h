@@ -699,14 +699,14 @@ static __inline int fpta_transaction_abort(fpta_txn *txn) {
   return fpta_transaction_end(txn, true);
 }
 
-/* Получение версии данных и схемы.
+/* Получение версий схемы и данных.
  *
  * Для снимка данных (которая читается транзакцией)
  * и версию схемы (которая действует внутри транзакции).
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
-                                       uint64_t *schema);
+FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *data_version,
+                                       uint64_t *schema_version);
 
 //----------------------------------------------------------------------------
 /* Управление схемой:
@@ -991,7 +991,7 @@ static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
  * схемы.
  *
  * Перед первым обращением name_id должен быть инициализирован
- * посредством fpta_table_init() или fpta_column_init().
+ * посредством fpta_table_init(), fpta_column_init() либо fpta_schema_fetch().
  *
  * Аргумент column_id может быть нулевым. В этом случае он
  * игнорируется, и обрабатывается только table_id.
@@ -1067,6 +1067,37 @@ FPTA_API int fpta_table_column_count(const fpta_name *table_id);
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_table_column_get(const fpta_name *table_id, unsigned column,
                                    fpta_name *column_id);
+
+/* Описание схемы, заполняется функцией fpta_schema_fetch().
+ *
+ * Фактически является массивом содержащим хэшированные имена таблиц,
+ * по которым можно получить остальную информацию.
+ *
+ * В результате успешного вызова fpta_schema_fetch() будет установлено поле
+ * tables_count и будут заполнены элементы массива tables_names[], однако
+ * не полностью, а как если-бы для этого использовалась функция
+ * fpta_table_init().
+ *
+ * Тем не менее, этого достаточно для доступа к каждой из таблиц, в том числе
+ * вызовов fpta_name_refresh() и последующего получения информации о колонках
+ * посредством fpta_table_column_count() и fpta_table_column_get().
+ *
+ * Непосредственно после вызова fpta_schema_fetch() заполненная структура
+ * не требует какого-либо разрушения или дополнительного освобождения ресурсов.
+ * Однако, после последующих вызовов fpta_name_refresh() для каждого элемента
+ * массива tables_names[] требуют вызов fpta_name_destroy() для освобождения
+ * внутреннего описания колонок. */
+typedef struct fpta_schema_info {
+  unsigned tables_count;
+  fpta_name tables_names[fpta_tables_max];
+} fpta_schema_info;
+
+/* Позволяет получить информацию о всех созданных таблицах.
+ *
+ * Подробности см выше в описании структуры fpta_schema_info.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info);
 
 //----------------------------------------------------------------------------
 /* Управление фильтрами. */
@@ -1736,7 +1767,7 @@ extern FPTA_API const struct fpta_build_info fpta_build;
 }
 
 //----------------------------------------------------------------------------
-/* Сервисные функции и классы для C++ (будет пополнять, существенно). */
+/* Сервисные функции и классы для C++ (будет пополняться, существенно). */
 
 namespace std {
 FPTA_API string to_string(const fpta_error errnum);

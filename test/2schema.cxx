@@ -149,6 +149,11 @@ TEST(Schema, Base) {
   ASSERT_NE(nullptr, txn);
 
   EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_1", &def));
+
+  fpta_schema_info schema_info;
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(1, schema_info.tables_count);
+
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
@@ -199,6 +204,11 @@ TEST(Schema, Base) {
   EXPECT_EQ(fptu_fp64, fpta_name_coltype(&col_b));
   EXPECT_EQ(2, col_b.column.num);
 
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(1, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &schema_info.tables_names[0]));
+  fpta_name_destroy(&schema_info.tables_names[0]);
+
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
@@ -209,8 +219,18 @@ TEST(Schema, Base) {
   //------------------------------------------------------------------------
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
   ASSERT_NE(nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(1, schema_info.tables_count);
+
   EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "Table_1"));
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(0, schema_info.tables_count);
+
   EXPECT_EQ(MDB_NOTFOUND, fpta_table_drop(txn, "table_xyz"));
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(0, schema_info.tables_count);
+
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
 
   //------------------------------------------------------------------------
