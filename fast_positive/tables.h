@@ -1739,6 +1739,10 @@ FPTA_API int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
                                     void *key);
 FPTA_API void *__fpta_index_shove2comparator(fpta_shove_t shove);
 
+static __inline bool fpta_is_under_valgrind() {
+  return fptu_is_under_valgrind();
+}
+
 typedef struct fpta_version_info {
   uint8_t major;
   uint8_t minor;
