@@ -793,9 +793,6 @@ FPTU_API fptu_lge fptu_cmp_tuples(fptu_ro left, fptu_ro right);
 
 FPTU_API const char *fptu_type_name(const fptu_type);
 
-#ifdef __cplusplus
-}
-
 //----------------------------------------------------------------------------
 /* Некоторые внутренние служебные функции.
  * Доступны для специальных случаев, в том числе для тестов. */
@@ -829,6 +826,9 @@ typedef struct fptu_build_info {
 
 extern FPTU_API const struct fptu_version_info fptu_version;
 extern FPTU_API const struct fptu_build_info fptu_build;
+
+#ifdef __cplusplus
+}
 
 //----------------------------------------------------------------------------
 /* Сервисные функции и классы для C++ (будет существенно пополнятся). */
