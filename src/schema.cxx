@@ -103,6 +103,7 @@ static void fpta_dbicache_update(fpta_db *db, fpta_shove_t shove,
 
   size_t n = shove % fpta_dbi_cache_size, i = n;
   for (;;) {
+    assert(db->dbi_shoves[i] != shove);
     if (db->dbi_shoves[i] == 0) {
       assert(db->dbi_handles[i] == 0);
       db->dbi_handles[i] = handle;
@@ -136,9 +137,9 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
   assert(fpta_txn_validate(txn, fpta_read) && handle);
   fpta_db *db = txn->db;
 
-  if (shove > 0) {
+  if (likely(shove > 0)) {
     *handle = fpta_dbicache_lookup(db, shove);
-    if (*handle)
+    if (likely(*handle))
       return FPTA_SUCCESS;
   }
 
@@ -149,14 +150,26 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
     int err = pthread_mutex_lock(&db->dbi_mutex);
     if (unlikely(err != 0))
       return err;
+    if (likely(shove > 0)) {
+      *handle = fpta_dbicache_lookup(db, shove);
+      if (likely(*handle)) {
+        int err = pthread_mutex_unlock(&db->dbi_mutex);
+        assert(err == 0);
+        (void)err;
+        return FPTA_SUCCESS;
+      }
+    }
   }
 
   const auto keycmp = fpta_index_shove2comparator(key_shove);
   const auto datacmp = fpta_index_shove2comparator(data_shove);
   int rc = mdbx_dbi_open_ex(txn->mdbx_txn, dbi_name.cstr, dbi_flags, handle,
                             keycmp, datacmp);
-  if (rc == FPTA_SUCCESS && shove > 0)
-    fpta_dbicache_update(db, shove, *handle);
+  if (likely(rc == FPTA_SUCCESS)) {
+    if (shove > 0)
+      fpta_dbicache_update(db, shove, *handle);
+  } else
+    *handle = 0;
 
   if (txn->level < fpta_schema) {
     int err = pthread_mutex_unlock(&db->dbi_mutex);
@@ -366,7 +379,7 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
       return FPTA_EINVAL;
   }
 
-  // TODO: check for distinctness.
+  // FIXME: check for distinctness.
   return FPTA_SUCCESS;
 }
 
