@@ -375,7 +375,7 @@ struct fpta_cursor {
   fpta_key range_from_key;
   fpta_key range_to_key;
 
-  fpta_filter *filter;
+  const fpta_filter *filter;
   fpta_txn *txn;
   fpta_db *db;
 };

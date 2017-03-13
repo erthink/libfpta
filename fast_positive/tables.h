@@ -1121,10 +1121,11 @@ FPTA_API int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info);
 /* Варианты условий (типы узлов) фильтра: НЕ, ИЛИ, И, функция-предикат,
  * меньше, больше, равно, не равно... */
 typedef enum fpta_filter_bits {
-  fpta_node_not = -3,
-  fpta_node_or = -2,
-  fpta_node_and = -1,
-  fpta_node_fn = 0,
+  fpta_node_not = -4,
+  fpta_node_or = -3,
+  fpta_node_and = -2,
+  fpta_node_fncol = -1, /* предикат/функтор для одной колонки */
+  fpta_node_fnrow = 0, /* предикат/функтор для всей строки/кортежа */
   fpta_node_lt = fptu_lt,
   fpta_node_gt = fptu_gt,
   fpta_node_le = fptu_le,
@@ -1153,7 +1154,7 @@ typedef struct FPTA_API fpta_filter {
       struct fpta_filter *b;
     } node_or, node_and;
 
-    /* параметры для вызова функтора/предиката. */
+    /* параметры для вызова функтора/предиката для одной колонки. */
     struct {
       /* идентификатор колонки */
       const fpta_name *column_id;
@@ -1163,12 +1164,24 @@ typedef struct FPTA_API fpta_filter {
        * Функция должна вернуть true, если значение колонки/поля
        * удовлетворяет критерию фильтрации.
        */
-      bool (*predicate)(const fptu_field *field, const fpta_name *column_id,
-                        void *context, void *arg);
+      bool (*predicate)(const fptu_field *column, void *arg);
+      /* дополнительный аргумент для функции-предиката */
+      void *arg;
+    } node_fncol;
+
+    /* параметры для вызова функтора/предиката для всей строки. */
+    struct {
+      /* функция-предикат, получает указатель на найденное поле,
+       * или nullptr если такового нет. А также опциональные
+       * параметры context и arg.
+       * Функция должна вернуть true, если значение колонки/поля
+       * удовлетворяет критерию фильтрации.
+       */
+      bool (*predicate)(const fptu_ro *row, void *context, void *arg);
       /* дополнительные аргументы для функции-предиката */
       void *context;
       void *arg;
-    } node_fn;
+    } node_fnrow;
 
     /* параметры для условия больше/меньше/равно/не-равно. */
     struct {
@@ -1184,7 +1197,7 @@ typedef struct FPTA_API fpta_filter {
  *
  * Предполагается внутреннее использование, но функция также
  * доступна извне. */
-FPTA_API bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple);
+FPTA_API bool fpta_filter_match(const fpta_filter *fn, fptu_ro tuple);
 
 //----------------------------------------------------------------------------
 /* Управление курсорами. */
@@ -1244,7 +1257,7 @@ typedef enum fpta_cursor_options {
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
                               fpta_value range_from, fpta_value range_to,
-                              fpta_filter *filter, fpta_cursor_options op,
+                              const fpta_filter *filter, fpta_cursor_options op,
                               fpta_cursor **cursor);
 FPTA_API int fpta_cursor_close(fpta_cursor *cursor);
 

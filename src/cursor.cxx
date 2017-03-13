@@ -42,7 +42,7 @@ int fpta_cursor_close(fpta_cursor *cursor) {
 }
 
 int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
-                     fpta_value range_to, fpta_filter *filter,
+                     fpta_value range_to, const fpta_filter *filter,
                      fpta_cursor_options op, fpta_cursor **pcursor) {
   if (unlikely(pcursor == nullptr))
     return FPTA_EINVAL;
@@ -63,8 +63,6 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
 
   if (unlikely(!fpta_id_validate(column_id, fpta_column)))
     return FPTA_EINVAL;
-  if (unlikely(!fpta_filter_validate(filter)))
-    return FPTA_EINVAL;
 
   fpta_name *table_id = column_id->column.table;
   int rc = fpta_name_refresh_couple(txn, table_id, column_id);
@@ -83,6 +81,9 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
     return FPTA_ETYPE;
 
   if (unlikely(range_from.type == fpta_end || range_to.type == fpta_begin))
+    return FPTA_EINVAL;
+
+  if (unlikely(!fpta_filter_validate(filter)))
     return FPTA_EINVAL;
 
   if (unlikely(column_id->mdbx_dbi < 1)) {

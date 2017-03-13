@@ -312,13 +312,14 @@ unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
   return dbi_flags;
 }
 
-bool fpta_index_ordered_is_compat(fptu_type data_type,
-                                  fpta_value_type value_type) {
+static bool fpta_index_ordered_is_compat(fptu_type data_type,
+                                         fpta_value_type value_type) {
   /* Критерий сравнимости:
    *  - все индексы коротких типов (использующие MDB_INTEGERKEY) могут быть
    *    использованы только со значениями РАВНОГО фиксированного размера.
-   *  - НЕ допускается смешивать signed и unsigned,
-   *    тем более integer и float.
+   *  - МОЖНО "смешивать" signed и unsigned, так как fpta_index_value2key()
+   *    преобразует значение, либо вернет ошибку.
+   *  - но НЕ допускается смешивать integer и float.
    *  - shoved допустим только при возможности больших ключей.
    */
   static int32_t bits[fpta_end + 1] = {
@@ -326,10 +327,12 @@ bool fpta_index_ordered_is_compat(fptu_type data_type,
       0,
 
       /* fpta_signed_int */
-      1 << fptu_int32 | 1 << fptu_int64,
+      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 | 1 << fptu_int32 |
+          1 << fptu_int64,
 
       /* fpta_unsigned_int */
-      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64,
+      1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 | 1 << fptu_int32 |
+          1 << fptu_int64,
 
       /* fpta_datetime */
       1 << fptu_datetime,
@@ -360,12 +363,14 @@ bool fpta_index_ordered_is_compat(fptu_type data_type,
   return (bits[value_type] & (1 << data_type)) != 0;
 }
 
-bool fpta_index_unordered_is_compat(fptu_type data_type,
-                                    fpta_value_type value_type) {
+static bool fpta_index_unordered_is_compat(fptu_type data_type,
+                                           fpta_value_type value_type) {
   /* Критерий сравнимости:
    *  - все индексы коротких типов (использующие MDB_INTEGERKEY) могут быть
    *    использованы только со значениями РАВНОГО фиксированного размера.
-   *  - МОЖНО смешивать signed и unsigned, НО НЕ integer и float.
+   *  - МОЖНО "смешивать" signed и unsigned, так как fpta_index_value2key()
+   *    преобразует значение, либо вернет ошибку.
+   *  - но НЕ допускается смешивать integer и float.
    *  - shoved для всех типов, которые могут быть длиннее 8. */
   static int32_t bits[fpta_end + 1] = {
       /* fpta_null */
@@ -432,7 +437,7 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     return FPTA_EOOPS;
 
   if (fpta_index_is_ordered(index)) {
-    // упорядоченные индекс
+    // упорядоченный индекс
     if (unlikely(!fpta_index_ordered_is_compat(type, value.type)))
       return FPTA_ETYPE;
 
