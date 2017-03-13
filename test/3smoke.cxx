@@ -1470,11 +1470,11 @@ public:
   scoped_cursor_guard cursor_guard;
 
   fpta_name table, col_1, col_2;
-
   fpta_index_type index;
   fpta_cursor_options ordering;
   bool valid_ops;
 
+  unsigned count_value_3;
   virtual void SetUp() {
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     index = std::tr1::get<0>(GetParam());
@@ -1541,10 +1541,13 @@ public:
     fpta_name_refresh_couple(txn, &table, &col_1);
     fpta_name_refresh(txn, &col_2);
 
+    count_value_3 = 0;
     for (unsigned n = 0; n < 42; ++n) {
       EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_1, fpta_value_sint(n)));
+      unsigned value = (n + 3) % 5;
+      count_value_3 += (value == 3);
       EXPECT_EQ(FPTA_OK,
-                fpta_upsert_column(pt, &col_2, fpta_value_sint((n + 3) % 5)));
+                fpta_upsert_column(pt, &col_2, fpta_value_sint(value)));
       ASSERT_STREQ(nullptr, fptu_check(pt));
 
       ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt)));
@@ -1754,6 +1757,169 @@ static bool filter_row_predicate_false(const fptu_ro *, void *, void *) {
 
 static bool filter_col_predicate_odd(const fptu_field *column, void *) {
   return (fptu_field_int32(column) & 1) != 0;
+}
+
+TEST_P(SmokeSelect, Filter) {
+  /* Smoke-проверка жизнеспособности курсоров с фильтром.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой три колонки,
+   *     и два индекса (primary и secondary).
+   *  2. Добавляем данные:
+   *
+   *  5. Завершаем операции и освобождаем ресурсы.
+   */
+
+  SCOPED_TRACE("index " + std::to_string(index) + ", ordering " +
+               std::to_string(ordering) +
+               (valid_ops ? ", (valid case)" : ", (invalid case)"));
+
+  if (!valid_ops)
+    return;
+
+  // открываем простейщий курсор БЕЗ фильтра
+  fpta_cursor *cursor;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), nullptr, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  size_t count;
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(42, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем простейщий курсор c псевдо-фильтром (полное покрытие)
+  fpta_filter filter;
+  filter.type = fpta_node_fnrow;
+  filter.node_fnrow.context = nullptr /* unused */;
+  filter.node_fnrow.arg = nullptr /* unused */;
+  filter.node_fnrow.predicate = filter_row_predicate_true;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(42, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем простейщий курсор c псевдо-фильтром (нулевое покрытие)
+  filter.node_fnrow.predicate = filter_row_predicate_false;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(0, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем курсор c фильтром по нечетности значения колонки (покрытие 50%)
+  filter.type = fpta_node_fncol;
+  filter.node_fncol.column_id = &col_1;
+  filter.node_fncol.arg = nullptr /* unused */;
+  filter.node_fncol.predicate = filter_col_predicate_odd;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(21, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем курсор c фильтром по значению колонки (равенство)
+  filter.type = fpta_node_eq;
+  filter.node_cmp.left_id = &col_2;
+  filter.node_cmp.right_value = fpta_value_uint(3);
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(count_value_3, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем курсор c фильтром по значению колонки (не равенство)
+  filter.type = fpta_node_ne;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(42 - count_value_3, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем курсор c фильтром по значению колонки (больше)
+  filter.type = fpta_node_gt;
+  filter.node_cmp.left_id = &col_1;
+  filter.node_cmp.right_value = fpta_value_uint(10);
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(31, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем курсор c фильтром по значению колонки (меньше)
+  filter.type = fpta_node_lt;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_end(), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(10, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // открываем курсор c тем-же фильтром по значению колонки (меньше)
+  // и диапазоном с перекрытием 50% после от фильтра.
+  filter.type = fpta_node_lt;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_uint(5), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(5, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  // меняем фильтр на "больше или равно" и открываем курсор с диапазоном,
+  // который имеет только одну "общую" запись с условием фильтра.
+  filter.type = fpta_node_ge;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
+                             fpta_value_uint(11), &filter, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(1, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
 }
 
 #if GTEST_HAS_COMBINE
