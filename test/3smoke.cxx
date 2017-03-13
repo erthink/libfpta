@@ -480,7 +480,7 @@ TEST(SmokeIndex, Secondary) {
 //----------------------------------------------------------------------------
 
 #include "keygen.hpp"
-#include "tools.hpp"
+
 #include <map>
 #include <memory>
 #include <set>

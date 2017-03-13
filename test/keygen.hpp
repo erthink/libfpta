@@ -17,6 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
 #include "fast_positive/tables_internal.h"
 #include <gtest/gtest.h>
 
@@ -28,6 +29,8 @@
 #include <typeinfo>
 #include <utility>
 #include <vector>
+
+#include "tools.hpp"
 
 /* "хорошие" значения float: близкие к представимым, но НЕ превосходящие их */
 static constexpr float flt_neg_below = -FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
@@ -41,62 +44,7 @@ static constexpr double flt_pos_over = FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
 static_assert(flt_neg_over <= -FLT_MAX, "unexpected precision loss");
 static_assert(flt_pos_over >= FLT_MAX, "unexpected precision loss");
 
-/* простейший медленный тест на простоту */
-bool isPrime(unsigned number);
-
 //----------------------------------------------------------------------------
-
-static __inline int value2key(fpta_shove_t shove, const fpta_value &value,
-                              fpta_key &key) {
-  return __fpta_index_value2key(shove, &value, &key);
-}
-
-static __inline MDB_cmp_func *shove2comparator(fpta_shove_t shove) {
-  return (MDB_cmp_func *)__fpta_index_shove2comparator(shove);
-}
-
-//----------------------------------------------------------------------------
-
-inline bool is_valid4primary(fptu_type type, fpta_index_type index) {
-  if (index == fpta_index_none || fpta_index_is_secondary(index))
-    return false;
-
-  if (type <= fptu_null || type >= fptu_farray)
-    return false;
-
-  if (fpta_index_is_reverse(index) && type < fptu_96)
-    return false;
-
-  return true;
-}
-
-inline bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor) {
-  if (index == fpta_index_none)
-    return false;
-
-  if (fpta_cursor_is_ordered(cursor) && !fpta_index_is_ordered(index))
-    return false;
-
-  return true;
-}
-
-inline bool is_valid4secondary(fptu_type pk_type, fpta_index_type pk_index,
-                               fptu_type se_type, fpta_index_type se_index) {
-  (void)pk_type;
-  if (pk_index == fpta_index_none || !fpta_index_is_unique(pk_index))
-    return false;
-
-  if (se_index == fpta_index_none || fpta_index_is_primary(se_index))
-    return false;
-
-  if (se_type <= fptu_null || se_type >= fptu_farray)
-    return false;
-
-  if (fpta_index_is_reverse(se_index) && se_type < fptu_96)
-    return false;
-
-  return true;
-}
 
 template <typename container>
 bool is_properly_ordered(const container &probe, bool descending = false) {
