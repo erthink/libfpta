@@ -253,8 +253,10 @@ __cold string to_string(const fpta_filter_bits bits) {
     return "OR";
   case fpta_node_and:
     return "AND";
-  case fpta_node_fn:
-    return "FN()";
+  case fpta_node_fncol:
+    return "FN_COLUMN()";
+  case fpta_node_fnrow:
+    return "FN_ROW()";
   case fpta_node_lt:
   case fpta_node_gt:
   case fpta_node_le:

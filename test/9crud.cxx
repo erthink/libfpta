@@ -23,7 +23,6 @@
 #include <unordered_map>
 
 #include "keygen.hpp"
-#include "tools.hpp"
 
 #define TEST_DB_DIR "/dev/shm/"
 

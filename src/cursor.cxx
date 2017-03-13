@@ -19,6 +19,10 @@
 
 #include "fast_positive/tables_internal.h"
 
+/* Подставляется в качестве адреса для ключей нулевой длины,
+ * с тем чтобы отличать от nullptr */
+static char NIL;
+
 bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level) {
   if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr ||
                !fpta_txn_validate(cursor->txn, min_level)))
@@ -38,7 +42,7 @@ int fpta_cursor_close(fpta_cursor *cursor) {
 }
 
 int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
-                     fpta_value range_to, fpta_filter *filter,
+                     fpta_value range_to, const fpta_filter *filter,
                      fpta_cursor_options op, fpta_cursor **pcursor) {
   if (unlikely(pcursor == nullptr))
     return FPTA_EINVAL;
@@ -59,8 +63,6 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
 
   if (unlikely(!fpta_id_validate(column_id, fpta_column)))
     return FPTA_EINVAL;
-  if (unlikely(!fpta_filter_validate(filter)))
-    return FPTA_EINVAL;
 
   fpta_name *table_id = column_id->column.table;
   int rc = fpta_name_refresh_couple(txn, table_id, column_id);
@@ -79,6 +81,9 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
     return FPTA_ETYPE;
 
   if (unlikely(range_from.type == fpta_end || range_to.type == fpta_begin))
+    return FPTA_EINVAL;
+
+  if (unlikely(!fpta_filter_validate(filter)))
     return FPTA_EINVAL;
 
   if (unlikely(column_id->mdbx_dbi < 1)) {
@@ -101,20 +106,20 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   cursor->index.column_order = (unsigned)column_id->column.num;
   cursor->index.mdbx_dbi = column_id->mdbx_dbi;
 
-  cursor->range_from_value = range_from;
-  if (cursor->range_from_value.type != fpta_begin) {
-    rc = fpta_index_value2key(cursor->index.shove, cursor->range_from_value,
+  if (range_from.type != fpta_begin) {
+    rc = fpta_index_value2key(cursor->index.shove, range_from,
                               cursor->range_from_key, true);
     if (unlikely(rc != FPTA_SUCCESS))
       goto bailout;
+    assert(cursor->range_from_key.mdbx.iov_base != nullptr);
   }
 
-  cursor->range_to_value = range_to;
-  if (cursor->range_to_value.type != fpta_end) {
-    rc = fpta_index_value2key(cursor->index.shove, cursor->range_to_value,
+  if (range_to.type != fpta_end) {
+    rc = fpta_index_value2key(cursor->index.shove, range_to,
                               cursor->range_to_key, true);
     if (unlikely(rc != FPTA_SUCCESS))
       goto bailout;
+    assert(cursor->range_to_key.mdbx.iov_base != nullptr);
   }
 
   rc = mdbx_cursor_open(txn->mdbx_txn, cursor->index.mdbx_dbi,
@@ -164,7 +169,6 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
      *     перемещения за lower_bound для descending в fpta_cursor_locate().
      */
     cursor->current.iov_len = mdbx_seek_key->iov_len;
-    static char NIL;
     cursor->current.iov_base =
         /* Замещаем nullptr для ключей нулевой длинны, так чтобы
          * в курсоре стоящем на строке с ключом нулевой длины
@@ -225,20 +229,66 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
   }
 
   while (rc == MDB_SUCCESS) {
-    if (cursor->range_from_value.type != fpta_begin &&
+    MDB_cursor_op step_op = mdbx_step_op;
+
+    if (cursor->range_from_key.mdbx.iov_base &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->range_from_key.mdbx, &cursor->current) < 0) {
-      if (fpta_index_is_ordered(cursor->index.shove))
-        goto eof;
-      goto next;
+                 &cursor->current, &cursor->range_from_key.mdbx) < 0) {
+      /* задана нижняя граница диапазона и текущий ключ меньше её */
+      switch (step_op) {
+      default:
+        assert(false);
+      case MDB_PREV_DUP:
+      case MDB_NEXT_DUP:
+        /* нет смысла идти по дубликатам (без изменения значения ключа) */
+        break;
+      case MDB_PREV:
+        step_op = MDB_PREV_NODUP;
+      case MDB_PREV_NODUP:
+        /* идти в сторону уменьшения ключа есть смысл только в случае
+         * unordered (хэшированного) индекса, при этом логично пропустить
+         * все дубликаты, так как они заведомо не попадают в диапазон курсора */
+        if (!fpta_index_is_ordered(cursor->index.shove))
+          goto next;
+        break;
+      case MDB_NEXT:
+        /* при движении в сторону увеличения ключа логично пропустить все
+         * дубликаты, так как они заведомо не попадают в диапазон курсора */
+        step_op = MDB_NEXT_NODUP;
+      case MDB_NEXT_NODUP:
+        goto next;
+      }
+      goto eof;
     }
 
-    if (cursor->range_to_value.type != fpta_end &&
+    if (cursor->range_to_key.mdbx.iov_base &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->index.mdbx_dbi,
-                 &cursor->range_to_key.mdbx, &cursor->current) >= 0) {
-      if (fpta_index_is_ordered(cursor->index.shove))
-        goto eof;
-      goto next;
+                 &cursor->current, &cursor->range_to_key.mdbx) >= 0) {
+      /* задана верхняя граница диапазона и текущий ключ больше её */
+      switch (step_op) {
+      default:
+        assert(false);
+      case MDB_PREV_DUP:
+      case MDB_NEXT_DUP:
+        /* нет смысла идти по дубликатам (без изменения значения ключа) */
+        break;
+      case MDB_PREV:
+        /* при движении в сторону уменьшения ключа логично пропустить все
+         * дубликаты, так как они заведомо не попадают в диапазон курсора */
+        step_op = MDB_PREV_NODUP;
+      case MDB_PREV_NODUP:
+        goto next;
+      case MDB_NEXT:
+        step_op = MDB_NEXT_NODUP;
+      case MDB_NEXT_NODUP:
+        /* идти в сторону увелияения ключа есть смысл только в случае
+         * unordered (хэшированного) индекса, при этом логично пропустить
+         * все дубликаты, так как они заведомо не попадают в диапазон курсора */
+        if (!fpta_index_is_ordered(cursor->index.shove))
+          goto next;
+        break;
+      }
+      goto eof;
     }
 
     if (!cursor->filter)
@@ -257,7 +307,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
 
   next:
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &mdbx_data.sys,
-                         mdbx_step_op);
+                         step_op);
   }
 
   if (unlikely(rc != MDB_NOTFOUND)) {
@@ -308,23 +358,23 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
     return FPTA_EOOPS;
 
   case fpta_first:
-    if (cursor->range_from_value.type == fpta_begin ||
+    if (cursor->range_from_key.mdbx.iov_base == nullptr ||
         !fpta_index_is_ordered(cursor->index.shove)) {
       mdbx_seek_op = MDB_FIRST;
     } else {
       mdbx_seek_key = &cursor->range_from_key.mdbx;
-      mdbx_seek_op = MDB_SET_KEY;
+      mdbx_seek_op = MDB_SET_RANGE;
     }
     mdbx_step_op = MDB_NEXT;
     break;
 
   case fpta_last:
-    if (cursor->range_to_value.type == fpta_end ||
+    if (cursor->range_to_key.mdbx.iov_base == nullptr ||
         !fpta_index_is_ordered(cursor->index.shove)) {
       mdbx_seek_op = MDB_LAST;
     } else {
       mdbx_seek_key = &cursor->range_to_key.mdbx;
-      mdbx_seek_op = MDB_SET_KEY;
+      mdbx_seek_op = MDB_SET_RANGE;
     }
     mdbx_step_op = MDB_PREV;
     break;

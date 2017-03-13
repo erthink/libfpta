@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 
 #include "keygen.hpp"
-#include "tools.hpp"
 
 /* Кол-во проверочных точек в диапазонах значений индексируемых типов.
  *

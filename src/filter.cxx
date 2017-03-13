@@ -244,7 +244,7 @@ fptu_lge __fpta_filter_cmp(const fptu_field *pf, const fpta_value *right) {
   return fpta_filter_cmp(pf, *right);
 }
 
-__hot bool fpta_filter_match(fpta_filter *fn, fptu_ro tuple) {
+__hot bool fpta_filter_match(const fpta_filter *fn, fptu_ro tuple) {
 
 tail_recursion:
 
@@ -268,11 +268,15 @@ tail_recursion:
     fn = fn->node_and.b;
     goto tail_recursion;
 
-  case fpta_node_fn:
-    return fn->node_fn.predicate(
-        fptu_lookup_ro(tuple, (unsigned)fn->node_fn.column_id->column.num,
-                       fpta_id2type(fn->node_fn.column_id)),
-        fn->node_fn.column_id, fn->node_fn.context, fn->node_fn.arg);
+  case fpta_node_fncol:
+    return fn->node_fncol.predicate(
+        fptu_lookup_ro(tuple, (unsigned)fn->node_fncol.column_id->column.num,
+                       fpta_id2type(fn->node_fncol.column_id)),
+        fn->node_fncol.arg);
+
+  case fpta_node_fnrow:
+    return fn->node_fnrow.predicate(&tuple, fn->node_fnrow.context,
+                                    fn->node_fnrow.arg);
 
   default:
     int cmp_bits = fpta_filter_cmp(
@@ -287,7 +291,54 @@ tail_recursion:
 //----------------------------------------------------------------------------
 
 bool fpta_filter_validate(const fpta_filter *filter) {
-  (void)filter;
-  // TODO
-  return true;
+
+tail_recursion:
+
+  if (!filter)
+    return true;
+
+  switch (filter->type) {
+  default:
+    return false;
+
+  case fpta_node_fncol:
+    if (unlikely(!fpta_id_validate(filter->node_fncol.column_id, fpta_column)))
+      return false;
+    if (unlikely(!filter->node_fncol.predicate))
+      return false;
+    return true;
+
+  case fpta_node_fnrow:
+    if (unlikely(!filter->node_fnrow.predicate))
+      return false;
+    return true;
+
+  case fpta_node_not:
+    filter = filter->node_not;
+    goto tail_recursion;
+
+  case fpta_node_or:
+  case fpta_node_and:
+    if (unlikely(!fpta_filter_validate(filter->node_and.a)))
+      return false;
+    filter = filter->node_and.b;
+    goto tail_recursion;
+
+  case fpta_node_lt:
+  case fpta_node_gt:
+  case fpta_node_le:
+  case fpta_node_ge:
+  case fpta_node_eq:
+  case fpta_node_ne:
+    if (unlikely(!fpta_id_validate(filter->node_cmp.left_id, fpta_column)))
+      return false;
+
+    if (unlikely(filter->node_cmp.right_value.type == fpta_begin ||
+                 filter->node_cmp.right_value.type == fpta_end))
+      return false;
+
+    /* FIXME: проверка на совместимость типов node_cmp.left_id и
+     * node_cmp.right_value*/
+    return true;
+  }
 }

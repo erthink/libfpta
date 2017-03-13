@@ -372,13 +372,10 @@ struct fpta_cursor {
     unsigned mdbx_dbi;
   } index;
 
-  fpta_value range_from_value;
   fpta_key range_from_key;
-
-  fpta_value range_to_value;
   fpta_key range_to_key;
 
-  fpta_filter *filter;
+  const fpta_filter *filter;
   fpta_txn *txn;
   fpta_db *db;
 };
