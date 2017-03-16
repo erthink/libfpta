@@ -132,10 +132,13 @@ __cold string to_string(const fpta_value_type type) {
   }
 }
 
-__cold string to_string(const fpta_value &value) {
-  switch (value.type) {
+__cold string to_string(const fpta_value *value) {
+  if (value == nullptr)
+    return "nullptr";
+
+  switch (value->type) {
   default:
-    return fptu::format("invalid(fpta_value_type)%i", (int)value.type);
+    return fptu::format("invalid(fpta_value_type)%i", (int)value->type);
 
   case fpta_null:
     return "null";
@@ -145,26 +148,26 @@ __cold string to_string(const fpta_value &value) {
     return "<end>";
 
   case fpta_signed_int:
-    return fptu::format("%-" PRId64, value.sint);
+    return fptu::format("%-" PRId64, value->sint);
 
   case fpta_unsigned_int:
-    return fptu::format("%" PRIu64, value.sint);
+    return fptu::format("%" PRIu64, value->sint);
 
   case fpta_datetime:
-    return to_string(value.datetime);
+    return to_string(value->datetime);
 
   case fpta_float_point:
-    return fptu::format("%.10g", value.fp);
+    return fptu::format("%.10g", value->fp);
 
   case fpta_string:
-    return fptu::format("\"%.*s\"", value.binary_length,
-                        (const char *)value.binary_data);
+    return fptu::format("\"%.*s\"", value->binary_length,
+                        (const char *)value->binary_data);
 
   case fpta_binary:
-    return fptu::hexadecimal(value.binary_data, value.binary_length);
+    return fptu::hexadecimal(value->binary_data, value->binary_length);
 
   case fpta_shoved:
-    return "@" + fptu::hexadecimal(value.binary_data, value.binary_length);
+    return "@" + fptu::hexadecimal(value->binary_data, value->binary_length);
   }
 }
 
@@ -326,17 +329,135 @@ __cold string to_string(const fpta_put_options op) {
   }
 }
 
-__cold string to_string(const fpta_name &) { return FIXME; }
+__cold string to_string(const struct fpta_table_schema *def) {
+  if (def == nullptr)
+    return "nullptr";
 
-__cold string to_string(const fpta_column_set &) { return FIXME; }
+  string result = fptu::format(
+      "%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64 ", %" PRIu32 "=[",
+      def, def->version, def->signature, def->checksum, def->shove, def->count);
 
-__cold string to_string(const fpta_filter &) { return FIXME; }
+  for (size_t i = 0; i < def->count; ++i) {
+    const fpta_shove_t shove = def->columns[i];
+    const fpta_index_type index = fpta_shove2index(shove);
+    const fptu_type type = fpta_shove2type(shove);
+    result += fptu::format(&", @%" PRIx64 "."[(i == 0) ? 2 : 0], shove) +
+              to_string(index) + "." + to_string(type);
+  }
 
-__cold string to_string(const fpta_db *) { return FIXME; }
+  return result + "]}";
+}
 
-__cold string to_string(const fpta_txn *) { return FIXME; }
+__cold string to_string(const fpta_name *id) {
+  if (id == nullptr)
+    return "nullptr";
 
-__cold string to_string(const fpta_cursor *) { return FIXME; }
+  const bool is_table =
+      fpta_shove2index(id->shove) == (fpta_index_type)fpta_flag_table;
+
+  if (is_table) {
+    const fpta_index_type index = fpta_shove2index(id->table.pk);
+    const fptu_type type = fpta_shove2type(id->table.pk);
+    return fptu::format("table.%p{@%" PRIx64 ", v%" PRIu64 ", ", id, id->shove,
+                        id->version) +
+           to_string(index) + "." + to_string(type) +
+           fptu::format(", dbi#%u, ", id->mdbx_dbi) + to_string(id->table.def) +
+           "}";
+  }
+
+  const fpta_index_type index = fpta_name_colindex(id);
+  const fptu_type type = fpta_name_coltype(id);
+  return fptu::format(
+             "column.%p{@%" PRIx64 ", v%" PRIu64 ", col#%i, @%" PRIx64 ".%p, ",
+             id, id->shove, id->version, id->column.num,
+             id->column.table ? id->column.table->shove : 0, id->column.table) +
+         to_string(index) + "." + to_string(type) +
+         fptu::format(", dbi#%u}", id->mdbx_dbi);
+}
+
+__cold string to_string(const fpta_column_set *) { return FIXME; }
+
+__cold string to_string(const fpta_filter *filter) {
+  if (filter == nullptr)
+    return "TRUE";
+
+  switch (filter->type) {
+  default:
+    return fptu::format("invalid(filter-type)%i", (int)filter->type);
+  case fpta_node_not:
+    return "NOT (" + to_string(filter->node_not) + "(";
+  case fpta_node_or:
+    return "(" + to_string(filter->node_or.a) + " OR " +
+           to_string(filter->node_or.b) + ")";
+  case fpta_node_and:
+    return "(" + to_string(filter->node_and.a) + " AND " +
+           to_string(filter->node_and.b) + ")";
+  case fpta_node_fncol:
+    fptu::format("FN_COLUMN.%p(", filter->node_fncol.predicate) +
+        to_string(filter->node_fncol.column_id) +
+        fptu::format(", arg.%p)", filter->node_fncol.arg);
+  case fpta_node_fnrow:
+    fptu::format("FN_ROW.%p(", filter->node_fnrow.predicate) +
+        fptu::format(", context.%p, arg.%p)", filter->node_fnrow.context,
+                     filter->node_fncol.arg);
+  case fpta_node_lt:
+  case fpta_node_gt:
+  case fpta_node_le:
+  case fpta_node_ge:
+  case fpta_node_eq:
+  case fpta_node_ne:
+    return to_string(filter->node_cmp.left_id) + " " +
+           to_string((fptu_lge)filter->type) + " " +
+           to_string(filter->node_cmp.right_value);
+  }
+}
+
+__cold string to_string(const fpta_db *db) {
+  return fptu::format("%p." FIXME, db);
+}
+
+__cold string to_string(const fpta_txn *txt) {
+  return fptu::format("%p." FIXME, txt);
+}
+
+__cold string to_string(const MDB_val &value) {
+  return fptu::format("%zu_%p (", value.iov_len, value.iov_base) +
+         fptu::hexadecimal(value.iov_base, value.iov_len) + ")";
+}
+
+__cold string to_string(const fpta_key &key) { return to_string(key.mdbx); }
+
+__cold string to_string(const fpta_cursor *cursor) {
+  string result = fptu::format("cursor.%p={", cursor);
+  if (cursor) {
+    result += fptu::format("\n\tmdbx %p,\n\toptions ", cursor->mdbx_cursor) +
+              to_string(cursor->options);
+
+    if (cursor->is_filled())
+      result += ",\n\tcurrent " + to_string(cursor->current);
+    else if (cursor->is_before_first())
+      result += ",\n\tstate before-first (FPTA_NODATA)";
+    else if (cursor->is_after_last())
+      result += ",\n\tstate after-last (FPTA_NODATA)";
+    else
+      result += ",\n\tstate non-positioned (FPTA_ECURSOR)";
+
+    const fpta_shove_t shove = cursor->index.shove;
+    const fpta_index_type index = fpta_shove2index(shove);
+    const fptu_type type = fpta_shove2type(shove);
+
+    result += ",\n\t" + to_string(cursor->table_id) +
+              fptu::format(",\n\tindex {@%" PRIx64 ".", shove) +
+              to_string(index) + "." + to_string(type) +
+              fptu::format(", col#%u, dbi#%u},\n\trange-from-key ",
+                           cursor->index.column_order, cursor->index.mdbx_dbi) +
+              to_string(cursor->range_from_key) + ",\n\trange-to-key " +
+              to_string(cursor->range_to_key) + ",\n\tfilter " +
+              to_string(cursor->filter) + ",\n\ttxn " + to_string(cursor->txn) +
+              ",\n\tdb " + to_string(cursor->db) + "\n";
+  }
+  return result + "}";
+}
 }
 
 void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {

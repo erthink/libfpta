@@ -1801,7 +1801,7 @@ extern FPTA_API const struct fpta_build_info fpta_build;
 namespace std {
 FPTA_API string to_string(const fpta_error errnum);
 FPTA_API string to_string(const fpta_value_type);
-FPTA_API string to_string(const fpta_value &value);
+FPTA_API string to_string(const fpta_value *);
 FPTA_API string to_string(const fpta_durability durability);
 FPTA_API string to_string(const fpta_level level);
 FPTA_API string to_string(const fpta_index_type index);
@@ -1809,15 +1809,23 @@ FPTA_API string to_string(const fpta_filter_bits bits);
 FPTA_API string to_string(const fpta_cursor_options op);
 FPTA_API string to_string(const fpta_seek_operations op);
 FPTA_API string to_string(const fpta_put_options op);
-FPTA_API string to_string(const fpta_name &);
-FPTA_API string to_string(const fpta_filter &);
-FPTA_API string to_string(const fpta_column_set &);
+FPTA_API string to_string(const fpta_name *);
+FPTA_API string to_string(const fpta_filter *);
+FPTA_API string to_string(const fpta_column_set *);
 FPTA_API string to_string(const fpta_db *);
 FPTA_API string to_string(const fpta_txn *);
 FPTA_API string to_string(const fpta_cursor *);
+FPTA_API string to_string(const struct fpta_table_schema *);
+
+inline string to_string(const fpta_column_set &def) { return to_string(&def); }
+inline string to_string(const fpta_value &value) { return to_string(&value); }
+inline string to_string(const fpta_name &id) { return to_string(&id); }
+inline string to_string(const fpta_filter &filter) {
+  return to_string(&filter);
+}
 }
 
-static __inline fpta_value fpta_value_str(const std::string &str) {
+inline fpta_value fpta_value_str(const std::string &str) {
   return fpta_value_string(str.data(), str.length());
 }
 
