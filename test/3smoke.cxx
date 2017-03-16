@@ -1944,6 +1944,82 @@ TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 
 //----------------------------------------------------------------------------
 
+TEST(SmoceCrud, OneRowOneColumn) {
+  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+
+  // открываем/создаем базульку в 1 мегабайт
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // описываем простейшую таблицу с одним PK
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  ASSERT_EQ(FPTA_OK,
+            fpta_column_describe("StrColumn", fptu_cstr, fpta_primary, &def));
+  ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+  // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+  fpta_txn *txn = nullptr;
+  ASSERT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "Table", &def));
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  // инициализируем идентификаторы таблицы и её колонок
+  fpta_name table, col_pk;
+  ASSERT_EQ(FPTA_OK, fpta_table_init(&table, "Table"));
+  ASSERT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, "StrColumn"));
+
+  // начинаем транзакцию для вставки данных
+  ASSERT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+
+  // ради теста делаем привязку вручную
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+
+  // создаем кортеж, который станет первой записью в таблице
+  fptu_rw *pt1 = fptu_alloc(1, 42);
+  ASSERT_NE(nullptr, pt1);
+  ASSERT_EQ(nullptr, fptu_check(pt1));
+
+  // добавляем значения колонки
+  ASSERT_EQ(FPTA_OK,
+            fpta_upsert_column(pt1, &col_pk, fpta_value_cstr("login")));
+  ASSERT_EQ(nullptr, fptu_check(pt1));
+
+  // вставляем строку в таблицу
+  ASSERT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take(pt1)));
+
+  // фиксируем изменения
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  ASSERT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
+
+  fpta_cursor *cursor = nullptr;
+  ASSERT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_pk, fpta_value_begin(), fpta_value_end(),
+                             nullptr, fpta_unsorted_dont_fetch, &cursor));
+
+  size_t count = 0xBADBADBAD;
+  ASSERT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  ASSERT_EQ(1, count);
+  ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+
+  // разрушаем привязанные идентификаторы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_pk);
+
+  // закрываем базу
+  ASSERT_EQ(FPTA_OK, fpta_db_close(db));
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
