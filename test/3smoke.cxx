@@ -1992,6 +1992,10 @@ TEST(SmoceCrud, OneRowOneColumn) {
   // вставляем строку в таблицу
   ASSERT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take(pt1)));
 
+  // освобождаем кортеж/строку
+  free(pt1);
+  pt1 = nullptr;
+
   // фиксируем изменения
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
