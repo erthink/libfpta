@@ -17,19 +17,8 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
-#include <array>
-#include <cmath>
-#include <limits>
-#include <map>
-#include <type_traits>
-#include <typeinfo>
-#include <utility>
-#include <vector>
-
 #include "keygen.hpp"
+#include "fpta_test.h"
 
 template <fpta_index_type _index, fptu_type _type>
 void any_keygen::init_tier::glue() {

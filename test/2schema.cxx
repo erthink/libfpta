@@ -17,8 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
+#include "fpta_test.h"
 
 static const char testdb_name[] = "ut_schema.fpta";
 static const char testdb_name_lck[] = "ut_schema.fpta-lock";
@@ -110,8 +109,8 @@ TEST(Schema, Base) {
    *
    * Тест НЕ перебирает комбинации. Некий относительно полный перебор
    * происходит автоматически при тестировании индексов и курсоров. */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
@@ -237,8 +236,8 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
   }
 }
 

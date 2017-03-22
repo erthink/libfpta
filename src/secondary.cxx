@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
 
 int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
                            const fptu_ro &row_old, const fptu_ro &row_new,

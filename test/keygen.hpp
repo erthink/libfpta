@@ -18,23 +18,14 @@
  */
 
 #pragma once
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
-#include <array>
-#include <cmath>
-#include <limits>
-#include <map>
-#include <type_traits>
-#include <typeinfo>
-#include <utility>
-#include <vector>
-
+#include "fpta_test.h"
 #include "tools.hpp"
 
 /* "хорошие" значения float: близкие к представимым, но НЕ превосходящие их */
-static constexpr float flt_neg_below = -FLT_MAX + (double)FLT_MAX * FLT_EPSILON;
-static constexpr float flt_pos_below = FLT_MAX - (double)FLT_MAX * FLT_EPSILON;
+static constexpr float flt_neg_below =
+    (float)(-FLT_MAX + (double)FLT_MAX * FLT_EPSILON);
+static constexpr float flt_pos_below =
+    (float)(FLT_MAX - (double)FLT_MAX * FLT_EPSILON);
 static_assert(flt_neg_below > -FLT_MAX, "unexpected precision loss");
 static_assert(flt_pos_below < FLT_MAX, "unexpected precision loss");
 
@@ -68,7 +59,7 @@ bool is_properly_ordered(const container &probe, bool descending = false) {
 inline fpta_value order_checksum(int order, fptu_type type,
                                  fpta_index_type index) {
   auto signature = fpta_column_shove(0, type, index);
-  return fpta_value_uint(t1ha(&signature, sizeof(signature), order));
+  return fpta_value_uint(t1ha(&signature, sizeof(signature), (uint64_t)order));
 }
 
 template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
@@ -207,7 +198,7 @@ bool string_keygen(const size_t len, uint32_t order, uint8_t *buf,
   }
 
   /* кодируем длину */
-  uint8_t rle_val = (width ? width - 1 : 0) << first_left;
+  uint8_t rle_val = (uint8_t)((width ? width - 1 : 0) << first_left);
   /* вычисляем сколько битов значения остается для остальных символов */
   int left = (width > first_left) ? width - first_left : 0;
   /* первый символ с длиной и самыми старшими разрядами значения */
@@ -237,19 +228,35 @@ void string_keygen_test(const size_t keylen_min, const size_t keylen_max) {
                (printable ? "string" : "binary") + ", keylen " +
                std::to_string(keylen_min) + "..." + std::to_string(keylen_max));
 
-  uint8_t buffer_a[keylen_max + 1];
-  uint8_t *prev = buffer_a;
+  const size_t bufsize = keylen_max + 1 + printable;
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const buffer_a = (uint8_t *)_alloca(bufsize);
+  memset(buffer_a, 0xAA, bufsize);
+#else
+  uint8_t buffer_a[bufsize];
   memset(buffer_a, 0xAA, sizeof(buffer_a));
+#endif
+  uint8_t *prev = buffer_a;
 
-  uint8_t buffer_b[keylen_max + 1];
-  uint8_t *next = buffer_b;
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const buffer_b = (uint8_t *)_alloca(bufsize);
+  memset(buffer_b, 0xBB, bufsize);
+#else
+  uint8_t buffer_b[bufsize];
   memset(buffer_b, 0xBB, sizeof(buffer_b));
+#endif
+  uint8_t *next = buffer_b;
 
   size_t keylen = keylen_min;
   EXPECT_FALSE((string_keygen<printable>(keylen, 0, prev)));
 
-  uint8_t buffer_c[keylen_max + 1 + printable];
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const buffer_c = (uint8_t *)_alloca(bufsize);
+  memset(buffer_c, 0xCC, bufsize);
+#else
+  uint8_t buffer_c[bufsize];
   memset(buffer_c, 0xCC, sizeof(buffer_c));
+#endif
 
   if (keylen < keylen_max) {
     EXPECT_FALSE((string_keygen<printable>(keylen + 1, 0, buffer_c)));
@@ -296,7 +303,12 @@ template <typename type>
 /* Позволяет за N шагов "простучать" весь диапазон значений type,
  * явно включая крайние точки, нуль и бесконечности (при наличии). */
 struct scalar_range_stepper {
-  typedef std::map<type, int> container4test;
+  typedef std::map<type, unsigned> container4test;
+
+#ifdef _MSC_VER                 /* LY: MSC compiler is stupid... */
+#pragma warning(disable : 4723) /* potential divide by 0 */
+#pragma warning(push, 1)
+#endif /* _MSC_VER (warnings) */
 
   static type value(int order, unsigned const N) {
     const int scope_neg =
@@ -316,13 +328,15 @@ struct scalar_range_stepper {
     if (std::is_signed<type>()) {
       if (std::numeric_limits<type>::has_infinity && order-- == 0)
         return -std::numeric_limits<type>::infinity();
-      if (order < scope_neg) {
-        type offset =
+      if (order < scope_neg && scope_neg) {
+        type shift =
             (std::numeric_limits<type>::max() < INT_MAX)
                 ? std::numeric_limits<type>::lowest() * order / scope_neg
                 : std::numeric_limits<type>::lowest() / scope_neg * order;
+        /* LY: division by 0 (scope_neg) NOT possible here, but MSC is stupid...
+         */
 
-        return std::numeric_limits<type>::lowest() - offset;
+        return std::numeric_limits<type>::lowest() - shift;
       }
       order -= scope_neg;
     }
@@ -332,12 +346,16 @@ struct scalar_range_stepper {
 
     if (std::numeric_limits<type>::has_infinity && order > scope_pos)
       return std::numeric_limits<type>::infinity();
-    if (order == scope_pos)
+    if (order == scope_pos || scope_pos == 0)
       return std::numeric_limits<type>::max();
     return (std::numeric_limits<type>::max() < INT_MAX)
                ? std::numeric_limits<type>::max() * order / scope_pos
                : std::numeric_limits<type>::max() / scope_pos * order;
   }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
   static void test(unsigned const N) {
     SCOPED_TRACE(std::string("scalar_range_stepper: ") +
@@ -434,7 +452,7 @@ template <unsigned keylen> struct fixbin_stepper {
       memset(&holder, ~0, keylen);
     else {
       bool key_is_too_short = string_keygen<false>(
-          keylen, INT32_MAX / scope * (order - 1), holder.begin());
+          keylen, INT32_MAX / scope * (order - 1), &holder[0]);
       EXPECT_FALSE(key_is_too_short);
     }
 
@@ -483,7 +501,7 @@ template <fptu_type data_type> struct varbin_stepper {
   typedef std::array<uint8_t, keylen_max> varbin_type;
 
   static fpta_value make(int order, bool reverse, unsigned const N) {
-    const int scope = N - 2;
+    const int scope = (int)N - 2;
     /* нужен буфер, ибо внутри fpta_value только указатель на данные */
     static varbin_type holder;
 
@@ -492,13 +510,13 @@ template <fptu_type data_type> struct varbin_stepper {
 
     if (order > scope) {
       memset(&holder, ~0, keylen_max);
-      return fpta_value_binstr<data_type>(holder.begin(), keylen_max);
+      return fpta_value_binstr<data_type>(&holder[0], keylen_max);
     }
 
     unsigned keylen = 1 + ((order - 1) % 37) * (keylen_max - 1) / 37;
     while (keylen <= keylen_max) {
       bool key_is_too_short = string_keygen<data_type == fptu_cstr>(
-          keylen, INT32_MAX / scope * (order - 1), holder.begin());
+          keylen, INT32_MAX / scope * (order - 1), &holder[0]);
       if (!key_is_too_short)
         break;
       keylen++;
@@ -506,9 +524,9 @@ template <fptu_type data_type> struct varbin_stepper {
 
     EXPECT_TRUE(keylen <= keylen_max);
     if (reverse)
-      std::reverse(holder.begin(), holder.begin() + keylen);
+      std::reverse(&holder[0], &holder[keylen]);
 
-    return fpta_value_binstr<data_type>(holder.begin(), keylen);
+    return fpta_value_binstr<data_type>(&holder[0], keylen);
   }
 
   static void test(unsigned const N) {
@@ -693,6 +711,10 @@ class any_keygen {
 public:
   any_keygen(fptu_type type, fpta_index_type index);
   fpta_value make(int order, unsigned const N) const { return maker(order, N); }
+
+  any_keygen(const any_keygen &) = delete;
+  any_keygen(const any_keygen &&) = delete;
+  const any_keygen &operator=(const any_keygen &) = delete;
 };
 
 //----------------------------------------------------------------------------
@@ -732,4 +754,8 @@ struct coupled_keygen {
   fpta_value make_secondary(int order, unsigned const N) {
     return secondary.make(order, N);
   }
+
+  coupled_keygen(const coupled_keygen &) = delete;
+  coupled_keygen(const coupled_keygen &&) = delete;
+  const coupled_keygen &operator=(const coupled_keygen &) = delete;
 };

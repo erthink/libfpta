@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables.h"
+#include "fast_positive/tables_internal.h"
 
 #if FPTA_VERSION_MAJOR != @FPTA_VERSION_MAJOR@ || FPTA_VERSION_MINOR != @FPTA_VERSION_MINOR@
 #error "API version mismatch!"

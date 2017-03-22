@@ -23,6 +23,30 @@
 #include "fast_positive/tables.h"
 #include "fast_positive/tuples_internal.h"
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
+                                   has been removed */
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
+                                   automatic inline expansion */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum          \
+                                   'xyz' is not explicitly handled by a case   \
+                                   label */
+#pragma warning(disable : 4201) /* nonstandard extension used :                \
+                                   nameless struct / union */
+#pragma warning(disable : 4127) /* conditional expression is constant          \
+                                   */
+
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
+                                    unwind semantics are not enabled. Specify  \
+                                    /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
+                                    handling mode specified; termination on    \
+                                    exception is not guaranteed. Specify /EHsc \
+                                    */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -30,216 +54,25 @@
 #include <stdlib.h>
 #include <time.h>
 
+__extern_C int32_t mrand64(void);
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #else
-static __inline long int mrand48(void) { return 0; }
-#endif /* windows must die (HAVE_UNISTD_H) */
-
-#ifdef CMAKE_HAVE_PTHREAD_H
-#include <pthread.h>
-#else
-struct pthread_rwlock_t {};
-static int __inline pthread_rwlock_init(struct pthread_rwlock_t *, void *) {
-  return ENOSYS;
-}
-static int __inline pthread_rwlock_rdlock(struct pthread_rwlock_t *) {
-  return ENOSYS;
-}
-static int __inline pthread_rwlock_wrlock(struct pthread_rwlock_t *) {
-  return ENOSYS;
-}
-static int __inline pthread_rwlock_unlock(struct pthread_rwlock_t *) {
-  return ENOSYS;
-}
-static int __inline pthread_rwlock_destroy(struct pthread_rwlock_t *) {
-  return ENOSYS;
-}
-
-struct pthread_mutex_t {};
-static int __inline pthread_mutex_init(struct pthread_mutex_t *, void *) {
-  return ENOSYS;
-}
-static int __inline pthread_mutex_lock(struct pthread_mutex_t *) {
-  return ENOSYS;
-}
-static int __inline pthread_mutex_unlock(struct pthread_mutex_t *) {
-  return ENOSYS;
-}
-static int __inline pthread_mutex_destroy(struct pthread_mutex_t *) {
-  return ENOSYS;
-}
-
-#endif /* windows must die (CMAKE_HAVE_PTHREAD_H) */
-
-#ifdef __linux__
-#include "libmdbx/mdbx.h"
-#else
-#ifdef _MSC_VER
-#pragma message("Windows would die, be ready ;)")
+static __inline int32_t mrand48(void) { return mrand64(); }
 #endif
-typedef struct stub_MDB_env MDB_env;
-typedef struct stub_MDB_txn MDB_txn;
-typedef struct stub_MDB_cursor MDB_cursor;
-typedef struct iovec MDB_val;
-#define mv_size iov_len
-#define mv_data iov_base
-typedef unsigned MDB_dbi;
-typedef int MDB_cursor_op;
-typedef int(MDB_cmp_func)(const MDB_val *a, const MDB_val *b);
-
-typedef struct mdbx_canary { size_t v; } mdbx_canary;
-static __inline int mdbx_canary_put(MDB_txn *, const mdbx_canary *) {
-  return ENOSYS;
-}
-static __inline size_t mdbx_canary_get(MDB_txn *, mdbx_canary *) { return 0; }
-static __inline int mdbx_cursor_eof(MDB_cursor *) { return ENOSYS; }
-static __inline int mdbx_replace(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
-                                 MDB_val *, unsigned) {
-  return ENOSYS;
-}
-static __inline int mdbx_get_ex(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
-                                int *) {
-  return ENOSYS;
-}
-
-static __inline int mdbx_is_dirty(const MDB_txn *, const void *) {
-  return ENOSYS;
-}
-
-static __inline int mdbx_dbi_open_ex(MDB_txn *, const char *, unsigned,
-                                     MDB_dbi *, MDB_cmp_func *,
-                                     MDB_cmp_func *) {
-  return ENOSYS;
-}
-
-static __inline int mdbx_get(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *) {
-  return ENOSYS;
-}
-static __inline int mdbx_put(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *,
-                             unsigned) {
-  return ENOSYS;
-}
-static __inline int mdbx_del(MDB_txn *, MDB_dbi, MDB_val *, MDB_val *) {
-  return ENOSYS;
-}
-static __inline int mdbx_set_dupsort(MDB_txn *, MDB_dbi, MDB_cmp_func *) {
-  return ENOSYS;
-}
-static __inline int mdbx_set_compare(MDB_txn *, MDB_dbi, MDB_cmp_func *) {
-  return ENOSYS;
-}
-static __inline int mdbx_drop(MDB_txn *, MDB_dbi, int) { return ENOSYS; }
-static __inline void mdbx_dbi_close(MDB_env *, MDB_dbi) {}
-static __inline int mdbx_dbi_open(MDB_txn *, const char *, unsigned,
-                                  MDB_dbi *) {
-  return ENOSYS;
-}
-static __inline int mdbx_txn_renew(MDB_txn *) { return ENOSYS; }
-static __inline int mdbx_txn_reset(MDB_txn *) { return ENOSYS; }
-static __inline int mdbx_txn_abort(MDB_txn *) { return ENOSYS; }
-static __inline int mdbx_txn_commit(MDB_txn *) { return ENOSYS; }
-static __inline int mdbx_txn_begin(MDB_env *, MDB_txn *, unsigned, MDB_txn **) {
-  return ENOSYS;
-}
-static __inline int mdbx_env_set_maxdbs(MDB_env *, MDB_dbi) { return ENOSYS; }
-static __inline int mdbx_env_set_maxreaders(MDB_env *, unsigned) {
-  return ENOSYS;
-}
-static __inline void mdbx_env_close(MDB_env *) {}
-static __inline int mdbx_env_sync(MDB_env *, int) { return ENOSYS; }
-static __inline int mdbx_env_open(MDB_env *, const char *, unsigned, mode_t) {
-  return ENOSYS;
-}
-static __inline int mdbx_env_create(MDB_env **) { return ENOSYS; }
-static __inline const char *mdbx_strerror(int) { return "ENOSYS"; }
-static __inline const char *mdbx_strerror_r(int, char *, size_t) {
-  return "ENOSYS";
-}
-static __inline int mdbx_cursor_open(MDB_txn *, MDB_dbi, MDB_cursor **) {
-  return ENOSYS;
-}
-static __inline void mdbx_cursor_close(MDB_cursor *) {}
-static __inline int mdbx_cursor_renew(MDB_txn *, MDB_cursor *) {
-  return ENOSYS;
-}
-static __inline int mdbx_cursor_get(MDB_cursor *, MDB_val *, MDB_val *,
-                                    MDB_cursor_op) {
-  return ENOSYS;
-}
-static __inline int mdbx_cursor_put(MDB_cursor *, MDB_val *, MDB_val *,
-                                    unsigned) {
-  return ENOSYS;
-}
-static __inline int mdbx_cursor_del(MDB_cursor *, unsigned) { return ENOSYS; }
-static __inline int mdbx_cursor_count(MDB_cursor *, size_t *) { return ENOSYS; }
-static __inline int mdbx_cmp(MDB_txn *, MDB_dbi, const MDB_val *,
-                             const MDB_val *) {
-  return 0;
-}
-static __inline int mdbx_dcmp(MDB_txn *, MDB_dbi, const MDB_val *,
-                              const MDB_val *) {
-  return 0;
-}
-static __inline int mdbx_env_set_userctx(MDB_env *, void *) { return ENOSYS; }
-static __inline int mdbx_env_set_mapsize(MDB_env *, size_t) { return ENOSYS; }
-static __inline int mdbx_env_close_ex(MDB_env *, int) { return ENOSYS; }
-
-static __inline int mdbx_cursor_on_first(MDB_cursor *) { return ENOSYS; }
-static __inline int mdbx_cursor_on_last(MDB_cursor *) { return ENOSYS; }
-
-enum stub_MDB_defs {
-  MDB_NOSUBDIR,
-  MDB_RDONLY,
-  MDBX_LIFORECLAIM,
-  MDBX_COALESCE,
-  MDB_NOSYNC,
-  MDB_NOMETASYNC,
-  MDB_WRITEMAP,
-  MDB_MAPASYNC,
-  MDBX_UTTERLY_NOSYNC,
-  MDB_SUCCESS,
-  MDB_NOTFOUND,
-  MDB_KEYEXIST,
-  MDBX_RESULT_TRUE,
-  MDBX_RESULT_FALSE,
-
-  MDB_REVERSEKEY,
-  MDB_DUPSORT,
-  MDB_INTEGERKEY,
-  MDB_DUPFIXED,
-  MDB_INTEGERDUP,
-  MDB_REVERSEDUP,
-  MDB_CREATE,
-  MDB_NOOVERWRITE,
-  MDB_NODUPDATA,
-  MDB_CURRENT,
-
-  MDB_GET_CURRENT,
-  MDB_NEXT,
-  MDB_NEXT_NODUP,
-  MDB_PREV,
-  MDB_PREV_NODUP,
-  MDB_PREV_DUP,
-  MDB_NEXT_DUP,
-  MDB_FIRST,
-  MDB_SET_KEY,
-  MDB_LAST,
-  MDB_FIRST_DUP,
-  MDB_LAST_DUP,
-  MDB_GET_BOTH,
-  MDB_SET,
-  MDB_GET_BOTH_RANGE,
-  MDB_SET_RANGE,
-};
-#endif /* windows must die (__LINUX__) */
-
-#include "t1ha/t1ha.h"
 
 #include <algorithm>
 #include <cfloat> // for float limits
 #include <cmath>  // for fabs()
 #include <functional>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+#include "libmdbx/mdbx.h"
+#include "t1ha/t1ha.h"
 
 #if defined(__cland__) && !__CLANG_PREREQ(3, 8)
 // LY: workaround for https://llvm.org/bugs/show_bug.cgi?id=18402
@@ -274,23 +107,12 @@ enum fpta_internals {
 
 //----------------------------------------------------------------------------
 
-struct fpta_db {
-  fpta_db(const fpta_db &) = delete;
-  pthread_rwlock_t schema_rwlock;
-  MDB_env *mdbx_env;
-  MDB_dbi schema_dbi;
-  bool alterable_schema;
-
-  pthread_mutex_t dbi_mutex;
-  fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
-  MDB_dbi dbi_handles[fpta_dbi_cache_size];
-};
-
 struct fpta_txn {
   fpta_txn(const fpta_txn &) = delete;
   fpta_db *db;
   MDB_txn *mdbx_txn;
   fpta_level level;
+  int unused_gap;
   uint64_t schema_version;
   uint64_t data_version;
 };
@@ -326,7 +148,6 @@ struct fpta_key {
 struct fpta_cursor {
   fpta_cursor(const fpta_cursor &) = delete;
   MDB_cursor *mdbx_cursor;
-  fpta_cursor_options options;
   MDB_val current;
 
 #if defined(_MSC_VER) && (_MSC_FULL_VER < 190024215)
@@ -371,6 +192,7 @@ struct fpta_cursor {
     unsigned column_order;
     unsigned mdbx_dbi;
   } index;
+  fpta_cursor_options options;
 
   fpta_key range_from_key;
   fpta_key range_to_key;
@@ -463,59 +285,6 @@ fpta_cursor *fpta_cursor_alloc(fpta_db *db);
 void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor);
 
 //----------------------------------------------------------------------------
-
-bool fpta_filter_validate(const fpta_filter *filter);
-bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
-bool fpta_schema_validate(const MDB_val def);
-
-static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
-  return table_id->table.def->count > 1 &&
-         fpta_index_none != fpta_shove2index(table_id->table.def->columns[1]);
-}
-
-static __inline bool fpta_db_validate(fpta_db *db) {
-  if (unlikely(db == nullptr || db->mdbx_env == nullptr))
-    return false;
-
-  // TODO
-  return true;
-}
-
-static __inline bool fpta_txn_validate(fpta_txn *txn, fpta_level min_level) {
-  if (unlikely(txn == nullptr || !fpta_db_validate(txn->db)))
-    return false;
-  if (unlikely(txn->level < min_level || txn->level > fpta_schema))
-    return false;
-
-  // TODO
-  return true;
-}
-
-enum fpta_schema_item { fpta_table, fpta_column };
-
-static __inline bool fpta_id_validate(const fpta_name *id,
-                                      fpta_schema_item schema_item) {
-  if (unlikely(id == nullptr))
-    return false;
-
-  switch (schema_item) {
-  default:
-    return false;
-  case fpta_table:
-    if (unlikely(fpta_shove2index(id->shove) !=
-                 (fpta_index_type)fpta_flag_table))
-      return false;
-    // TODO: ?
-    return true;
-
-  case fpta_column:
-    if (unlikely(fpta_shove2index(id->shove) ==
-                 (fpta_index_type)fpta_flag_table))
-      return false;
-    // TODO: ?
-    return true;
-  }
-}
 
 static __inline bool fpta_index_is_unique(fpta_shove_t index) {
   assert(index != fpta_index_none);

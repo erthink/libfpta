@@ -45,11 +45,38 @@
 
 #if defined(fpta_EXPORTS)
 #define FPTA_API __dll_export
+#elif LIBFPTA_STATIC
+#define FPTA_API
 #else
 #define FPTA_API __dll_import
-#endif
+#endif /* fpta_EXPORTS */
 
 #include "fast_positive/tuples.h"
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
+                                    has been removed */
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
+                                    automatic inline expansion */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum          \
+                                    'xyz' is not explicitly handled by a case  \
+                                    label */
+#pragma warning(disable : 4201) /* nonstandard extension used :                \
+                                    nameless struct / union */
+#pragma warning(disable : 4127) /* conditional expression is constant          \
+                                    */
+
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
+                                    unwind semantics are not enabled. Specify  \
+                                    /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
+                                    handling mode specified; termination on    \
+                                    exception is not guaranteed. Specify /EHsc \
+                                    */
+#endif                          /* _MSC_VER (warnings) */
 
 #include <assert.h> // for assert()
 #include <errno.h>  // for error codes
@@ -63,22 +90,9 @@ typedef unsigned mode_t;
 #endif
 
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(                                                               \
-    disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
-#pragma warning(                                                               \
-    disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
-#pragma warning(                                                               \
-    disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
-#pragma warning(                                                               \
-    disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(                                                               \
-    disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
-#pragma warning(disable : 4127 /* условное выражение является константой */)
-#pragma warning(                                                               \
-    disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
+#pragma warning(pop)
 #pragma pack(push, 1)
-#endif /* windows mustdie */
+#endif
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfpta, т.е
@@ -581,7 +595,7 @@ typedef enum fpta_durability {
  *
  * Аргумент alterable_schema определяет намерения по созданию и/или
  * удалению таблиц в процессе работы. Обещание "не менять схему"
- * позволяет отказаться от захвата pthread_rwlock_t в процессе работы.
+ * позволяет отказаться от захвата fpta_rwl_t в процессе работы.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_db_open(const char *path, fpta_durability durability,
@@ -659,7 +673,7 @@ typedef enum fpta_level {
                    *
                    * Однако, транзакция изменения схемы также
                    * блокирует все читающие транзакции в рамках
-                   * своего процесса посредством pthread_rwlock_t.
+                   * своего процесса посредством fpta_rwl_t.
                    * Такая блокировка обусловлена двумя причинами:
                    *  - спецификой движков libmdbx/LMDB (удаление
                    *    таблицы приводит к закрытию её разделяемого
@@ -672,7 +686,7 @@ typedef enum fpta_level {
                    *
                    * С другой стороны, обещание не менять схему
                    * (указание alterable_schema = false) позволяет
-                   * экономить на захвате pthread_rwlock_t при старте
+                   * экономить на захвате fpta_rwl_t при старте
                    * читающих транзакций. */
 } fpta_level;
 
@@ -1764,7 +1778,7 @@ FPTA_API int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
                                     void *key);
 FPTA_API void *__fpta_index_shove2comparator(fpta_shove_t shove);
 
-static __inline bool fpta_is_under_valgrind() {
+static __inline bool fpta_is_under_valgrind(void) {
   return fptu_is_under_valgrind();
 }
 

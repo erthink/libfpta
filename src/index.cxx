@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
 
 //----------------------------------------------------------------------------
 

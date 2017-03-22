@@ -17,9 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 TEST(Value2Key, Invalid) {
@@ -148,25 +146,28 @@ TEST(Value2Key, uint32) {
   fpta_key key;
 
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_uint(UINT32_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(ordered, fpta_value_uint(UINT32_MAX + 1l), key));
+            value2key(ordered, fpta_value_uint(UINT32_MAX + UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            value2key(unordered, fpta_value_uint(UINT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered,
+                               fpta_value_uint(UINT32_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT32_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_uint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(
+      FPTA_EVALUE,
+      value2key(unordered, fpta_value_uint(UINT32_MAX + UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_sint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(
+      FPTA_EVALUE,
+      value2key(unordered, fpta_value_sint(UINT32_MAX + INT64_C(1)), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
@@ -210,7 +211,8 @@ TEST(Value2Key, uint64) {
   fpta_key key;
 
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT64_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_uint(UINT64_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
@@ -218,8 +220,8 @@ TEST(Value2Key, uint64) {
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            value2key(unordered, fpta_value_uint(UINT64_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered,
+                               fpta_value_uint(UINT64_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
@@ -269,13 +271,14 @@ TEST(Value2Key, int32) {
 
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(ordered, fpta_value_sint(INT32_MIN - 1l), key));
+            value2key(ordered, fpta_value_sint(INT32_MIN - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MIN + 1), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_sint(INT32_MAX - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(ordered, fpta_value_sint(INT32_MAX + 1l), key));
+            value2key(ordered, fpta_value_sint(INT32_MAX + INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
@@ -283,18 +286,19 @@ TEST(Value2Key, int32) {
 
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_sint(INT32_MIN - 1l), key));
+            value2key(unordered, fpta_value_sint(INT32_MIN - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MIN + 1), key));
   EXPECT_EQ(FPTA_OK,
-            value2key(unordered, fpta_value_sint(INT32_MAX - 1l), key));
+            value2key(unordered, fpta_value_sint(INT32_MAX - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_sint(INT32_MAX + 1l), key));
+            value2key(unordered, fpta_value_sint(INT32_MAX + INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(INT32_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_uint(INT32_MAX + 1l), key));
+  EXPECT_EQ(
+      FPTA_EVALUE,
+      value2key(unordered, fpta_value_uint(INT32_MAX + UINT64_C(1)), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
@@ -765,9 +769,16 @@ TYPED_TEST(Value2Key_AllString, basic) {
   static const size_t keylen_max =
       ct_is_fixedsize(type) ? ct_elem_size(type) : (size_t)fpta_max_keylen;
 
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const zeros = (uint8_t *)_alloca(keylen_max);
+  uint8_t *const ones = (uint8_t *)_alloca(keylen_max);
+  memset(zeros, is_string ? ' ' : 0, keylen_max);
+  memset(ones, ~0u, keylen_max);
+#else
   char zeros[keylen_max], ones[keylen_max];
   memset(zeros, is_string ? ' ' : 0, sizeof(zeros));
   memset(ones, ~0u, sizeof(ones));
+#endif
 
   for (auto index : index_cases) {
     SCOPED_TRACE("index " + std::to_string(index));
@@ -809,13 +820,19 @@ TYPED_TEST(Value2Key_AllString, basic) {
   }
 
   fpta_value value_left, value_right;
-  char obverse[keylen_max + keylen_min], reverse[keylen_max + keylen_min];
-  for (size_t i = 0; i < sizeof(obverse); ++i) {
+  const size_t keybuf_len = keylen_max + keylen_min;
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const obverse = (uint8_t *)_alloca(keybuf_len);
+  uint8_t *const reverse = (uint8_t *)_alloca(keybuf_len);
+#else
+  uint8_t obverse[keybuf_len], reverse[keybuf_len];
+#endif
+  for (size_t i = 0; i < keybuf_len; ++i) {
     obverse[i] = i + 1 + (is_string ? ' ' : 0);
-    reverse[i] = sizeof(obverse) - i + (is_string ? ' ' : 0);
+    reverse[i] = keybuf_len - i + (is_string ? ' ' : 0);
   }
-  ASSERT_TRUE(memcmp(zeros, obverse, sizeof(keylen_max)) < 0);
-  ASSERT_TRUE(memcmp(ones, obverse, sizeof(keylen_max)) > 0);
+  ASSERT_TRUE(memcmp(zeros, obverse, keybuf_len) < 0);
+  ASSERT_TRUE(memcmp(ones, obverse, keybuf_len) > 0);
 
   if (!ct_is_fixedsize(type)) {
     value_left = fpta_value_binstr<type>(nullptr, 0);
@@ -853,7 +870,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
     expect_gt<type, fpta_primary_unique_reversed>(value_left, value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
-    for (size_t offset = 1; offset < sizeof(obverse) - keylen; ++offset) {
+    for (size_t offset = 1; offset < keybuf_len - keylen; ++offset) {
       SCOPED_TRACE("offset " + std::to_string(offset));
 
       value_left = fpta_value_binstr<type>(obverse, keylen);
@@ -921,7 +938,11 @@ TYPED_TEST(Value2Key_AllString, normal_keys) {
       ct_is_fixedsize(type) ? ct_elem_size(type) : (size_t)fpta_max_keylen;
   SCOPED_TRACE("type " + std::to_string(type));
 
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const keybuf = (uint8_t *)_alloca(keylen_max);
+#else
   uint8_t keybuf[keylen_max];
+#endif
   probe_triplet<type> probe;
 
   if (!ct_is_fixedsize(type))

@@ -17,14 +17,8 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-#include <tuple>
-#include <unordered_map>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
-
-#define TEST_DB_DIR "/dev/shm/"
 
 static const char testdb_name[] = TEST_DB_DIR "ut_crud.fpta";
 static const char testdb_name_lck[] = TEST_DB_DIR "ut_crud.fpta-lock";
@@ -72,8 +66,8 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_val, "col_uint"));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -136,8 +130,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };

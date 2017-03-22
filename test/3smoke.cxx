@@ -17,8 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
+#include "fpta_test.h"
 
 static const char testdb_name[] = "ut_smoke.fpta";
 static const char testdb_name_lck[] = "ut_smoke.fpta-lock";
@@ -48,8 +47,8 @@ TEST(SmokeIndex, Primary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -240,8 +239,8 @@ TEST(SmokeIndex, Primary) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
   }
 }
 
@@ -270,8 +269,8 @@ TEST(SmokeIndex, Secondary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -472,8 +471,8 @@ TEST(SmokeIndex, Secondary) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
   }
 }
 
@@ -677,8 +676,8 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_real, "real"));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
     ndeleted = 0;
 
     // открываем/создаем базульку в 1 мегабайт
@@ -731,8 +730,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 
@@ -1499,8 +1498,8 @@ public:
     if (!valid_ops)
       return;
 
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -1583,8 +1582,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };
@@ -1945,8 +1944,8 @@ TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 //----------------------------------------------------------------------------
 
 TEST(SmoceCrud, OneRowOneColumn) {
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;

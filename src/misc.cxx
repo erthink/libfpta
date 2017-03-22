@@ -17,8 +17,17 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
+
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#endif
+
 #include <cinttypes> // for PRId64, PRIu64
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
@@ -458,6 +467,12 @@ __cold string to_string(const fpta_cursor *cursor) {
   }
   return result + "}";
 }
+}
+
+int32_t mrand64(void) {
+  static uint64_t state;
+  state = state * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+  return (int32_t)(state >> 32);
 }
 
 void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {

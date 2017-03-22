@@ -17,13 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <algorithm>
-#include <gtest/gtest.h>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 /* Кол-во проверочных точек в диапазонах значений индексируемых типов.
@@ -46,8 +40,6 @@ static constexpr unsigned NNN = 13103; // около часа в /dev/shm/
 #else
 static constexpr unsigned NNN = 41; // порядка 10-15 секунд в /dev/shm/
 #endif
-
-#define TEST_DB_DIR "/dev/shm/"
 
 static const char testdb_name[] = TEST_DB_DIR "ut_cursor_secondary.fpta";
 static const char testdb_name_lck[] =
@@ -315,8 +307,8 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
 
 #ifdef FPTA_CURSOR_UT_LONG
     // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -498,8 +490,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };

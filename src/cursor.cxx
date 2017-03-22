@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
 
 /* Подставляется в качестве адреса для ключей нулевой длины,
  * с тем чтобы отличать от nullptr */
@@ -150,8 +150,9 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                             const MDB_val *mdbx_seek_key,
                             const MDB_val *mdbx_seek_data) {
   assert(mdbx_seek_key != &cursor->current);
-  fptu_ro mdbx_data;
   int rc;
+  fptu_ro mdbx_data;
+  mdbx_data.sys.iov_base = nullptr /* avoid MSVC warning */;
 
   if (likely(mdbx_seek_key == NULL)) {
     assert(mdbx_seek_data == NULL);

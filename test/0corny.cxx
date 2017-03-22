@@ -17,9 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 TEST(Corny, NameValidate) {
@@ -44,7 +42,9 @@ TEST(Corny, NameValidate) {
   EXPECT_FALSE(fpta_validate_name("_1nvalid"));
   EXPECT_FALSE(fpta_validate_name("invalid#"));
   EXPECT_FALSE(fpta_validate_name("invalid/"));
+#if !defined(_MSC_VER) || defined(NDEBUG)
   EXPECT_FALSE(fpta_validate_name("invalid_ещераз"));
+#endif
 }
 
 TEST(Corny, KeyGenerator) {

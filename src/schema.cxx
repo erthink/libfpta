@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
 
 static __inline fpta_shove_t fpta_dbi_shove(const fpta_shove_t table_shove,
                                             const size_t index_id) {
@@ -147,13 +147,13 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
   fpta_shove2str(shove, &dbi_name);
 
   if (txn->level < fpta_schema) {
-    int err = pthread_mutex_lock(&db->dbi_mutex);
+    int err = fpta_mutex_lock(&db->dbi_mutex);
     if (unlikely(err != 0))
       return err;
     if (likely(shove > 0)) {
       *handle = fpta_dbicache_lookup(db, shove);
       if (likely(*handle)) {
-        int err = pthread_mutex_unlock(&db->dbi_mutex);
+        err = fpta_mutex_unlock(&db->dbi_mutex);
         assert(err == 0);
         (void)err;
         return FPTA_SUCCESS;
@@ -172,7 +172,7 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
     *handle = 0;
 
   if (txn->level < fpta_schema) {
-    int err = pthread_mutex_unlock(&db->dbi_mutex);
+    int err = fpta_mutex_unlock(&db->dbi_mutex);
     assert(err == 0);
     (void)err;
   }

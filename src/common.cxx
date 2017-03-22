@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
 
 static int fpta_db_lock(fpta_db *db, fpta_level level) {
   assert(level >= fpta_read && level <= fpta_schema);
@@ -25,9 +25,9 @@ static int fpta_db_lock(fpta_db *db, fpta_level level) {
   int rc;
   if (db->alterable_schema) {
     if (level < fpta_schema)
-      rc = pthread_rwlock_rdlock(&db->schema_rwlock);
+      rc = fpta_rwl_sharedlock(&db->schema_rwlock);
     else
-      rc = pthread_rwlock_wrlock(&db->schema_rwlock);
+      rc = fpta_rwl_exclusivelock(&db->schema_rwlock);
     assert(rc == 0);
   } else {
     rc = (level < fpta_schema) ? 0 : EPERM;
@@ -42,7 +42,7 @@ static int fpta_db_unlock(fpta_db *db, fpta_level level) {
 
   int rc;
   if (db->alterable_schema) {
-    rc = pthread_rwlock_unlock(&db->schema_rwlock);
+    rc = fpta_rwl_unlock(&db->schema_rwlock);
   } else {
     rc = (level < fpta_schema) ? 0 : ENOLCK;
   }
@@ -124,9 +124,9 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(db == nullptr))
     return FPTA_ENOMEM;
 
-  int rc = pthread_mutex_init(&db->dbi_mutex, nullptr);
+  int rc = fpta_mutex_init(&db->dbi_mutex);
   if (unlikely(rc != 0)) {
-    int err = pthread_rwlock_destroy(&db->schema_rwlock);
+    int err = fpta_rwl_destroy(&db->schema_rwlock);
     assert(err == 0);
     (void)err;
     free(db);
@@ -135,7 +135,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
 
   db->alterable_schema = alterable_schema;
   if (db->alterable_schema) {
-    rc = pthread_rwlock_init(&db->schema_rwlock, nullptr);
+    rc = fpta_rwl_init(&db->schema_rwlock);
     if (unlikely(rc != 0)) {
       free(db);
       return (fpta_error)rc;
@@ -176,10 +176,10 @@ bailout:
     (void)err;
   }
 
-  int err = pthread_mutex_destroy(&db->dbi_mutex);
+  int err = fpta_mutex_destroy(&db->dbi_mutex);
   assert(err == 0);
   if (alterable_schema) {
-    err = pthread_rwlock_destroy(&db->schema_rwlock);
+    err = fpta_rwl_destroy(&db->schema_rwlock);
     assert(err == 0);
   }
   (void)err;
@@ -196,7 +196,7 @@ int fpta_db_close(fpta_db *db) {
   if (unlikely(rc != 0))
     return (fpta_error)rc;
 
-  rc = pthread_mutex_lock(&db->dbi_mutex);
+  rc = fpta_mutex_lock(&db->dbi_mutex);
   if (unlikely(rc != 0)) {
     int err = fpta_db_unlock(db, fpta_schema);
     assert(err == 0);
@@ -208,15 +208,15 @@ int fpta_db_close(fpta_db *db) {
   assert(rc == MDB_SUCCESS);
   db->mdbx_env = nullptr;
 
-  int err = pthread_mutex_unlock(&db->dbi_mutex);
+  int err = fpta_mutex_unlock(&db->dbi_mutex);
   assert(err == 0);
-  err = pthread_mutex_destroy(&db->dbi_mutex);
+  err = fpta_mutex_destroy(&db->dbi_mutex);
   assert(err == 0);
 
   err = fpta_db_unlock(db, db->alterable_schema ? fpta_schema : fpta_write);
   assert(err == 0);
   if (db->alterable_schema) {
-    err = pthread_rwlock_destroy(&db->schema_rwlock);
+    err = fpta_rwl_destroy(&db->schema_rwlock);
     assert(err == 0);
   }
   (void)err;

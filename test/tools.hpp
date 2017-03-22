@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include <memory>
 
 struct db_deleter : public std::unary_function<void, fpta_db *> {
   void operator()(fpta_db *db) const {
