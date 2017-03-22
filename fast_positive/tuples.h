@@ -41,18 +41,44 @@
 #define FPTU_API __dll_import
 #endif /* fptu_EXPORTS */
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4514) /* C4514: 'xyz': unreferenced inline function  \
+                                   has been removed */
+#pragma warning(disable : 4710) /* C4710: 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* C4711: function 'xyz' selected for          \
+                                   automatic inline expansion */
+#pragma warning(disable : 4061) /* C4061: enumerator 'abc' in switch of enum   \
+                                   'xyz' is not explicitly handled by a case   \
+                                   label */
+#pragma warning(disable : 4201) /* C4201: nonstandard extension used :         \
+                                   nameless struct / union */
+#pragma warning(disable : 4127) /* C4127: conditional expression is constant   \
+                                   */
+
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C4530: C++ exception handler used, but      \
+                                    unwind semantics are not enabled. Specify  \
+                                    /EHsc */
+#pragma warning(disable : 4577) /* C4577: 'noexcept' used with no exception    \
+                                    handling mode specified; termination on    \
+                                    exception is not guaranteed. Specify /EHsc \
+                                    */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <errno.h>  // for error codes
 #include <string.h> // for strlen()
 #include <time.h>   // for struct timespec, struct timeval
 
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h> // for struct iovec
-#else
+#elif !defined(HAVE_STRUCT_IOVEC)
 struct iovec {
   void *iov_base; /* Starting address */
   size_t iov_len; /* Number of bytes to transfer */
 };
-#endif /* windows mustdie */
+#define HAVE_STRUCT_IOVEC
+#endif
 
 #ifdef __cplusplus
 #include <string> // for std::string
@@ -61,11 +87,9 @@ extern "C" {
 #endif
 
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(                                                               \
-    disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
+#pragma warning(pop)
 #pragma pack(push, 1)
-#endif /* windows mustdie */
+#endif
 
 //----------------------------------------------------------------------------
 /* Опции конфигурации управляющие внутренним поведением libfptu, т.е
@@ -888,6 +912,6 @@ bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
 #ifdef _MSC_VER
 #pragma pack(pop)
 #pragma warning(pop)
-#endif /* windows mustdie */
+#endif
 
 #endif /* FAST_POSITIVE_TUPLES_H */

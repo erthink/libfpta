@@ -17,7 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples.h"
+#include "fast_positive/tuples_internal.h"
 
 #if FPTU_VERSION_MAJOR != @FPTU_VERSION_MAJOR@ || FPTU_VERSION_MINOR != @FPTU_VERSION_MINOR@
 #error "API version mismatch!"

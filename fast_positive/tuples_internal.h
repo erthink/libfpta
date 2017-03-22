@@ -22,16 +22,6 @@
 /* *INDENT-OFF* */
 /* clang-format off */
 
-#ifdef _MSC_VER
-#pragma warning(disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
-#pragma warning(disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
-#pragma warning(disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
-#pragma warning(disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
-#pragma warning(disable : 4127 /* условное выражение является константой */)
-#pragma warning(disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
-#endif /* windows mustdie */
-
 #ifndef _ISOC99_SOURCE
 #	define _ISOC99_SOURCE 1
 #endif
@@ -61,6 +51,31 @@
 #endif
 
 #include "fast_positive/tuples.h"
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4514) /* C4514: 'xyz': unreferenced inline function  \
+                                   has been removed */
+#pragma warning(disable : 4710) /* C4710: 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* C4711: function 'xyz' selected for          \
+                                   automatic inline expansion */
+#pragma warning(disable : 4061) /* C4061: enumerator 'abc' in switch of enum   \
+                                   'xyz' is not explicitly handled by a case   \
+                                   label */
+#pragma warning(disable : 4201) /* C4201: nonstandard extension used :         \
+                                   nameless struct / union */
+#pragma warning(disable : 4127) /* C4127: conditional expression is constant   \
+                                   */
+
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C4530: C++ exception handler used, but      \
+                                    unwind semantics are not enabled. Specify  \
+                                    /EHsc */
+#pragma warning(disable : 4577) /* C4577: 'noexcept' used with no exception    \
+                                    handling mode specified; termination on    \
+                                    exception is not guaranteed. Specify /EHsc \
+                                    */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <limits.h>
 #include <string.h>
 
@@ -102,6 +117,10 @@
 #       define VALGRIND_CHECK_MEM_IS_ADDRESSABLE(a,s) (0)
 #       define VALGRIND_CHECK_MEM_IS_DEFINED(a,s) (0)
 #endif /* HAVE_VALGRIND_MEMCHECK_H */
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 //----------------------------------------------------------------------------
 
@@ -238,8 +257,7 @@
 //----------------------------------------------------------------------------
 
 #ifdef __cplusplus
-	template <typename T, size_t N>
-	char (&__FPT_ArraySizeHelper(T (&array)[N]))[N];
+	template <typename T, size_t N> char(&__FPT_ArraySizeHelper(T(&)[N]))[N];
 #	define FPT_ARRAY_LENGTH(array) (sizeof(::__FPT_ArraySizeHelper(array)))
 #else
 #	define FPT_ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))

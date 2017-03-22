@@ -58,6 +58,12 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4668) /* C4668: 'xyz' is not defined as a            \
+                                   preprocessor macro,                         \
+                                   replacing with '0' for '#if/#elif' */
+#endif                          /* _MSC_VER (warnings) */
+
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 

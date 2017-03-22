@@ -18,8 +18,24 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4530) /* C4530: C++ exception handler used, but      \
+                                   unwind semantics are not enabled. Specify   \
+                                   /EHsc */
+#pragma warning(disable : 4577) /* C4577: 'noexcept' used with no exception    \
+                                   handling mode specified; termination on     \
+                                   exception is not guaranteed. Specify /EHsc  \
+                                   */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <algorithm>
 #include <functional>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 __hot bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
   if (likely(end > begin + 1)) {
