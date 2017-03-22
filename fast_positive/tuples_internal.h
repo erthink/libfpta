@@ -64,6 +64,21 @@
 #include <limits.h>
 #include <string.h>
 
+#if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
+	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
+	 * But you could remove this #error and try to continue at your own risk.
+	 * In such case please don't rise up an issues related ONLY to old compilers. */
+#	error "libfptu required at least GCC 4.2 compatible C/C++ compiler."
+#endif
+
+#if defined(__GLIBC__) && !__GLIBC_PREREQ(2,12)
+	/* Actualy libfptu requires just C99 (e.g glibc >= 2.1), but was
+	 * not tested with glibc older than 2.12 (from RHEL6). So you could
+	 * remove this #error and try to continue at your own risk.
+	 * In such case please don't rise up an issues related ONLY to old glibc. */
+#	error "libfptu required at least glibc version 2.12 or later."
+#endif
+
 #ifdef HAVE_VALGRIND_MEMCHECK_H
         /* Get debugging help from Valgrind */
 #       include <valgrind/memcheck.h>
@@ -90,15 +105,29 @@
 
 //----------------------------------------------------------------------------
 
+#ifndef __optimize
+#	if defined(__OPTIMIZE__)
+#		if defined(__clang__) && !__has_attribute(optimize)
+#			define __optimize(ops)
+#		elif defined(__GNUC__) || __has_attribute(optimize)
+#			define __optimize(ops) __attribute__((optimize(ops)))
+#		else
+#			define __optimize(ops)
+#		endif
+#	else
+#			define __optimize(ops)
+#	endif
+#endif /* __optimize */
+
 #ifndef __hot
 #	if defined(__OPTIMIZE__)
 #		if defined(__clang__) && !__has_attribute(hot)
 			/* just put frequently used functions in separate section */
-#			define __hot __attribute__((section("text.hot_fptu")))
-#		elif defined(__GNUC__)
-#			define __hot __attribute__((hot, optimize("O3")))
+#			define __hot __attribute__((section("text.hot"))) __optimize("O3")
+#		elif defined(__GNUC__) || __has_attribute(hot)
+#			define __hot __attribute__((hot)) __optimize("O3")
 #		else
-#			define __hot
+#			define __hot  __optimize("O3")
 #		endif
 #	else
 #		define __hot
@@ -109,11 +138,11 @@
 #	if defined(__OPTIMIZE__)
 #		if defined(__clang__) && !__has_attribute(cold)
 			/* just put infrequently used functions in separate section */
-#			define __cold __attribute__((section("text.unlikely_fptu")))
-#		elif defined(__GNUC__)
-#			define __cold __attribute__((cold, optimize("Os")))
+#			define __cold __attribute__((section("text.unlikely"))) __optimize("Os")
+#		elif defined(__GNUC__) || __has_attribute(cold)
+#			define __cold __attribute__((cold)) __optimize("Os")
 #		else
-#			define __cold
+#			define __cold __optimize("Os")
 #		endif
 #	else
 #		define __cold
@@ -167,12 +196,20 @@
 #endif /* __expect_equal */
 
 #ifndef likely
-#	define likely(cond) __expect_equal(!!(cond), 1)
-#endif
+#	if defined(__GNUC__) || defined(__clang__)
+#		define likely(cond) __builtin_expect(!!(cond), 1)
+#	else
+#		define likely(x) (x)
+#	endif
+#endif /* likely */
 
 #ifndef unlikely
-#	define unlikely(cond) __expect_equal(!!(cond), 0)
-#endif
+#	if defined(__GNUC__) || defined(__clang__)
+#		define unlikely(cond) __builtin_expect(!!(cond), 0)
+#	else
+#		define unlikely(x) (x)
+#	endif
+#endif /* unlikely */
 
 #ifndef __aligned
 #	if defined(__GNUC__) || defined(__clang__)
@@ -185,12 +222,14 @@
 #endif /* __align */
 
 #ifndef CACHELINE_SIZE
-#	if defined(__ia64__) || defined(__ia64) || defined(_M_IA64)
+#	if defined(SYSTEM_CACHE_ALIGNMENT_SIZE)
+#		define CACHELINE_SIZE SYSTEM_CACHE_ALIGNMENT_SIZE
+#	elif defined(__ia64__) || defined(__ia64) || defined(_M_IA64)
 #		define CACHELINE_SIZE 128
 #	else
 #		define CACHELINE_SIZE 64
 #	endif
-#endif
+#endif /* CACHELINE_SIZE */
 
 #ifndef __cache_aligned
 #	define __cache_aligned __aligned(CACHELINE_SIZE)
