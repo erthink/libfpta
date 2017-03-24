@@ -17,8 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples_internal.h"
-#include <gtest/gtest.h>
+#include "fptu_test.h"
 
 #include "shuffle6.hpp"
 #include <algorithm>

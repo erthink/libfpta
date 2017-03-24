@@ -17,9 +17,9 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples_internal.h"
+#include "fptu_test.h"
+
 #include <cmath>
-#include <gtest/gtest.h>
 
 const auto ms100 = fptu_time::ms2fractional(100);
 

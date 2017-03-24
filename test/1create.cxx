@@ -17,8 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples_internal.h"
-#include <gtest/gtest.h>
+#include "fptu_test.h"
 
 TEST(Init, Invalid) {
   EXPECT_EQ(nullptr, fptu_init(nullptr, 0, 0));
