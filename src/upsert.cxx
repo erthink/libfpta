@@ -90,7 +90,7 @@ static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct, size_t units) {
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable : 4820) /* C4820: 'fptu_takeover_result' : '4' bytes   \
+#pragma warning(disable : 4820) /* 'fptu_takeover_result' : '4' bytes          \
                                    padding added after data member             \
                                    'fptu_takeover_result::error' */
 #endif

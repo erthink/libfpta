@@ -53,24 +53,24 @@
 #include "fast_positive/tuples.h"
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4514) /* C4514: 'xyz': unreferenced inline function  \
+#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function  \
                                    has been removed */
-#pragma warning(disable : 4710) /* C4710: 'xyz': function not inlined */
-#pragma warning(disable : 4711) /* C4711: function 'xyz' selected for          \
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for          \
                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* C4061: enumerator 'abc' in switch of enum   \
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum   \
                                    'xyz' is not explicitly handled by a case   \
                                    label */
-#pragma warning(disable : 4201) /* C4201: nonstandard extension used :         \
+#pragma warning(disable : 4201) /* nonstandard extension used :         \
                                    nameless struct / union */
-#pragma warning(disable : 4127) /* C4127: conditional expression is constant   \
+#pragma warning(disable : 4127) /* conditional expression is constant   \
                                    */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C4530: C++ exception handler used, but      \
+#pragma warning(disable : 4530) /* C++ exception handler used, but      \
                                     unwind semantics are not enabled. Specify  \
                                     /EHsc */
-#pragma warning(disable : 4577) /* C4577: 'noexcept' used with no exception    \
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception    \
                                     handling mode specified; termination on    \
                                     exception is not guaranteed. Specify /EHsc \
                                     */

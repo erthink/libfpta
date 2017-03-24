@@ -59,10 +59,8 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 #define CLOCK_REALTIME 0
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4668) /* C4668: 'xyz' is not defined as a            \
-                                   preprocessor macro,                         \
-                                   replacing with '0' for '#if/#elif' */
-#endif                          /* _MSC_VER (warnings) */
+#pragma warning(push, 1)
+#endif
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
@@ -91,13 +89,21 @@ static int clock_gettime(int clk_id, struct timespec *tp) {
   tp->tv_nsec = (long)(ns % 1000000000ul);
   return 0;
 }
+
 #else
+
 static int clock_gettime(int clk_id, struct timespec *tp) {
   (void)clk_id;
   (void)tp;
+#error FIXME /* ? */
   return ENOSYS;
 }
-#endif /* windows must die */
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 #endif /* CLOCK_REALTIME */
 
 static void clock_failure(void) {

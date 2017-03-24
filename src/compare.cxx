@@ -20,11 +20,11 @@
 #include "fast_positive/tuples_internal.h"
 
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4530) /* C4530: C++ exception handler used, but      \
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
                                    unwind semantics are not enabled. Specify   \
                                    /EHsc */
-#pragma warning(disable : 4577) /* C4577: 'noexcept' used with no exception    \
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
                                    handling mode specified; termination on     \
                                    exception is not guaranteed. Specify /EHsc  \
                                    */

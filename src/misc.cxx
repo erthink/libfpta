@@ -20,25 +20,18 @@
 #include "fast_positive/tuples_internal.h"
 
 #ifdef _MSC_VER
-#pragma warning(                                                               \
-    disable : 4996) /* C4996 : 'getenv' : This function or variable may be     \
+#pragma warning(disable : 4996) /* 'getenv' : This function or variable may be \
                        unsafe. Consider using _dupenv_s instead. To disable    \
                        deprecation, use _CRT_SECURE_NO_WARNINGS. */
 
-#pragma warning(push)
-#pragma warning(disable : 4530) /* C4530: C++ exception handler used, but      \
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
                                    unwind semantics are not enabled. Specify   \
                                    /EHsc */
-#pragma warning(disable : 4577) /* C4577: 'noexcept' used with no exception    \
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
                                    handling mode specified; termination on     \
                                    exception is not guaranteed. Specify /EHsc  \
                                    */
-#pragma warning(disable : 4820) /* C4820: '_timespec64' : '4' bytes padding    \
-                                   added after data member                     \
-                                   '_timespec64::tv_nsec' */
-#pragma warning(disable : 4668) /* C4668: 'xyz' is not defined as a            \
-                                   preprocessor macro,                         \
-                                   replacing with '0' for '#if/#elif' */
 #endif                          /* _MSC_VER (warnings) */
 
 #include <cinttypes> // for PRId64, PRIu64

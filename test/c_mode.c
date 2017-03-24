@@ -21,8 +21,8 @@
 #include <fast_positive/tuples.h>
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4710) /* C4710: 'xyz': function not inlined */
-#pragma warning(disable : 4711) /* C4711: function 'xyz' selected for          \
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
                                    automatic inline expansion */
 #endif                          /* windows mustdie */
 
