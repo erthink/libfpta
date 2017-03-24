@@ -1,6 +1,6 @@
 include_directories(${UT_INCLUDE_DIRECTORIES})
 
-add_ut(fptu0_trivia TIMEOUT 1 SOURCE 0trivia.cxx ../src/data.cxx LIBRARY fptu)
+add_ut(fptu0_trivia TIMEOUT 1 SOURCE 0trivia.cxx LIBRARY fptu)
 add_ut(fptu1_create TIMEOUT 1 SOURCE 1create.cxx LIBRARY fptu)
 add_ut(fptu2_upsert TIMEOUT 1 SOURCE 2upsert.cxx LIBRARY fptu)
 add_ut(fptu3_iterate TIMEOUT 1 SOURCE 3iterate.cxx LIBRARY fptu)

@@ -308,8 +308,8 @@ __extern_C void __assert_fail(const char *assertion, const char *filename,
 #endif
     ;
 
-static __inline unsigned fptu_get_col(uint16_t packed) {
-  return (unsigned)packed >> fptu_co_shift;
+static __inline unsigned fptu_get_col(unsigned packed) {
+  return (unsigned)(((uint16_t)packed) >> fptu_co_shift);
 }
 
 static __inline fptu_type fptu_get_type(unsigned packed) {
@@ -364,9 +364,6 @@ static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
   return (const fptu_payload *)&pf->body[pf->offset];
 }
 #endif /* __cplusplus */
-
-extern const uint8_t fptu_internal_map_t2b[];
-extern const uint8_t fptu_internal_map_t2u[];
 
 static __inline bool ct_is_fixedsize(unsigned ct) {
   return fptu_get_type(ct) < fptu_cstr;

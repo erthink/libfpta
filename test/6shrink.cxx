@@ -102,8 +102,8 @@ TEST(Shrink, Shuffle) {
         fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
         ASSERT_NE(nullptr, pt);
 
-        int count = 0;
-        for (int i = 0; i < 6; ++i) {
+        unsigned count = 0;
+        for (unsigned i = 0; i < 6; ++i) {
           if (create_mask & (1 << i)) {
             switch (i % 3) {
             default:
@@ -112,11 +112,11 @@ TEST(Shrink, Shuffle) {
               EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, i, 7717 * i));
               break;
             case 1:
-              EXPECT_EQ(FPTU_OK, fptu_insert_int32(pt, i, -14427139 * i));
+              EXPECT_EQ(FPTU_OK, fptu_insert_int32(pt, i, -14427139 * (int)i));
               break;
             case 2:
-              EXPECT_EQ(FPTU_OK,
-                        fptu_insert_uint64(pt, i, 53299271467827031 * i));
+              EXPECT_EQ(FPTU_OK, fptu_insert_uint64(
+                                     pt, i, UINT64_C(53299271467827031) * i));
               break;
             }
             count++;
@@ -128,34 +128,34 @@ TEST(Shrink, Shuffle) {
         EXPECT_EQ(count,
                   fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
-        int present_mask = create_mask;
-        int i = order.next();
-        ASSERT_TRUE(i < 6);
+        unsigned present_mask = create_mask;
+        unsigned o = order.next();
+        ASSERT_TRUE(o < 6);
 
-        int present = (create_mask & (1 << i)) ? 1 : 0;
-        switch (i % 3) {
+        unsigned present = (create_mask & (1u << o)) ? 1u : 0u;
+        switch (o % 3) {
         default:
           assert(false);
         case 0:
-          EXPECT_EQ(present, fptu_erase(pt, i, fptu_uint16));
+          EXPECT_EQ(present, fptu_erase(pt, o, fptu_uint16));
           break;
         case 1:
-          EXPECT_EQ(present, fptu_erase(pt, i, fptu_int32));
+          EXPECT_EQ(present, fptu_erase(pt, o, fptu_int32));
           break;
         case 2:
-          EXPECT_EQ(present, fptu_erase(pt, i, fptu_uint64));
+          EXPECT_EQ(present, fptu_erase(pt, o, fptu_uint64));
           break;
         }
 
         if (present) {
           assert(count >= present);
           count -= 1;
-          present_mask -= 1 << i;
+          present_mask -= 1 << o;
         }
 
         SCOPED_TRACE("shuffle #" + std::to_string(n) + ", create-mask " +
                      std::to_string(create_mask) + ", shuffle-item #" +
-                     std::to_string(i) + ", present-mask #" +
+                     std::to_string(o) + ", present-mask #" +
                      std::to_string(present_mask));
 
         ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -169,7 +169,7 @@ TEST(Shrink, Shuffle) {
         EXPECT_EQ(0, pt->junk);
 
         if (count) {
-          for (int i = 0; i < 6; ++i) {
+          for (unsigned i = 0; i < 6; ++i) {
             if (present_mask & (1 << i)) {
               fptu_field *fp;
               switch (i % 3) {

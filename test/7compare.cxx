@@ -43,7 +43,7 @@ TEST(Compare, FetchTags) {
       pattern.reserve(32);
 
       while (!shuffle.empty()) {
-        int i = shuffle.next();
+        unsigned i = shuffle.next();
         if (create_mask & (1 << i)) {
           switch (i) {
           default:
@@ -77,7 +77,7 @@ TEST(Compare, FetchTags) {
       SCOPED_TRACE("pattern" + pattern);
       uint16_t tags[6 + 1];
       const auto end = fptu_tags(tags, fptu_begin_ro(ro), fptu_end_ro(ro));
-      size_t count = end - tags;
+      size_t count = (size_t)(end - tags);
 
       ASSERT_GE(6, count);
       ASSERT_EQ(checker.size(), count);

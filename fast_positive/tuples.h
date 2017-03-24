@@ -509,6 +509,8 @@ FPTU_API void fptu_erase_field(fptu_rw *pt, fptu_field *pf);
 //----------------------------------------------------------------------------
 
 FPTU_API extern const char fptu_empty_cstr[];
+FPTU_API extern const uint8_t fptu_internal_map_t2b[];
+FPTU_API extern const uint8_t fptu_internal_map_t2u[];
 
 /* Вставка или обновление существующего поля.
  *
