@@ -30,3 +30,4 @@
 #cmakedefine ENABLE_VALGRIND
 #cmakedefine ENABLE_GPROF
 #cmakedefine ENABLE_GCOV
+#cmakedefine01 LIBFPTU_STATIC

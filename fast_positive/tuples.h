@@ -37,6 +37,8 @@
 
 #if defined(fptu_EXPORTS)
 #define FPTU_API __dll_export
+#elif LIBFPTU_STATIC
+#define FPTU_API
 #else
 #define FPTU_API __dll_import
 #endif /* fptu_EXPORTS */

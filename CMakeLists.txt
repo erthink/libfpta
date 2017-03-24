@@ -29,7 +29,11 @@ if(NOT CMAKE_BUILD_TYPE)
     FORCE)
 endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
-option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." OFF)
+else()
+  option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
+endif()
 
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
@@ -125,7 +129,13 @@ setup_compile_flags()
 
 find_package(Threads REQUIRED)
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
+if(BUILD_SHARED_LIBS)
+  set(LIBFPTU_STATIC FALSE)
+else()
+  set(LIBFPTU_STATIC TRUE)
+endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
 include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
 add_subdirectory(src)
 add_subdirectory(test)

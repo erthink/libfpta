@@ -1,5 +1,9 @@
 include_directories(${UT_INCLUDE_DIRECTORIES})
 
+if(BUILD_SHARED_LIBS)
+  add_definitions("-DGTEST_LINKED_AS_SHARED_LIBRARY=1")
+endif()
+
 add_ut(fptu0_trivia TIMEOUT 1 SOURCE 0trivia.cxx LIBRARY fptu)
 add_ut(fptu1_create TIMEOUT 1 SOURCE 1create.cxx LIBRARY fptu)
 add_ut(fptu2_upsert TIMEOUT 1 SOURCE 2upsert.cxx LIBRARY fptu)

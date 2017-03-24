@@ -3,7 +3,7 @@
 fetch_version(FPTU "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
 message("libfptu version is ${FPTU_VERSION}")
 
-add_library(fptu SHARED
+add_library(fptu
   ../fast_positive/defs.h
   ../fast_positive/tuples.h
   ../fast_positive/tuples_internal.h
@@ -28,7 +28,7 @@ if(CC_HAS_VISIBILITY)
   target_compile_options(fptu PRIVATE "-fvisibility=hidden")
 endif()
 
-if(BUILD_SHARED_LIBS)
+if(NOT LIBFPTU_STATIC)
   target_compile_definitions(fptu PRIVATE "-Dfptu_EXPORTS")
 endif()
 
