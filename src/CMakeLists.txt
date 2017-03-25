@@ -30,6 +30,8 @@ endif()
 
 if(NOT LIBFPTU_STATIC)
   target_compile_definitions(fptu PRIVATE "-Dfptu_EXPORTS")
+else()
+  target_compile_definitions(fptu PRIVATE "-Dfptu_STATIC")
 endif()
 
 #
