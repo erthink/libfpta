@@ -30,8 +30,7 @@
                                     handling mode specified; termination on    \
                                     exception is not guaranteed. Specify /EHsc \
                                     */
-#define NOMINMAX
-#endif /* _MSC_VER (warnings) */
+#endif                          /* _MSC_VER (warnings) */
 
 #include <gtest/gtest.h>
 

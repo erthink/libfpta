@@ -22,6 +22,10 @@
 /* *INDENT-OFF* */
 /* clang-format off */
 
+#ifndef NOMINMAX
+#	define NOMINMAX
+#endif
+
 #ifndef _ISOC99_SOURCE
 #	define _ISOC99_SOURCE 1
 #endif
