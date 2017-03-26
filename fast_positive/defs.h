@@ -82,6 +82,14 @@
 #	define __SANITIZE_ADDRESS__ 1
 #endif
 
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901
+#	if (defined(__GNUC__) && __GNUC__ >= 2) || defined(__clang__) || defined(_MSC_VER)
+#		define __func__ __FUNCTION__
+#	else
+#		define __func__ "__func__"
+#	endif
+#endif /* __func__ */
+
 //----------------------------------------------------------------------------
 
 #ifndef __extern_C
