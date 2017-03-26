@@ -45,20 +45,6 @@
 #pragma warning(pop)
 #endif
 
-#if defined(_WIN32) || defined(_WIN64)
-
-__extern_C __declspec(dllimport) void __cdecl _assert(char const *message,
-                                                      char const *filename,
-                                                      unsigned line);
-
-void __assert_fail(const char *assertion, const char *filename, unsigned line,
-                   const char *function) {
-  (void)function;
-  _assert(assertion, filename, line);
-  abort();
-}
-#endif
-
 bool fptu_is_under_valgrind(void) {
 #ifdef RUNNING_ON_VALGRIND
   if (RUNNING_ON_VALGRIND)
