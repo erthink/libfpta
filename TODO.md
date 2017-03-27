@@ -1,3 +1,5 @@
+- [x] intergation with GoogleTest (pull, build);
+- [x] CI by AppVeyor;
 - [ ] interface for external scheme;
 - [ ] serialization to JSON (optional with schema);
 - [ ] de-serialization from JSON (with schema);
