@@ -57,6 +57,11 @@
 #include "fast_positive/tuples.h"
 
 #ifdef _MSC_VER
+
+#if _MSC_VER < 1900
+#pragma warning(disable : 4350) /* behavior change: 'std::_Wrap_alloc... */
+#endif
+
 #pragma warning(disable : 4514) /* 'xyz': unreferenced inline function  \
                                    has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
