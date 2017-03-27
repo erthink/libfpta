@@ -41,7 +41,28 @@ if(NOT GTEST_FOUND)
     NO_DEFAULT_PATH NO_CMAKE_PATH)
 
   if(gtest_root)
-    message(STATUS "Found GoogleTest sources at ${gtest_root}, attach as ExternalProject")
+    message(STATUS "Found GoogleTest sources at ${gtest_root}")
+  else()
+    # Download and unpack GoogleTest at configure time
+    configure_file(${CMAKE_SOURCE_DIR}/cmake/googletest-download.cmake.in googletest-download/CMakeLists.txt)
+    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)
+    if(result)
+      message(FATAL_ERROR "CMake step for GoogleTest failed: ${result}")
+    else()
+      execute_process(COMMAND ${CMAKE_COMMAND} --build .
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
+      if(result)
+        message(FATAL_ERROR "Build step for GoogleTest failed: ${result}")
+      else()
+        set(gtest_root "${CMAKE_BINARY_DIR}/googletest-src/googletest")
+      endif()
+    endif()
+  endif()
+
+  if(gtest_root)
     unset(GTEST_INCLUDE_DIR CACHE)
     unset(GTEST_LIBRARY CACHE)
     unset(GTEST_LIBRARY_DEBUG CACHE)
@@ -50,53 +71,26 @@ if(NOT GTEST_FOUND)
     unset(GTEST_BOTH_LIBRARIES CACHE)
     unset(GTEST_FOUND CACHE)
 
-    include(ExternalProject)
-    externalproject_add(
-      GoogleTest PREFIX "${CMAKE_BINARY_DIR}/gtest"
-      SOURCE_DIR ${gtest_root}
-      INSTALL_COMMAND ""
-      CMAKE_ARGS "-DBUILD_SHARED_LIBS:BOOL=${BUILD_SHARED_LIBS}" "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}" "-Dgtest_force_shared_crt:BOOL=ON"
-      )
+    # Prevent overriding the parent project's compiler/linker
+    # settings on Windows
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-    ExternalProject_Get_Property(GoogleTest source_dir)
-    set(GTEST_INCLUDE_DIR ${source_dir}/include)
-    unset(source_dir)
+    # Add googletest directly to our build. This defines
+    # the gtest and gtest_main targets.
+    add_subdirectory(${gtest_root}
+      ${CMAKE_BINARY_DIR}/googletest-build)
 
-    ExternalProject_Get_Property(GoogleTest binary_dir)
-    if(CMAKE_CONFIGURATION_TYPES)
-      set(binary_dir ${binary_dir}/${CMAKE_BUILD_TYPE})
-    endif()
-    if(BUILD_SHARED_LIBS)
-      add_library(gtest SHARED IMPORTED)
-      add_library(gtest_main SHARED IMPORTED)
-      set(GTEST_LIBRARY ${binary_dir}/${CMAKE_SHARED_LIBRARY_PREFIX}gtest${CMAKE_SHARED_LIBRARY_SUFFIX})
-      set(GTEST_MAIN_LIBRARY ${binary_dir}/${CMAKE_SHARED_LIBRARY_PREFIX}gtest_main${CMAKE_SHARED_LIBRARY_SUFFIX})
-      if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        set_property(TARGET gtest PROPERTY IMPORTED_IMPLIB ${binary_dir}/${CMAKE_IMPORT_LIBRARY_PREFIX}gtest${CMAKE_IMPORT_LIBRARY_SUFFIX})
-        set_property(TARGET gtest_main PROPERTY IMPORTED_IMPLIB ${binary_dir}/${CMAKE_IMPORT_LIBRARY_PREFIX}gtest_main${CMAKE_IMPORT_LIBRARY_SUFFIX})
-      endif()
+    # The gtest/gtest_main targets carry header search path
+    # dependencies automatically when using CMake 2.8.11 or
+    # later. Otherwise we have to add them here ourselves.
+    if (CMAKE_VERSION VERSION_LESS 2.8.11)
+      set(GTEST_INCLUDE_DIR "${gtest_SOURCE_DIR}/include")
     else()
-      add_library(gtest STATIC IMPORTED)
-      add_library(gtest_main STATIC IMPORTED)
-      set(GTEST_LIBRARY ${binary_dir}/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX})
-      set(GTEST_MAIN_LIBRARY ${binary_dir}/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX})
+      set(GTEST_INCLUDE_DIR "")
     endif()
-    unset(binary_dir)
-    add_dependencies(gtest GoogleTest)
-    add_dependencies(gtest_main GoogleTest)
-
-    set_property(TARGET gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARY})
-    set_property(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARY})
 
     set(GTEST_BOTH_LIBRARIES gtest gtest_main)
     set(GTEST_FOUND TRUE)
-
-    # message(STATUS "GTEST_INCLUDE_DIR = ${GTEST_INCLUDE_DIR}")
-    # message(STATUS "GTEST_LIBRARY = ${GTEST_LIBRARY}")
-    # message(STATUS "GTEST_MAIN_LIBRARY = ${GTEST_MAIN_LIBRARY}")
-    # message(STATUS "GTEST_BOTH_LIBRARIES = ${GTEST_BOTH_LIBRARIES}")
-  else()
-    message(STATUS "NOT FOUND GoogleTest at paths ${gtest_paths}, testing not be enabled")
   endif()
 endif()
 
@@ -113,6 +107,7 @@ if(GTEST_FOUND)
 else()
   set(UT_INCLUDE_DIRECTORIES "")
   set(UT_LIBRARIES "")
+  message(STATUS "GoogleTest NOT available, so testing NOT be ENABLED")
 endif()
 
 function(add_gtest name)
