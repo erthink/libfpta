@@ -257,13 +257,6 @@ macro(setup_compile_flags)
   add_definitions("-D__STDC_LIMIT_MACROS=1")
   add_definitions("-D__STDC_CONSTANT_MACROS=1")
 
-  # Only add -Werror if it's a debug build, done by developers.
-  # Release builds should not cause extra trouble.
-  if (CC_HAS_WERROR AND (CMAKE_BUILD_TYPE STREQUAL "Debug")
-      AND HAVE_STD_C11 AND HAVE_STD_CXX11)
-    add_compile_flags("C;CXX" "-Werror")
-  endif()
-
   if (HAVE_OPENMP)
     add_compile_flags("C;CXX" "-fopenmp")
   endif()
@@ -285,6 +278,13 @@ macro(setup_compile_flags)
 
   if (ENABLE_GPROF)
     add_compile_flags("C;CXX" "-pg")
+  endif()
+
+  # Only add -Werror if it's a debug build, done by developers.
+  # Release builds should not cause extra trouble.
+  if (CC_HAS_WERROR AND (CMAKE_BUILD_TYPE STREQUAL "Debug")
+      AND HAVE_STD_C11 AND HAVE_STD_CXX11)
+    add_compile_flags("C;CXX" "-Werror")
   endif()
 
   # LY: push C/CXX flags into the cache
