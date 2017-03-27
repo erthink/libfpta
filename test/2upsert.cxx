@@ -21,6 +21,12 @@
 
 #include <stdlib.h>
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4738) /* storing 32-bit float result in memory... */
+#pragma warning(disable : 4640) /* construction of local static object is not  \
+                                   thread-safe */
+#endif                          /* _MSC_VER (warnings) */
+
 TEST(Upsert, InvalidColumn) {
   char space_exactly_noitems[sizeof(fptu_rw)];
   fptu_rw *pt =
@@ -252,10 +258,10 @@ TEST(Upsert, Base) {
   used += 4;
   EXPECT_EQ(data - used, fptu_space4data(pt));
 
-  static const uint8_t *_96 = pattern;
-  static const uint8_t *_128 = _96 + 12;
-  static const uint8_t *_160 = _128 + 16;
-  static const uint8_t *_256 = _160 + 24;
+  static const uint8_t *const _96 = pattern;
+  static const uint8_t *const _128 = _96 + 12;
+  static const uint8_t *const _160 = _128 + 16;
+  static const uint8_t *const _256 = _160 + 24;
   ASSERT_LT(32, pattern + sizeof(pattern) - _256);
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_96(pt, fptu_max_cols / 2, _96));
@@ -656,10 +662,10 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ((float)2.7182818284590452354 + 43, fptu_get_fp32(ro, 0, nullptr));
   EXPECT_EQ(0, fptu_junkspace(pt));
 
-  static const uint8_t *_96 = pattern + 42;
-  static const uint8_t *_128 = _96 + 12;
-  static const uint8_t *_160 = _128 + 16;
-  static const uint8_t *_256 = _160 + 24;
+  static const uint8_t *const _96 = pattern + 42;
+  static const uint8_t *const _128 = _96 + 12;
+  static const uint8_t *const _160 = _128 + 16;
+  static const uint8_t *const _256 = _160 + 24;
   ASSERT_LT(32, pattern + sizeof(pattern) - 43 - _256);
   const fptu_time now1 = fptu_now_coarse();
 
