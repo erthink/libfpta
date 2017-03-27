@@ -114,10 +114,10 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
    * в итоге расходы превысят экономию. */
 
   const size_t n_words = (top + word_bits - 1) / word_bits;
-#ifdef __GNUC__
-  size_t bm[n_words];
+#ifdef _MSC_VER /* FIXME: mustdie */
+  size_t *const bm = (size_t *)_alloca(sizeof(size_t) * n_words);
 #else
-  size_t *bm = (size_t *)_alloca(sizeof(size_t) * n_words);
+  size_t bm[n_words];
 #endif
   memset(bm, 0, sizeof(size_t) * n_words);
 
