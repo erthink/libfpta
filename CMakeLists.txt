@@ -94,8 +94,8 @@ endif()
 # Enable 'make tags' target.
 if (CTAGS)
   add_custom_target(tags COMMAND ${CTAGS} -R -f tags
-   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    add_custom_target(ctags DEPENDS tags)
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_custom_target(ctags DEPENDS tags)
 endif(CTAGS)
 
 #

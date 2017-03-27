@@ -4,23 +4,23 @@ fetch_version(FPTA "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
 message("libfpta version is ${FPTA_VERSION}")
 
 add_library(fpta
-   ../fast_positive/tables.h
-   ../fast_positive/tables_internal.h
-   details.h
-   osal.h
-   common.cxx
-   filter.cxx
-   cursor.cxx
-   schema.cxx
-   index.cxx
-   data.cxx
-   secondary.cxx
-   misc.cxx
-   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
-)
+  ../fast_positive/tables.h
+  ../fast_positive/tables_internal.h
+  details.h
+  osal.h
+  common.cxx
+  filter.cxx
+  cursor.cxx
+  schema.cxx
+  index.cxx
+  data.cxx
+  secondary.cxx
+  misc.cxx
+  ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
+  )
 
 if (CC_HAS_VISIBILITY)
-   target_compile_options(fpta PRIVATE "-fvisibility=hidden")
+  target_compile_options(fpta PRIVATE "-fvisibility=hidden")
 endif()
 
 if(NOT LIBFPTA_STATIC)
@@ -30,9 +30,9 @@ else()
 endif()
 
 target_link_libraries(fpta
-    fptu mdbx t1ha ${LIB_MATH}
-    ${CMAKE_THREAD_LIBS_INIT}
-)
+  fptu mdbx t1ha ${LIB_MATH}
+  ${CMAKE_THREAD_LIBS_INIT}
+  )
 
 #
 # info summary (used in library version output)
