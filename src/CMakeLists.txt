@@ -1,7 +1,7 @@
 #
 # Get version
 fetch_version(FPTU "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
-message("libfptu version is ${FPTU_VERSION}")
+message(STATUS "libfptu version is ${FPTU_VERSION}")
 
 add_library(fptu
   ../fast_positive/defs.h
