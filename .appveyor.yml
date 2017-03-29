@@ -4,11 +4,9 @@ image: Visual Studio 2015
 
 environment:
   matrix:
-#  - Toolset: v150
-  - Toolset: v140
   - Toolset: v120
-#  - Toolset: v110
-#  - Toolset: v100
+  - Toolset: v140
+#  - Toolset: v150
 
 platform:
   - x86
