@@ -1,7 +1,7 @@
 #
 # Get version
 fetch_version(FPTA "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
-message("libfpta version is ${FPTA_VERSION}")
+message(STATUS "libfpta version is ${FPTA_VERSION}")
 
 add_library(fpta
   ../fast_positive/tables.h
