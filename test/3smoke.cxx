@@ -93,6 +93,20 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_a));
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_b));
 
+  // проверяем иформацию о таблице (сейчас таблица пуста)
+  size_t row_count;
+  fpta_table_stat stat;
+  memset(&row_count, 42, sizeof(row_count));
+  memset(&stat, 42, sizeof(stat));
+  EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, &stat));
+  EXPECT_EQ(0, row_count);
+  EXPECT_EQ(row_count, stat.row_count);
+  EXPECT_EQ(0, stat.btree_depth);
+  EXPECT_EQ(0, stat.large_pages);
+  EXPECT_EQ(0, stat.branch_pages);
+  EXPECT_EQ(0, stat.leaf_pages);
+  EXPECT_EQ(0, stat.total_bytes);
+
   // создаем кортеж, который станет первой записью в таблице
   fptu_rw *pt1 = fptu_alloc(3, 42);
   ASSERT_NE(nullptr, pt1);
@@ -156,6 +170,18 @@ TEST(SmokeIndex, Primary) {
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
   EXPECT_EQ(2, count);
+
+  // снова проверяем иформацию о таблице (сейчас в таблице две строки)
+  memset(&row_count, 42, sizeof(row_count));
+  memset(&stat, 42, sizeof(stat));
+  EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, &stat));
+  EXPECT_EQ(2, row_count);
+  EXPECT_EQ(row_count, stat.row_count);
+  EXPECT_EQ(1, stat.btree_depth);
+  EXPECT_EQ(0, stat.large_pages);
+  EXPECT_EQ(0, stat.branch_pages);
+  EXPECT_EQ(1, stat.leaf_pages);
+  EXPECT_LE(512, stat.total_bytes);
 
   // переходим к последней записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
