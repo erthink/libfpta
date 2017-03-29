@@ -64,14 +64,21 @@
 #pragma warning(pop)
 #endif
 
-#ifdef _MSC_VER
-#define REMOVE_FILE(pathname) _unlink(pathname)
+//----------------------------------------------------------------------------
+
+#if defined(_WIN32) || defined(_WIN64)
+
+int unlink_crutch(const char *pathname);
+#define REMOVE_FILE(pathname) unlink_crutch(pathname)
 #define TEST_DB_DIR ""
+
 #else
+
 #define REMOVE_FILE(pathname) unlink(pathname)
 #ifdef __linux__
 #define TEST_DB_DIR "/dev/shm/"
 #else
 #define TEST_DB_DIR "/tmp/"
 #endif
+
 #endif

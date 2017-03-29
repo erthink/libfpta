@@ -66,8 +66,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_val, "col_uint"));
 
     // чистим
-    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;

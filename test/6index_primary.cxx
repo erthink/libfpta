@@ -114,8 +114,10 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   }
 
   // чистим
-  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
 #ifdef FPTA_INDEX_UT_LONG
   // пытаемся обойтись меньшей базой, но для строк потребуется больше места

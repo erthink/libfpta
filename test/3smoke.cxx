@@ -47,8 +47,10 @@ TEST(SmokeIndex, Primary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -269,8 +271,10 @@ TEST(SmokeIndex, Secondary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -676,8 +680,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_real, "real"));
 
     // чистим
-    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
     ndeleted = 0;
 
     // открываем/создаем базульку в 1 мегабайт
@@ -1498,8 +1504,10 @@ public:
     if (!valid_ops)
       return;
 
-    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -1944,8 +1952,10 @@ TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 //----------------------------------------------------------------------------
 
 TEST(SmoceCrud, OneRowOneColumn) {
-  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
