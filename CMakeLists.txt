@@ -142,7 +142,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CUR
 include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/submodules/libfptu" "${PROJECT_SOURCE_DIR}/submodules")
 add_subdirectory(submodules)
 add_subdirectory(src)
-add_subdirectory(test)
+
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
+  message(WARNING "MSVC compiler is too old (${MSVC_VERSION}) for building tests, disable ones")
+else()
+  add_subdirectory(test)
+endif()
 
 set(PACKAGE "libfpta")
 set(CPACK_PACKAGE_VERSION_MAJOR ${FPTA_VERSION_MAJOR})
