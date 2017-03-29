@@ -1065,6 +1065,30 @@ FPTA_API int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
 /* Разрушает операционный идентификаторы таблиц и колонок. */
 FPTA_API void fpta_name_destroy(fpta_name *id);
 
+/* Расширенная информация о таблице */
+typedef struct fpta_table_stat {
+  uint64_t row_count /* количество строк */;
+  uint64_t total_bytes /* занимаемое место */;
+  uint32_t btree_depth /* высота b-tree */;
+  uint32_t branch_pages /* количество не-листьевых страниц (со ссылками)*/;
+  uint32_t leaf_pages /* количество листьевых страниц (с данными) */;
+  uint32_t large_pages /* количество больших (вынужденно склеенных)
+                          страниц для хранения длинных записей */;
+} fpta_table_stat;
+
+/* Возвращает информацию о таблице, в том числе количестве строк.
+ *
+ * Аргументом table_id выбирается требуемая таблица. Аргументы row_count
+ * и stat опциональны (могут быть nullptr).
+ *
+ * Аргумент table_id перед первым использованием должен быть инициализированы
+ * посредством fpta_table_init(). Однако, предварительный вызов
+ * fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_table_info(fpta_txn *txn, fpta_name *table_id,
+                             size_t *row_count, fpta_table_stat *stat);
+
 /* Возвращает количество колонок в таблице.
  *
  * Аргументом table_id выбирается требуемая таблица. Функция не производит

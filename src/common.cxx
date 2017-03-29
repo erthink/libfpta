@@ -343,3 +343,45 @@ int fpta_inconsistent_abort(fpta_txn *txn, int errnum) {
   txn->mdbx_txn = nullptr;
   return errnum;
 }
+
+//----------------------------------------------------------------------------
+
+int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
+                    fpta_table_stat *stat) {
+  int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  if (unlikely(table_id->mdbx_dbi < 1)) {
+    rc = fpta_open_table(txn, table_id);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  MDBX_stat mdbx_stat;
+  rc = mdbx_dbi_stat(txn->mdbx_txn, table_id->mdbx_dbi, &mdbx_stat,
+                     sizeof(mdbx_stat));
+  if (unlikely(rc != MDB_SUCCESS))
+    return rc;
+
+  if (unlikely(stat)) {
+    stat->row_count = mdbx_stat.ms_entries;
+    stat->btree_depth = mdbx_stat.ms_depth;
+    stat->leaf_pages = mdbx_stat.ms_leaf_pages;
+    stat->branch_pages = mdbx_stat.ms_branch_pages;
+    stat->large_pages = mdbx_stat.ms_overflow_pages;
+    stat->total_bytes = (mdbx_stat.ms_leaf_pages + mdbx_stat.ms_branch_pages +
+                         mdbx_stat.ms_overflow_pages) *
+                        (size_t)mdbx_stat.ms_psize;
+  }
+
+  if (likely(row_count)) {
+    if (unlikely(mdbx_stat.ms_entries > SIZE_MAX)) {
+      *row_count = FPTA_DEADBEEF;
+      return FPTA_EVALUE;
+    }
+    *row_count = mdbx_stat.ms_entries;
+  }
+
+  return FPTA_SUCCESS;
+}
