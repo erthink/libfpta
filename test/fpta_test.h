@@ -22,18 +22,16 @@
 #include "fast_positive/tables_internal.h"
 
 #ifdef _MSC_VER
-
-#pragma warning(                                                               \
-    disable : 4625) /* constructor was implicitly defined as deleted */
-#pragma warning(                                                               \
-    disable : 4626) /* assignment operator was implicitly defined as deleted   \
-                       */
-#pragma warning(                                                               \
-    disable : 5026) /* move constructor was implicitly defined as deleted */
+#pragma warning(disable : 4625) /* constructor was implicitly defined          \
+                                   as deleted */
+#pragma warning(disable : 4626) /* assignment operator was implicitly defined  \
+                                   as deleted */
+#pragma warning(disable : 5026) /* move constructor was implicitly defined     \
+                                   as deleted */
 #pragma warning(disable : 5027) /* move assignment operator was implicitly     \
                                    defined as deleted */
-#pragma warning(                                                               \
-    disable : 4820) /* 'xyz': 'N' bytes padding added after data member */
+#pragma warning(disable : 4820) /* 'xyz': 'N' bytes padding added after        \
+                                   data member */
 
 #pragma warning(push, 1)
 #pragma warning(disable : 4530) /* C++ exception handler used, but             \
