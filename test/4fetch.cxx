@@ -17,8 +17,7 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples_internal.h"
-#include <gtest/gtest.h>
+#include "fptu_test.h"
 
 TEST(Fetch, Invalid) {
   fptu_ro ro;
@@ -231,7 +230,8 @@ TEST(Fetch, Variate) {
       EXPECT_EQ(fptu_unit_size, origin_ro.total_bytes);
 
       // check empty
-      size_t origin_items = fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro);
+      size_t origin_items =
+          (size_t)(fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro));
       size_t origin_payload_bytes =
           origin_ro.total_bytes - units2bytes(origin_items) - fptu_unit_size;
       SCOPED_TRACE(
@@ -281,7 +281,8 @@ TEST(Fetch, Variate) {
         ASSERT_STREQ(nullptr, fptu_check_ro(origin_ro));
         EXPECT_EQ(fptu_unit_size * (n + 1), origin_ro.total_bytes);
 
-        origin_items = fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro);
+        origin_items =
+            (size_t)(fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro));
         origin_payload_bytes =
             origin_ro.total_bytes - units2bytes(origin_items) - fptu_unit_size;
         SCOPED_TRACE("origin.items " + std::to_string(origin_items) +
@@ -335,7 +336,8 @@ TEST(Fetch, Variate) {
         ASSERT_STREQ(nullptr, fptu_check_ro(origin_ro));
         EXPECT_EQ(fptu_unit_size * (n + n + 1), origin_ro.total_bytes);
 
-        origin_items = fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro);
+        origin_items =
+            (size_t)(fptu_end_ro(origin_ro) - fptu_begin_ro(origin_ro));
         origin_payload_bytes =
             origin_ro.total_bytes - units2bytes(origin_items) - fptu_unit_size;
         SCOPED_TRACE("origin.items " + std::to_string(origin_items) +

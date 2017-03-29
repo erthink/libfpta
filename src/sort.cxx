@@ -18,8 +18,24 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
+                                   unwind semantics are not enabled. Specify   \
+                                   /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
+                                   handling mode specified; termination on     \
+                                   exception is not guaranteed. Specify /EHsc  \
+                                   */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <algorithm>
 #include <functional>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 __hot bool fptu_is_ordered(const fptu_field *begin, const fptu_field *end) {
   if (likely(end > begin + 1)) {
@@ -98,10 +114,10 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
    * в итоге расходы превысят экономию. */
 
   const size_t n_words = (top + word_bits - 1) / word_bits;
-#ifdef __GNUC__
-  size_t bm[n_words];
+#ifdef _MSC_VER /* FIXME: mustdie */
+  size_t *const bm = (size_t *)_alloca(sizeof(size_t) * n_words);
 #else
-  size_t *bm = (size_t *)_alloca(sizeof(size_t) * n_words);
+  size_t bm[n_words];
 #endif
   memset(bm, 0, sizeof(size_t) * n_words);
 

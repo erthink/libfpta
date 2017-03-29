@@ -18,6 +18,22 @@
  */
 
 #include "fast_positive/tuples_internal.h"
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4996) /* 'getenv' : This function or variable may be \
+                       unsafe. Consider using _dupenv_s instead. To disable    \
+                       deprecation, use _CRT_SECURE_NO_WARNINGS. */
+
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
+                                   unwind semantics are not enabled. Specify   \
+                                   /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
+                                   handling mode specified; termination on     \
+                                   exception is not guaranteed. Specify /EHsc  \
+                                   */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <cinttypes> // for PRId64, PRIu64
 #include <cmath>     // for exp2()
 #include <cstdarg>   // for va_list
@@ -25,19 +41,9 @@
 #include <cstdlib>   // for snprintf()
 #include <ctime>     // for gmtime()
 
-#if defined(_WIN32) || defined(_WIN64)
-
-__extern_C __declspec(dllimport) void __cdecl _assert(char const *message,
-                                                      char const *filename,
-                                                      unsigned line);
-
-void __assert_fail(const char *assertion, const char *filename, unsigned line,
-                   const char *function) {
-  (void)function;
-  _assert(assertion, filename, line);
-  abort();
-}
-#endif /* windows mustdie */
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 bool fptu_is_under_valgrind(void) {
 #ifdef RUNNING_ON_VALGRIND

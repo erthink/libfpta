@@ -22,15 +22,9 @@
 /* *INDENT-OFF* */
 /* clang-format off */
 
-#ifdef _MSC_VER
-#pragma warning(disable : 4201 /* нестандартное расширение: структура (объединение) без имени */)
-#pragma warning(disable : 4820 /* timespec: "4"-байтовые поля добавлены после данные-член "timespec::tv_nsec" */)
-#pragma warning(disable : 4514 /* memmove_s: подставляемая функция, не используемая в ссылках, была удалена */)
-#pragma warning(disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(disable : 4061 /* перечислитель "xyz" в операторе switch с перечислением "XYZ" не обрабатывается явно меткой выбора при наличии "default:" */)
-#pragma warning(disable : 4127 /* условное выражение является константой */)
-#pragma warning(disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
-#endif /* windows mustdie */
+#ifndef NOMINMAX
+#	define NOMINMAX
+#endif
 
 #ifndef _ISOC99_SOURCE
 #	define _ISOC99_SOURCE 1
@@ -61,8 +55,53 @@
 #endif
 
 #include "fast_positive/tuples.h"
+
+#ifdef _MSC_VER
+
+#if _MSC_VER < 1900
+#pragma warning(disable : 4350) /* behavior change: 'std::_Wrap_alloc... */
+#endif
+
+#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function  \
+                                   has been removed */
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for          \
+                                   automatic inline expansion */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum   \
+                                   'xyz' is not explicitly handled by a case   \
+                                   label */
+#pragma warning(disable : 4201) /* nonstandard extension used :         \
+                                   nameless struct / union */
+#pragma warning(disable : 4127) /* conditional expression is constant   \
+                                   */
+
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but      \
+                                    unwind semantics are not enabled. Specify  \
+                                    /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception    \
+                                    handling mode specified; termination on    \
+                                    exception is not guaranteed. Specify /EHsc \
+                                    */
+#endif                          /* _MSC_VER (warnings) */
+
 #include <limits.h>
 #include <string.h>
+
+#if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
+	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
+	 * But you could remove this #error and try to continue at your own risk.
+	 * In such case please don't rise up an issues related ONLY to old compilers. */
+#	error "libfptu required at least GCC 4.2 compatible C/C++ compiler."
+#endif
+
+#if defined(__GLIBC__) && !__GLIBC_PREREQ(2,12)
+	/* Actualy libfptu requires just C99 (e.g glibc >= 2.1), but was
+	 * not tested with glibc older than 2.12 (from RHEL6). So you could
+	 * remove this #error and try to continue at your own risk.
+	 * In such case please don't rise up an issues related ONLY to old glibc. */
+#	error "libfptu required at least glibc version 2.12 or later."
+#endif
 
 #ifdef HAVE_VALGRIND_MEMCHECK_H
         /* Get debugging help from Valgrind */
@@ -88,17 +127,35 @@
 #       define VALGRIND_CHECK_MEM_IS_DEFINED(a,s) (0)
 #endif /* HAVE_VALGRIND_MEMCHECK_H */
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 //----------------------------------------------------------------------------
+
+#ifndef __optimize
+#	if defined(__OPTIMIZE__)
+#		if defined(__clang__) && !__has_attribute(optimize)
+#			define __optimize(ops)
+#		elif defined(__GNUC__) || __has_attribute(optimize)
+#			define __optimize(ops) __attribute__((optimize(ops)))
+#		else
+#			define __optimize(ops)
+#		endif
+#	else
+#			define __optimize(ops)
+#	endif
+#endif /* __optimize */
 
 #ifndef __hot
 #	if defined(__OPTIMIZE__)
 #		if defined(__clang__) && !__has_attribute(hot)
 			/* just put frequently used functions in separate section */
-#			define __hot __attribute__((section("text.hot_fptu")))
-#		elif defined(__GNUC__)
-#			define __hot __attribute__((hot, optimize("O3")))
+#			define __hot __attribute__((section("text.hot"))) __optimize("O3")
+#		elif defined(__GNUC__) || __has_attribute(hot)
+#			define __hot __attribute__((hot)) __optimize("O3")
 #		else
-#			define __hot
+#			define __hot  __optimize("O3")
 #		endif
 #	else
 #		define __hot
@@ -109,11 +166,11 @@
 #	if defined(__OPTIMIZE__)
 #		if defined(__clang__) && !__has_attribute(cold)
 			/* just put infrequently used functions in separate section */
-#			define __cold __attribute__((section("text.unlikely_fptu")))
-#		elif defined(__GNUC__)
-#			define __cold __attribute__((cold, optimize("Os")))
+#			define __cold __attribute__((section("text.unlikely"))) __optimize("Os")
+#		elif defined(__GNUC__) || __has_attribute(cold)
+#			define __cold __attribute__((cold)) __optimize("Os")
 #		else
-#			define __cold
+#			define __cold __optimize("Os")
 #		endif
 #	else
 #		define __cold
@@ -167,12 +224,20 @@
 #endif /* __expect_equal */
 
 #ifndef likely
-#	define likely(cond) __expect_equal(!!(cond), 1)
-#endif
+#	if defined(__GNUC__) || defined(__clang__)
+#		define likely(cond) __builtin_expect(!!(cond), 1)
+#	else
+#		define likely(x) (x)
+#	endif
+#endif /* likely */
 
 #ifndef unlikely
-#	define unlikely(cond) __expect_equal(!!(cond), 0)
-#endif
+#	if defined(__GNUC__) || defined(__clang__)
+#		define unlikely(cond) __builtin_expect(!!(cond), 0)
+#	else
+#		define unlikely(x) (x)
+#	endif
+#endif /* unlikely */
 
 #ifndef __aligned
 #	if defined(__GNUC__) || defined(__clang__)
@@ -185,12 +250,14 @@
 #endif /* __align */
 
 #ifndef CACHELINE_SIZE
-#	if defined(__ia64__) || defined(__ia64) || defined(_M_IA64)
+#	if defined(SYSTEM_CACHE_ALIGNMENT_SIZE)
+#		define CACHELINE_SIZE SYSTEM_CACHE_ALIGNMENT_SIZE
+#	elif defined(__ia64__) || defined(__ia64) || defined(_M_IA64)
 #		define CACHELINE_SIZE 128
 #	else
 #		define CACHELINE_SIZE 64
 #	endif
-#endif
+#endif /* CACHELINE_SIZE */
 
 #ifndef __cache_aligned
 #	define __cache_aligned __aligned(CACHELINE_SIZE)
@@ -199,8 +266,7 @@
 //----------------------------------------------------------------------------
 
 #ifdef __cplusplus
-	template <typename T, size_t N>
-	char (&__FPT_ArraySizeHelper(T (&array)[N]))[N];
+	template <typename T, size_t N> char(&__FPT_ArraySizeHelper(T(&)[N]))[N];
 #	define FPT_ARRAY_LENGTH(array) (sizeof(::__FPT_ArraySizeHelper(array)))
 #else
 #	define FPT_ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
@@ -251,8 +317,8 @@ __extern_C void __assert_fail(const char *assertion, const char *filename,
 #endif
     ;
 
-static __inline unsigned fptu_get_col(uint16_t packed) {
-  return (unsigned)packed >> fptu_co_shift;
+static __inline unsigned fptu_get_col(unsigned packed) {
+  return (unsigned)(((uint16_t)packed) >> fptu_co_shift);
 }
 
 static __inline fptu_type fptu_get_type(unsigned packed) {
@@ -307,9 +373,6 @@ static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
   return (const fptu_payload *)&pf->body[pf->offset];
 }
 #endif /* __cplusplus */
-
-extern const uint8_t fptu_internal_map_t2b[];
-extern const uint8_t fptu_internal_map_t2u[];
 
 static __inline bool ct_is_fixedsize(unsigned ct) {
   return fptu_get_type(ct) < fptu_cstr;

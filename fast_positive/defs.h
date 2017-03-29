@@ -32,20 +32,13 @@
 #endif
 
 #ifndef __GNUC_PREREQ
-#if defined(__GNUC__) && defined(__GNUC_MINOR__)
-#define __GNUC_PREREQ(maj, min)                                                \
-  ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
-#else
-#define __GNUC_PREREQ(maj, min) 0
-#endif
-#endif
-
-#if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
-	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
-	 * But you could remove this #error and try to continue at your own risk.
-	 * In such case please don't rise up an issues related ONLY to old compilers. */
-#	error "libfptu required at least GCC 4.2 compatible C/C++ compiler."
-#endif
+#	if defined(__GNUC__) && defined(__GNUC_MINOR__)
+#		define __GNUC_PREREQ(maj, min) \
+			((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#	else
+#		define __GNUC_PREREQ(maj, min) (0)
+#	endif
+#endif /* __GNUC_PREREQ */
 
 #ifndef __CLANG_PREREQ
 #	ifdef __clang__
@@ -56,26 +49,46 @@
 #	endif
 #endif /* __CLANG_PREREQ */
 
-#ifndef __has_attribute
-#	define __has_attribute(x) (0)
-#endif
-
 #ifndef __GLIBC_PREREQ
 #	if defined(__GLIBC__) && defined(__GLIBC_MINOR__)
 #		define __GLIBC_PREREQ(maj, min) \
 			((__GLIBC__ << 16) + __GLIBC_MINOR__ >= ((maj) << 16) + (min))
 #	else
-#		define __GLIBC_PREREQ(maj, min) 0
+#		define __GLIBC_PREREQ(maj, min) (0)
 #	endif
 #endif /* __GLIBC_PREREQ */
 
-#if defined(__GLIBC__) && !__GLIBC_PREREQ(2,12)
-	/* Actualy libfptu requires just C99 (e.g glibc >= 2.1), but was
-	 * not tested with glibc older than 2.12 (from RHEL6). So you could
-	 * remove this #error and try to continue at your own risk.
-	 * In such case please don't rise up an issues related ONLY to old glibc. */
-#	error "libfptu required at least glibc version 2.12 or later."
+#ifndef __has_attribute
+#	define __has_attribute(x) (0)
 #endif
+
+#ifndef __has_feature
+#	define __has_feature(x) (0)
+#endif
+
+#ifndef __has_extension
+#	define __has_extension(x) (0)
+#endif
+
+#ifndef __has_builtin
+#	define __has_builtin(x) (0)
+#endif
+
+#if __has_feature(thread_sanitizer)
+#	define __SANITIZE_THREAD__ 1
+#endif
+
+#if __has_feature(address_sanitizer)
+#	define __SANITIZE_ADDRESS__ 1
+#endif
+
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901
+#	if (defined(__GNUC__) && __GNUC__ >= 2) || defined(__clang__) || defined(_MSC_VER)
+#		define __func__ __FUNCTION__
+#	else
+#		define __func__ "__func__"
+#	endif
+#endif /* __func__ */
 
 //----------------------------------------------------------------------------
 
@@ -127,7 +140,7 @@
 
 #if !defined(__thread) && (defined(_MSC_VER) || defined(__DMC__))
 #	define __thread __declspec(thread)
-#endif
+#endif /* __thread */
 
 #ifndef __alwaysinline
 #	if defined(__GNUC__) || __has_attribute(always_inline)
@@ -144,6 +157,10 @@
 #		define __noinline __attribute__((noinline))
 #	elif defined(_MSC_VER)
 #		define __noinline __declspec(noinline)
+#	elif defined(__SUNPRO_C) || defined(__sun) || defined(sun)
+#		define __noinline inline
+#	elif !defined(__INTEL_COMPILER)
+#		define __noinline /* FIXME ? */
 #	endif
 #endif /* __noinline */
 
@@ -169,9 +186,9 @@
 #	if defined(__GNUC__) || __has_attribute(packed)
 #		define __packed __attribute__((packed))
 #	else
-#		define  __packed
+#		define __packed
 #	endif
-#endif
+#endif /* __packed */
 
 #ifndef __noreturn
 #	if defined(__GNUC__) || __has_attribute(noreturn)
@@ -181,17 +198,17 @@
 #	else
 #		define __noreturn
 #	endif
-#endif
+#endif /* __noreturn */
 
 #ifndef __nothrow
 #	if defined(__GNUC__) || __has_attribute(nothrow)
 #		define __nothrow __attribute__((nothrow))
-#	elif defined(_MSC_VER)
+#	elif defined(_MSC_VER) && defined(__cplusplus)
 #		define __nothrow __declspec(nothrow)
 #	else
 #		define __nothrow
 #	endif
-#endif
+#endif /* __nothrow */
 
 #ifndef __pure_function
 	/* Many functions have no effects except the return value and their
@@ -204,7 +221,7 @@
 #	else
 #		define __pure_function
 #	endif
-#endif
+#endif /* __pure_function */
 
 #ifndef __const_function
 	/* Many functions do not examine any values except their arguments,

@@ -17,9 +17,34 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tuples_internal.h"
+#include "fptu_test.h"
+
 #include <cmath>
-#include <gtest/gtest.h>
+
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#include <windows.h>
+#pragma warning(pop)
+
+#pragma warning(disable : 4244) /* 'initializing' : conversion from 'double'   \
+                                   to 'uint32_t', possible loss of data */
+#pragma warning(disable : 4365) /* 'initializing' : conversion from 'int' to   \
+                                   'uint32_t', signed / unsigned mismatch */
+
+static void usleep(unsigned usec) {
+  HANDLE timer;
+  LARGE_INTEGER li;
+
+  /* Convert to 100 nanosecond interval,
+   * negative value indicates relative time */
+  li.QuadPart = -(10 * (int64_t)usec);
+
+  timer = CreateWaitableTimer(NULL, TRUE, NULL);
+  SetWaitableTimer(timer, &li, 0, NULL, NULL, 0);
+  WaitForSingleObject(timer, INFINITE);
+  CloseHandle(timer);
+}
+#endif /* _MSC_VER */
 
 const auto ms100 = fptu_time::ms2fractional(100);
 
@@ -29,7 +54,7 @@ TEST(Trivia, Apriory) {
   ASSERT_EQ(UINT16_MAX, (uint16_t)-1ll);
   ASSERT_EQ(UINT32_MAX, (uint32_t)-1ll);
   ASSERT_GE(UINT16_MAX, fptu_limit);
-  ASSERT_EQ((uint16_t)~0ul, fptu_limit);
+  ASSERT_EQ(UINT16_MAX, fptu_limit);
   ASSERT_TRUE(FPT_IS_POWER2(fptu_bits));
   ASSERT_TRUE(FPT_IS_POWER2(fptu_unit_size));
   ASSERT_EQ(fptu_unit_size, 1 << fptu_unit_shift);

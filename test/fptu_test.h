@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
+ * Copyright 2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
  *
@@ -17,26 +17,23 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "fast_positive/tuples_internal.h"
 
-#if FPTU_VERSION_MAJOR != @FPTU_VERSION_MAJOR@ || FPTU_VERSION_MINOR != @FPTU_VERSION_MINOR@
-#error "API version mismatch!"
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#pragma warning(disable : 4530) /* C++ exception handler used, but             \
+                                    unwind semantics are not enabled. Specify  \
+                                    /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
+                                    handling mode specified; termination on    \
+                                    exception is not guaranteed. Specify /EHsc \
+                                    */
+#endif                          /* _MSC_VER (warnings) */
+
+#include <gtest/gtest.h>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
-
-const struct fptu_version_info fptu_version = {
-  @FPTU_VERSION_MAJOR@, @FPTU_VERSION_MINOR@, @FPTU_VERSION_RELEASE@, @FPTU_VERSION_REVISION@,
-  {
-    "@FPTU_GIT_TIMESTAMP@",
-    "@FPTU_GIT_TREE@",
-    "@FPTU_GIT_COMMIT@",
-    "@FPTU_GIT_DESCRIBE@"
-  }
-};
-
-const struct fptu_build_info fptu_build = {
-  "@FPTU_BUILD_TIMESTAMP@",
-  "@FPTU_BUILD_TAGRET@",
-  "@FPTU_BUILD_OPTIONS@",
-  "@FPTU_BUILD_COMPILER@",
-  "@FPTU_BUILD_FLAGS@"
-};

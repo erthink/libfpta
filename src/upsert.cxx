@@ -88,10 +88,21 @@ static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct, size_t units) {
   return fptu_append(pt, ct, units);
 }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4820) /* 'fptu_takeover_result' : '4' bytes          \
+                                   padding added after data member             \
+                                   'fptu_takeover_result::error' */
+#endif
+
 struct fptu_takeover_result {
   fptu_field *pf;
   int error;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, unsigned ct,
                                                 size_t units) {

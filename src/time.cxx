@@ -58,7 +58,8 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
 
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _MSC_VER
+#pragma warning(push, 1)
 #include <windows.h>
 
 #ifndef HAVE_TIMESPEC_TV_NSEC
@@ -85,19 +86,24 @@ static int clock_gettime(int clk_id, struct timespec *tp) {
   tp->tv_nsec = (long)(ns % 1000000000ul);
   return 0;
 }
-#else
+
+#pragma warning(pop)
+#else /* _MSC_VER */
 static int clock_gettime(int clk_id, struct timespec *tp) {
   (void)clk_id;
   (void)tp;
+#error FIXME /* CLOCK_REALTIME (?) */
   return ENOSYS;
 }
-#endif /* windows must die */
-#endif /* CLOCK_REALTIME */
+#endif /* !_MSC_VER */
+#endif /* !CLOCK_REALTIME */
 
-static void clock_failure(void) {
-  /* LY: немного паранойи */
-  __assert_fail("clock_gettime() failed", "fptu/time.cxx", 42, "fptu_now()");
-}
+#ifdef _MSC_VER
+#define clock_failure() __noop()
+#else
+#define clock_failure()                                                        \
+  __assert_fail("clock_gettime() failed", "fptu/time.cxx", __LINE__, __func__)
+#endif
 
 fptu_time fptu_now_fine(void) {
   struct timespec now;
@@ -108,7 +114,7 @@ fptu_time fptu_now_fine(void) {
   return fptu_time::from_timespec(now);
 #else
   return from_timespec(now);
-#endif
+#endif /* HAVE_TIMESPEC_TV_NSEC */
 }
 
 #ifdef CLOCK_REALTIME_COARSE

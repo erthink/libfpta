@@ -1,3 +1,8 @@
+- [x] intergation with GoogleTest (pull, build);
+- [x] CI by AppVeyor;
+- [ ] interface for external scheme;
+- [ ] serialization to JSON (optional with schema);
+- [ ] de-serialization from JSON (with schema);
 - [ ] fput_field_xyz_cmp();
 - [ ] fptu_field_xyz_set();
 - [ ] support for headspace reservation;
@@ -6,3 +11,4 @@
 - [ ] unit test for `limits`;
 - [ ] external scheme support and C++ binding auto-generation;
 - [ ] ? support for sorted tuples.
+- [ ] automatic grow for buffers (by one more indirection)

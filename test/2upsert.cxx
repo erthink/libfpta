@@ -17,10 +17,15 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fast_positive/tuples.h>
-#include <gtest/gtest.h>
+#include "fptu_test.h"
 
 #include <stdlib.h>
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4738) /* storing 32-bit float result in memory... */
+#pragma warning(disable : 4640) /* construction of local static object is not  \
+                                   thread-safe */
+#endif                          /* _MSC_VER (warnings) */
 
 TEST(Upsert, InvalidColumn) {
   char space_exactly_noitems[sizeof(fptu_rw)];
@@ -246,17 +251,17 @@ TEST(Upsert, Base) {
   used += 8;
   EXPECT_EQ(data - used, fptu_space4data(pt));
 
-  EXPECT_EQ(FPTU_OK,
-            fptu_upsert_fp32(pt, fptu_max_cols - 4, 2.7182818284590452354));
+  EXPECT_EQ(FPTU_OK, fptu_upsert_fp32(pt, fptu_max_cols - 4,
+                                      (float)2.7182818284590452354));
   ASSERT_STREQ(nullptr, fptu_check(pt));
   EXPECT_EQ(7, fptu_space4items(pt));
   used += 4;
   EXPECT_EQ(data - used, fptu_space4data(pt));
 
-  static const uint8_t *_96 = pattern;
-  static const uint8_t *_128 = _96 + 12;
-  static const uint8_t *_160 = _128 + 16;
-  static const uint8_t *_256 = _160 + 24;
+  static const uint8_t *const _96 = pattern;
+  static const uint8_t *const _128 = _96 + 12;
+  static const uint8_t *const _160 = _128 + 16;
+  static const uint8_t *const _256 = _160 + 24;
   ASSERT_LT(32, pattern + sizeof(pattern) - _256);
 
   EXPECT_EQ(FPTU_OK, fptu_upsert_96(pt, fptu_max_cols / 2, _96));
@@ -637,7 +642,7 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ(0, fptu_junkspace(pt));
 
   // insert the first copy of field(0, fp32)
-  EXPECT_EQ(FPTU_OK, fptu_insert_fp32(pt, 0, 2.7182818284590452354));
+  EXPECT_EQ(FPTU_OK, fptu_insert_fp32(pt, 0, (float)2.7182818284590452354));
   bytes_used += 4;
   ASSERT_STREQ(nullptr, fptu_check(pt));
   EXPECT_EQ(items_limit - 14, fptu_space4items(pt));
@@ -646,7 +651,8 @@ TEST(Upsert, InsertUpdate) {
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
   EXPECT_EQ((float)2.7182818284590452354, fptu_get_fp32(ro, 0, nullptr));
   // insert the second copy of field(0, fp32)
-  EXPECT_EQ(FPTU_OK, fptu_insert_fp32(pt, 0, 2.7182818284590452354 + 43));
+  EXPECT_EQ(FPTU_OK,
+            fptu_insert_fp32(pt, 0, (float)2.7182818284590452354 + 43));
   bytes_used += 4;
   ASSERT_STREQ(nullptr, fptu_check(pt));
   EXPECT_EQ(items_limit - 15, fptu_space4items(pt));
@@ -656,10 +662,10 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ((float)2.7182818284590452354 + 43, fptu_get_fp32(ro, 0, nullptr));
   EXPECT_EQ(0, fptu_junkspace(pt));
 
-  static const uint8_t *_96 = pattern + 42;
-  static const uint8_t *_128 = _96 + 12;
-  static const uint8_t *_160 = _128 + 16;
-  static const uint8_t *_256 = _160 + 24;
+  static const uint8_t *const _96 = pattern + 42;
+  static const uint8_t *const _128 = _96 + 12;
+  static const uint8_t *const _160 = _128 + 16;
+  static const uint8_t *const _256 = _160 + 24;
   ASSERT_LT(32, pattern + sizeof(pattern) - 43 - _256);
   const fptu_time now1 = fptu_now_coarse();
 
@@ -899,7 +905,8 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ(FPTU_OK, fptu_update_uint64(pt, 0, 15047220096467327 - 42));
   EXPECT_EQ(FPTU_OK, fptu_update_int64(pt, 0, -64700360770547893));
   EXPECT_EQ(FPTU_OK, fptu_update_fp64(pt, 0, 3.14159265358979323846 - 42));
-  EXPECT_EQ(FPTU_OK, fptu_update_fp32(pt, 0, 2.7182818284590452354 - 42));
+  EXPECT_EQ(FPTU_OK,
+            fptu_update_fp32(pt, 0, (float)2.7182818284590452354 - 42));
   EXPECT_EQ(FPTU_OK, fptu_update_96(pt, 0, _96 - 42));
   EXPECT_EQ(FPTU_OK, fptu_update_128(pt, 0, _128 - 42));
   EXPECT_EQ(FPTU_OK, fptu_update_160(pt, 0, _160 - 42));

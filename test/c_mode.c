@@ -21,13 +21,17 @@
 #include <fast_positive/tuples.h>
 
 #ifdef _MSC_VER
-#pragma warning(                                                               \
-    disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(                                                               \
-    disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
-#endif /* windows mustdie */
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
+                                   automatic inline expansion */
+#pragma warning(push, 1)
+#endif /* _MSC_VER (warnings) */
 
 #include <stdio.h>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 static void print_value(const char *caption, const char *comment, long value) {
   printf("%-20s = %ld\t// %s\n", caption, value, comment);
