@@ -34,6 +34,10 @@ target_link_libraries(fpta
   ${CMAKE_THREAD_LIBS_INIT}
   )
 
+if(UNIX AND NOT APPLE)
+  target_link_libraries(fpta rt)
+endif()
+
 #
 # info summary (used in library version output)
 get_target_property(FPTA_DEFINITIONS fpta COMPILE_DEFINITIONS)

@@ -31,6 +31,10 @@ endif()
 
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
+if(UNIX AND NOT APPLE)
+  target_link_libraries(mdbx rt)
+endif()
+
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   message (WARNING "Now skiping MDBX-tools for Windows (TODO)")
 else()
