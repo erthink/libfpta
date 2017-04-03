@@ -24,6 +24,10 @@ add_library(fptu
 
 target_link_libraries(fptu ${LIB_MATH} ${CMAKE_THREAD_LIBS_INIT})
 
+if(UNIX AND NOT APPLE)
+  target_link_libraries(fptu rt)
+endif()
+
 if(CC_HAS_VISIBILITY)
   target_compile_options(fptu PRIVATE "-fvisibility=hidden")
 endif()
