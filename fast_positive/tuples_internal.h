@@ -453,3 +453,15 @@ fptu_depleted2lge(const iterator &left_pos, const iterator &left_end,
     return fptu_eq;
   return left_depleted ? fptu_lt : fptu_gt;
 }
+
+#ifdef _MSC_VER
+#ifndef snprintf
+#define snprintf(buffer, buffer_size, format, ...)                             \
+  _snprintf_s(buffer, buffer_size, _TRUNCATE, format, __VA_ARGS__)
+#endif /* snprintf */
+
+#ifndef vsnprintf
+#define vsnprintf(buffer, buffer_size, format, args)                           \
+  _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args)
+#endif /* vsnprintf */
+#endif /* _MSC_VER */
