@@ -344,7 +344,7 @@ __cold string to_string(const struct fpta_table_schema *def) {
 
   string result = fptu::format(
       "%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64 ", %" PRIu32 "=[",
-      def, def->version, def->signature, def->checksum, def->shove, def->count);
+      def, def->csn, def->signature, def->checksum, def->shove, def->count);
 
   for (size_t i = 0; i < def->count; ++i) {
     const fpta_shove_t shove = def->columns[i];

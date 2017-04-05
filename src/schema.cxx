@@ -421,7 +421,7 @@ bool fpta_schema_validate(const MDB_val def) {
   if (unlikely(def.mv_size != fpta_table_schema_size(schema->count)))
     return false;
 
-  if (unlikely(schema->version == 0))
+  if (unlikely(schema->csn == 0))
     return false;
 
   if (unlikely(fpta_shove2index(schema->shove) !=
@@ -610,9 +610,8 @@ int fpta_table_column_count(const fpta_name *table_id) {
     return -1;
   if (unlikely(schema->shove != table_id->shove))
     return -1;
-  if (unlikely(table_id->version != schema->version))
-    return -1;
 
+  assert(table_id->version >= schema->csn);
   return (int)schema->count;
 }
 
@@ -632,9 +631,8 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
     return FPTA_SCHEMA_CORRUPTED;
   if (unlikely(schema->shove != table_id->shove))
     return FPTA_SCHEMA_CORRUPTED;
-  if (unlikely(table_id->version != schema->version))
-    return FPTA_SCHEMA_CHANGED;
 
+  assert(table_id->version >= schema->csn);
   if (column >= schema->count)
     return FPTA_EINVAL;
   column_id->column.table = const_cast<fpta_name *>(table_id);
@@ -692,7 +690,7 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     }
 
     fpta_table_schema *schema = table_id->table.def;
-    assert(schema == nullptr || txn->schema_version == schema->version);
+    assert(schema == nullptr || txn->schema_version >= schema->csn);
     table_id->version = txn->schema_version;
 
     table_id->table.pk = schema
@@ -711,8 +709,8 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   assert(fpta_shove2index(table_id->shove) == (fpta_index_type)fpta_flag_table);
   if (unlikely(schema->shove != table_id->shove))
     return FPTA_SCHEMA_CORRUPTED;
-  assert(table_id->version == schema->version);
 
+  assert(table_id->version >= schema->csn);
   if (column_id == nullptr)
     return FPTA_SUCCESS;
 
@@ -808,7 +806,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
 
   def.signature = FTPA_SCHEMA_SIGNATURE;
   def.count = column_set->count;
-  def.version = txn->data_version;
+  def.csn = txn->data_version;
   def.shove = table_shove;
   memcpy(def.columns, column_set->shoves, sizeof(fpta_shove_t) * def.count);
   def.checksum = t1ha(&def.signature, data.mv_size - sizeof(def.checksum),

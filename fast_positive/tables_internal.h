@@ -85,7 +85,7 @@ struct fpta_table_schema {
   uint64_t checksum;
   uint32_t signature;
   uint32_t count;
-  uint64_t version;
+  uint64_t csn;
   fpta_shove_t shove;
   fpta_shove_t columns[fpta_max_cols];
 };
