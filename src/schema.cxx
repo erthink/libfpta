@@ -50,7 +50,7 @@ bool fpta_validate_name(const char *name) {
   if (unlikely(name == nullptr))
     return false;
 
-  if (unlikely(!isalpha(name[0])))
+  if (unlikely(!isalpha(name[0]) && name[0] != '_'))
     return false;
 
   size_t len = 1;

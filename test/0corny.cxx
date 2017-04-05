@@ -39,7 +39,8 @@ TEST(Corny, NameValidate) {
   EXPECT_FALSE(fpta_validate_name("no valid"));
   EXPECT_FALSE(fpta_validate_name("1nvalid"));
   EXPECT_FALSE(fpta_validate_name("inval.d"));
-  EXPECT_FALSE(fpta_validate_name("_1nvalid"));
+  EXPECT_FALSE(fpta_validate_name("inval$d"));
+  EXPECT_TRUE(fpta_validate_name("_1nvalid"));
   EXPECT_FALSE(fpta_validate_name("invalid#"));
   EXPECT_FALSE(fpta_validate_name("invalid/"));
 #if !defined(_MSC_VER) || defined(NDEBUG)
