@@ -100,6 +100,11 @@ typedef unsigned mode_t;
  *
  * Чуть позже эти определения передедут в fpta_config.h */
 
+#ifndef FPTA_ALLOW_DOT4NAMES
+/* Опция разрешает использование точки в именах таблиц и колонок. */
+#define FPTA_ALLOW_DOT4NAMES 0
+#endif /* FPTA_ALLOW_DOT4NAMES */
+
 #ifndef FPTA_PROHIBIT_NEARBY4UNORDERED
 /* Опция определяет поведение при запросах позиционирования к ближайшему
  * значению посредством fpta_cursor_locate() для "неупорядоченных" курсоров.

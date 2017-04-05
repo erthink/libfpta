@@ -46,22 +46,33 @@ static __hot fpta_shove_t fpta_shove_name(const char *name,
   return shove;
 }
 
+template <bool first> static __inline bool is_valid_char4name(char c) {
+  if (first ? isalpha(c) : isalnum(c))
+    return true;
+  if (c == '_')
+    return true;
+  if (FPTA_ALLOW_DOT4NAMES && c == '.')
+    return true;
+
+  return false;
+}
+
 bool fpta_validate_name(const char *name) {
   if (unlikely(name == nullptr))
     return false;
 
-  if (unlikely(!isalpha(name[0]) && name[0] != '_'))
+  if (unlikely(!is_valid_char4name<true>(name[0])))
     return false;
 
-  size_t len = 1;
-  while (name[len]) {
-    if (unlikely(!isalnum(name[len]) && name[len] != '_'))
+  size_t i = 1;
+  while (name[i]) {
+    if (unlikely(!is_valid_char4name<false>(name[i])))
       return false;
-    if (unlikely(++len > fpta_name_len_max))
+    if (unlikely(++i > fpta_name_len_max))
       return false;
   }
 
-  if (unlikely(len < fpta_name_len_min))
+  if (unlikely(i < fpta_name_len_min))
     return false;
 
   return fpta_shove_name(name, fpta_column) > (1 << fpta_name_hash_shift);

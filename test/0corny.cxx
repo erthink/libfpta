@@ -36,9 +36,15 @@ TEST(Corny, NameValidate) {
   EXPECT_FALSE(fpta_validate_name("a_very_long_long_long_long_long_long_"
                                   "long_long_long_long_long_long_name"));
 
-  EXPECT_FALSE(fpta_validate_name("no valid"));
+  EXPECT_FALSE(fpta_validate_name("not valid"));
   EXPECT_FALSE(fpta_validate_name("1nvalid"));
+#if FPTA_ALLOW_DOT4NAMES
+  EXPECT_TRUE(fpta_validate_name("val.d"));
+  EXPECT_TRUE(fpta_validate_name(".val.d"));
+#else
   EXPECT_FALSE(fpta_validate_name("inval.d"));
+  EXPECT_FALSE(fpta_validate_name(".nval.d"));
+#endif
   EXPECT_FALSE(fpta_validate_name("inval$d"));
   EXPECT_TRUE(fpta_validate_name("_1nvalid"));
   EXPECT_FALSE(fpta_validate_name("invalid#"));
