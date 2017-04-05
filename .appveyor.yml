@@ -6,7 +6,7 @@ environment:
   matrix:
   - Toolset: v120
   - Toolset: v140
-#  - Toolset: v150
+#  - Toolset: v141
 
 platform:
   - x86
@@ -32,7 +32,7 @@ before_build:
     Write-Output "Configuration: $env:CONFIGURATION"
     Write-Output "Platform: $env:PLATFORM"
     $generator = switch ($env:TOOLSET) {
-        "v150" {"Visual Studio 15 2017"}
+        "v141" {"Visual Studio 15 2017"}
         "v140" {"Visual Studio 14 2015"}
         "v120" {"Visual Studio 12 2013"}
         "v110" {"Visual Studio 11 2012"}
