@@ -729,7 +729,7 @@ FPTU_API const fptu_field *fptu_next_ex(const fptu_field *begin,
                                         fptu_field_filter filter, void *context,
                                         void *param);
 /* Подсчет количества полей по заданному номеру колонки и типу,
- * либо маски типов .*/
+ * либо маски типов. */
 FPTU_API size_t fptu_field_count(const fptu_rw *pt, unsigned column,
                                  int type_or_filter);
 FPTU_API size_t fptu_field_count_ro(fptu_ro ro, unsigned column,
