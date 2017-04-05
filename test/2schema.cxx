@@ -100,10 +100,13 @@ TEST(Schema, Base) {
    * Сценарий:
    *  - открываем базу в режиме неизменяемой схемы и пробуем начать
    *    транзакцию уровня изменения схемы.
+   *  - открываем базу в режиме изменяемой схемы.
    *  - создаем и заполняем описание колонок.
    *  - создаем таблицу по сформированному описанию колонок.
    *  - затем в другой транзакции проверяем, что у созданной таблицы
    *    есть соответствующие колонки.
+   *  - в очередной транзакции создаем еще одну таблицу
+   *    и обновляем описание первой.
    *  - после в другой транзакции удаляем созданную таблицу,
    *    а также пробуем удалить несуществующую.
    *
@@ -115,10 +118,12 @@ TEST(Schema, Base) {
     ASSERT_EQ(ENOENT, errno);
 
   fpta_db *db = nullptr;
+  /* открываем базу в режиме неизменяемой схемы */
   EXPECT_EQ(FPTA_SUCCESS,
             fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
   ASSERT_NE(nullptr, db);
 
+  /* пробуем начать транзакцию изменения схемы в базе с неизменяемой схемой */
   fpta_txn *txn = (fpta_txn *)&txn;
   EXPECT_EQ(EPERM, fpta_transaction_begin(db, fpta_schema, &txn));
   ASSERT_EQ(nullptr, txn);
@@ -126,13 +131,14 @@ TEST(Schema, Base) {
 
   //------------------------------------------------------------------------
 
+  /* повторно открываем базу с возможностью изменять схему */
   EXPECT_EQ(FPTA_SUCCESS,
             fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
   ASSERT_NE(nullptr, db);
 
+  // формируем описание колонок для первой таблицы
   fpta_column_set def;
   fpta_column_set_init(&def);
-
   EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
                                           fpta_primary_unique, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_describe("first_uint", fptu_uint64,
@@ -141,8 +147,17 @@ TEST(Schema, Base) {
                                           fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
-  //------------------------------------------------------------------------
+  // формируем описание колонок для второй таблицы
+  fpta_column_set def2;
+  fpta_column_set_init(&def2);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("x", fptu_cstr, fpta_primary_unique, &def2));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("y", fptu_cstr, fpta_secondary, &def2));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def2));
 
+  //------------------------------------------------------------------------
+  // создаем первую таблицу в отдельной транзакции
   EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, fpta_read, nullptr));
   EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, (fpta_level)0, &txn));
   EXPECT_EQ(nullptr, txn);
@@ -159,8 +174,9 @@ TEST(Schema, Base) {
   txn = nullptr;
 
   //------------------------------------------------------------------------
-  fpta_name table, col_pk, col_a, col_b, probe_get;
+  // проверяем наличие первой таблицы
 
+  fpta_name table, col_pk, col_a, col_b, probe_get;
   fpta_pollute(&table, sizeof(table), 0); // чтобы valrind не ругался
   EXPECT_GT(0, fpta_table_column_count(&table));
   EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 0, &probe_get));
@@ -205,6 +221,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(fptu_fp64, fpta_name_coltype(&col_b));
   EXPECT_EQ(2, col_b.column.num);
 
+  // получаем описание схемы, проверяем кол-во таблиц и освобождаем
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &schema_info.tables_names[0]));
@@ -213,28 +230,104 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
-  // разрушаем привязанные идентификаторы
-  fpta_name_destroy(&table);
-  fpta_name_destroy(&col_pk);
+  //------------------------------------------------------------------------
+  // создаем вторую таблицу в отдельной транзакции
+  EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, fpta_read, nullptr));
+  EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, (fpta_level)0, &txn));
+  EXPECT_EQ(nullptr, txn);
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_2", &def2));
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(2, schema_info.tables_count);
+
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
 
   //------------------------------------------------------------------------
+  // проверяем наличие второй таблицы и обновляем описание первой
+  fpta_name table2, col_x, col_y;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table2, "table_2"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table2, &col_x, "x"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table2, &col_y, "y"));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table2));
+  EXPECT_EQ(2, fpta_table_column_count(&table2));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_x));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_y));
+
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+  EXPECT_EQ(3, fpta_table_column_count(&table));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_a));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_b));
+
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //------------------------------------------------------------------------
+  // в отдельной транзакции удаляем первую таблицу
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(2, schema_info.tables_count);
+
+  // удаляем первую таблицу
+  EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "Table_1"));
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(1, schema_info.tables_count);
+
+  // пробуем удалить несуществующую таблицу
+  EXPECT_EQ(MDB_NOTFOUND, fpta_table_drop(txn, "table_xyz"));
+  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
+  EXPECT_EQ(1, schema_info.tables_count);
+
+  // обновляем описание второй таблицы (внутри транзакции изменения схемы)
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table2));
+  EXPECT_EQ(2, fpta_table_column_count(&table2));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_x));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_y));
+
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //------------------------------------------------------------------------
+  // в отдельной транзакции удаляем вторую таблицу
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
   ASSERT_NE(nullptr, txn);
 
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
 
-  EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "Table_1"));
-  EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
-  EXPECT_EQ(0, schema_info.tables_count);
+  // еще раз обновляем описание второй таблицы
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table2));
+  EXPECT_EQ(2, fpta_table_column_count(&table2));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_x));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_y));
 
-  EXPECT_EQ(MDB_NOTFOUND, fpta_table_drop(txn, "table_xyz"));
+  // удаляем вторую таблицу
+  EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "Table_2"));
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(0, schema_info.tables_count);
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
 
   //------------------------------------------------------------------------
+  // разрушаем привязанные идентификаторы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_pk);
+  fpta_name_destroy(&col_a);
+  fpta_name_destroy(&col_b);
+  fpta_name_destroy(&probe_get);
+
+  fpta_name_destroy(&table2);
+  fpta_name_destroy(&col_x);
+  fpta_name_destroy(&col_y);
+
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
