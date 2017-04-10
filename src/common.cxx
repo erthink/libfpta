@@ -150,7 +150,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(rc != MDB_SUCCESS))
     goto bailout;
 
-  rc = mdbx_env_set_maxreaders(db->mdbx_env, 42);
+  rc = mdbx_env_set_maxreaders(db->mdbx_env, 42 /* FIXME */);
   if (unlikely(rc != MDB_SUCCESS))
     goto bailout;
 
