@@ -2059,6 +2059,229 @@ TEST(SmoceCrud, OneRowOneColumn) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, DirectDirtyDeletions) {
+  /* Smoke-проверка удаления строки из "грязной" страницы, при наличии
+   * вторичных индексов.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой несколько колонок
+   *   и есть хотя-бы один вторичный индекс.
+   *
+   *  2. Вставляем 11 строки, при этом некоторые значения близкие
+   *     и точно попадут в одну страницу БД.
+   *
+   *  3. Удаляем одну строку, затем в той-же транзакции ищем и удаляем
+   *     вторую строку, которая после первого удаления должна располагаться
+   *     в измененной "грязной" страницы.
+   *
+   *  4. Завершаем операции и освобождаем ресурсы.
+   */
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // начинаем транзакцию с добавлениями
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // описываем структуру таблицы и создаем её
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("Nnn", fptu_int64, fpta_primary_unique, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("_createdAt", fptu_datetime,
+                                          fpta_secondary, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("_id", fptu_int64,
+                                          fpta_secondary_unique, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "bugged", &def));
+
+  // готовим идентификаторы для манипуляций с данными
+  fpta_name table, col_num, col_date, col_str;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "bugged"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_num, "Nnn"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_date, "_createdAt"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_str, "_id"));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_num));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_date));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_str));
+
+  // выделяем кортеж и вставляем 11 строк
+  fptu_rw *pt = fptu_alloc(3, 8 + 8 + 8);
+  ASSERT_NE(nullptr, pt);
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+
+  // 1
+  fptu_time datetime;
+  datetime.fixedpoint = 1492170771;
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(100)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824664381050880)));
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+  fptu_ro row = fptu_take_noshrink(pt);
+  ASSERT_STREQ(nullptr, fptu_check_ro(row));
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 2
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(101)));
+
+  datetime.fixedpoint = 1492170775;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824680314742784)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 3
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(102)));
+
+  datetime.fixedpoint = 1492170777;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824688070591488)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 4
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(103)));
+  datetime.fixedpoint = 1492170778;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824693901869056)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 5
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(104)));
+  datetime.fixedpoint = 1492170779;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824699339551744)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 6
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(105)));
+  datetime.fixedpoint = 1492170781;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824705469209600)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 7
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(106)));
+  datetime.fixedpoint = 1492170782;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824710579991552)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 8
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(107)));
+  datetime.fixedpoint = 1492170784;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824719167151104)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 9
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(108)));
+  datetime.fixedpoint = 1492170786;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824727095985152)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 10
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(109)));
+  datetime.fixedpoint = 1492170788;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824736249964544)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 11
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(110)));
+  datetime.fixedpoint = 1492170790;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824744270998528)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // завершаем транзакцию с добавлениями
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // начинаем транзакцию с удалениями
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+  fptu_ro row2;
+  fpta_value num2;
+
+  // читаем вторую строку для проверки что сейчас она НЕ в грязной странице.
+  num2 = fpta_value_sint(6408824736249964544);
+  EXPECT_EQ(FPTA_OK, fpta_get(txn, &col_str, &num2, &row2));
+  EXPECT_EQ(MDBX_RESULT_FALSE, mdbx_is_dirty(txn->mdbx_txn, row2.sys.iov_base));
+
+  // читаем и удаляем первую строку
+  num2 = fpta_value_sint(6408824727095985152);
+  EXPECT_EQ(FPTA_OK, fpta_get(txn, &col_str, &num2, &row2));
+  EXPECT_EQ(MDBX_RESULT_FALSE, mdbx_is_dirty(txn->mdbx_txn, row2.sys.iov_base));
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn, &table, row2));
+
+  // снова читаем вторую строку (теперь она должна быть в "грязной" странице)
+  // и удаляем её
+  num2 = fpta_value_sint(6408824736249964544);
+  EXPECT_EQ(FPTA_OK, fpta_get(txn, &col_str, &num2, &row2));
+  EXPECT_EQ(MDBX_RESULT_TRUE, mdbx_is_dirty(txn->mdbx_txn, row2.sys.iov_base));
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn, &table, row2));
+
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // освобождаем ресурсы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_num);
+  fpta_name_destroy(&col_date);
+  fpta_name_destroy(&col_str);
+  free(pt);
+  pt = nullptr;
+
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
