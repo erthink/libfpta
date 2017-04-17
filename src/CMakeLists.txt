@@ -9,6 +9,7 @@ add_library(fpta
   details.h
   osal.h
   common.cxx
+  table.cxx
   filter.cxx
   cursor.cxx
   schema.cxx
