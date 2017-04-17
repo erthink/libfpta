@@ -205,6 +205,10 @@ public:
     if (!valid_pk) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
                                                   pk_index, &def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
@@ -212,6 +216,10 @@ public:
     if (!valid_se) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
                                                   se_index, &def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
@@ -256,6 +264,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
     /* Для полноты тесты переоткрываем базу. В этом нет явной необходимости,
      * но только так можно проверить работу некоторых механизмов.

@@ -110,6 +110,10 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     ASSERT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
     return;
   }
 
@@ -144,6 +148,10 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
   txn = nullptr;
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // инициализируем идентификаторы колонок
   fpta_name table, col_pk, col_order, col_dup_id, col_t1ha;

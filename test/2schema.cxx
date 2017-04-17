@@ -92,6 +92,10 @@ TEST(Schema, Trivia) {
   EXPECT_EQ(FPTA_OK, fpta_column_describe("column_c", fptu_uint16,
                                           fpta_secondary, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+  EXPECT_EQ(FPTA_EINVAL, fpta_column_set_destroy(&def));
 }
 
 TEST(Schema, Base) {
@@ -173,6 +177,9 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
   //------------------------------------------------------------------------
   // проверяем наличие первой таблицы
 
@@ -244,6 +251,9 @@ TEST(Schema, Base) {
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
+
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def2));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def2));
 
   //------------------------------------------------------------------------
   // проверяем наличие второй таблицы и обновляем описание первой

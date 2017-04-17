@@ -275,6 +275,10 @@ TEST(Data, UpsertColumn) {
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
   // инициализируем идентификаторы колонок
   fpta_name table, col_uint16, col_uint32, col_int32, col_fp32, col_int64,
       col_uint64, col_fp64, col_96, col_128, col_160, col_datetime, col_256,

@@ -78,6 +78,10 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
   // инициализируем идентификаторы таблицы и её колонок
   fpta_name table, col_pk, col_a, col_b;
   EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_1"));
@@ -328,6 +332,10 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_1", &def));
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // инициализируем идентификаторы таблицы и её колонок
   fpta_name table, col_pk, col_a, col_b;
@@ -743,6 +751,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table_crud", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
   }
 
   virtual void TearDown() {
@@ -1560,6 +1572,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
 
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
     // начинаем транзакцию для вставки данных
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
     ASSERT_NE(nullptr, txn);
@@ -2003,6 +2019,10 @@ TEST(SmoceCrud, OneRowOneColumn) {
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
 
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
   // инициализируем идентификаторы таблицы и её колонок
   fpta_name table, col_pk;
   ASSERT_EQ(FPTA_OK, fpta_table_init(&table, "Table"));
@@ -2103,6 +2123,10 @@ TEST(Smoke, DirectDirtyDeletions) {
                                           fpta_secondary_unique, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "bugged", &def));
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // готовим идентификаторы для манипуляций с данными
   fpta_name table, col_num, col_date, col_str;

@@ -909,6 +909,18 @@ FPTA_API int fpta_column_describe(const char *column_name,
  * fpta_column_describe(). */
 FPTA_API void fpta_column_set_init(fpta_column_set *column_set);
 
+/* Деструктор fpta_column_set.
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_column_set_destroy(fpta_column_set *column_set) {
+  if (column_set != nullptr && column_set->count != FPTA_DEADBEEF) {
+    column_set->count = FPTA_DEADBEEF;
+    column_set->shoves[0] = 0;
+    return FPTA_SUCCESS;
+  }
+
+  return FPTA_EINVAL;
+}
+
 /* Создание таблицы.
  *
  * Аргумент table_name задает имя таблицы. Для совместимости в именах

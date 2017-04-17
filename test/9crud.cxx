@@ -104,6 +104,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
 
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
     //------------------------------------------------------------------------
 
     // начинаем транзакцию записи
