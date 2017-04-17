@@ -58,3 +58,20 @@ int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
 
   return FPTA_SUCCESS;
 }
+
+int fpta_table_sequence(fpta_txn *txn, fpta_name *table_id, uint64_t *result,
+                        uint64_t increment) {
+  int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  if (unlikely(table_id->mdbx_dbi < 1)) {
+    rc = fpta_open_table(txn, table_id);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  rc = mdbx_dbi_sequence(txn->mdbx_txn, table_id->mdbx_dbi, result, increment);
+  static_assert(FPTA_NODATA == MDBX_RESULT_TRUE, "expect equal");
+  return rc;
+}
