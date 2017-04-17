@@ -173,6 +173,7 @@ TEST(Schema, Base) {
   fpta_schema_info schema_info;
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
@@ -232,7 +233,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &schema_info.tables_names[0]));
-  fpta_name_destroy(&schema_info.tables_names[0]);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
@@ -248,6 +249,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_2", &def2));
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(2, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
@@ -284,16 +286,19 @@ TEST(Schema, Base) {
 
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(2, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   // удаляем первую таблицу
   EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "Table_1"));
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   // пробуем удалить несуществующую таблицу
   EXPECT_EQ(MDB_NOTFOUND, fpta_table_drop(txn, "table_xyz"));
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   // обновляем описание второй таблицы (внутри транзакции изменения схемы)
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table2));
@@ -311,6 +316,7 @@ TEST(Schema, Base) {
 
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(1, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   // еще раз обновляем описание второй таблицы
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table2));
@@ -322,6 +328,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "Table_2"));
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));
   EXPECT_EQ(0, schema_info.tables_count);
+  EXPECT_EQ(FPTA_OK, fpta_schema_destroy(&schema_info));
 
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;

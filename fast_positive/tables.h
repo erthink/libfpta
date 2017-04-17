@@ -1023,42 +1023,6 @@ typedef struct FPTA_API fpta_name {
   unsigned mdbx_dbi; /* дескриптор движка */
 } fpta_name;
 
-/* Возвращает тип данных колонки из дескриптора имени */
-static __inline fptu_type fpta_name_coltype(const fpta_name *column_id) {
-  return (fptu_type)(column_id->shove & fpta_column_typeid_mask);
-}
-
-/* Возвращает тип индекса колонки из дескриптора имени */
-static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
-  return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
-}
-
-/* Получение и актуализация идентификаторов таблицы и колонки.
- *
- * Функция работает в семантике кэширования с отслеживанием версии
- * схемы.
- *
- * Перед первым обращением name_id должен быть инициализирован
- * посредством fpta_table_init(), fpta_column_init() либо fpta_schema_fetch().
- *
- * Аргумент column_id может быть нулевым. В этом случае он
- * игнорируется, и обрабатывается только table_id.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id);
-FPTA_API int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
-                                      fpta_name *column_id);
-
-/* Сбрасывает закэшированное состояние идентификатора.
- *
- * Функция может быть полезна в некоторых специфических сценариях,
- * когда движок fpta не может самостоятельно сделать вывод о необходимости
- * обновления информации. Например, если идентификатор используется повторно
- * без полной инициализации, но с новым экземпляром базы.
- *
- * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_name_reset(fpta_name *name_id);
-
 /* Инициализирует операционный идентификатор таблицы.
  *
  * Подготавливает идентификатор таблицы к последующему использованию.
@@ -1093,7 +1057,43 @@ FPTA_API int fpta_table_init(fpta_name *table_id, const char *name);
 FPTA_API int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
                               const char *name);
 
-/* Разрушает операционный идентификаторы таблиц и колонок. */
+/* Получение и актуализация идентификаторов таблицы и колонки.
+ *
+ * Функция работает в семантике кэширования с отслеживанием версии
+ * схемы.
+ *
+ * Перед первым обращением name_id должен быть инициализирован
+ * посредством fpta_table_init(), fpta_column_init() либо fpta_schema_fetch().
+ *
+ * Аргумент column_id может быть нулевым. В этом случае он
+ * игнорируется, и обрабатывается только table_id.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id);
+FPTA_API int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
+                                      fpta_name *column_id);
+
+/* Сбрасывает закэшированное состояние идентификатора.
+ *
+ * Функция может быть полезна в некоторых специфических сценариях,
+ * когда движок fpta не может самостоятельно сделать вывод о необходимости
+ * обновления информации. Например, если идентификатор используется повторно
+ * без полной инициализации, но с новым экземпляром базы.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_name_reset(fpta_name *name_id);
+
+/* Возвращает тип данных колонки из дескриптора имени */
+static __inline fptu_type fpta_name_coltype(const fpta_name *column_id) {
+  return (fptu_type)(column_id->shove & fpta_column_typeid_mask);
+}
+
+/* Возвращает тип индекса колонки из дескриптора имени */
+static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
+  return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
+}
+
+/* Разрушает операционные идентификаторы таблиц и колонок. */
 FPTA_API void fpta_name_destroy(fpta_name *id);
 
 /* Расширенная информация о таблице */
@@ -1166,9 +1166,11 @@ FPTA_API int fpta_table_column_get(const fpta_name *table_id, unsigned column,
  *
  * Непосредственно после вызова fpta_schema_fetch() заполненная структура
  * не требует какого-либо разрушения или дополнительного освобождения ресурсов.
- * Однако, после последующих вызовов fpta_name_refresh() для каждого элемента
- * массива tables_names[] требуют вызов fpta_name_destroy() для освобождения
- * внутреннего описания колонок. */
+ * Однако, после последующих вызовов fpta_name_refresh() для каждого
+ * соответствующего элемента массива tables_names[] требуется вызов
+ * fpta_name_destroy() для освобождения внутреннего описания колонок.
+ * Поэтому рекомендуется абстрагироваться и для разрушения всегда использовать
+ * деструктор fpta_schema_destroy(). Накладные расходы при этом минимальны. */
 typedef struct fpta_schema_info {
   unsigned tables_count;
   fpta_name tables_names[fpta_tables_max];
@@ -1183,6 +1185,10 @@ typedef struct fpta_schema_info {
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info);
+
+/* Деструктор экземпляров fpta_schema_info.
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_schema_destroy(fpta_schema_info *info);
 
 //----------------------------------------------------------------------------
 /* Управление фильтрами. */

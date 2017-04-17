@@ -551,6 +551,17 @@ int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
   return (rc == MDB_NOTFOUND) ? (int)FPTA_SUCCESS : rc;
 }
 
+FPTA_API int fpta_schema_destroy(fpta_schema_info *info) {
+  if (unlikely(info == nullptr || info->tables_count == FPTA_DEADBEEF))
+    return FPTA_EINVAL;
+
+  for (size_t i = 0; i < info->tables_count; i++)
+    fpta_name_destroy(info->tables_names + i);
+  info->tables_count = FPTA_DEADBEEF;
+
+  return FPTA_SUCCESS;
+}
+
 //----------------------------------------------------------------------------
 
 static int fpta_name_init(fpta_name *id, const char *name,
