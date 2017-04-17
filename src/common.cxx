@@ -307,6 +307,30 @@ int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
   return FPTA_SUCCESS;
 }
 
+int fpta_db_sequence(fpta_txn *txn, uint64_t *result, uint64_t increment) {
+  if (unlikely(result == nullptr))
+    return FPTA_EINVAL;
+  if (unlikely(!fpta_txn_validate(txn, fpta_read)))
+    return FPTA_EINVAL;
+
+  *result = txn->db_sequence();
+  if (increment) {
+    if (unlikely(!fpta_txn_validate(txn, fpta_write)))
+      return EACCES;
+
+    uint64_t value = txn->db_sequence() + increment;
+    if (value < increment) {
+      static_assert(FPTA_NODATA == MDBX_RESULT_TRUE, "expect equal");
+      return FPTA_NODATA;
+    }
+
+    assert(txn->db_sequence() < value);
+    txn->db_sequence() = value;
+  }
+
+  return FPTA_SUCCESS;
+}
+
 //----------------------------------------------------------------------------
 
 int
