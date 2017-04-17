@@ -697,10 +697,10 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   if (unlikely(!fpta_txn_validate(txn, fpta_read)))
     return FPTA_EINVAL;
 
-  if (unlikely(table_id->version > txn->schema_version))
+  if (unlikely(table_id->version > txn->schema_version()))
     return FPTA_SCHEMA_CHANGED;
 
-  if (unlikely(table_id->version != txn->schema_version)) {
+  if (unlikely(table_id->version != txn->schema_version())) {
     table_id->mdbx_dbi = 0;
 
     int rc = fpta_schema_read(txn, table_id->shove, &table_id->table.def);
@@ -712,8 +712,8 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     }
 
     fpta_table_schema *schema = table_id->table.def;
-    assert(schema == nullptr || txn->schema_version >= schema->csn);
-    table_id->version = txn->schema_version;
+    assert(schema == nullptr || txn->schema_version() >= schema->csn);
+    table_id->version = txn->schema_version();
 
     table_id->table.pk = schema
                              ? schema->columns[0] & (fpta_column_typeid_mask |
@@ -828,7 +828,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
 
   def.signature = FTPA_SCHEMA_SIGNATURE;
   def.count = column_set->count;
-  def.csn = txn->data_version;
+  def.csn = txn->db_version;
   def.shove = table_shove;
   memcpy(def.columns, column_set->shoves, sizeof(fpta_shove_t) * def.count);
   def.checksum = t1ha(&def.signature, data.mv_size - sizeof(def.checksum),
@@ -841,7 +841,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
   if (rc != MDB_SUCCESS)
     goto bailout;
 
-  txn->schema_version = txn->data_version;
+  txn->schema_version() = txn->db_version;
   return FPTA_SUCCESS;
 
 bailout:
@@ -849,7 +849,7 @@ bailout:
     fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
     int err = mdbx_drop(txn->mdbx_txn, dbi[i], 1);
     if (unlikely(err != MDB_SUCCESS))
-      return fpta_inconsistent_abort(txn, err);
+      return fpta_internal_abort(txn, err);
   }
   return rc;
 }
@@ -900,12 +900,12 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   if (rc != MDB_SUCCESS)
     return rc;
 
-  txn->schema_version = txn->data_version;
+  txn->schema_version() = txn->db_version;
   for (size_t i = 0; i < fpta_max_indexes && dbi[i] > 0; ++i) {
     fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
     int err = mdbx_drop(txn->mdbx_txn, dbi[i], 1);
     if (unlikely(err != MDB_SUCCESS))
-      return fpta_inconsistent_abort(txn, err);
+      return fpta_internal_abort(txn, err);
   }
 
   return rc;

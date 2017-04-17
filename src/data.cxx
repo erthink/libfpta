@@ -421,7 +421,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   rc = fpta_secondary_upsert(txn, table_id, pk_key.mdbx, old, pk_key.mdbx, row,
                              0);
   if (unlikely(rc != MDB_SUCCESS))
-    return fpta_inconsistent_abort(txn, rc);
+    return fpta_internal_abort(txn, rc);
 
   return FPTA_SUCCESS;
 }
@@ -473,7 +473,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   if (fpta_table_has_secondary(table_id)) {
     rc = fpta_secondary_remove(txn, table_id, key.mdbx, row, 0);
     if (unlikely(rc != MDB_SUCCESS))
-      return fpta_inconsistent_abort(txn, rc);
+      return fpta_internal_abort(txn, rc);
   }
 
   return FPTA_SUCCESS;

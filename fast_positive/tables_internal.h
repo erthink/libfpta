@@ -113,8 +113,16 @@ struct fpta_txn {
   MDB_txn *mdbx_txn;
   fpta_level level;
   int unused_gap;
-  uint64_t schema_version;
-  uint64_t data_version;
+  uint64_t db_version;
+  mdbx_canary canary;
+
+  uint64_t &schema_version() { return canary.x; }
+  uint64_t &db_sequence() { return canary.y; }
+  uint64_t &manna() { return canary.z; }
+
+  uint64_t schema_version() const { return canary.x; }
+  uint64_t db_sequence() const { return canary.y; }
+  uint64_t manna() const { return canary.z; }
 };
 
 struct fpta_key {
@@ -323,7 +331,7 @@ static __inline bool fpta_cursor_is_ascending(fpta_cursor_options op) {
   return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
 }
 
-int fpta_inconsistent_abort(fpta_txn *txn, int errnum);
+int fpta_internal_abort(fpta_txn *txn, int errnum);
 
 static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
   return a.iov_len == b.iov_len &&

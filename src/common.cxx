@@ -253,10 +253,8 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
   if (unlikely(rc != MDB_SUCCESS))
     goto bailout;
 
-  mdbx_canary canary;
-  txn->data_version = mdbx_canary_get(txn->mdbx_txn, &canary);
-  txn->schema_version = canary.v;
-  assert(txn->schema_version <= txn->data_version);
+  txn->db_version = mdbx_canary_get(txn->mdbx_txn, &txn->canary);
+  assert(txn->schema_version() <= txn->db_version);
 
   *ptxn = txn;
   return FPTA_SUCCESS;
@@ -278,19 +276,14 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   if (txn->level == fpta_read) {
     // TODO: reuse txn with mdbx_txn_reset(), but pool needed...
     rc = mdbx_txn_commit(txn->mdbx_txn);
-  } else if (!abort) {
-    if (txn->level == fpta_schema && txn->schema_version == txn->data_version) {
-      rc = mdbx_canary_put(txn->mdbx_txn, nullptr);
-      if (rc != MDB_SUCCESS) {
-        int err = mdbx_txn_abort(txn->mdbx_txn);
-        if (err != MDB_SUCCESS)
-          rc = err;
-      } else
-        rc = mdbx_txn_commit(txn->mdbx_txn);
-    } else
-      rc = mdbx_txn_commit(txn->mdbx_txn);
+  } else if (unlikely(abort)) {
+    rc = fpta_internal_abort(txn, FPTA_OK);
   } else {
-    rc = mdbx_txn_abort(txn->mdbx_txn);
+    rc = mdbx_canary_put(txn->mdbx_txn, &txn->canary);
+    if (likely(rc == MDB_SUCCESS))
+      rc = mdbx_txn_commit(txn->mdbx_txn);
+    if (unlikely(rc != MDB_SUCCESS))
+      rc = fpta_internal_abort(txn, rc);
   }
   txn->mdbx_txn = nullptr;
 
@@ -302,15 +295,15 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   return (fpta_error)rc;
 }
 
-int fpta_transaction_versions(fpta_txn *txn, uint64_t *data,
+int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
                               uint64_t *schema_version) {
   if (unlikely(!fpta_txn_validate(txn, fpta_read)))
     return FPTA_EINVAL;
 
-  if (likely(data))
-    *data = txn->data_version;
+  if (likely(db_version))
+    *db_version = txn->db_version;
   if (likely(schema_version))
-    *schema_version = txn->schema_version;
+    *schema_version = txn->schema_version();
   return FPTA_SUCCESS;
 }
 
@@ -326,7 +319,7 @@ int
   return (FPTA_ENABLE_ABORT_ON_PANIC) ? 0 : -1;
 }
 
-int fpta_inconsistent_abort(fpta_txn *txn, int errnum) {
+int fpta_internal_abort(fpta_txn *txn, int errnum) {
   /* Некоторые ошибки (например переполнение БД) могут происходить когда
    * мы выполнили лишь часть операций. В таких случаях можно лишь
    * прервать/откатить всю транзакцию, что и делает эта функция.

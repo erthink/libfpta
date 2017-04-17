@@ -779,14 +779,14 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
                                cursor->index.column_order);
     if (unlikely(rc != MDB_SUCCESS)) {
       cursor->set_poor();
-      return fpta_inconsistent_abort(cursor->txn, rc);
+      return fpta_internal_abort(cursor->txn, rc);
     }
 
     if (!fpta_index_is_primary(cursor->index.shove)) {
       rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
       if (unlikely(rc != MDB_SUCCESS)) {
         cursor->set_poor();
-        return fpta_inconsistent_abort(cursor->txn, rc);
+        return fpta_internal_abort(cursor->txn, rc);
       }
     }
   }
@@ -951,7 +951,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
                              cursor->index.column_order);
   if (unlikely(rc != MDB_SUCCESS)) {
     cursor->set_poor();
-    return fpta_inconsistent_abort(cursor->txn, rc);
+    return fpta_internal_abort(cursor->txn, rc);
   }
 
   const bool pk_changed = !fpta_is_same(old_pk_key, new_pk_key.mdbx);
@@ -960,7 +960,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
                   &old_pk_key, nullptr);
     if (unlikely(rc != MDB_SUCCESS)) {
       cursor->set_poor();
-      return fpta_inconsistent_abort(cursor->txn, rc);
+      return fpta_internal_abort(cursor->txn, rc);
     }
 
     rc = mdbx_put(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
@@ -968,7 +968,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
                   MDB_NODUPDATA | MDB_NOOVERWRITE);
     if (unlikely(rc != MDB_SUCCESS)) {
       cursor->set_poor();
-      return fpta_inconsistent_abort(cursor->txn, rc);
+      return fpta_internal_abort(cursor->txn, rc);
     }
 
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
@@ -989,7 +989,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   }
   if (unlikely(rc != MDB_SUCCESS)) {
     cursor->set_poor();
-    return fpta_inconsistent_abort(cursor->txn, rc);
+    return fpta_internal_abort(cursor->txn, rc);
   }
 
   return FPTA_SUCCESS;

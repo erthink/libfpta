@@ -734,11 +734,11 @@ static __inline int fpta_transaction_abort(fpta_txn *txn) {
 
 /* Получение версий схемы и данных.
  *
- * Для снимка данных (которая читается транзакцией)
+ * Для снимка базы (которая читается транзакцией)
  * и версию схемы (которая действует внутри транзакции).
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *data_version,
+FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
                                        uint64_t *schema_version);
 
 //----------------------------------------------------------------------------
