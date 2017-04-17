@@ -75,3 +75,50 @@ int fpta_table_sequence(fpta_txn *txn, fpta_name *table_id, uint64_t *result,
   static_assert(FPTA_NODATA == MDBX_RESULT_TRUE, "expect equal");
   return rc;
 }
+
+int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
+  int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  if (unlikely(table_id->mdbx_dbi < 1)) {
+    rc = fpta_open_table(txn, table_id);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  MDB_dbi dbi[fpta_max_indexes];
+  if (fpta_table_has_secondary(table_id)) {
+    rc = fpta_open_secondaries(txn, table_id, dbi);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  uint64_t sequence = 0;
+  if (!reset_sequence) {
+    rc = mdbx_dbi_sequence(txn->mdbx_txn, table_id->mdbx_dbi, &sequence, 0);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  rc = mdbx_drop(txn->mdbx_txn, table_id->mdbx_dbi, 0);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  if (fpta_table_has_secondary(table_id)) {
+    for (size_t i = 1; i < table_id->table.def->count; ++i) {
+      rc = mdbx_drop(txn->mdbx_txn, dbi[i], 0);
+      if (unlikely(rc != MDB_SUCCESS))
+        return fpta_internal_abort(txn, rc);
+    }
+  }
+
+  if (sequence) {
+    rc =
+        mdbx_dbi_sequence(txn->mdbx_txn, table_id->mdbx_dbi, nullptr, sequence);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return fpta_internal_abort(txn, rc);
+  }
+
+  return FPTA_SUCCESS;
+}

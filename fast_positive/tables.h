@@ -1164,6 +1164,23 @@ FPTA_API void fpta_name_destroy(fpta_name *id);
 FPTA_API int fpta_table_sequence(fpta_txn *txn, fpta_name *table_id,
                                  uint64_t *result, uint64_t increment);
 
+/* Очищает таблицу, удаляя все её записи с минимальным количеством операций.
+ *
+ * Аргументом table_id выбирается требуемая таблица, а аргумент reset_sequence
+ * управляет сбросом состояния последовательности выдаваемой функцией
+ * fpta_table_sequence().
+ *
+ * Функция быстро очищает таблицу, не итерируя её записи, а сразу отправляя
+ * все страницы с данными в корзину.
+ *
+ * Аргумент table_id перед первым использованием должен быть инициализирован
+ * посредством fpta_table_init(). Однако, предварительный вызов
+ * fpta_name_refresh() не обязателен.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_table_clear(fpta_txn *txn, fpta_name *table_id,
+                              bool reset_sequence);
+
 /* Расширенная информация о таблице */
 typedef struct fpta_table_stat {
   uint64_t row_count /* количество строк */;
