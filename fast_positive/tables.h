@@ -243,6 +243,137 @@ typedef struct fpta_cursor fpta_cursor;
 
 //----------------------------------------------------------------------------
 
+/* Коды ошибок.
+ * Список будет пополнен, а описания уточнены. */
+enum fpta_error {
+  FPTA_SUCCESS = 0,
+  FPTA_OK = FPTA_SUCCESS,
+  FPTA_ERRROR_BASE = 4242,
+
+  FPTA_EOOPS
+  /* Internal unexpected Oops */,
+  FPTA_SCHEMA_CORRUPTED
+  /* Schema is invalid or corrupted (internal error) */,
+  FPTA_ETYPE
+  /* Type mismatch (given value vs column/field or index) */,
+  FPTA_DATALEN_MISMATCH
+  /* Data length mismatch (given value vs data type) */,
+  FPTA_KEY_MISMATCH
+  /* Key mismatch while updating row via cursor */,
+  FPTA_COLUMN_MISSING
+  /* Required column missing */,
+  FPTA_INDEX_CORRUPTED
+  /* Index is inconsistent or corrupted (internal error) */,
+  FPTA_NO_INDEX
+  /* No (such) index for given column */,
+  FPTA_SCHEMA_CHANGED
+  /* Schema changed (transaction should be restared) */,
+  FPTA_ECURSOR
+  /* Cursor is not positioned */,
+  FPTA_TOOMANY
+  /* Too many columns or indexes (one of fpta's limits reached) */,
+  FPTA_WANNA_DIE
+  /* Failure while transaction rollback */,
+
+  FPTA_ENOFIELD = FPTU_ENOFIELD,
+  FPTA_ENOSPACE = FPTU_ENOSPACE,
+
+  FPTA_EINVAL = EINVAL /* Invalid argument */,
+  FPTA_ENOMEM = ENOMEM /* Out of Memory */,
+  FPTA_ENOIMP = ENOSYS /* Not yet implemented */,
+  FPTA_EVALUE = EDOM /* Value is invalid or out of range */,
+  FPTA_NODATA = -1 /* No data or EOF was reached */,
+
+  FPTA_DEADBEEF = 0xDeadBeef /* Pseudo error for results by pointer,
+    mean `no value` returned */,
+
+  /************************************************* MDBX's error codes ***/
+  FPTA_KEYEXIST = -30799 /* key/data pair already exists */,
+
+  FPTA_NOTFOUND = -30798 /* key/data pair not found */,
+
+  FPTA_DB_REF = -30797 /* wrong page address/number,
+    this usually indicates corruption */,
+
+  FPTA_DB_DATA = -30796 /* Located page was wrong data */,
+
+  FPTA_DB_PANIC = -30795 /* Update of meta page failed
+    or environment had fatal error */,
+
+  FPTA_DB_MISMATCH = -30794 /* DB version mismatch libmdbx */,
+
+  FPTA_DB_INVALID = -30793 /* File is not a valid LMDB file */,
+
+  FPTA_DB_FULL = -30792 /* Environment mapsize reached */,
+
+  FPTA_DBI_FULL = -30791 /* Too may DBI (maxdbs reached) */,
+
+  FPTA_READERS_FULL = -30790 /* Too many readers (maxreaders reached) */,
+
+  FPTA_TXN_FULL = -30788 /* Transaction has too many dirty pages,
+    e.g. a lot of changes. */,
+
+  FPTA_CURSOR_FULL = -30787 /* Cursor stack too deep (mdbx internal) */,
+
+  FPTA_PAGE_FULL = -30786 /* Page has not enough space (mdbx internal) */,
+
+  FPTA_DB_RESIZED = -30785 /* Database contents grew
+    beyond environment mapsize */,
+
+  FPTA_DB_INCOMPAT = -30784 /* Operation and DB incompatible (mdbx internal),
+   This can mean:
+     - The operation expects an MDB_DUPSORT/MDB_DUPFIXED database.
+     - Opening a named DB when the unnamed DB has MDB_DUPSORT/MDB_INTEGERKEY.
+     - Accessing a data record as a database, or vice versa.
+     - The database was dropped and recreated with different flags. */,
+
+  FPTA_BAD_RSLOT = -30783 /* Invalid reuse of reader locktable slot */,
+
+  FPTA_BAD_TXN = -30782 /* Transaction must abort,
+    e.g. has a child, or is invalid */,
+
+  FPTA_BAD_VALSIZE = -30781 /* Unsupported size of key/DB name/data,
+    or wrong DUPFIXED size */,
+
+  FPTA_BAD_DBI = -30780 /* The specified DBI was changed unexpectedly */,
+
+  FPTA_DB_PROBLEM = -30779 /* Unexpected internal mdbx problem,
+    txn should abort */,
+
+  FPTA_EMULTIVAL = -30421 /* the mdbx_put() or mdbx_replace() was called
+    for a key, that has more that one associated value. */,
+
+  FPTA_EBADSIGN = -30420 /* wrong signature of a runtime object(s) */,
+};
+
+/* Возвращает краткое описание ошибки по её коду.
+ *
+ * Функция идентифицирует "свои" ошибки и при необходимости по-цепочке
+ * вызывает mdbx_strerror() и системную strerror().
+ *
+ * Функция потоко-НЕ-безопасна в случае системной ошибки, так как при
+ * этом вызывается потоко-НЕ-безопасная системная strerror(). */
+FPTA_API const char *fpta_strerror(int errnum);
+
+/* Потоко-безопасный вариант fpta_strerror().
+ *
+ * Функция потоко-безопасна в том числе в случае системной ошибки, так
+ * как при этом вызывается потоко-безопасная системная strerror_r(). */
+FPTA_API const char *fpta_strerror_r(int errnum, char *buf, size_t buflen);
+
+/* Внутренняя функция, которая вызывается при фатальных ошибках и может
+ * быть замещена на платформах с поддержкой __attribute__((weak)).
+ * При таком замещении:
+ *  - в errnum_initial будет передан первичный код ошибки,
+ *    в результате которой потребовалась отмена транзакции.
+ *  - в errnum_fatal будет передан вторичный код ошибки,
+ *    которая случилась при отмене транзакции и привела к панике.
+ *  - возврат НУЛЯ приведет к вызову системной abort(), ИНАЧЕ выполнение
+ *    будет продолжено с генерацией кода ошибки FPTA_WANNA_DIE. */
+FPTA_API int fpta_panic(int errnum_initial, int errnum_fatal);
+
+//----------------------------------------------------------------------------
+
 /* Типы данных для ключей (проиндексированных полей) и значений
  * для сравнения в условиях фильтров больше/меньше/равно/не-равно. */
 typedef enum fpta_value_type {
@@ -263,6 +394,8 @@ typedef enum fpta_value_type {
   fpta_end, /* Псевдо-тип, всегда больше любого значения.
              * Используется при открытии курсора для выборки
              * последней записи посредством range_to. */
+  fpta_invalid /* Псевдо-тип для обозначения разрушенных экземпляров
+                * или ошибочных результатов */
 } fpta_value_type;
 
 /* Структура-контейнер для представления значений.
@@ -401,136 +534,16 @@ static __inline fpta_value fpta_value_end(void) {
   return r;
 }
 
-//----------------------------------------------------------------------------
+/* Псевдо-деструктор fpta_value.
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+static __inline int fpta_value_destroy(fpta_value *value) {
+  if ((unsigned)value->type < (unsigned)fpta_invalid) {
+    value->type = fpta_invalid;
+    return FPTA_SUCCESS;
+  }
 
-/* Коды ошибок.
- * Список будет пополнен, а описания уточнены. */
-enum fpta_error {
-  FPTA_SUCCESS = 0,
-  FPTA_OK = FPTA_SUCCESS,
-  FPTA_ERRROR_BASE = 4242,
-
-  FPTA_EOOPS
-  /* Internal unexpected Oops */,
-  FPTA_SCHEMA_CORRUPTED
-  /* Schema is invalid or corrupted (internal error) */,
-  FPTA_ETYPE
-  /* Type mismatch (given value vs column/field or index) */,
-  FPTA_DATALEN_MISMATCH
-  /* Data length mismatch (given value vs data type) */,
-  FPTA_KEY_MISMATCH
-  /* Key mismatch while updating row via cursor */,
-  FPTA_COLUMN_MISSING
-  /* Required column missing */,
-  FPTA_INDEX_CORRUPTED
-  /* Index is inconsistent or corrupted (internal error) */,
-  FPTA_NO_INDEX
-  /* No (such) index for given column */,
-  FPTA_SCHEMA_CHANGED
-  /* Schema changed (transaction should be restared) */,
-  FPTA_ECURSOR
-  /* Cursor is not positioned */,
-  FPTA_TOOMANY
-  /* Too many columns or indexes (one of fpta's limits reached) */,
-  FPTA_WANNA_DIE
-  /* Failure while transaction rollback */,
-
-  FPTA_ENOFIELD = FPTU_ENOFIELD,
-  FPTA_ENOSPACE = FPTU_ENOSPACE,
-
-  FPTA_EINVAL = EINVAL /* Invalid argument */,
-  FPTA_ENOMEM = ENOMEM /* Out of Memory */,
-  FPTA_ENOIMP = ENOSYS /* Not yet implemented */,
-  FPTA_EVALUE = EDOM /* Value is invalid or out of range */,
-  FPTA_NODATA = -1 /* No data or EOF was reached */,
-
-  FPTA_DEADBEEF = 0xDeadBeef /* Pseudo error for results by pointer,
-    mean `no value` returned */,
-
-  /************************************************* MDBX's error codes ***/
-  FPTA_KEYEXIST = -30799 /* key/data pair already exists */,
-
-  FPTA_NOTFOUND = -30798 /* key/data pair not found */,
-
-  FPTA_DB_REF = -30797 /* wrong page address/number,
-    this usually indicates corruption */,
-
-  FPTA_DB_DATA = -30796 /* Located page was wrong data */,
-
-  FPTA_DB_PANIC = -30795 /* Update of meta page failed
-    or environment had fatal error */,
-
-  FPTA_DB_MISMATCH = -30794 /* DB version mismatch libmdbx */,
-
-  FPTA_DB_INVALID = -30793 /* File is not a valid LMDB file */,
-
-  FPTA_DB_FULL = -30792 /* Environment mapsize reached */,
-
-  FPTA_DBI_FULL = -30791 /* Too may DBI (maxdbs reached) */,
-
-  FPTA_READERS_FULL = -30790 /* Too many readers (maxreaders reached) */,
-
-  FPTA_TXN_FULL = -30788 /* Transaction has too many dirty pages,
-    e.g. a lot of changes. */,
-
-  FPTA_CURSOR_FULL = -30787 /* Cursor stack too deep (mdbx internal) */,
-
-  FPTA_PAGE_FULL = -30786 /* Page has not enough space (mdbx internal) */,
-
-  FPTA_DB_RESIZED = -30785 /* Database contents grew
-    beyond environment mapsize */,
-
-  FPTA_DB_INCOMPAT = -30784 /* Operation and DB incompatible (mdbx internal),
-   This can mean:
-     - The operation expects an MDB_DUPSORT/MDB_DUPFIXED database.
-     - Opening a named DB when the unnamed DB has MDB_DUPSORT/MDB_INTEGERKEY.
-     - Accessing a data record as a database, or vice versa.
-     - The database was dropped and recreated with different flags. */,
-
-  FPTA_BAD_RSLOT = -30783 /* Invalid reuse of reader locktable slot */,
-
-  FPTA_BAD_TXN = -30782 /* Transaction must abort,
-    e.g. has a child, or is invalid */,
-
-  FPTA_BAD_VALSIZE = -30781 /* Unsupported size of key/DB name/data,
-    or wrong DUPFIXED size */,
-
-  FPTA_BAD_DBI = -30780 /* The specified DBI was changed unexpectedly */,
-
-  FPTA_DB_PROBLEM = -30779 /* Unexpected internal mdbx problem,
-    txn should abort */,
-
-  FPTA_EMULTIVAL = -30421 /* the mdbx_put() or mdbx_replace() was called
-    for a key, that has more that one associated value. */,
-
-  FPTA_EBADSIGN = -30420 /* wrong signature of a runtime object(s) */,
-};
-
-/* Возвращает краткое описание ошибки по её коду.
- *
- * Функция идентифицирует "свои" ошибки и при необходимости по-цепочке
- * вызывает mdbx_strerror() и системную strerror().
- *
- * Функция потоко-НЕ-безопасна в случае системной ошибки, так как при
- * этом вызывается потоко-НЕ-безопасная системная strerror(). */
-FPTA_API const char *fpta_strerror(int errnum);
-
-/* Потоко-безопасный вариант fpta_strerror().
- *
- * Функция потоко-безопасна в том числе в случае системной ошибки, так
- * как при этом вызывается потоко-безопасная системная strerror_r(). */
-FPTA_API const char *fpta_strerror_r(int errnum, char *buf, size_t buflen);
-
-/* Внутренняя функция, которая вызывается при фатальных ошибках и может
- * быть замещена на платформах с поддержкой __attribute__((weak)).
- * При таком замещении:
- *  - в errnum_initial будет передан первичный код ошибки,
- *    в результате которой потребовалась отмена транзакции.
- *  - в errnum_fatal будет передан вторичный код ошибки,
- *    которая случилась при отмене транзакции и привела к панике.
- *  - возврат НУЛЯ приведет к вызову системной abort(), ИНАЧЕ выполнение
- *    будет продолжено с генерацией кода ошибки FPTA_WANNA_DIE. */
-FPTA_API int fpta_panic(int errnum_initial, int errnum_fatal);
+  return FPTA_EINVAL;
+}
 
 //----------------------------------------------------------------------------
 /* Открытие и закрытие БД */

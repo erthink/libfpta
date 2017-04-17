@@ -94,68 +94,98 @@ TEST(Data, Field2Value) {
   value = fpta_field2value(fptu_lookup(pt, 0, fptu_uint16));
   EXPECT_EQ(fpta_unsigned_int, value.type);
   EXPECT_EQ(0x8001, value.uint);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 1, fptu_uint32));
   EXPECT_EQ(fpta_unsigned_int, value.type);
   EXPECT_EQ(1354824703, value.uint);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 42, fptu_int32));
   EXPECT_EQ(fpta_signed_int, value.type);
   EXPECT_EQ(-8782211, value.sint);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 111, fptu_uint64));
   EXPECT_EQ(fpta_unsigned_int, value.type);
   EXPECT_EQ(15047220096467327, value.sint);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 3, fptu_int64));
   EXPECT_EQ(fpta_signed_int, value.type);
   EXPECT_EQ(-60585001468255361, value.sint);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 2, fptu_fp64));
   EXPECT_EQ(fpta_float_point, value.type);
   EXPECT_EQ(3.14159265358979323846, value.fp);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 4, fptu_fp32));
   EXPECT_EQ(fpta_float_point, value.type);
   EXPECT_EQ((float)2.7182818284590452354, value.fp);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, fptu_max_cols / 2, fptu_96));
   EXPECT_EQ(fpta_binary, value.type);
   EXPECT_EQ(96 / 8, value.binary_length);
   EXPECT_EQ(0, memcmp(value.binary_data, _96, value.binary_length));
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 257, fptu_128));
   EXPECT_EQ(fpta_binary, value.type);
   EXPECT_EQ(128 / 8, value.binary_length);
   EXPECT_EQ(0, memcmp(value.binary_data, _128, value.binary_length));
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 7, fptu_160));
   EXPECT_EQ(fpta_binary, value.type);
   EXPECT_EQ(160 / 8, value.binary_length);
   EXPECT_EQ(0, memcmp(value.binary_data, _160, value.binary_length));
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 8, fptu_datetime));
   EXPECT_EQ(fpta_datetime, value.type);
   EXPECT_EQ(now.fixedpoint, value.datetime.fixedpoint);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, fptu_max_cols - 2, fptu_256));
   EXPECT_EQ(fpta_binary, value.type);
   EXPECT_EQ(256 / 8, value.binary_length);
   EXPECT_EQ(0, memcmp(value.binary_data, _256, value.binary_length));
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, fptu_max_cols - 1, fptu_cstr));
   EXPECT_EQ(fpta_string, value.type);
   EXPECT_STREQ("abc-string", value.str);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 43, fptu_opaque));
   EXPECT_EQ(fpta_binary, value.type);
   EXPECT_EQ(sizeof(pattern), value.binary_length);
   EXPECT_EQ(0, memcmp(value.binary_data, pattern, value.binary_length));
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   value = fpta_field2value(fptu_lookup(pt, 0, fptu_null));
   EXPECT_EQ(fpta_null, value.type);
   EXPECT_EQ(0, value.binary_length);
   EXPECT_EQ(nullptr, value.binary_data);
+  EXPECT_EQ(FPTA_OK, fpta_value_destroy(&value));
+  EXPECT_EQ(FPTA_EINVAL, fpta_value_destroy(&value));
 
   // TODO: fptu_nested
 
