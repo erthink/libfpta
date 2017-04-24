@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8.2)
-cmake_policy(SET CMP0054 NEW)
+if (NOT CMAKE_VERSION VERSION_LESS 3.1.0)
+  cmake_policy(SET CMP0054 NEW)
+endif()
 
 project(libfptu C CXX)
 
