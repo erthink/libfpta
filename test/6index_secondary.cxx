@@ -37,7 +37,7 @@ static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 
 static const char testdb_name[] = TEST_DB_DIR "ut_index_secondary.fpta";
 static const char testdb_name_lck[] =
-    TEST_DB_DIR "ut_index_secondary.fpta-lock";
+    TEST_DB_DIR "ut_index_secondary.fpta" MDBX_LOCK_SUFFIX;
 
 //----------------------------------------------------------------------------
 

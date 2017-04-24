@@ -37,7 +37,8 @@ static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
 static const char testdb_name[] = TEST_DB_DIR "ut_cursor_primary.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_cursor_primary.fpta-lock";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_cursor_primary.fpta" MDBX_LOCK_SUFFIX;
 
 class CursorPrimary
     : public ::testing::TestWithParam<

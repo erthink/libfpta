@@ -20,7 +20,7 @@
 #include "fpta_test.h"
 
 static const char testdb_name[] = "ut_open.fpta";
-static const char testdb_name_lck[] = "ut_open.fpta-lock";
+static const char testdb_name_lck[] = "ut_open.fpta" MDBX_LOCK_SUFFIX;
 
 TEST(Open, Trivia) {
   /* Тривиальный тест открытия/создания БД во всех режимах durability.

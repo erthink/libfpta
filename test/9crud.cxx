@@ -21,7 +21,8 @@
 #include "keygen.hpp"
 
 static const char testdb_name[] = TEST_DB_DIR "ut_crud.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_crud.fpta-lock";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_crud.fpta" MDBX_LOCK_SUFFIX;
 
 class CrudSimple
     : public ::testing::TestWithParam<

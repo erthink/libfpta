@@ -20,7 +20,7 @@
 #include "fpta_test.h"
 
 static const char testdb_name[] = "ut_smoke.fpta";
-static const char testdb_name_lck[] = "ut_smoke.fpta-lock";
+static const char testdb_name_lck[] = "ut_smoke.fpta" MDBX_LOCK_SUFFIX;
 
 TEST(SmokeIndex, Primary) {
   /* Smoke-проверка жизнеспособности первичных индексов.

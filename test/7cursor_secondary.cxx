@@ -43,7 +43,7 @@ static constexpr unsigned NNN = 41; // порядка 10-15 секунд в /dev
 
 static const char testdb_name[] = TEST_DB_DIR "ut_cursor_secondary.fpta";
 static const char testdb_name_lck[] =
-    TEST_DB_DIR "ut_cursor_secondary.fpta-lock";
+    TEST_DB_DIR "ut_cursor_secondary.fpta" MDBX_LOCK_SUFFIX;
 
 class CursorSecondary
     : public ::testing::TestWithParam<

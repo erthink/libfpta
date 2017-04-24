@@ -37,7 +37,8 @@ static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
 static const char testdb_name[] = TEST_DB_DIR "ut_index_primary.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_index_primary.fpta-lock";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_index_primary.fpta" MDBX_LOCK_SUFFIX;
 
 template <fptu_type type, fpta_index_type index> void TestPrimary() {
   /* Тест первичных (primary) индексов.

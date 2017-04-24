@@ -20,7 +20,7 @@
 #include "fpta_test.h"
 
 static const char testdb_name[] = "ut_data.fpta";
-static const char testdb_name_lck[] = "ut_data.fpta-lock";
+static const char testdb_name_lck[] = "ut_data.fpta" MDBX_LOCK_SUFFIX;
 
 static const uint8_t pattern[256] = {
     /* clang-format off */
