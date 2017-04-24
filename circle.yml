@@ -1,0 +1,30 @@
+machine:
+  timezone:
+    Europe/Moscow
+
+database:
+  override:
+
+dependencies:
+  pre:
+    - sudo apt update -q
+  override:
+    - sudo apt install cmake libgtest-dev
+  post:
+    - c++ --version
+
+checkout:
+  post:
+    - git fetch --tags --prune
+    - git submodule sync
+    - git submodule update --init --recursive
+
+compile:
+  pre:
+    - cmake .
+  override:
+    - make all
+
+test:
+  override:
+    - make test
