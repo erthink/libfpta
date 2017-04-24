@@ -253,7 +253,11 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
   if (unlikely(rc != MDB_SUCCESS))
     goto bailout;
 
-  txn->db_version = mdbx_canary_get(txn->mdbx_txn, &txn->canary);
+  rc = mdbx_canary_get(txn->mdbx_txn, &txn->canary);
+  if (unlikely(rc != MDB_SUCCESS))
+    goto bailout;
+
+  txn->db_version = mdbx_txn_id(txn->mdbx_txn);
   assert(txn->schema_version() <= txn->db_version);
 
   *ptxn = txn;
