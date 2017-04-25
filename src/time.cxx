@@ -55,71 +55,57 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 
 //----------------------------------------------------------------------------
 
-#ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME 0
-
-#ifdef _MSC_VER
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
 #pragma warning(push, 1)
 #include <windows.h>
+#pragma warning(pop)
 
-#ifndef HAVE_TIMESPEC_TV_NSEC
-struct timespec {
-  time_t tv_sec;
-  long tv_nsec;
-};
+#define N100SEC_PER_SEC (NSEC_PER_SEC / 100u)
+static __inline fptu_time from_filetime(FILETIME *pFileTime) {
+  const uint64_t ns100 =
+      ((uint64_t)pFileTime->dwHighDateTime << 32) + pFileTime->dwLowDateTime -
+      UINT64_C(/* UTC offset from 1601-01-01 */ 116444736000000000);
 
-static __inline fptu_time from_timespec(const struct timespec &ts) {
   fptu_time result;
-  result.fixedpoint = ((uint64_t)ts.tv_sec << 32) |
-                      fptu_time::ns2fractional((uint32_t)ts.tv_nsec);
+  result.utc = (uint32_t)(ns100 / N100SEC_PER_SEC);
+  result.fractional =
+      (uint32_t)(((ns100 % N100SEC_PER_SEC) << 32) / N100SEC_PER_SEC);
   return result;
 }
-#endif /* HAVE_TIMESPEC_TV_NSEC */
 
-static int clock_gettime(int clk_id, struct timespec *tp) {
-  (void)clk_id;
-  FILETIME filetime;
-  GetSystemTimeAsFileTime(&filetime);
-  uint64_t ns =
-      (uint64_t)filetime.dwHighDateTime << 32 | filetime.dwLowDateTime;
-  tp->tv_sec = (time_t)(ns / 1000000000ul);
-  tp->tv_nsec = (long)(ns % 1000000000ul);
-  return 0;
-}
-
-#pragma warning(pop)
-#else /* _MSC_VER */
-static int clock_gettime(int clk_id, struct timespec *tp) {
-  (void)clk_id;
-  (void)tp;
-#error FIXME /* CLOCK_REALTIME (?) */
-  return ENOSYS;
-}
-#endif /* !_MSC_VER */
-#endif /* !CLOCK_REALTIME */
-
-#ifdef _MSC_VER
-#define clock_failure() __noop()
-#else
-#define clock_failure()                                                        \
-  __assert_fail("clock_gettime() failed", "fptu/time.cxx", __LINE__, __func__)
-#endif
+#elif !defined(HAVE_TIMESPEC_TV_NSEC)
+#error FIXME: HAVE_TIMESPEC_TV_NSEC?
+#endif /* ! WINDOWS */
 
 fptu_time fptu_now_fine(void) {
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  static void(WINAPI * query_time)(LPFILETIME);
+  if (!query_time) {
+    query_time = (void(WINAPI *)(LPFILETIME))GetProcAddress(
+        GetModuleHandle(TEXT("kernel32.dll")),
+        "GetSystemTimePreciseAsFileTime");
+    if (!query_time)
+      query_time = GetSystemTimeAsFileTime;
+  }
+
+  FILETIME filetime;
+  query_time(&filetime);
+  return from_filetime(&filetime);
+#else  /* WINDOWS */
   struct timespec now;
   int rc = clock_gettime(CLOCK_REALTIME, &now);
   if (unlikely(rc != 0))
-    clock_failure();
-#ifdef HAVE_TIMESPEC_TV_NSEC
+    __assert_fail("clock_gettime() failed", "fptu/time.cxx", __LINE__,
+                  __func__);
   return fptu_time::from_timespec(now);
-#else
-  return from_timespec(now);
-#endif /* HAVE_TIMESPEC_TV_NSEC */
+#endif /* ! WINDOWS */
 }
 
-#ifdef CLOCK_REALTIME_COARSE
-static clockid_t fptu_coarse_clockid;
-static uint32_t fptu_coarse_resulution_ns;
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+static uint32_t coarse_resolution_ns;
+#elif defined(CLOCK_REALTIME_COARSE)
+static clockid_t coarse_clockid;
+static uint32_t coarse_resolution_ns;
 
 static void __attribute__((constructor)) fptu_clock_init(void) {
   struct timespec resolution;
@@ -128,27 +114,32 @@ static void __attribute__((constructor)) fptu_clock_init(void) {
    * Если нет, то используем вместо него CLOCK_REALTIME.  */
   if (clock_getres(CLOCK_REALTIME_COARSE, &resolution) == 0 &&
       resolution.tv_sec == 0) {
-    fptu_coarse_clockid = CLOCK_REALTIME_COARSE;
-    fptu_coarse_resulution_ns = resolution.tv_nsec;
+    coarse_clockid = CLOCK_REALTIME_COARSE;
+    coarse_resolution_ns = resolution.tv_nsec;
   } else {
-    fptu_coarse_clockid = CLOCK_REALTIME;
-    fptu_coarse_resulution_ns = 0xffffFFFF;
+    coarse_clockid = CLOCK_REALTIME;
+    coarse_resolution_ns = 0xffffFFFF;
   }
 }
 #else /* CLOCK_REALTIME_COARSE */
 /* LY: Если CLOCK_REALTIME_COARSE не определен, то в наличии
  * дремучая версия glibc. В этом случае не пытаемся использовать
  * CLOCK_REALTIME_COARSE, а просто ставим заглушку. */
-#define fptu_coarse_clockid CLOCK_REALTIME
-#define fptu_coarse_resulution_ns 0xffffFFFF
+#define coarse_clockid CLOCK_REALTIME
+#define coarse_resolution_ns 0xffffFFFF
 #endif /* ! CLOCK_REALTIME_COARSE */
 
 fptu_time fptu_now_coarse(void) {
-#ifdef CLOCK_REALTIME_COARSE
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  FILETIME filetime;
+  GetSystemTimeAsFileTime(&filetime);
+  return from_filetime(&filetime);
+#elif defined(CLOCK_REALTIME_COARSE)
   struct timespec now;
-  int rc = clock_gettime(fptu_coarse_clockid, &now);
+  int rc = clock_gettime(coarse_clockid, &now);
   if (unlikely(rc != 0))
-    clock_failure();
+    __assert_fail("clock_gettime() failed", "fptu/time.cxx", __LINE__,
+                  __func__);
 
   return fptu_time::from_timespec(now);
 #else  /* CLOCK_REALTIME_COARSE */
@@ -169,17 +160,24 @@ fptu_time fptu_now(int grain_ns) {
     }
   }
 
-  struct timespec now;
-  int rc =
-      clock_gettime((grain >= fptu_coarse_resulution_ns) ? fptu_coarse_clockid
-                                                         : CLOCK_REALTIME,
-                    &now);
-  if (unlikely(rc != 0))
-    clock_failure();
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  if (!coarse_resolution_ns) {
+    NTSTATUS(NTAPI * query_resolution)(PULONG, PULONG, PULONG);
+    query_resolution =
+        (NTSTATUS(NTAPI *)(PULONG, PULONG, PULONG))GetProcAddress(
+            GetModuleHandle(TEXT("ntdll.dll")), "NtQueryTimerResolution");
 
-  fptu_time result;
-  result.fractional =
-      mask ? fptu_time::ns2fractional((uint32_t)now.tv_nsec) & mask : 0;
-  result.utc = (uint32_t)now.tv_sec;
+    ULONG min_100ns, max_100ns, actual_100ns;
+    if (!query_resolution ||
+        query_resolution(&min_100ns, &max_100ns, &actual_100ns) < 0)
+      min_100ns = max_100ns = actual_100ns = 156250;
+    coarse_resolution_ns =
+        100u * ((min_100ns > max_100ns) ? min_100ns : max_100ns);
+  }
+#endif /* WINDOWS */
+
+  fptu_time result =
+      (grain >= coarse_resolution_ns) ? fptu_now_coarse() : fptu_now_fine();
+  result.fractional &= mask;
   return result;
 }
