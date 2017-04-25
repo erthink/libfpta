@@ -368,6 +368,15 @@ typedef union FPTU_API fptu_time {
     return result;
   }
 #endif /* HAVE_TIMEVAL_TV_USEC */
+
+#ifdef _FILETIME_
+  static fptu_time from_filetime(FILETIME *pFileTime) {
+    uint64_t ns100 =
+        ((uint64_t)pFileTime->dwHighDateTime << 32) + pFileTime->dwLowDateTime;
+    return from_100ns(
+        ns100 - UINT64_C(/* UTC offset from 1601-01-01 */ 116444736000000000));
+  }
+#endif /* _FILETIME_ */
 #endif
 } fptu_time;
 
