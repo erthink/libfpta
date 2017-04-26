@@ -108,8 +108,10 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
       rc = mdbx_del(txn->mdbx_txn, dbi[i], &fk_key_old.mdbx, &pk_key_old);
       if (unlikely(rc != MDB_SUCCESS))
         return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
-      rc = mdbx_put(txn->mdbx_txn, dbi[i], &fk_key_new.mdbx, &pk_key_new,
-                    MDB_NODUPDATA);
+      rc =
+          mdbx_put(txn->mdbx_txn, dbi[i], &fk_key_new.mdbx, &pk_key_new,
+                   fpta_index_is_unique(index) ? MDB_NODUPDATA | MDB_NOOVERWRITE
+                                               : MDB_NODUPDATA);
       if (unlikely(rc != MDB_SUCCESS))
         return rc;
       continue;
