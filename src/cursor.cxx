@@ -624,7 +624,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
 
 //----------------------------------------------------------------------------
 
-int fpta_cursor_eof(fpta_cursor *cursor) {
+int fpta_cursor_eof(const fpta_cursor *cursor) {
   if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
     return FPTA_EINVAL;
 
@@ -632,6 +632,16 @@ int fpta_cursor_eof(fpta_cursor *cursor) {
     return FPTA_SUCCESS;
 
   return FPTA_NODATA;
+}
+
+int fpta_cursor_state(const fpta_cursor *cursor) {
+  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
+    return FPTA_EINVAL;
+
+  if (likely(cursor->is_filled()))
+    return FPTA_SUCCESS;
+
+  return cursor->unladed_state();
 }
 
 int fpta_cursor_count(fpta_cursor *cursor, size_t *pcount, size_t limit) {
