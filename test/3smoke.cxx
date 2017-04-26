@@ -2306,6 +2306,118 @@ TEST(Smoke, DirectDirtyDeletions) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, UpdateViolateUnique) {
+  /* Smoke-проверка обновления строки с нарушением уникальности по
+   * вторичному ключу.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой две колонки и два
+   *     индекса с контролем уникальности.
+   *
+   *  2. Вставляем 2 строки с уникальными значениями всех полей.
+   *
+   *  3. Пытаемся обновить одну из строк с нарушением уникальности.
+   *
+   *  4. Завершаем операции и освобождаем ресурсы.
+   */
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // начинаем транзакцию с добавлениями
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // описываем структуру таблицы и создаем её
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("key", fptu_int64, fpta_primary_unique, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("value", fptu_int64,
+                                          fpta_secondary_unique, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "map", &def));
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+  // готовим идентификаторы для манипуляций с данными
+  fpta_name table, col_key, col_value;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "Map"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_key, "Key"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_value, "Value"));
+  // начнём с добавления значений полей, поэтому нужен ручной refresh
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_key));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_value));
+
+  // выделяем кортеж и вставляем 2 строки
+  fptu_rw *pt = fptu_alloc(2, 8 * 2);
+  ASSERT_NE(nullptr, pt);
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+
+  // 1
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_key, fpta_value_sint(1)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_value, fpta_value_sint(2)));
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+  fptu_ro row = fptu_take_noshrink(pt);
+  ASSERT_STREQ(nullptr, fptu_check_ro(row));
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 2
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_key, fpta_value_sint(2)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_value, fpta_value_sint(3)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // завершаем транзакцию вставки
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // начинаем транзакцию обновления
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // формируем строку с нарушением
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_key, fpta_value_sint(1)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_value, fpta_value_sint(3)));
+  row = fptu_take_noshrink(pt);
+
+  // пробуем с пред-проверкой
+  EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_update_row(txn, &table, row));
+  EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(txn, &table, row));
+
+  // пробуем сломать уникальность, транзакция должна быть отменена
+  EXPECT_EQ(FPTA_KEYEXIST, fpta_update_row(txn, &table, row));
+
+  // транзакция должна быть уже отменена
+  ASSERT_EQ(FPTA_TXN_CANCELLED, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // освобождаем ресурсы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_key);
+  fpta_name_destroy(&col_value);
+  free(pt);
+  pt = nullptr;
+
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
