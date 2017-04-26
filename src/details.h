@@ -35,7 +35,6 @@ struct fpta_db {
 };
 
 bool fpta_filter_validate(const fpta_filter *filter);
-bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level);
 bool fpta_schema_validate(const MDB_val def);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
@@ -51,14 +50,16 @@ static __inline bool fpta_db_validate(fpta_db *db) {
   return true;
 }
 
-static __inline bool fpta_txn_validate(fpta_txn *txn, fpta_level min_level) {
+static __inline int fpta_txn_validate(fpta_txn *txn, fpta_level min_level) {
   if (unlikely(txn == nullptr || !fpta_db_validate(txn->db)))
-    return false;
+    return FPTA_EINVAL;
   if (unlikely(txn->level < min_level || txn->level > fpta_schema))
-    return false;
+    return FPTA_EINVAL;
 
-  // TODO
-  return true;
+  if (unlikely(txn->mdbx_txn == nullptr))
+    return FPTA_TXN_CANCELLED;
+
+  return FPTA_OK;
 }
 
 enum fpta_schema_item { fpta_table, fpta_column };

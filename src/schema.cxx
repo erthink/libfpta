@@ -145,7 +145,7 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
                                MDB_dbi *handle, unsigned dbi_flags,
                                fpta_shove_t key_shove,
                                fpta_shove_t data_shove) {
-  assert(fpta_txn_validate(txn, fpta_read) && handle);
+  assert(fpta_txn_validate(txn, fpta_read) == FPTA_SUCCESS && handle);
   fpta_db *db = txn->db;
 
   if (likely(shove > 0)) {
@@ -191,7 +191,8 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
 }
 
 static int fpta_schema_open(fpta_txn *txn, bool create) {
-  assert(fpta_txn_validate(txn, create ? fpta_schema : fpta_read));
+  assert(fpta_txn_validate(txn, create ? fpta_schema : fpta_read) ==
+         FPTA_SUCCESS);
   const auto key_shove = fpta_column_shove(0, fptu_uint64, fpta_primary);
   const auto data_shove = fpta_column_shove(0, fptu_opaque, fpta_primary);
   return fpta_dbi_open(txn, 0, &txn->db->schema_dbi,
@@ -472,7 +473,7 @@ static void fpta_schema_free(fpta_table_schema *def) {
 
 static int fpta_schema_read(fpta_txn *txn, fpta_shove_t shove,
                             fpta_table_schema **def) {
-  assert(fpta_txn_validate(txn, fpta_read) && def);
+  assert(fpta_txn_validate(txn, fpta_read) == FPTA_SUCCESS && def);
 
   int rc;
   fpta_db *db = txn->db;
@@ -496,11 +497,14 @@ static int fpta_schema_read(fpta_txn *txn, fpta_shove_t shove,
 }
 
 int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
-  if (!info || !fpta_txn_validate(txn, fpta_read))
+  if (!info)
     return FPTA_EINVAL;
   memset(info, 0, sizeof(fpta_schema_info));
 
-  int rc;
+  int rc = fpta_txn_validate(txn, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
   fpta_db *db = txn->db;
   if (db->schema_dbi < 1) {
     rc = fpta_schema_open(txn, false);
@@ -694,8 +698,9 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     return FPTA_EINVAL;
   if (column_id && unlikely(!fpta_id_validate(column_id, fpta_column)))
     return FPTA_EINVAL;
-  if (unlikely(!fpta_txn_validate(txn, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_txn_validate(txn, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(table_id->version > txn->schema_version()))
     return FPTA_SCHEMA_CHANGED;
@@ -703,7 +708,7 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   if (unlikely(table_id->version != txn->schema_version())) {
     table_id->mdbx_dbi = 0;
 
-    int rc = fpta_schema_read(txn, table_id->shove, &table_id->table.def);
+    rc = fpta_schema_read(txn, table_id->shove, &table_id->table.def);
     if (unlikely(rc != FPTA_SUCCESS)) {
       if (rc != MDB_NOTFOUND)
         return rc;
@@ -770,12 +775,13 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
 
 int fpta_table_create(fpta_txn *txn, const char *table_name,
                       fpta_column_set *column_set) {
-  if (!fpta_txn_validate(txn, fpta_schema))
-    return FPTA_EINVAL;
+  int rc = fpta_txn_validate(txn, fpta_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
   if (!fpta_validate_name(table_name))
     return FPTA_EINVAL;
 
-  int rc = fpta_column_set_validate(column_set);
+  rc = fpta_column_set_validate(column_set);
   if (rc != FPTA_SUCCESS)
     return rc;
 
@@ -855,14 +861,15 @@ bailout:
 }
 
 int fpta_table_drop(fpta_txn *txn, const char *table_name) {
-  if (!fpta_txn_validate(txn, fpta_schema))
-    return FPTA_EINVAL;
+  int rc = fpta_txn_validate(txn, fpta_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
   if (!fpta_validate_name(table_name))
     return FPTA_EINVAL;
 
   fpta_db *db = txn->db;
   if (db->schema_dbi < 1) {
-    int rc = fpta_schema_open(txn, true);
+    rc = fpta_schema_open(txn, true);
     if (rc != MDB_SUCCESS)
       return rc;
   }
@@ -874,7 +881,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   MDB_val data, key;
   key.mv_size = sizeof(table_shove);
   key.mv_data = &table_shove;
-  int rc = mdbx_get(txn->mdbx_txn, db->schema_dbi, &key, &data);
+  rc = mdbx_get(txn->mdbx_txn, db->schema_dbi, &key, &data);
   if (rc != MDB_SUCCESS)
     return rc;
 

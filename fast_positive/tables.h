@@ -274,6 +274,8 @@ enum fpta_error {
   /* Too many columns or indexes (one of fpta's limits reached) */,
   FPTA_WANNA_DIE
   /* Failure while transaction rollback */,
+  FPTA_TXN_CANCELLED
+  /* Transaction already cancelled */,
 
   FPTA_ENOFIELD = FPTU_ENOFIELD,
   FPTA_ENOSPACE = FPTU_ENOSPACE,

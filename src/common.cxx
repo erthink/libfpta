@@ -273,10 +273,13 @@ bailout:
 }
 
 int fpta_transaction_end(fpta_txn *txn, bool abort) {
-  if (unlikely(!fpta_txn_validate(txn, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_txn_validate(txn, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS)) {
+    if (rc == FPTA_TXN_CANCELLED)
+      goto cancelled;
+    return rc;
+  }
 
-  int rc;
   if (txn->level == fpta_read) {
     // TODO: reuse txn with mdbx_txn_reset(), but pool needed...
     rc = mdbx_txn_commit(txn->mdbx_txn);
@@ -291,6 +294,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
   }
   txn->mdbx_txn = nullptr;
 
+cancelled:
   int err = fpta_db_unlock(txn->db, txn->level);
   assert(err == 0);
   (void)err;
@@ -301,8 +305,9 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
 
 int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
                               uint64_t *schema_version) {
-  if (unlikely(!fpta_txn_validate(txn, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_txn_validate(txn, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (likely(db_version))
     *db_version = txn->db_version;
@@ -314,12 +319,14 @@ int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
 int fpta_db_sequence(fpta_txn *txn, uint64_t *result, uint64_t increment) {
   if (unlikely(result == nullptr))
     return FPTA_EINVAL;
-  if (unlikely(!fpta_txn_validate(txn, fpta_read)))
-    return FPTA_EINVAL;
+
+  int rc = fpta_txn_validate(txn, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   *result = txn->db_sequence();
   if (increment) {
-    if (unlikely(!fpta_txn_validate(txn, fpta_write)))
+    if (unlikely(txn->level < fpta_write))
       return EACCES;
 
     uint64_t value = txn->db_sequence() + increment;

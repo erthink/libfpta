@@ -23,22 +23,23 @@
  * с тем чтобы отличать от nullptr */
 static char NIL;
 
-bool fpta_cursor_validate(const fpta_cursor *cursor, fpta_level min_level) {
-  if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr ||
-               !fpta_txn_validate(cursor->txn, min_level)))
-    return false;
+static int fpta_cursor_validate(const fpta_cursor *cursor,
+                                fpta_level min_level) {
+  if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr))
+    return FPTA_EINVAL;
 
-  // TODO
-  return true;
+  return fpta_txn_validate(cursor->txn, min_level);
 }
 
 int fpta_cursor_close(fpta_cursor *cursor) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
 
-  mdbx_cursor_close(cursor->mdbx_cursor);
-  fpta_cursor_free(cursor->db, cursor);
-  return FPTA_SUCCESS;
+  if (likely(rc == FPTA_SUCCESS) || rc == FPTA_TXN_CANCELLED) {
+    mdbx_cursor_close(cursor->mdbx_cursor);
+    fpta_cursor_free(cursor->db, cursor);
+  }
+
+  return rc;
 }
 
 int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
@@ -339,8 +340,9 @@ eof:
 }
 
 int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(op < fpta_first || op > fpta_key_prev)) {
     cursor->set_poor();
@@ -454,8 +456,9 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
 
 int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
                        const fptu_ro *row) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely((key && row) || (!key && !row))) {
     /* Должен быть выбран один из режимов поиска. */
@@ -478,7 +481,6 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
   const MDB_val *mdbx_seek_data = nullptr;
 
   fpta_key seek_key, pk_key;
-  int rc;
   if (key) {
     /* Поиск по значению проиндексированной колонки, конвертируем его в ключ
      * для поиска по индексу. Дополнительных данных для поиска нет. */
@@ -625,8 +627,9 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
 //----------------------------------------------------------------------------
 
 int fpta_cursor_eof(const fpta_cursor *cursor) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (likely(cursor->is_filled()))
     return FPTA_SUCCESS;
@@ -635,8 +638,9 @@ int fpta_cursor_eof(const fpta_cursor *cursor) {
 }
 
 int fpta_cursor_state(const fpta_cursor *cursor) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (likely(cursor->is_filled()))
     return FPTA_SUCCESS;
@@ -670,8 +674,9 @@ int fpta_cursor_dups(fpta_cursor *cursor, size_t *pdups) {
     return FPTA_EINVAL;
   *pdups = (size_t)FPTA_DEADBEEF;
 
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(!cursor->is_filled())) {
     if (cursor->is_poor())
@@ -681,7 +686,7 @@ int fpta_cursor_dups(fpta_cursor *cursor, size_t *pdups) {
   }
 
   *pdups = 0;
-  int rc = mdbx_cursor_count(cursor->mdbx_cursor, pdups);
+  rc = mdbx_cursor_count(cursor->mdbx_cursor, pdups);
   return (rc == MDB_NOTFOUND) ? (int)FPTA_NODATA : rc;
 }
 
@@ -694,8 +699,9 @@ int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *row) {
   row->total_bytes = 0;
   row->units = nullptr;
 
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
@@ -705,8 +711,8 @@ int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *row) {
                            MDB_GET_CURRENT);
 
   MDB_val pk_key;
-  int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
-                           MDB_GET_CURRENT);
+  rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
+                       MDB_GET_CURRENT);
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
 
@@ -718,19 +724,21 @@ int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *row) {
 int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key) {
   if (unlikely(key == nullptr))
     return FPTA_EINVAL;
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_read)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_read);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
-  int rc = fpta_index_key2value(cursor->index.shove, cursor->current, *key);
+  rc = fpta_index_key2value(cursor->index.shove, cursor->current, *key);
   return rc;
 }
 
 int fpta_cursor_delete(fpta_cursor *cursor) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_write)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_write);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
@@ -754,8 +762,8 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
         pk_key.iov_base = memcpy(buffer, pk_key.iov_base, pk_key.iov_len);
       }
     } else {
-      int rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
-                               MDB_GET_CURRENT);
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
+                           MDB_GET_CURRENT);
       if (unlikely(rc != MDB_SUCCESS)) {
         cursor->set_poor();
         return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
@@ -772,8 +780,8 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     old.sys.iov_base = buffer;
     old.sys.iov_len = likely_enough;
 
-    int rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
-                          &pk_key, nullptr, &old.sys, MDB_CURRENT);
+    rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->table_id->mdbx_dbi,
+                      &pk_key, nullptr, &old.sys, MDB_CURRENT);
     if (unlikely(rc == MDBX_RESULT_TRUE)) {
       assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
       old.sys.iov_base = alloca(old.sys.iov_len);
@@ -820,15 +828,16 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 //----------------------------------------------------------------------------
 
 int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_write)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_write);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
   fpta_key column_key;
-  int rc = fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
-                              new_row_value, column_key, false);
+  rc = fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
+                          new_row_value, column_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -871,15 +880,16 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 }
 
 int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
-  if (unlikely(!fpta_cursor_validate(cursor, fpta_write)))
-    return FPTA_EINVAL;
+  int rc = fpta_cursor_validate(cursor, fpta_write);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
   fpta_key column_key;
-  int rc = fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
-                              new_row_value, column_key, false);
+  rc = fpta_index_row2key(cursor->index.shove, cursor->index.column_order,
+                          new_row_value, column_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
