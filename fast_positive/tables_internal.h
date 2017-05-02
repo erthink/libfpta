@@ -145,11 +145,11 @@ struct fpta_key {
     struct {
       uint64_t head[fpta_max_keylen / sizeof(uint64_t)];
       uint64_t tailhash;
-    } longkey_msb;
+    } longkey_obverse;
     struct {
       uint64_t headhash;
       uint64_t tail[fpta_max_keylen / sizeof(uint64_t)];
-    } longkey_lsb;
+    } longkey_reverse;
   } place;
 };
 
@@ -304,6 +304,11 @@ static __inline bool fpta_index_is_ordered(fpta_shove_t index) {
   return (index & fpta_index_fordered) != 0;
 }
 
+static __inline bool fpta_index_is_obverse(fpta_shove_t index) {
+  assert(index != fpta_index_none);
+  return (index & fpta_index_fobverse) != 0;
+}
+
 static __inline bool fpta_index_is_reverse(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fobverse) == 0;
@@ -314,9 +319,18 @@ static __inline bool fpta_index_is_primary(fpta_shove_t index) {
   return (index & fpta_index_fsecondary) == 0;
 }
 
+static __inline bool fpta_index_is_nilable(fpta_shove_t index) {
+  (void)index;
+  return false /* FIXME: TODO */;
+}
+
 static __inline bool fpta_index_is_secondary(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fsecondary) != 0;
+}
+
+static __inline bool fpta_column_is_nilable(const fpta_name *column_id) {
+  return fpta_index_is_nilable(column_id->shove);
 }
 
 static __inline bool fpta_cursor_is_ordered(fpta_cursor_options op) {
@@ -342,3 +356,35 @@ namespace std {
 FPTA_API string to_string(const MDB_val &);
 FPTA_API string to_string(const fpta_key &);
 }
+
+//----------------------------------------------------------------------------
+
+typedef union {
+  uint32_t __i;
+  float __f;
+} fpta_fp32_t;
+
+#define FPTA_DENIL_FP32_BIN UINT32_C(0xFFFFffff)
+#define FPTA_DENIL_FP32_MAS "8388607"
+FPTA_API extern const fpta_fp32_t fpta_fp32_denil;
+
+#define FPTA_QSNAN_FP32_BIN UINT32_C(0xFFFFfffE)
+#define FPTA_QSNAN_FP32_MAS "8388606"
+FPTA_API extern const fpta_fp32_t fpta_fp32_qsnan;
+
+#define FPTA_DENIL_FP32x64_BIN UINT64_C(0xFFFFffffE0000000)
+#define FPTA_DENIL_FP32x64_MAS "4503599090499584"
+FPTA_API extern const fpta_fp64_t fpta_fp32x64_denil;
+
+#define FPTA_QSNAN_FP32x64_BIN UINT64_C(0xFFFFffffC0000000)
+#define FPTA_QSNAN_FP32x64_MAS "4503598553628672"
+FPTA_API extern const fpta_fp64_t fpta_fp32x64_qsnan;
+
+#if __GNUC_PREREQ(3, 3) || __CLANG_PREREQ(3, 6)
+#define FPTA_DENIL_FP32 (-__builtin_nanf(FPTA_DENIL_FP32_MAS))
+#define FPTA_QSNAN_FP32 (-__builtin_nanf(FPTA_QSNAN_FP32_MAS))
+#else
+#define FPTA_DENIL_FP32 (fpta_fp32_denil.__f)
+#define FPTA_QSNAN_FP32 (fpta_fp32_qsnan.__f)
+#endif
+#define FPTA_DENIL_FP64 FPTA_DENIL_FP

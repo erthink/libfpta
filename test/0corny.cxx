@@ -54,6 +54,90 @@ TEST(Corny, NameValidate) {
 #endif
 }
 
+template <typename type> static bool binary_eq(const type &a, const type &b) {
+  return memcmp(&a, &b, sizeof(type)) == 0;
+}
+
+TEST(Corny, DeNIL_NaNs) {
+  /* Проверка NAN-значений для designaned NILs. */
+
+  // тест базовых констант
+  EXPECT_TRUE(std::isnan(fpta_fp32_denil.__f));
+  EXPECT_TRUE(std::isnan(fpta_fp32_qsnan.__f));
+  EXPECT_TRUE(std::isnan(fpta_fp64_denil.__d));
+  EXPECT_TRUE(std::isnan(fpta_fp32x64_denil.__d));
+  EXPECT_TRUE(std::isnan(fpta_fp32x64_qsnan.__d));
+  EXPECT_FALSE(binary_eq(fpta_fp32_denil, fpta_fp32_qsnan));
+  EXPECT_FALSE(binary_eq(fpta_fp64_denil, fpta_fp32x64_qsnan));
+  EXPECT_FALSE(binary_eq(fpta_fp64_denil, fpta_fp32x64_denil));
+  EXPECT_EQ(FPTA_DENIL_FP32_BIN, fpta_fp32_denil.__i);
+  EXPECT_EQ(FPTA_QSNAN_FP32_BIN, fpta_fp32_qsnan.__i);
+  EXPECT_EQ(FPTA_DENIL_FP32_BIN, fpta_fp32_qsnan.__i + 1);
+  EXPECT_EQ(FPTA_DENIL_FP64_BIN, fpta_fp64_denil.__i);
+  EXPECT_EQ(FPTA_DENIL_FP32x64_BIN, fpta_fp32x64_denil.__i);
+  EXPECT_EQ(FPTA_QSNAN_FP32x64_BIN, fpta_fp32x64_qsnan.__i);
+
+  fpta_fp32_t fp32;
+  fpta_fp64_t fp64;
+
+  // проверка FPTA_DENIL_FP32
+  fp32.__f = FPTA_DENIL_FP32;
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+  // проверка FPTA_DENIL_FP32_MAS
+  fp32.__f = -std::nanf(FPTA_DENIL_FP32_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+
+  // проверка FPTA_DENIL_FP64
+  fp64.__d = FPTA_DENIL_FP64;
+  EXPECT_TRUE(binary_eq(fpta_fp64_denil, fp64));
+  EXPECT_EQ(fpta_fp64_denil.__i, fp64.__i);
+  // проверка FPTA_DENIL_FP64_MAS
+  fp64.__d = -std::nan(FPTA_DENIL_FP64_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp64_denil, fp64));
+  EXPECT_EQ(fpta_fp64_denil.__i, fp64.__i);
+
+  // проверка FPTA_DENIL_FP32x64_MAS
+  fp64.__d = -std::nan(FPTA_DENIL_FP32x64_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
+  // проверка FPTA_QSNAN_FP32x64_MAS
+  fp64.__d = -std::nan(FPTA_QSNAN_FP32x64_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_qsnan, fp64));
+
+  // преобразование DENIL с усечением.
+  fp32.__f = fpta_fp64_denil.__d;
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+  fp32.__f = FPTA_DENIL_FP64;
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+
+  // преобразование DENIL с расширением.
+  fp64.__d = fpta_fp32_denil.__f;
+  EXPECT_EQ(fpta_fp32x64_denil.__i, fp64.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
+  fp64.__d = FPTA_DENIL_FP32;
+  EXPECT_EQ(fpta_fp32x64_denil.__i, fp64.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
+  // а так не должно совпадать, ибо мантисса просто шире.
+  EXPECT_NE(fpta_fp64_denil.__i, fp64.__i);
+  EXPECT_FALSE(binary_eq(fpta_fp64_denil, fp64));
+
+  // преобразование QSNAN с усечением.
+  fp32.__f = fpta_fp32x64_qsnan.__d;
+  EXPECT_NE(fpta_fp32_denil.__i, fp32.__i);
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i + 1);
+  EXPECT_FALSE(binary_eq(fpta_fp32_denil, fp32));
+  EXPECT_EQ(fpta_fp32_qsnan.__i, fp32.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32_qsnan, fp32));
+
+  // преобразование QSNAN с расширением.
+  fp64.__d = fpta_fp32_qsnan.__f;
+  EXPECT_EQ(fpta_fp32x64_qsnan.__i, fp64.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_qsnan, fp64));
+}
+
 TEST(Corny, KeyGenerator) {
   /* Проверка корректности генераторов ключей/значений, которые используются
    * в последующих тестах, в частности для проверки индексов и курсоров.

@@ -229,45 +229,98 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
     return FPTA_SUCCESS;
   }
 
-  void *buffer = fpta_index_is_reverse(shove) ? key.place.longkey_lsb.tail
-                                              : key.place.longkey_msb.head;
-  if (likely(key.mdbx.mv_size <= fpta_max_keylen)) {
-    if (copy) {
-      memcpy(buffer, key.mdbx.mv_data, key.mdbx.mv_size);
-      key.mdbx.mv_data = buffer;
+  static_assert(fpta_max_keylen == sizeof(key.place.longkey_obverse.head),
+                "something wrong");
+  static_assert(fpta_max_keylen == sizeof(key.place.longkey_reverse.tail),
+                "something wrong");
+
+  //--------------------------------------------------------------------------
+
+  if (fpta_index_is_nilable(shove)) {
+    /* Чтобы отличать NIL от ключей нулевой длины и при этом сохранить
+     * упорядоченность для всех ключей - нужно дополнить ключ префиксом
+     * в порядка сравнения байтов ключа.
+     *
+     * Для этого ключ придется копировать, а при превышении (с учетом
+     * добавленного префикса) лимита fpta_max_keylen также выполнить
+     * подрезку и дополнение хэш-значением.
+     */
+    if (likely(key.mdbx.mv_size < fpta_max_keylen)) {
+      /* ключ (вместе с префиксом) не слишком длинный, дополнение
+       * хешем не нужно, просто добавляем префикс и копируем ключ. */
+      uint8_t *nillable = (uint8_t *)&key.place;
+      if (fpta_index_is_obverse(shove)) {
+        *nillable++ = 42;
+      } else {
+        nillable[key.mdbx.mv_size] = 42;
+      }
+      memcpy(nillable, key.mdbx.mv_data, key.mdbx.mv_size);
+      key.mdbx.mv_size += 1;
+      key.mdbx.mv_data = &key.place;
+      return FPTA_SUCCESS;
     }
+
+    const size_t chunk = fpta_max_keylen - 1;
+    if (fpta_index_is_obverse(shove)) {
+      /* ключ сравнивается от головы к хвосту (как memcpy),
+       * копируем начало и хэшируем хвост. */
+      uint8_t *nillable = (uint8_t *)&key.place.longkey_obverse.head;
+      *nillable++ = 42;
+      memcpy(nillable, key.mdbx.mv_data, chunk);
+      key.place.longkey_obverse.tailhash =
+          t1ha((const uint8_t *)key.mdbx.mv_data + chunk,
+               key.mdbx.mv_size - chunk, 0);
+    } else {
+      /* ключ сравнивается от хвоста к голове,
+       * копируем хвост и хэшируем начало. */
+      uint8_t *nillable = (uint8_t *)&key.place.longkey_reverse.tail;
+      nillable[chunk] = 42;
+      memcpy(nillable,
+             (const uint8_t *)key.mdbx.mv_data + key.mdbx.mv_size - chunk,
+             chunk);
+      key.place.longkey_reverse.headhash =
+          t1ha((const uint8_t *)key.mdbx.mv_data, key.mdbx.mv_size - chunk, 0);
+    }
+    key.mdbx.mv_size = sizeof(key.place);
+    key.mdbx.mv_data = &key.place;
+    return FPTA_SUCCESS;
+  }
+
+  //--------------------------------------------------------------------------
+
+  if (likely(key.mdbx.mv_size <= fpta_max_keylen)) {
+    /* ключ не слишком длинный, делаем копию только если запрошено */
+    if (copy)
+      key.mdbx.mv_data = memcpy(&key.place, key.mdbx.mv_data, key.mdbx.mv_size);
     return FPTA_SUCCESS;
   }
 
   /* ключ слишком большой, сохраняем сколько допустимо остальное хэшируем */
-  static_assert(sizeof(key.place.longkey_msb.head) ==
-                    sizeof(key.place.longkey_lsb.tail),
-                "something wrong");
-  static_assert(fpta_max_keylen == sizeof(key.place.longkey_msb.head),
-                "something wrong");
-
-  if (!fpta_index_is_reverse(shove)) {
+  if (fpta_index_is_obverse(shove)) {
     /* ключ сравнивается от головы к хвосту (как memcpy),
      * копируем начало и хэшируем хвост. */
-    memcpy(buffer, key.mdbx.mv_data, fpta_max_keylen);
-    key.place.longkey_msb.tailhash =
+    memcpy(key.place.longkey_obverse.head, key.mdbx.mv_data, fpta_max_keylen);
+    key.place.longkey_obverse.tailhash =
         t1ha((const uint8_t *)key.mdbx.mv_data + fpta_max_keylen,
              key.mdbx.mv_size - fpta_max_keylen, 0);
   } else {
-    /* ключ сравнивается от хвоста к голове, копируем хвост и хэшируем
-     * начало. */
-    key.place.longkey_lsb.headhash =
+    /* ключ сравнивается от хвоста к голове,
+     * копируем хвост и хэшируем начало. */
+    key.place.longkey_reverse.headhash =
         t1ha((const uint8_t *)key.mdbx.mv_data,
              key.mdbx.mv_size - fpta_max_keylen, 0);
-    memcpy(buffer, (const uint8_t *)key.mdbx.mv_data + key.mdbx.mv_size -
-                       fpta_max_keylen,
+    memcpy(key.place.longkey_reverse.tail,
+           (const uint8_t *)key.mdbx.mv_data + key.mdbx.mv_size -
+               fpta_max_keylen,
            fpta_max_keylen);
   }
 
-  static_assert(sizeof(key.place.longkey_msb) == sizeof(key.place.longkey_lsb),
+  static_assert(sizeof(key.place.longkey_obverse) == sizeof(key.place),
                 "something wrong");
-  key.mdbx.mv_size = sizeof(key.place.longkey_msb);
-  key.mdbx.mv_data = &key.place.longkey_msb;
+  static_assert(sizeof(key.place.longkey_reverse) == sizeof(key.place),
+                "something wrong");
+  key.mdbx.mv_size = sizeof(key.place);
+  key.mdbx.mv_data = &key.place;
   return FPTA_SUCCESS;
 }
 
@@ -792,9 +845,92 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
   fptu_type type = fpta_shove2type(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
-  if (unlikely(field == nullptr))
-    return FPTA_COLUMN_MISSING;
+  if (unlikely(field == nullptr)) {
+    if (!fpta_index_is_nilable(shove))
+      return FPTA_COLUMN_MISSING;
 
+    switch (type) {
+    default:
+      if (fpta_index_is_ordered(shove)) {
+        if (type >= fptu_cstr) {
+          key.mdbx.mv_size = 0;
+          key.mdbx.mv_data = nullptr;
+          return FPTA_SUCCESS;
+        }
+
+        assert(type >= fptu_96 && type <= fptu_256);
+        key.mdbx.mv_data = &key.place;
+        switch (type) {
+        case fptu_96:
+          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE, key.mdbx.mv_size = 96 / 8);
+          break;
+        case fptu_128:
+          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE,
+                 key.mdbx.mv_size = 128 / 8);
+          break;
+        case fptu_160:
+          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE,
+                 key.mdbx.mv_size = 160 / 8);
+          break;
+        case fptu_256:
+          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE,
+                 key.mdbx.mv_size = 256 / 8);
+          break;
+        default:
+          assert(false && "unexpected field type");
+          __unreachable();
+        }
+        return FPTA_SUCCESS;
+      }
+      /* no break here, make unordered "super nil" */;
+
+    case fptu_uint64:
+    case fptu_datetime:
+      key.place.u64 = 0;
+      key.mdbx.mv_size = sizeof(key.place.u64);
+      key.mdbx.mv_data = &key.place.u64;
+      return FPTA_SUCCESS;
+
+    case fptu_uint16:
+    case fptu_uint32:
+      key.place.u32 = 0;
+      key.mdbx.mv_size = sizeof(key.place.u32);
+      key.mdbx.mv_data = &key.place.u32;
+      return FPTA_SUCCESS;
+
+    case fptu_int32:
+#ifdef FPTA_DENIL_SINT32
+      key.place.i32 = FPTA_DENIL_SINT32;
+#else
+      key.place.i32 = INT32_MIN;
+#endif
+      key.mdbx.mv_size = sizeof(key.place.i32);
+      key.mdbx.mv_data = &key.place.i32;
+      return FPTA_SUCCESS;
+
+    case fptu_int64:
+#ifdef FPTA_DENIL_SINT64
+      key.place.i64 = FPTA_DENIL_SINT64;
+#else
+      key.place.i64 = INT64_MIN;
+#endif
+      key.mdbx.mv_size = sizeof(key.place.i64);
+      key.mdbx.mv_data = &key.place.i64;
+      return FPTA_SUCCESS;
+
+    case fptu_fp32:
+      key.place.u32 = FPTA_DENIL_FP32_BIN;
+      key.mdbx.mv_size = sizeof(key.place.u32);
+      key.mdbx.mv_data = &key.place.u32;
+      return FPTA_SUCCESS;
+
+    case fptu_fp64:
+      key.place.u64 = FPTA_DENIL_FP64_BIN;
+      key.mdbx.mv_size = sizeof(key.place.u64);
+      key.mdbx.mv_data = &key.place.u64;
+      return FPTA_SUCCESS;
+    }
+  }
   const fptu_payload *payload = fptu_field_payload(field);
   switch (type) {
   case fptu_nested:
@@ -817,15 +953,40 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
 
   case fptu_uint16:
     key.place.u32 = field->get_payload_uint16();
+#ifdef FPTA_DENIL_UINT16
+    if (fpta_index_is_nilable(shove))
+      key.place.u32 -= FPTA_DENIL_UINT16;
+#endif
     key.mdbx.mv_size = sizeof(key.place.u32);
     key.mdbx.mv_data = &key.place.u32;
     return FPTA_SUCCESS;
 
-  case fptu_fp32:
-  /*if (unlikely(std::isnan(payload->fp32)))
-      return FPTA_EVALUE;*/
-  case fptu_int32:
   case fptu_uint32:
+    key.place.u32 = payload->u32;
+#ifdef FPTA_DENIL_UINT32
+    if (fpta_index_is_nilable(shove))
+      key.place.u32 -= FPTA_DENIL_UINT32;
+#endif
+    key.mdbx.mv_size = sizeof(key.place.u32);
+    key.mdbx.mv_data = &key.place.u32;
+    return FPTA_SUCCESS;
+
+  case fptu_uint64:
+    key.place.u64 = payload->u64;
+#ifdef FPTA_DENIL_UINT64
+    if (fpta_index_is_nilable(shove))
+      key.place.u64 -= FPTA_DENIL_UINT64;
+#endif
+    key.mdbx.mv_size = sizeof(key.place.u64);
+    key.mdbx.mv_data = &key.place.u64;
+    return FPTA_SUCCESS;
+
+  case fptu_int32:
+#ifdef FPTA_DENIL_SINT32
+    static_assert(FPTA_DENIL_SINT32 <= INT32_MIN,
+                  "FPTA_DENIL_SINT32 must be lowest");
+#endif
+  case fptu_fp32:
     static_assert(sizeof(key.place.f32) == sizeof(key.place.i32),
                   "something wrong");
     static_assert(sizeof(key.place.i32) == sizeof(key.place.u32),
@@ -835,12 +996,17 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
     key.mdbx.mv_data = &key.place.u32;
     return FPTA_SUCCESS;
 
-  case fptu_fp64:
-  /*if (unlikely(std::isnan(payload->fp64)))
-      return FPTA_EVALUE;*/
-  case fptu_int64:
-  case fptu_uint64:
   case fptu_datetime:
+  case fptu_int64:
+  case fptu_fp64:
+#ifdef FPTA_DENIL_DATETIME
+    static_assert(FPTA_DENIL_DATETIME_BIN == 0,
+                  "FPTA_DENIL_DATETIME must be 0");
+#endif
+#ifdef FPTA_DENIL_SINT64
+    static_assert(FPTA_DENIL_SINT64 <= INT64_MIN,
+                  "FPTA_DENIL_SINT64 must be lowest");
+#endif
     static_assert(sizeof(key.place.f64) == sizeof(key.place.i64),
                   "something wrong");
     static_assert(sizeof(key.place.i64) == sizeof(key.place.u64),
