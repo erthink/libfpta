@@ -90,6 +90,9 @@ else()
     message(FATAL_ERROR "No libm found for math support")
   endif()
 endif()
+CHECK_SYMBOL_EXISTS(nan math.h HAVE_nan)
+CHECK_SYMBOL_EXISTS(nanf math.h HAVE_nanf)
+CHECK_INCLUDE_FILES(ieee754.h HAVE_IEEE754_H)
 
 #
 # Enable 'make tags' target.
