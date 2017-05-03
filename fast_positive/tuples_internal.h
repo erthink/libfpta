@@ -350,6 +350,8 @@ typedef union fptu_payload {
   double fp64;
   char cstr[4];
   uint8_t fixbin[8];
+  uint32_t fixbin_by32[2];
+  uint64_t fixbin_by64[1];
   struct {
     fptu_varlen varlen;
     uint32_t data[1];

@@ -72,6 +72,7 @@
 #endif                          /* _MSC_VER (warnings) */
 
 #include <errno.h>  // for error codes
+#include <math.h>   // for NaNs
 #include <string.h> // for strlen()
 #include <time.h>   // for struct timespec, struct timeval
 
@@ -353,18 +354,16 @@ typedef union FPTU_API fptu_time {
    * либо от возможности использовать libfptu из C, либо от Clang,
    * либо от конструкторов (они и пострадали). */
   static fptu_time from_timespec(const struct timespec &ts) {
-    fptu_time result;
-    result.fixedpoint =
-        ((uint64_t)ts.tv_sec << 32) | ns2fractional((uint32_t)ts.tv_nsec);
+    fptu_time result = {((uint64_t)ts.tv_sec << 32) |
+                        ns2fractional((uint32_t)ts.tv_nsec)};
     return result;
   }
 #endif /* HAVE_TIMESPEC_TV_NSEC */
 
 #ifdef HAVE_TIMEVAL_TV_USEC
   static fptu_time from_timeval(const struct timeval &tv) {
-    fptu_time result;
-    result.fixedpoint =
-        ((uint64_t)tv.tv_sec << 32) | us2fractional((uint32_t)tv.tv_usec);
+    fptu_time result = {((uint64_t)tv.tv_sec << 32) |
+                        us2fractional((uint32_t)tv.tv_usec)};
     return result;
   }
 #endif /* HAVE_TIMEVAL_TV_USEC */
@@ -405,6 +404,55 @@ typedef union FPTU_API fptu_time {
 FPTU_API fptu_time fptu_now(int grain_ns);
 FPTU_API fptu_time fptu_now_fine(void);
 FPTU_API fptu_time fptu_now_coarse(void);
+
+//----------------------------------------------------------------------------
+
+#ifdef HAVE_nanf
+#define FPTU_DENIL_FP32 nanf("")
+#elif defined(SNANF)
+#define FPTU_DENIL_FP32 SNANF
+#elif defined(SNAN)
+#define FPTU_DENIL_FP32 ((float)SNAN)
+#elif defined(NANF)
+#define FPTU_DENIL_FP32 (NANF)
+#elif defined(NAN)
+#define FPTU_DENIL_FP32 ((float)NAN)
+#else
+#define FPTU_DENIL_FP32 ((float)(0.0 / 0.0))
+#endif
+
+#ifdef HAVE_nan
+#define FPTU_DENIL_FP64 nan("")
+#elif defined(SNAN)
+#define FPTU_DENIL_FP64 ((float)SNAN)
+#elif defined(NAN)
+#define FPTU_DENIL_FP64 ((double)NAN)
+#else
+#define FPTU_DENIL_FP64 ((double)(0.0 / 0.0))
+#endif
+
+#define FPTU_DENIL_UINT16 UINT16_MAX
+#define FPTU_DENIL_INT32 INT32_MIN
+#define FPTU_DENIL_UINT32 UINT32_MAX
+#define FPTU_DENIL_INT64 INT64_MIN
+#define FPTU_DENIL_UINT64 UINT64_MAX
+
+#define FPTU_DENIL_TIME_BIN (0)
+#ifdef __GNUC__
+#define FPTU_DENIL_TIME                                                        \
+  ({                                                                           \
+    const fptu_time __fptu_time_denil = {FPTU_DENIL_TIME_BIN};                 \
+    __fptu_time_denil;                                                         \
+  })
+#else
+static __inline fptu_time fptu_time_denil(void) {
+  const fptu_time denil = {FPTU_DENIL_TIME_BIN};
+  return denil;
+}
+#define FPTU_DENIL_TIME fptu_time_denil()
+#endif
+#define FPTU_DENIL_CSTR nullptr
+#define FPTU_DENIL_FIXBIN nullptr
 
 //----------------------------------------------------------------------------
 
