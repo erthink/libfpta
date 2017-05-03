@@ -74,8 +74,12 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   if (unlikely(index == fpta_index_none))
     return FPTA_NO_INDEX;
 
-  if (!fpta_index_is_ordered(index) && fpta_cursor_is_ordered(op))
-    return FPTA_NO_INDEX;
+  if (!fpta_index_is_ordered(index)) {
+    if (unlikely(fpta_cursor_is_ordered(op)))
+      return FPTA_NO_INDEX;
+    if (unlikely(range_from.type != fpta_begin && range_to.type != fpta_end))
+      return FPTA_NO_INDEX;
+  }
 
   if (unlikely(!fpta_index_is_compat(column_id->shove, range_from) ||
                !fpta_index_is_compat(column_id->shove, range_to)))
@@ -160,7 +164,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &mdbx_data.sys,
                          mdbx_seek_op);
   } else {
-    /* Помещаем целевой ключ и данные (адреса и размер)
+    /* Помещаем целевой ключ и данные (адреса и размеры)
      * в cursor->current и mdbx_data, это требуется для того чтобы:
      *   - после возврата из mdbx_cursor_get() в cursor->current и mdbx_data
      *     уже был указатели на ключ и данные в БД, без необходимости

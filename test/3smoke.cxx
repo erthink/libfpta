@@ -1676,8 +1676,30 @@ TEST_P(SmokeSelect, Range) {
   cursor = nullptr;
 
   // открываем простейщий курсор c диапазоном (полное покрытие)
+  if (fpta_index_is_ordered(index)) {
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(
+                           txn_guard.get(), &col_1, fpta_value_sint(-1),
+                           fpta_value_sint(43), nullptr, ordering, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+    // проверяем кол-во записей и закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+    EXPECT_EQ(42, count);
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+  } else {
+    EXPECT_EQ(FPTA_NO_INDEX,
+              fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_sint(-1),
+                               fpta_value_sint(43), nullptr, ordering,
+                               &cursor));
+    ASSERT_EQ(nullptr, cursor);
+  }
+
+  // открываем простейщий курсор c диапазоном (полное покрытие, от begin)
+  // LY: в случае unordered индексов здесь эксплуатируется недокументированное
+  //     свойство unordered_index(integer) == ordered_index(integer)
   EXPECT_EQ(FPTA_OK,
-            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_sint(-1),
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
                              fpta_value_sint(43), nullptr, ordering, &cursor));
   ASSERT_NE(nullptr, cursor);
   cursor_guard.reset(cursor);
@@ -1686,6 +1708,26 @@ TEST_P(SmokeSelect, Range) {
   EXPECT_EQ(42, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
+
+  // открываем простейщий курсор c диапазоном (полное покрытие, до begin)
+  // LY: в случае unordered индексов здесь эксплуатируется недокументированное
+  //     свойство unordered_index(integer) == ordered_index(integer)
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_sint(-1),
+                             fpta_value_end(), nullptr, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(42, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  if (!fpta_index_is_ordered(index)) {
+    // для unordered индексов тесты ниже вернут FPTA_NO_INDEX
+    // и это уже было проверенно выше
+    return;
+  }
 
   // открываем c диапазоном (нулевое пересечение, курсор "ниже")
   EXPECT_EQ(FPTA_OK,
