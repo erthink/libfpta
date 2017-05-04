@@ -284,6 +284,8 @@ enum fpta_error {
   FPTA_ENOMEM = ENOMEM /* Out of Memory */,
   FPTA_ENOIMP = ENOSYS /* Not yet implemented */,
   FPTA_EVALUE = EDOM /* Value is invalid or out of range */,
+  FPTA_EEXIST = EEXIST /* FIXME */,
+  FPTA_ENOENT = ENOENT /* FIXME */,
   FPTA_NODATA = -1 /* No data or EOF was reached */,
 
   FPTA_DEADBEEF = 0xDeadBeef /* Pseudo error for results by pointer,

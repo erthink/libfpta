@@ -311,12 +311,12 @@ int fpta_column_describe(const char *column_name, enum fptu_type data_type,
 
   for (size_t i = 0; i < column_set->count; ++i) {
     if (fpta_shove_eq(column_set->shoves[i], shove))
-      return EEXIST;
+      return FPTA_EEXIST;
   }
 
   if (index_type && fpta_index_is_primary(index_type)) {
     if (column_set->shoves[0])
-      return EEXIST;
+      return FPTA_EEXIST;
     column_set->shoves[0] = shove;
     if (column_set->count < 1)
       column_set->count = 1;
@@ -767,7 +767,7 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   }
 
   if (unlikely(column_id->column.num < 0))
-    return ENOENT;
+    return FPTA_ENOENT;
   return FPTA_SUCCESS;
 }
 
@@ -807,7 +807,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
     int err = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), &dbi[i], 0,
                             shove, data_shove);
     if (err != MDB_NOTFOUND)
-      return EEXIST;
+      return FPTA_EEXIST;
   }
 
   for (size_t i = 0; i < column_set->count; ++i) {

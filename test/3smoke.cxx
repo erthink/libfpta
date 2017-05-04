@@ -139,22 +139,22 @@ TEST(SmokeIndex, Primary) {
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
   // пытаемся обновить несуществующую запись
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
   // вставляем и обновляем
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
 
   // аналогично со второй записью
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
 
   // фиксируем изменения
@@ -380,22 +380,22 @@ TEST(SmokeIndex, Secondary) {
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
   // пытаемся обновить несуществующую запись
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
   // вставляем и обновляем
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
 
   // аналогично со второй записью
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
 
   // фиксируем изменения
@@ -887,12 +887,12 @@ TEST_F(SmokeCRUD, none) {
                                             fpta_value_float(se_real_value)));
 
       /* пытаемся обновить несуществующую строку */
-      EXPECT_EQ(MDB_NOTFOUND, fpta_probe_and_update_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_NOTFOUND, fpta_probe_and_update_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       /* пытаемся вставить неполноценную строку, в которой сейчас
        * не хватает одного из индексируемых полей, поэтому вместо
-       * MDB_NOTFOUND должно быть возвращено FPTA_COLUMN_MISSING */
+       * FPTA_NOTFOUND должно быть возвращено FPTA_COLUMN_MISSING */
       EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_upsert_row(
                                          txn, &table, fptu_take_noshrink(row)));
       EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_insert_row(
@@ -912,8 +912,8 @@ TEST_F(SmokeCRUD, none) {
                   fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
 
       /* пробуем вставить дубликат */
-      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       /* добавляем поле `time` с нулевым значением и обновлем */
       fptu_time datetime;
@@ -934,14 +934,14 @@ TEST_F(SmokeCRUD, none) {
                                                      fptu_take_noshrink(row)));
 
       /* еще раз пробуем вставить дубликат */
-      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем PK и пробуем вставить дубликат по вторичным ключам */
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_uint, fpta_value_uint(NNN)));
-      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       // добавляем аналог строки в проверочный набор
       fpta_value se_str_value;
@@ -1273,13 +1273,13 @@ TEST_F(SmokeCRUD, none) {
                                             fpta_value_uint(item->pk_uint)));
 
       /* пробуем удалить без одного поля */
-      EXPECT_EQ(MDB_NOTFOUND,
+      EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
       /* пробуем удалить с различием в данных (поле time) */
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_time,
                                    fpta_value_datetime(fptu_now_fine())));
-      EXPECT_EQ(MDB_NOTFOUND,
+      EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
 
       /* пробуем удалить с другим различием в данных (поле real) */
@@ -1288,7 +1288,7 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_real,
                                    fpta_value_float(item->se_real + 42)));
-      EXPECT_EQ(MDB_NOTFOUND,
+      EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
 
       /* устряняем расхождение и удаляем */

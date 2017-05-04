@@ -200,7 +200,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
                                           order_checksum(order, type, index)));
 
     // пытаемся обновить несуществующую запись
-    ASSERT_EQ(MDB_NOTFOUND,
+    ASSERT_EQ(FPTA_NOTFOUND,
               fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
     if (fpta_index_is_unique(index)) {
@@ -208,13 +208,13 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
       // проверяем что полный дубликат не вставляется
-      ASSERT_EQ(MDB_KEYEXIST,
+      ASSERT_EQ(FPTA_KEYEXIST,
                 fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
       // обновляем dup_id и проверям что дубликат по ключу не проходит
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-      ASSERT_EQ(MDB_KEYEXIST,
+      ASSERT_EQ(FPTA_KEYEXIST,
                 fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
       // проверяем что upsert и update работают,
@@ -232,7 +232,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
       // проверяем что полный дубликат не вставляется
-      ASSERT_EQ(MDB_KEYEXIST,
+      ASSERT_EQ(FPTA_KEYEXIST,
                 fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
       // обновляем dup_id и вставляем дубль по ключу
@@ -247,7 +247,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       // т.е. чтобы получить отказ именно из-за дубликата ключа,
       // а не из-за защиты от полных дубликатов.
       ASSERT_EQ(1, fptu_erase(row, col_dup_id.column.num, fptu_any));
-      ASSERT_EQ(MDB_KEYEXIST, fpta_upsert_row(txn, &table, fptu_take(row)));
+      ASSERT_EQ(FPTA_KEYEXIST, fpta_upsert_row(txn, &table, fptu_take(row)));
     }
   }
 

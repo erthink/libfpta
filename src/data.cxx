@@ -331,26 +331,26 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     if (fpta_index_is_unique(table_id->table.pk)) {
       if (present_row.sys.iov_base)
         /* запись с таким PK уже есть, вставка НЕ возможна */
-        return MDB_KEYEXIST;
+        return FPTA_KEYEXIST;
     }
     break;
 
   case fpta_update:
     if (!present_row.sys.iov_base)
       /* нет записи с таким PK, обновлять нечего */
-      return MDB_NOTFOUND;
+      return FPTA_NOTFOUND;
   /* no break here */
   case fpta_upsert:
     if (rows_with_same_key > 1)
       /* обновление НЕ возможно, если первичный ключ НЕ уникален */
-      return MDB_KEYEXIST;
+      return FPTA_KEYEXIST;
   }
 
   if (present_row.sys.iov_base) {
     if (present_row.total_bytes == row_value.total_bytes &&
         !memcmp(present_row.units, row_value.units, present_row.total_bytes))
       /* если полный дубликат записи */
-      return MDB_KEYEXIST;
+      return (op == fpta_insert) ? FPTA_KEYEXIST : FPTA_SUCCESS;
   }
 
   if (!fpta_table_has_secondary(table_id))

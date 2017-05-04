@@ -97,7 +97,7 @@ public:
                                    order_checksum(order, se_type, se_index)));
 
       // пытаемся обновить несуществующую запись
-      ASSERT_EQ(MDB_NOTFOUND,
+      ASSERT_EQ(FPTA_NOTFOUND,
                 fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
       if (fpta_index_is_unique(se_index)) {
@@ -106,13 +106,13 @@ public:
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
         n++;
         // проверяем что полный дубликат не вставляется
-        ASSERT_EQ(MDB_KEYEXIST,
+        ASSERT_EQ(FPTA_KEYEXIST,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
         // обновляем dup_id и проверям что дубликат по ключу не проходит
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-        ASSERT_EQ(MDB_KEYEXIST,
+        ASSERT_EQ(FPTA_KEYEXIST,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
         // TODO: обновить PK и попробовать вставить дубликат по secondaty,
@@ -138,7 +138,7 @@ public:
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
         n++;
         // проверяем что полный дубликат не вставляется
-        ASSERT_EQ(MDB_KEYEXIST,
+        ASSERT_EQ(FPTA_KEYEXIST,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
         // обновляем dup_id и вставляем дубль по ключу
@@ -146,7 +146,7 @@ public:
         // НЕ должен вставится
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-        ASSERT_EQ(MDB_KEYEXIST, fpta_insert_row(txn, &table, fptu_take(row)));
+        ASSERT_EQ(FPTA_KEYEXIST, fpta_insert_row(txn, &table, fptu_take(row)));
 
         // теперь обновляем primary key и вставляем дубль по вторичному
         // ключу
