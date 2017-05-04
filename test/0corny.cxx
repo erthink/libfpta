@@ -54,10 +54,6 @@ TEST(Corny, NameValidate) {
 #endif
 }
 
-template <typename type> static bool binary_eq(const type &a, const type &b) {
-  return memcmp(&a, &b, sizeof(type)) == 0;
-}
-
 TEST(Corny, DeNIL_NaNs) {
   /* Проверка NAN-значений для designaned NILs. */
 

@@ -105,6 +105,12 @@ enum fpta_internals {
   FTPA_SCHEMA_CHECKSEED = 1546032023
 };
 
+enum fpta_denil_mode {
+  fpta_denil_none = 0,
+  fpta_denil_obverse = 1,
+  fpta_denil_reverse = -1
+};
+
 //----------------------------------------------------------------------------
 
 struct fpta_txn {
@@ -273,9 +279,9 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val pk_key_new, const fptu_ro &row_new,
                           unsigned stepover);
 
-int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
-                           const fptu_ro &row_old, const fptu_ro &row_new,
-                           unsigned stepover);
+int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
+                         const fptu_ro &row_old, const fptu_ro &row_new,
+                         unsigned stepover);
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
                           const fptu_ro &row_old, unsigned stepover);
@@ -319,18 +325,28 @@ static __inline bool fpta_index_is_primary(fpta_shove_t index) {
   return (index & fpta_index_fsecondary) == 0;
 }
 
-static __inline bool fpta_index_is_nilable(fpta_shove_t index) {
-  (void)index;
-  return false /* FIXME: TODO */;
-}
-
 static __inline bool fpta_index_is_secondary(fpta_shove_t index) {
   assert(index != fpta_index_none);
   return (index & fpta_index_fsecondary) != 0;
 }
 
+static __inline bool fpta_index_is_nilable(fpta_shove_t index) {
+  return (index & fpta_index_fnullable) != 0;
+}
+
+static __inline fpta_denil_mode fpta_index_denil_mode(fpta_shove_t index) {
+  if (!fpta_index_is_nilable(index))
+    return fpta_denil_none;
+  return fpta_index_is_obverse(index) ? fpta_denil_obverse : fpta_denil_reverse;
+}
+
 static __inline bool fpta_column_is_nilable(const fpta_name *column_id) {
   return fpta_index_is_nilable(column_id->shove);
+}
+
+static __inline fpta_denil_mode
+fpta_column_denil_mode(const fpta_name *column_id) {
+  return fpta_index_denil_mode(column_id->shove);
 }
 
 static __inline bool fpta_cursor_is_ordered(fpta_cursor_options op) {
@@ -355,6 +371,16 @@ static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
 namespace std {
 FPTA_API string to_string(const MDB_val &);
 FPTA_API string to_string(const fpta_key &);
+}
+
+template <typename type>
+static __inline bool binary_eq(const type &a, const type &b) {
+  return memcmp(&a, &b, sizeof(type)) == 0;
+}
+
+template <typename type>
+static __inline bool binary_ne(const type &a, const type &b) {
+  return memcmp(&a, &b, sizeof(type)) != 0;
 }
 
 //----------------------------------------------------------------------------

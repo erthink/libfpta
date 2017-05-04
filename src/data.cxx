@@ -25,45 +25,63 @@
 /*FPTA_API*/ const fpta_fp64_t fpta_fp32x64_denil = {FPTA_DENIL_FP32x64_BIN};
 /*FPTA_API*/ const fpta_fp64_t fpta_fp32x64_qsnan = {FPTA_QSNAN_FP32x64_BIN};
 
-#ifdef FPTA_DENIL_FIXBIN_BYTE
 template <fptu_type type>
-static __inline bool is_fixbin_denil(const fptu_payload *payload) {
-  const uint32_t denil32 = FPTA_DENIL_FIXBIN_BYTE << 24 |
-                           FPTA_DENIL_FIXBIN_BYTE << 16 |
-                           FPTA_DENIL_FIXBIN_BYTE << 8 | FPTA_DENIL_FIXBIN_BYTE;
-  const uint32_t denil64 = (uint64_t)denil32 << 32 | denil32;
+static __inline bool is_fixbin_denil(const fpta_denil_mode mode,
+                                     const void *fixbin) {
+  assert(mode != fpta_denil_none);
 
-  const uint64_t *by64 = (const uint64_t *)payload->fixbin;
-  const uint32_t *by32 = (const uint32_t *)payload->fixbin;
+  const uint64_t denil = (mode == fpta_denil_obverse)
+                             ? FPTA_DENIL_FIXBIN_OBVERSE |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 8 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 16 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 24 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 32 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 40 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 48 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 56
+                             : FPTA_DENIL_FIXBIN_REVERSE |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 8 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 16 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 24 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 32 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 40 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 48 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 56;
+
+  /* FIXME: unaligned access */
+  const uint64_t *by64 = (const uint64_t *)fixbin;
+  const uint32_t *by32 = (const uint32_t *)fixbin;
 
   switch (type) {
   case fptu_96:
-    return by64[0] == denil64 && by32[2] == denil32;
+    return by64[0] == denil && by32[2] == (uint32_t)denil;
   case fptu_128:
-    return by64[0] == denil64 && by64[1] == denil64;
+    return by64[0] == denil && by64[1] == denil;
   case fptu_160:
-    return by64[0] == denil64 && by64[1] == denil64 && by32[4] == denil32;
+    return by64[0] == denil && by64[1] == denil && by32[4] == (uint32_t)denil;
   case fptu_256:
-    return by64[0] == denil64 && by64[1] == denil64 && by64[2] == denil64 &&
-           by64[3] == denil64;
+    return by64[0] == denil && by64[1] == denil && by64[2] == denil &&
+           by64[3] == denil;
   default:
     assert(false);
   }
 }
 
-static __inline bool check_fixbin_not_denil(const fptu_payload *payload,
-                                            size_t bytes) {
-  assert(FPTA_DENIL_FIXBIN_BYTE >= 0 && FPTA_DENIL_FIXBIN_BYTE <= UINT8_MAX);
+static __inline bool check_fixbin_not_denil(const fpta_denil_mode mode,
+                                            const fptu_payload *payload,
+                                            const size_t bytes) {
   for (size_t i = 0; i < bytes; i++)
-    if (payload->fixbin[i] != FPTA_DENIL_FIXBIN_BYTE)
+    if (payload->fixbin[i] != ((mode == fpta_denil_obverse)
+                                   ? FPTA_DENIL_FIXBIN_OBVERSE
+                                   : FPTA_DENIL_FIXBIN_REVERSE))
       return true;
   return false;
 }
-#endif /* FPTA_DENIL_FIXBIN_BYTE */
 
 //----------------------------------------------------------------------------
 
-fpta_value fpta_field2value(const fptu_field *field) {
+static fpta_value fpta_field2value_ex(const fptu_field *field,
+                                      const fpta_denil_mode mode) {
   fpta_value result = {fpta_null, 0, {0}};
 
   if (unlikely(!field))
@@ -88,128 +106,140 @@ fpta_value fpta_field2value(const fptu_field *field) {
     break;
 
   case fptu_uint16:
-#ifdef FPTA_DENIL_UINT16
-    if (FPTA_CLEAN_DENIL &&
-        unlikely(field->get_payload_uint16() == FPTA_DENIL_UINT16))
-      break;
-    assert(field->get_payload_uint16() != FPTA_DENIL_UINT16);
-#endif /* FPTA_DENIL_UINT16 */
+    if (mode != fpta_denil_none) {
+      const uint16_t denil = (mode == fpta_denil_obverse)
+                                 ? FPTA_DENIL_UINT16_OBVERSE
+                                 : FPTA_DENIL_UINT16_REVERSE;
+      if (FPTA_CLEAN_DENIL && unlikely(field->get_payload_uint16() == denil))
+        break;
+      assert(field->get_payload_uint16() != denil);
+    }
     result.type = fpta_unsigned_int;
     result.uint = field->get_payload_uint16();
     break;
 
   case fptu_int32:
-#ifdef FPTA_DENIL_SINT32
-    if (FPTA_CLEAN_DENIL && unlikely(payload->i32 == FPTA_DENIL_SINT32))
-      break;
-    assert(payload->i32 != FPTA_DENIL_SINT32);
-#endif /* FPTA_DENIL_SINT32 */
+    if (mode != fpta_denil_none) {
+      const int32_t denil = FPTA_DENIL_SINT32;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->i32 == denil))
+        break;
+      assert(payload->i32 != denil);
+    }
     result.type = fpta_signed_int;
     result.sint = payload->i32;
     break;
 
   case fptu_uint32:
-#ifdef FPTA_DENIL_UINT32
-    if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == FPTA_DENIL_UINT32))
-      break;
-    assert(payload->u32 != FPTA_DENIL_UINT32);
-#endif /* FPTA_DENIL_UINT32 */
+    if (mode != fpta_denil_none) {
+      const uint32_t denil = (mode == fpta_denil_obverse)
+                                 ? FPTA_DENIL_UINT32_OBVERSE
+                                 : FPTA_DENIL_UINT32_REVERSE;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
+        break;
+      assert(payload->u32 != denil);
+    }
     result.type = fpta_unsigned_int;
     result.uint = payload->u32;
     break;
 
   case fptu_fp32:
-#ifdef FPTA_DENIL_FP32
-    assert(fpta_fp32_denil.__i == FPTA_DENIL_FP32_BIN);
-    if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == FPTA_DENIL_FP32_BIN))
-      break;
-    assert(memcmp(&payload->fp32, &fpta_fp32_denil, sizeof(float)) != 0);
-#endif /* FPTA_DENIL_FP32 */
+    if (mode != fpta_denil_none) {
+      const uint32_t denil = FPTA_DENIL_FP32_BIN;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
+        break;
+      assert(fpta_fp32_denil.__i == FPTA_DENIL_FP32_BIN);
+      assert(binary_ne(payload->fp32, fpta_fp32_denil.__f));
+    }
     result.type = fpta_float_point;
     result.fp = payload->fp32;
     break;
 
   case fptu_int64:
-#ifdef FPTA_DENIL_SINT64
-    if (FPTA_CLEAN_DENIL && unlikely(payload->i64 == FPTA_DENIL_SINT64))
-      break;
-    assert(payload->i64 != FPTA_DENIL_SINT64);
-#endif /* FPTA_DENIL_SINT64 */
+    if (mode != fpta_denil_none) {
+      const int64_t denil = FPTA_DENIL_SINT64;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->i64 == denil))
+        break;
+      assert(payload->i64 != denil);
+    }
     result.type = fpta_signed_int;
     result.sint = payload->i64;
     break;
 
   case fptu_uint64:
-#ifdef FPTA_DENIL_UINT64
-    if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == FPTA_DENIL_UINT64))
-      break;
-    assert(payload->u64 != FPTA_DENIL_UINT64);
-#endif /* FPTA_DENIL_UINT64 */
+    if (mode != fpta_denil_none) {
+      const uint64_t denil = (mode == fpta_denil_obverse)
+                                 ? FPTA_DENIL_UINT64_OBVERSE
+                                 : FPTA_DENIL_UINT64_REVERSE;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
+        break;
+      assert(payload->u64 != denil);
+    }
     result.type = fpta_unsigned_int;
     result.uint = payload->u64;
     break;
 
   case fptu_fp64:
-#ifdef FPTA_DENIL_FP64
-    assert(fpta_fp64_denil.__i == FPTA_DENIL_FP64_BIN);
-    if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == FPTA_DENIL_FP64_BIN))
-      break;
-    assert(memcmp(&payload->fp64, &fpta_fp64_denil, sizeof(double)) != 0);
-#endif /* FPTA_DENIL_FP64 */
+    if (mode != fpta_denil_none) {
+      const uint64_t denil = FPTA_DENIL_FP64_BIN;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
+        break;
+      assert(fpta_fp64_denil.__i == FPTA_DENIL_FP64_BIN);
+      assert(binary_ne(payload->fp64, fpta_fp64_denil.__d));
+    }
     result.type = fpta_float_point;
     result.fp = payload->fp64;
     break;
 
   case fptu_datetime:
-#ifdef FPTA_DENIL_DATETIME
-    if (FPTA_CLEAN_DENIL &&
-        unlikely(payload->dt.fixedpoint == FPTA_DENIL_DATETIME_BIN))
-      break;
-    assert(payload->dt.fixedpoint != FPTA_DENIL_DATETIME_BIN);
-#endif /* FPTA_DENIL_DATETIME */
+    if (mode != fpta_denil_none) {
+      const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
+      if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
+        break;
+      assert(payload->u64 != denil);
+    }
     result.type = fpta_datetime;
     result.datetime.fixedpoint = payload->u64;
     break;
 
   case fptu_96:
-#ifdef FPTA_DENIL_FIXBIN_BYTE
-    if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_96>(payload))
-      break;
-    assert(check_fixbin_not_denil(payload, 96 / 8));
-#endif /* FPTA_DENIL_FIXBIN_BYTE */
+    if (mode != fpta_denil_none) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_96>(mode, payload->fixbin))
+        break;
+      assert(check_fixbin_not_denil(mode, payload, 96 / 8));
+    }
     result.type = fpta_binary;
     result.binary_length = 96 / 8;
     result.binary_data = (void *)payload->fixbin;
     break;
 
   case fptu_128:
-#ifdef FPTA_DENIL_FIXBIN_BYTE
-    if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_128>(payload))
-      break;
-    assert(check_fixbin_not_denil(payload, 128 / 8));
-#endif /* FPTA_DENIL_FIXBIN_BYTE */
+    if (mode != fpta_denil_none) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_128>(mode, payload->fixbin))
+        break;
+      assert(check_fixbin_not_denil(mode, payload, 128 / 8));
+    }
     result.type = fpta_binary;
     result.binary_length = 128 / 8;
     result.binary_data = (void *)payload->fixbin;
     break;
 
   case fptu_160:
-#ifdef FPTA_DENIL_FIXBIN_BYTE
-    if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_160>(payload))
-      break;
-    assert(check_fixbin_not_denil(payload, 160 / 8));
-#endif /* FPTA_DENIL_FIXBIN_BYTE */
+    if (mode != fpta_denil_none) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_160>(mode, payload->fixbin))
+        break;
+      assert(check_fixbin_not_denil(mode, payload, 160 / 8));
+    }
     result.type = fpta_binary;
     result.binary_length = 160 / 8;
     result.binary_data = (void *)payload->fixbin;
     break;
 
   case fptu_256:
-#ifdef FPTA_DENIL_FIXBIN_BYTE
-    if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_256>(payload))
-      break;
-    assert(check_fixbin_not_denil(payload, 256 / 8));
-#endif /* FPTA_DENIL_FIXBIN_BYTE */
+    if (mode != fpta_denil_none) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_256>(mode, payload->fixbin))
+        break;
+      assert(check_fixbin_not_denil(mode, payload, 256 / 8));
+    }
     result.type = fpta_binary;
     result.binary_length = 256 / 8;
     result.binary_data = (void *)payload->fixbin;
@@ -224,6 +254,10 @@ fpta_value fpta_field2value(const fptu_field *field) {
   return result;
 }
 
+fpta_value fpta_field2value(const fptu_field *field) {
+  return fpta_field2value_ex(field, fpta_denil_none);
+}
+
 int fpta_get_column(fptu_ro row, const fpta_name *column_id,
                     fpta_value *value) {
   if (unlikely(column_id == nullptr || value == nullptr))
@@ -231,7 +265,7 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
 
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column_id->column.num,
                                            fpta_name_coltype(column_id));
-  *value = fpta_field2value(field);
+  *value = fpta_field2value_ex(field, fpta_column_denil_mode(column_id));
   return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
 
@@ -242,15 +276,11 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 
   fptu_type coltype = fpta_shove2type(column_id->shove);
   assert(column_id->column.num <= fptu_max_cols);
-  unsigned col = (unsigned)column_id->column.num;
+  const unsigned col = (unsigned)column_id->column.num;
+  const fpta_denil_mode mode = fpta_column_denil_mode(column_id);
 
-  if (value.type == fpta_null) {
-  erase_denil:
-    int rc = fptu_erase(pt, col, fptu_any);
-    assert(rc >= 0);
-    (void)rc;
-    return FPTA_SUCCESS;
-  }
+  if (unlikely(value.type == fpta_null))
+    goto erase_field;
 
   switch (coltype) {
   default:
@@ -284,17 +314,16 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-#ifdef FPTA_DENIL_UINT16
-      if (unlikely(value.uint == FPTA_DENIL_UINT16) &&
-          fpta_column_is_nilable(column_id)) {
-        if (!FPTA_PROHIBIT_UPSERT_DENIL)
-          goto erase_denil;
-        return FPTA_EVALUE;
+      if (mode != fpta_denil_none) {
+        const uint16_t denil = (mode == fpta_denil_obverse)
+                                   ? FPTA_DENIL_UINT16_OBVERSE
+                                   : FPTA_DENIL_UINT16_REVERSE;
+        if (unlikely(value.uint == denil))
+          goto denil_catched;
       }
-#endif /* FPTA_DENIL_UINT16 */
-      if (unlikely(value.uint > UINT16_MAX))
-        return FPTA_EVALUE;
     }
+    if (unlikely(value.uint > UINT16_MAX))
+      return FPTA_EVALUE;
     return fptu_upsert_uint16(pt, col, (uint16_t)value.uint);
 
   case fptu_int32:
@@ -305,17 +334,14 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.uint > INT32_MAX))
         return FPTA_EVALUE;
     case fpta_signed_int:
-#ifdef FPTA_DENIL_SINT32
-      if (unlikely(value.sint == FPTA_DENIL_SINT32) &&
-          fpta_column_is_nilable(column_id)) {
-        if (!FPTA_PROHIBIT_UPSERT_DENIL)
-          goto erase_denil;
-        return FPTA_EVALUE;
+      if (mode != fpta_denil_none) {
+        const int32_t denil = FPTA_DENIL_SINT32;
+        if (unlikely(value.sint == denil))
+          goto denil_catched;
       }
-#endif /* FPTA_DENIL_SINT32 */
-      if (unlikely(value.sint != (int32_t)value.sint))
-        return FPTA_EVALUE;
     }
+    if (unlikely(value.sint != (int32_t)value.sint))
+      return FPTA_EVALUE;
     return fptu_upsert_int32(pt, col, (int32_t)value.sint);
 
   case fptu_uint32:
@@ -326,14 +352,13 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-#ifdef FPTA_DENIL_UINT32
-      if (unlikely(value.uint == FPTA_DENIL_UINT32) &&
-          fpta_column_is_nilable(column_id)) {
-        if (!FPTA_PROHIBIT_UPSERT_DENIL)
-          goto erase_denil;
-        return FPTA_EVALUE;
+      if (mode != fpta_denil_none) {
+        const uint32_t denil = (mode == fpta_denil_obverse)
+                                   ? FPTA_DENIL_UINT32_OBVERSE
+                                   : FPTA_DENIL_UINT32_REVERSE;
+        if (unlikely(value.uint == denil))
+          goto denil_catched;
       }
-#endif /* FPTA_DENIL_UINT32 */
       if (unlikely(value.uint > UINT32_MAX))
         return FPTA_EVALUE;
     }
@@ -342,24 +367,19 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_fp32:
     if (unlikely(value.type != fpta_float_point))
       return FPTA_ETYPE;
-#ifdef FPTA_DENIL_FP32
-    assert(fpta_fp32x64_denil.__i == FPTA_DENIL_FP32x64_BIN);
-    /* LY: проверяем на DENIL с учетом усечения при конвертации во float */
-    if (unlikely(value.uint >= FPTA_DENIL_FP32x64_BIN) &&
-        fpta_column_is_nilable(column_id)) {
-      if (value.uint == FPTA_DENIL_FP32x64_BIN) {
-        if (!FPTA_PROHIBIT_UPSERT_DENIL)
-          goto erase_denil;
-        return FPTA_EVALUE;
-      }
+    if (mode != fpta_denil_none &&
+        /* LY: проверяем на DENIL с учетом усечения при конвертации во float */
+        unlikely(value.uint >= FPTA_DENIL_FP32x64_BIN)) {
+      if (value.uint == FPTA_DENIL_FP32x64_BIN)
+        goto denil_catched;
       /* LY: подставляем значение, которое не даст FPTA_DENIL_FP32
        * при конвертации во float */
       value.uint = FPTA_QSNAN_FP32x64_BIN;
     }
-#endif /* FPTA_DENIL_FP32 */
-    if (FPTA_PROHIBIT_UPSERT_NAN && unlikely(std::isnan(value.fp)))
-      return FPTA_EVALUE;
-    if (unlikely(fabs(value.fp) > FLT_MAX) && !std::isinf(value.fp))
+    if (unlikely(std::isnan(value.fp))) {
+      if (FPTA_PROHIBIT_UPSERT_NAN)
+        return FPTA_EVALUE;
+    } else if (unlikely(fabs(value.fp) > FLT_MAX) && !std::isinf(value.fp))
       return FPTA_EVALUE;
     return fptu_upsert_fp32(pt, col, (float)value.fp);
 
@@ -371,15 +391,11 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.uint > INT64_MAX))
         return FPTA_EVALUE;
     case fpta_signed_int:
-#ifdef FPTA_DENIL_SINT64
-      if (unlikely(value.sint == FPTA_DENIL_SINT64) &&
-          fpta_column_is_nilable(column_id)) {
-        if (!FPTA_PROHIBIT_UPSERT_DENIL)
-          goto erase_denil;
-        return FPTA_EVALUE;
+      if (mode != fpta_denil_none) {
+        const int64_t denil = FPTA_DENIL_SINT64;
+        if (unlikely(value.sint == denil))
+          goto denil_catched;
       }
-#endif /* FPTA_DENIL_SINT64 */
-      break;
     }
     return fptu_upsert_int64(pt, col, value.sint);
 
@@ -391,30 +407,24 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-#ifdef FPTA_DENIL_UINT64
-      if (unlikely(value.uint == FPTA_DENIL_UINT64) &&
-          fpta_column_is_nilable(column_id)) {
-        if (!FPTA_PROHIBIT_UPSERT_DENIL)
-          goto erase_denil;
-        return FPTA_EVALUE;
+      if (mode != fpta_denil_none) {
+        const uint64_t denil = (mode == fpta_denil_obverse)
+                                   ? FPTA_DENIL_UINT64_OBVERSE
+                                   : FPTA_DENIL_UINT64_REVERSE;
+        if (unlikely(value.uint == denil))
+          goto denil_catched;
       }
-#endif /* FPTA_DENIL_UINT64 */
-      break;
     }
     return fptu_upsert_uint64(pt, col, value.uint);
 
   case fptu_fp64:
     if (unlikely(value.type != fpta_float_point))
       return FPTA_ETYPE;
-#ifdef FPTA_DENIL_FP32
-    assert(fpta_fp64_denil.__i == FPTA_DENIL_FP64_BIN);
-    if (unlikely(value.uint == FPTA_DENIL_FP64_BIN) &&
-        fpta_column_is_nilable(column_id)) {
-      if (!FPTA_PROHIBIT_UPSERT_DENIL)
-        goto erase_denil;
-      return FPTA_EVALUE;
+    if (mode != fpta_denil_none) {
+      const uint64_t denil = FPTA_DENIL_FP64_BIN;
+      if (unlikely(value.uint == denil))
+        goto denil_catched;
     }
-#endif /* FPTA_DENIL_FP32 */
     if (FPTA_PROHIBIT_UPSERT_NAN && unlikely(std::isnan(value.fp)))
       return FPTA_EVALUE;
     return fptu_upsert_fp64(pt, col, value.fp);
@@ -422,14 +432,11 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_datetime:
     if (value.type != fpta_datetime)
       return FPTA_ETYPE;
-#ifdef FPTA_DENIL_DATETIME
-    if (value.datetime.fixedpoint == FPTA_DENIL_DATETIME_BIN &&
-        fpta_column_is_nilable(column_id)) {
-      if (!FPTA_PROHIBIT_UPSERT_DENIL)
-        goto erase_denil;
-      return FPTA_EVALUE;
+    if (mode != fpta_denil_none) {
+      const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
+      if (unlikely(value.datetime.fixedpoint == denil))
+        goto denil_catched;
     }
-#endif /* FPTA_DENIL_DATETIME */
     return fptu_upsert_datetime(pt, col, value.datetime);
 
   case fptu_96:
@@ -439,6 +446,9 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
+    if (mode != fpta_denil_none &&
+        is_fixbin_denil<fptu_96>(mode, value.binary_data))
+      goto denil_catched;
     return fptu_upsert_96(pt, col, value.binary_data);
 
   case fptu_128:
@@ -448,6 +458,9 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
+    if (mode != fpta_denil_none &&
+        is_fixbin_denil<fptu_128>(mode, value.binary_data))
+      goto denil_catched;
     return fptu_upsert_128(pt, col, value.binary_data);
 
   case fptu_160:
@@ -457,6 +470,9 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
+    if (mode != fpta_denil_none &&
+        is_fixbin_denil<fptu_160>(mode, value.binary_data))
+      goto denil_catched;
     return fptu_upsert_160(pt, col, value.binary_data);
 
   case fptu_256:
@@ -466,6 +482,9 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
+    if (mode != fpta_denil_none &&
+        is_fixbin_denil<fptu_160>(mode, value.binary_data))
+      goto denil_catched;
     return fptu_upsert_256(pt, col, value.binary_data);
 
   case fptu_cstr:
@@ -473,6 +492,16 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_ETYPE;
     return fptu_upsert_string(pt, col, value.str, value.binary_length);
   }
+
+denil_catched:
+  if (FPTA_PROHIBIT_UPSERT_DENIL)
+    return FPTA_EVALUE;
+
+erase_field:
+  int rc = fptu_erase(pt, col, fptu_any);
+  assert(rc >= 0);
+  (void)rc;
+  return FPTA_SUCCESS;
 }
 
 //----------------------------------------------------------------------------
@@ -542,7 +571,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   if (!fpta_table_has_secondary(table_id))
     return FPTA_SUCCESS;
 
-  return fpta_check_constraints(txn, table_id, present_row, row_value, 0);
+  return fpta_secondary_check(txn, table_id, present_row, row_value, 0);
 }
 
 int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,

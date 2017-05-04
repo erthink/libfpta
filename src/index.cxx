@@ -842,11 +842,12 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
   fpta_pollute(&key, sizeof(key), 0);
 #endif
 
-  fptu_type type = fpta_shove2type(shove);
+  const fptu_type type = fpta_shove2type(shove);
+  const fpta_denil_mode mode = fpta_index_denil_mode(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
   if (unlikely(field == nullptr)) {
-    if (!fpta_index_is_nilable(shove))
+    if (mode == fpta_denil_none)
       return FPTA_COLUMN_MISSING;
 
     switch (type) {
@@ -857,24 +858,24 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
           key.mdbx.mv_data = nullptr;
           return FPTA_SUCCESS;
         }
-
         assert(type >= fptu_96 && type <= fptu_256);
+
+        const uint8_t fillbyte = (mode == fpta_denil_obverse)
+                                     ? FPTA_DENIL_FIXBIN_OBVERSE
+                                     : FPTA_DENIL_FIXBIN_REVERSE;
         key.mdbx.mv_data = &key.place;
         switch (type) {
         case fptu_96:
-          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE, key.mdbx.mv_size = 96 / 8);
+          memset(&key.place, fillbyte, key.mdbx.mv_size = 96 / 8);
           break;
         case fptu_128:
-          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE,
-                 key.mdbx.mv_size = 128 / 8);
+          memset(&key.place, fillbyte, key.mdbx.mv_size = 128 / 8);
           break;
         case fptu_160:
-          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE,
-                 key.mdbx.mv_size = 160 / 8);
+          memset(&key.place, fillbyte, key.mdbx.mv_size = 160 / 8);
           break;
         case fptu_256:
-          memset(&key.place, FPTA_DENIL_FIXBIN_BYTE,
-                 key.mdbx.mv_size = 256 / 8);
+          memset(&key.place, fillbyte, key.mdbx.mv_size = 256 / 8);
           break;
         default:
           assert(false && "unexpected field type");
@@ -882,38 +883,47 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
         }
         return FPTA_SUCCESS;
       }
-      /* no break here, make unordered "super nil" */;
-
-    case fptu_uint64:
-    case fptu_datetime:
+      /* make unordered "super nil" */;
       key.place.u64 = 0;
       key.mdbx.mv_size = sizeof(key.place.u64);
       key.mdbx.mv_data = &key.place.u64;
       return FPTA_SUCCESS;
 
+    case fptu_datetime:
+      key.place.u64 = FPTA_DENIL_DATETIME_BIN;
+      key.mdbx.mv_size = sizeof(key.place.u64);
+      key.mdbx.mv_data = &key.place.u64;
+      return FPTA_SUCCESS;
+
     case fptu_uint16:
-    case fptu_uint32:
-      key.place.u32 = 0;
+      key.place.u32 = (mode == fpta_denil_obverse) ? FPTA_DENIL_UINT16_OBVERSE
+                                                   : FPTA_DENIL_UINT16_REVERSE;
       key.mdbx.mv_size = sizeof(key.place.u32);
       key.mdbx.mv_data = &key.place.u32;
       return FPTA_SUCCESS;
 
+    case fptu_uint32:
+      key.place.u32 = (mode == fpta_denil_obverse) ? FPTA_DENIL_UINT32_OBVERSE
+                                                   : FPTA_DENIL_UINT32_REVERSE;
+      key.mdbx.mv_size = sizeof(key.place.u32);
+      key.mdbx.mv_data = &key.place.u32;
+      return FPTA_SUCCESS;
+
+    case fptu_uint64:
+      key.place.u64 = (mode == fpta_denil_obverse) ? FPTA_DENIL_UINT64_OBVERSE
+                                                   : FPTA_DENIL_UINT64_REVERSE;
+      key.mdbx.mv_size = sizeof(key.place.u64);
+      key.mdbx.mv_data = &key.place.u64;
+      return FPTA_SUCCESS;
+
     case fptu_int32:
-#ifdef FPTA_DENIL_SINT32
       key.place.i32 = FPTA_DENIL_SINT32;
-#else
-      key.place.i32 = INT32_MIN;
-#endif
       key.mdbx.mv_size = sizeof(key.place.i32);
       key.mdbx.mv_data = &key.place.i32;
       return FPTA_SUCCESS;
 
     case fptu_int64:
-#ifdef FPTA_DENIL_SINT64
       key.place.i64 = FPTA_DENIL_SINT64;
-#else
-      key.place.i64 = INT64_MIN;
-#endif
       key.mdbx.mv_size = sizeof(key.place.i64);
       key.mdbx.mv_data = &key.place.i64;
       return FPTA_SUCCESS;
@@ -930,7 +940,11 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
       key.mdbx.mv_data = &key.place.u64;
       return FPTA_SUCCESS;
     }
+
+    assert(false && "unreachable point");
+    __unreachable();
   }
+
   const fptu_payload *payload = fptu_field_payload(field);
   switch (type) {
   case fptu_nested:
@@ -953,39 +967,23 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
 
   case fptu_uint16:
     key.place.u32 = field->get_payload_uint16();
-#ifdef FPTA_DENIL_UINT16
-    if (fpta_index_is_nilable(shove))
-      key.place.u32 -= FPTA_DENIL_UINT16;
-#endif
     key.mdbx.mv_size = sizeof(key.place.u32);
     key.mdbx.mv_data = &key.place.u32;
     return FPTA_SUCCESS;
 
   case fptu_uint32:
     key.place.u32 = payload->u32;
-#ifdef FPTA_DENIL_UINT32
-    if (fpta_index_is_nilable(shove))
-      key.place.u32 -= FPTA_DENIL_UINT32;
-#endif
     key.mdbx.mv_size = sizeof(key.place.u32);
     key.mdbx.mv_data = &key.place.u32;
     return FPTA_SUCCESS;
 
   case fptu_uint64:
     key.place.u64 = payload->u64;
-#ifdef FPTA_DENIL_UINT64
-    if (fpta_index_is_nilable(shove))
-      key.place.u64 -= FPTA_DENIL_UINT64;
-#endif
     key.mdbx.mv_size = sizeof(key.place.u64);
     key.mdbx.mv_data = &key.place.u64;
     return FPTA_SUCCESS;
 
   case fptu_int32:
-#ifdef FPTA_DENIL_SINT32
-    static_assert(FPTA_DENIL_SINT32 <= INT32_MIN,
-                  "FPTA_DENIL_SINT32 must be lowest");
-#endif
   case fptu_fp32:
     static_assert(sizeof(key.place.f32) == sizeof(key.place.i32),
                   "something wrong");
@@ -999,14 +997,6 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
   case fptu_datetime:
   case fptu_int64:
   case fptu_fp64:
-#ifdef FPTA_DENIL_DATETIME
-    static_assert(FPTA_DENIL_DATETIME_BIN == 0,
-                  "FPTA_DENIL_DATETIME must be 0");
-#endif
-#ifdef FPTA_DENIL_SINT64
-    static_assert(FPTA_DENIL_SINT64 <= INT64_MIN,
-                  "FPTA_DENIL_SINT64 must be lowest");
-#endif
     static_assert(sizeof(key.place.f64) == sizeof(key.place.i64),
                   "something wrong");
     static_assert(sizeof(key.place.i64) == sizeof(key.place.u64),

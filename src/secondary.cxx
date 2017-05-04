@@ -19,9 +19,9 @@
 
 #include "details.h"
 
-int fpta_check_constraints(fpta_txn *txn, fpta_name *table_id,
-                           const fptu_ro &row_old, const fptu_ro &row_new,
-                           unsigned stepover) {
+int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
+                         const fptu_ro &row_old, const fptu_ro &row_new,
+                         unsigned stepover) {
   MDB_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_id, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
