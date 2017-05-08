@@ -59,6 +59,7 @@ uint32_t fptu_time::fractional2ms(uint32_t fractional) {
 #pragma warning(push, 1)
 #include <windows.h>
 #pragma warning(pop)
+#pragma warning(disable : 4191) /* unsafe conversion from 'FARPROC' to ... */
 
 #define N100SEC_PER_SEC (NSEC_PER_SEC / 100u)
 static __inline fptu_time from_filetime(FILETIME *pFileTime) {

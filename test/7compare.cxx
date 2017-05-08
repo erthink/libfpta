@@ -79,7 +79,7 @@ TEST(Compare, FetchTags) {
       const auto end = fptu_tags(tags, fptu_begin_ro(ro), fptu_end_ro(ro));
       size_t count = (size_t)(end - tags);
 
-      ASSERT_GE(6, count);
+      ASSERT_GE(6u, count);
       ASSERT_EQ(checker.size(), count);
       ASSERT_TRUE(std::equal(checker.begin(), checker.end(), tags));
     }

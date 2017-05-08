@@ -121,7 +121,7 @@ TEST(Fetch, Base) {
   ASSERT_STREQ(nullptr, fptu_check(origin_pt));
   origin_ro = fptu_take_noshrink(origin_pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(origin_ro));
-  EXPECT_EQ(fptu_unit_size * 2, origin_ro.total_bytes);
+  EXPECT_EQ(fptu_unit_size * 2u, origin_ro.total_bytes);
 
   // check with max-more-items
   fetched_pt = fptu_fetch(origin_ro, fetched_space, sizeof(fetched_space),
@@ -161,7 +161,7 @@ TEST(Fetch, Base) {
   ASSERT_STREQ(nullptr, fptu_check(origin_pt));
   origin_ro = fptu_take_noshrink(origin_pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(origin_ro));
-  EXPECT_EQ(fptu_unit_size * 3, origin_ro.total_bytes);
+  EXPECT_EQ(fptu_unit_size * 3u, origin_ro.total_bytes);
 
   // check with max-more-items
   fetched_pt = fptu_fetch(origin_ro, fetched_space, sizeof(fetched_space),
@@ -377,6 +377,27 @@ TEST(Fetch, Variate) {
       }
     }
   }
+}
+
+TEST(Fetch, DeNils) {
+  EXPECT_EQ(fptu_null, fptu_field_type(nullptr));
+  EXPECT_EQ(-1, fptu_field_column(nullptr));
+
+  EXPECT_EQ(UINT16_MAX /*FPTU_DENIL_UINT16*/, fptu_field_uint16(nullptr));
+  EXPECT_EQ(INT32_MIN /*FPTU_DENIL_INT32*/, fptu_field_int32(nullptr));
+  EXPECT_EQ(UINT32_MAX /*FPTU_DENIL_UINT32*/, fptu_field_uint32(nullptr));
+  EXPECT_EQ(INT64_MIN /*FPTU_DENIL_INT64*/, fptu_field_int64(nullptr));
+  EXPECT_EQ(UINT64_MAX /*FPTU_DENIL_UINT64*/, fptu_field_uint64(nullptr));
+  EXPECT_TRUE(isnan(/*FPTU_DENIL_FP32*/ fptu_field_fp32(nullptr)));
+  EXPECT_TRUE(isnan(/*FPTU_DENIL_FP64*/ fptu_field_fp64(nullptr)));
+  EXPECT_EQ(0u /*FPTU_DENIL_TIME*/, fptu_field_datetime(nullptr).fixedpoint);
+  EXPECT_EQ(nullptr /*FPTU_DENIL_CSTR*/, fptu_field_cstr(nullptr));
+
+  EXPECT_EQ(nullptr /*FPTU_DENIL_FIXBIN*/, fptu_field_96(nullptr));
+  EXPECT_EQ(nullptr /*FPTU_DENIL_FIXBIN*/, fptu_field_128(nullptr));
+  EXPECT_EQ(nullptr /*FPTU_DENIL_FIXBIN*/, fptu_field_160(nullptr));
+  EXPECT_EQ(nullptr, fptu_field_opaque(nullptr).iov_base);
+  EXPECT_EQ(0u, fptu_field_opaque(nullptr).iov_len);
 }
 
 int main(int argc, char **argv) {

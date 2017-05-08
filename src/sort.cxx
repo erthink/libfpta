@@ -101,8 +101,9 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
   /* вполне вероятно, что резерный бит всегда нулевой, также возможно что
    * нет массивов, тогда размер карты можно сократить в 4 раза. */
   const unsigned blank =
-      (have & fptu_fr_mask) ? 0u : (unsigned)fptu_ct_reserve_bits +
-                                       ((have & fptu_farray) ? 0u : 1u);
+      (have & fptu_fr_mask)
+          ? 0u
+          : (unsigned)fptu_ct_reserve_bits + ((have & fptu_farray) ? 0u : 1u);
   const unsigned lo_part = (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
   const unsigned hi_part = lo_part ^ UINT16_MAX;
   assert((lo_part >> blank) >= (have & lo_part));

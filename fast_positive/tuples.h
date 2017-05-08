@@ -72,6 +72,8 @@
 #endif                          /* _MSC_VER (warnings) */
 
 #include <errno.h>  // for error codes
+#include <float.h>  // for FLT_EVAL_METHOD and float_t
+#include <math.h>   // for NaNs
 #include <string.h> // for strlen()
 #include <time.h>   // for struct timespec, struct timeval
 
@@ -200,43 +202,44 @@ typedef struct FPTU_API fptu_rw {
 /* Основные ограничения, константы и их производные. */
 enum fptu_bits {
   // базовые лимиты и параметры
-  fptu_bits = 16, // ширина счетчиков
-  fptu_typeid_bits = 5, // ширина типа в идентификаторе поля
-  fptu_ct_reserve_bits = 1, // резерв в идентификаторе поля
-  fptu_unit_size = 4,       // размер одного юнита
+  fptu_bits = 16u, // ширина счетчиков
+  fptu_typeid_bits = 5u, // ширина типа в идентификаторе поля
+  fptu_ct_reserve_bits = 1u, // резерв в идентификаторе поля
+  fptu_unit_size = 4u,       // размер одного юнита
   // количество служебных (зарезервированных) бит в заголовке кортежа,
   // для признаков сортированности и отсутствия повторяющихся полей
-  fptu_lx_bits = 2,
+  fptu_lx_bits = 2u,
 
   // производные константы и параметры
   // log2(fptu_unit_size)
-  fptu_unit_shift = 2,
+  fptu_unit_shift = 2u,
 
   // базовый лимит значений
-  fptu_limit = ((size_t)1 << fptu_bits) - 1,
+  fptu_limit = (UINT32_C(1) << fptu_bits) - 1u,
   // максимальный суммарный размер сериализованного представления кортежа,
   fptu_max_tuple_bytes = fptu_limit * fptu_unit_size,
 
   // ширина тега-номера поля/колонки
   fptu_co_bits = fptu_bits - fptu_typeid_bits - fptu_ct_reserve_bits,
   // маска для получения типа из идентификатора поля/колонки
-  fptu_ty_mask = ((size_t)1 << fptu_typeid_bits) - 1,
+  fptu_ty_mask = (UINT32_C(1) << fptu_typeid_bits) - 1u,
   // маска резервных битов в идентификаторе поля/колонки
-  fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1) << fptu_typeid_bits,
+  fptu_fr_mask = ((UINT32_C(1) << fptu_ct_reserve_bits) - 1u)
+                 << fptu_typeid_bits,
 
   // сдвиг для получения тега-номера из идентификатора поля/колонки
   fptu_co_shift = fptu_typeid_bits + fptu_ct_reserve_bits,
   // значение тега-номера для удаленных полей/колонок
-  fptu_co_dead = ((size_t)1 << fptu_co_bits) - 1,
+  fptu_co_dead = (UINT32_C(1) << fptu_co_bits) - 1u,
   // максимальный тег-номер поля/колонки
-  fptu_max_cols = fptu_co_dead - 1,
+  fptu_max_cols = fptu_co_dead - 1u,
 
   // кол-во бит доступных для хранения размера массива дескрипторов полей
   fptu_lt_bits = fptu_bits - fptu_lx_bits,
   // маска для выделения служебных бит из заголовка кортежа
-  fptu_lx_mask = (((size_t)1 << fptu_lx_bits) - 1) << fptu_lt_bits,
+  fptu_lx_mask = ((UINT32_C(1) << fptu_lx_bits) - 1u) << fptu_lt_bits,
   // маска для получения размера массива дескрипторов из заголовка кортежа
-  fptu_lt_mask = ((size_t)1 << fptu_lt_bits) - 1,
+  fptu_lt_mask = (UINT32_C(1) << fptu_lt_bits) - 1u,
   // максимальное кол-во полей/колонок в одном кортеже
   fptu_max_fields = fptu_lt_mask,
 
@@ -287,17 +290,18 @@ typedef enum fptu_type {
   fptu_nested = 15, // nested tuple
   fptu_farray = 16, // flag
 
-  fptu_typeid_max = (1 << fptu_typeid_bits) - 1,
+  fptu_typeid_max = (INT32_C(1) << fptu_typeid_bits) - 1,
 
   // pseudo types for lookup and filtering
-  fptu_filter = 1 << (fptu_null | fptu_farray),
-  fptu_any = -1, // match any type
-  fptu_any_int =
-      fptu_filter | (1 << fptu_int32) | (1 << fptu_int64), // match int32/int64
-  fptu_any_uint = fptu_filter | (1 << fptu_uint16) | (1 << fptu_uint32) |
-                  (1 << fptu_uint64), // match uint16/uint32/uint64
-  fptu_any_fp =
-      fptu_filter | (1 << fptu_fp32) | (1 << fptu_fp64), // match fp32/fp64
+  fptu_filter = INT32_C(1) << (fptu_null | fptu_farray),
+  fptu_any = INT32_C(-1), // match any type
+  fptu_any_int = fptu_filter | (INT32_C(1) << fptu_int32) |
+                 (INT32_C(1) << fptu_int64), // match int32/int64
+  fptu_any_uint = fptu_filter | (INT32_C(1) << fptu_uint16) |
+                  (INT32_C(1) << fptu_uint32) |
+                  (INT32_C(1) << fptu_uint64), // match uint16/uint32/uint64
+  fptu_any_fp = fptu_filter | (INT32_C(1) << fptu_fp32) |
+                (INT32_C(1) << fptu_fp64), // match fp32/fp64
 
   // aliases
   fptu_16 = fptu_uint16,
@@ -353,18 +357,16 @@ typedef union FPTU_API fptu_time {
    * либо от возможности использовать libfptu из C, либо от Clang,
    * либо от конструкторов (они и пострадали). */
   static fptu_time from_timespec(const struct timespec &ts) {
-    fptu_time result;
-    result.fixedpoint =
-        ((uint64_t)ts.tv_sec << 32) | ns2fractional((uint32_t)ts.tv_nsec);
+    fptu_time result = {((uint64_t)ts.tv_sec << 32) |
+                        ns2fractional((uint32_t)ts.tv_nsec)};
     return result;
   }
 #endif /* HAVE_TIMESPEC_TV_NSEC */
 
 #ifdef HAVE_TIMEVAL_TV_USEC
   static fptu_time from_timeval(const struct timeval &tv) {
-    fptu_time result;
-    result.fixedpoint =
-        ((uint64_t)tv.tv_sec << 32) | us2fractional((uint32_t)tv.tv_usec);
+    fptu_time result = {((uint64_t)tv.tv_sec << 32) |
+                        us2fractional((uint32_t)tv.tv_usec)};
     return result;
   }
 #endif /* HAVE_TIMEVAL_TV_USEC */
@@ -405,6 +407,55 @@ typedef union FPTU_API fptu_time {
 FPTU_API fptu_time fptu_now(int grain_ns);
 FPTU_API fptu_time fptu_now_fine(void);
 FPTU_API fptu_time fptu_now_coarse(void);
+
+//----------------------------------------------------------------------------
+
+#ifdef HAVE_nanf
+#define FPTU_DENIL_FP32 nanf("")
+#elif defined(SNANF)
+#define FPTU_DENIL_FP32 SNANF
+#elif defined(SNAN)
+#define FPTU_DENIL_FP32 ((float)SNAN)
+#elif defined(NANF)
+#define FPTU_DENIL_FP32 (NANF)
+#elif defined(NAN)
+#define FPTU_DENIL_FP32 ((float)NAN)
+#else
+#define FPTU_DENIL_FP32 ((float)(0.0 / 0.0))
+#endif
+
+#ifdef HAVE_nan
+#define FPTU_DENIL_FP64 nan("")
+#elif defined(SNAN)
+#define FPTU_DENIL_FP64 ((float)SNAN)
+#elif defined(NAN)
+#define FPTU_DENIL_FP64 ((double)NAN)
+#else
+#define FPTU_DENIL_FP64 ((double)(0.0 / 0.0))
+#endif
+
+#define FPTU_DENIL_UINT16 UINT16_MAX
+#define FPTU_DENIL_INT32 INT32_MIN
+#define FPTU_DENIL_UINT32 UINT32_MAX
+#define FPTU_DENIL_INT64 INT64_MIN
+#define FPTU_DENIL_UINT64 UINT64_MAX
+
+#define FPTU_DENIL_TIME_BIN (0)
+#ifdef __GNUC__
+#define FPTU_DENIL_TIME                                                        \
+  ({                                                                           \
+    const fptu_time __fptu_time_denil = {FPTU_DENIL_TIME_BIN};                 \
+    __fptu_time_denil;                                                         \
+  })
+#else
+static __inline fptu_time fptu_time_denil(void) {
+  const fptu_time denil = {FPTU_DENIL_TIME_BIN};
+  return denil;
+}
+#define FPTU_DENIL_TIME fptu_time_denil()
+#endif
+#define FPTU_DENIL_CSTR nullptr
+#define FPTU_DENIL_FIXBIN nullptr
 
 //----------------------------------------------------------------------------
 
@@ -541,7 +592,7 @@ FPTU_API int fptu_upsert_uint32(fptu_rw *pt, unsigned column, uint32_t value);
 FPTU_API int fptu_upsert_int64(fptu_rw *pt, unsigned column, int64_t value);
 FPTU_API int fptu_upsert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 FPTU_API int fptu_upsert_fp64(fptu_rw *pt, unsigned column, double value);
-FPTU_API int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float value);
+FPTU_API int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_upsert_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
 
@@ -598,7 +649,7 @@ FPTU_API int fptu_insert_uint32(fptu_rw *pt, unsigned column, uint32_t value);
 FPTU_API int fptu_insert_int64(fptu_rw *pt, unsigned column, int64_t value);
 FPTU_API int fptu_insert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 FPTU_API int fptu_insert_fp64(fptu_rw *pt, unsigned column, double value);
-FPTU_API int fptu_insert_fp32(fptu_rw *pt, unsigned column, float value);
+FPTU_API int fptu_insert_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_insert_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
 
@@ -652,7 +703,7 @@ FPTU_API int fptu_update_uint32(fptu_rw *pt, unsigned column, uint32_t value);
 FPTU_API int fptu_update_int64(fptu_rw *pt, unsigned column, int64_t value);
 FPTU_API int fptu_update_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 FPTU_API int fptu_update_fp64(fptu_rw *pt, unsigned column, double value);
-FPTU_API int fptu_update_fp32(fptu_rw *pt, unsigned column, float value);
+FPTU_API int fptu_update_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_update_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
 
@@ -750,7 +801,7 @@ FPTU_API size_t fptu_field_count_ex(const fptu_rw *pt, fptu_field_filter filter,
 FPTU_API size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
                                        void *context, void *param);
 
-FPTU_API int fptu_field_type(const fptu_field *pf);
+FPTU_API fptu_type fptu_field_type(const fptu_field *pf);
 FPTU_API int fptu_field_column(const fptu_field *pf);
 
 FPTU_API uint16_t fptu_field_uint16(const fptu_field *pf);
@@ -759,7 +810,7 @@ FPTU_API uint32_t fptu_field_uint32(const fptu_field *pf);
 FPTU_API int64_t fptu_field_int64(const fptu_field *pf);
 FPTU_API uint64_t fptu_field_uint64(const fptu_field *pf);
 FPTU_API double fptu_field_fp64(const fptu_field *pf);
-FPTU_API float fptu_field_fp32(const fptu_field *pf);
+FPTU_API float_t fptu_field_fp32(const fptu_field *pf);
 FPTU_API fptu_time fptu_field_datetime(const fptu_field *pf);
 FPTU_API const uint8_t *fptu_field_96(const fptu_field *pf);
 FPTU_API const uint8_t *fptu_field_128(const fptu_field *pf);
@@ -775,7 +826,7 @@ FPTU_API uint32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error);
 FPTU_API int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
 FPTU_API uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
 FPTU_API double fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
-FPTU_API float fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
+FPTU_API float_t fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
 FPTU_API fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error);
 
 FPTU_API int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);

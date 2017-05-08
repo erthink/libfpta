@@ -225,7 +225,7 @@ int fptu_upsert_datetime(fptu_rw *pt, unsigned col, fptu_time value) {
 
 //----------------------------------------------------------------------------
 
-int fptu_upsert_fp32(fptu_rw *pt, unsigned col, float value) {
+int fptu_upsert_fp32(fptu_rw *pt, unsigned col, float_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -468,7 +468,7 @@ int fptu_update_datetime(fptu_rw *pt, unsigned col, fptu_time value) {
 
 //----------------------------------------------------------------------------
 
-int fptu_update_fp32(fptu_rw *pt, unsigned col, float value) {
+int fptu_update_fp32(fptu_rw *pt, unsigned col, float_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -701,7 +701,7 @@ int fptu_insert_datetime(fptu_rw *pt, unsigned col, fptu_time value) {
 
 //----------------------------------------------------------------------------
 
-int fptu_insert_fp32(fptu_rw *pt, unsigned col, float value) {
+int fptu_insert_fp32(fptu_rw *pt, unsigned col, float_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 

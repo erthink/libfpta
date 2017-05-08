@@ -195,9 +195,10 @@ template <typename native>
 static inline std::string
 array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
                  const char *comma_fmt) {
-  std::string result = fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
-                                    payload->other.varlen.array_length,
-                                    units2bytes(payload->other.varlen.brutto));
+  std::string result =
+      fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(ct), name,
+                   payload->other.varlen.array_length,
+                   units2bytes(payload->other.varlen.brutto));
 
   const native *array = (const native *)&payload->other.data[1];
   for (unsigned i = 0; i < payload->other.varlen.array_length; ++i)
@@ -208,9 +209,10 @@ array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
 
 static std::string array2str_fixbin(uint16_t ct, const fptu_payload *payload,
                                     const char *name, unsigned itemsize) {
-  std::string result = fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(ct), name,
-                                    payload->other.varlen.array_length,
-                                    units2bytes(payload->other.varlen.brutto));
+  std::string result =
+      fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(ct), name,
+                   payload->other.varlen.array_length,
+                   units2bytes(payload->other.varlen.brutto));
 
   const uint8_t *array = (const uint8_t *)&payload->other.data[1];
   for (unsigned i = 0; i < payload->other.varlen.array_length; ++i) {
@@ -297,7 +299,8 @@ __cold string to_string(const fptu_field &field) {
            std::to_string(fptu_field_nested(&field)) + "}";
 
   case fptu_null | fptu_farray:
-    return fptu::format("{%u.invalid-null[%u(%zu)]}", fptu_get_col(field.ct),
+    return fptu::format("{%u.invalid-null[%u(%" PRIuPTR ")]}",
+                        fptu_get_col(field.ct),
                         payload->other.varlen.array_length,
                         units2bytes(payload->other.varlen.brutto));
 
@@ -318,8 +321,8 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_datetime | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(field.ct), "datetime",
-                     payload->other.varlen.array_length,
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+                     "datetime", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
     const fptu_time *array = (const fptu_time *)&payload->other.data[1];
@@ -342,8 +345,8 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_cstr | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(field.ct), "cstr",
-                     payload->other.varlen.array_length,
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+                     "cstr", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
     const char *array = (const char *)&payload->other.data[1];
@@ -356,8 +359,8 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_opaque | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(field.ct), "opaque",
-                     payload->other.varlen.array_length,
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+                     "opaque", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
     const fptu_unit *array = (const fptu_unit *)&payload->other.data[1];
@@ -372,8 +375,8 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_nested | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%zu)]=", fptu_get_col(field.ct), "nested",
-                     payload->other.varlen.array_length,
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+                     "nested", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
     const fptu_unit *array = (const fptu_unit *)&payload->other.data[1];
@@ -399,8 +402,9 @@ __cold string to_string(const fptu_type type) {
 __cold string to_string(const fptu_ro &ro) {
   const fptu_field *const begin = fptu::begin(ro);
   const fptu_field *const end = fptu::end(ro);
-  string result = fptu::format("(%zi bytes, %ti fields, %p)={", ro.total_bytes,
-                               end - begin, ro.units);
+  string result =
+      fptu::format("(%" PRIiPTR " bytes, %" PRIiPTR " fields, %p)={",
+                   ro.total_bytes, end - begin, ro.units);
   for (auto i = begin; i != end; ++i) {
     if (i != begin)
       result.append(", ");
@@ -415,7 +419,8 @@ __cold string to_string(const fptu_rw &rw) {
   const fptu_field *const begin = fptu::begin(rw);
   const fptu_field *const end = fptu::end(rw);
   string result =
-      fptu::format("(%p, %ti fields, %zu bytes, %zu junk, %zu/%zu space, "
+      fptu::format("(%p, %" PRIiPTR " fields, %" PRIuPTR " bytes, %" PRIuPTR
+                   " junk, %" PRIuPTR "/%" PRIuPTR " space, "
                    "H%u_P%u_T%u_E%u)={",
                    addr, end - begin, units2bytes(rw.tail - rw.head),
                    fptu_junkspace(&rw), fptu_space4items(&rw),

@@ -19,7 +19,12 @@
 
 #include "fast_positive/tuples_internal.h"
 
-int fptu_field_type(const fptu_field *pf) {
+#ifdef _MSC_VER
+#pragma warning(disable : 4738) /* storing 32-bit float result in memory,      \
+                                   possible loss of performance */
+#endif                          /* _MSC_VER (warnings) */
+
+fptu_type fptu_field_type(const fptu_field *pf) {
   if (unlikely(pf == nullptr))
     return fptu_null;
 
@@ -37,99 +42,99 @@ int fptu_field_column(const fptu_field *pf) {
 
 uint16_t fptu_field_uint16(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_uint16))
-    return 0;
+    return FPTU_DENIL_UINT16;
 
   return pf->offset;
 }
 
 int32_t fptu_field_int32(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_int32))
-    return 0;
+    return FPTU_DENIL_INT32;
 
   return fptu_field_payload(pf)->i32;
 }
 
 uint32_t fptu_field_uint32(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_uint32))
-    return 0;
+    return FPTU_DENIL_UINT32;
 
   return fptu_field_payload(pf)->u32;
 }
 
 int64_t fptu_field_int64(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_int64))
-    return 0;
+    return FPTU_DENIL_INT64;
 
   return fptu_field_payload(pf)->i64;
 }
 
 uint64_t fptu_field_uint64(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_uint64))
-    return 0;
+    return FPTU_DENIL_UINT64;
 
   return fptu_field_payload(pf)->u64;
 }
 
 double fptu_field_fp64(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_fp64))
-    return 0.0;
+    return FPTU_DENIL_FP64;
 
   return fptu_field_payload(pf)->fp64;
 }
 
-float fptu_field_fp32(const fptu_field *pf) {
+float_t fptu_field_fp32(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_fp32))
-    return 0.0;
+    return FPTU_DENIL_FP32;
 
   return fptu_field_payload(pf)->fp32;
 }
 
 fptu_time fptu_field_datetime(const fptu_field *pf) {
-  fptu_time result;
-  result.fixedpoint = likely(fptu_field_type(pf) == fptu_datetime)
-                          ? fptu_field_payload(pf)->u64
-                          : 0;
+  if (unlikely(fptu_field_type(pf) != fptu_datetime))
+    return FPTU_DENIL_TIME;
+
+  fptu_time result = {fptu_field_payload(pf)->u64};
   return result;
 }
 
 const char *fptu_field_cstr(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_cstr))
-    return "";
+    return FPTU_DENIL_CSTR;
 
   return fptu_field_payload(pf)->cstr;
 }
 
 const uint8_t *fptu_field_96(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_96))
-    return nullptr;
+    return FPTU_DENIL_FIXBIN;
 
   return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_128(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_128))
-    return nullptr;
+    return FPTU_DENIL_FIXBIN;
 
   return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_160(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_160))
-    return nullptr;
+    return FPTU_DENIL_FIXBIN;
 
   return fptu_field_payload(pf)->fixbin;
 }
 
 const uint8_t *fptu_field_256(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_256))
-    return nullptr;
+    return FPTU_DENIL_FIXBIN;
   return fptu_field_payload(pf)->fixbin;
 }
 
 struct iovec fptu_field_opaque(const fptu_field *pf) {
   iovec io;
   if (unlikely(fptu_field_type(pf) != fptu_opaque)) {
-    io.iov_base = nullptr;
+    io.iov_base = FPTU_DENIL_FIXBIN;
     io.iov_len = 0;
   } else {
     const fptu_payload *payload = fptu_field_payload(pf);
@@ -244,7 +249,7 @@ double fptu_get_fp64(fptu_ro ro, unsigned column, int *error) {
   return fptu_field_fp64(pf);
 }
 
-float fptu_get_fp32(fptu_ro ro, unsigned column, int *error) {
+float_t fptu_get_fp32(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_fp32);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
@@ -269,7 +274,7 @@ int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error) {
       __unreachable();
     }
   }
-  return 0;
+  return FPTU_DENIL_INT64;
 }
 
 uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error) {
@@ -290,7 +295,7 @@ uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error) {
       __unreachable();
     }
   }
-  return 0;
+  return FPTU_DENIL_UINT64;
 }
 
 double fptu_get_fp(fptu_ro ro, unsigned column, int *error) {
@@ -309,7 +314,7 @@ double fptu_get_fp(fptu_ro ro, unsigned column, int *error) {
       __unreachable();
     }
   }
-  return 0;
+  return FPTU_DENIL_FP64;
 }
 
 fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error) {
@@ -317,11 +322,7 @@ fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error) {
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
 
-  fptu_time result;
-  result.fixedpoint = likely(fptu_field_type(pf) == fptu_datetime)
-                          ? fptu_field_payload(pf)->u64
-                          : 0;
-  return result;
+  return fptu_field_datetime(pf);
 }
 
 //----------------------------------------------------------------------------

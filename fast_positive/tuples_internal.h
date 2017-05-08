@@ -325,10 +325,10 @@ static __inline fptu_type fptu_get_type(unsigned packed) {
   return (fptu_type)(packed & fptu_ty_mask);
 }
 
-static __inline unsigned fptu_pack_coltype(unsigned column, unsigned type) {
+static __inline unsigned fptu_pack_coltype(unsigned column, int type) {
   assert(type <= fptu_ty_mask);
   assert(column <= fptu_max_cols);
-  return type + (column << fptu_co_shift);
+  return (unsigned)type + (column << fptu_co_shift);
 }
 
 static __inline bool fptu_ct_match(const fptu_field *pf, unsigned column,
@@ -350,6 +350,8 @@ typedef union fptu_payload {
   double fp64;
   char cstr[4];
   uint8_t fixbin[8];
+  uint32_t fixbin_by32[2];
+  uint64_t fixbin_by64[1];
   struct {
     fptu_varlen varlen;
     uint32_t data[1];
