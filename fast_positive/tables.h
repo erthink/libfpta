@@ -1136,7 +1136,10 @@ FPTA_API int fpta_column_describe(const char *column_name,
 
 /* Инициализирует column_set перед заполнением посредством
  * fpta_column_describe(). */
-FPTA_API void fpta_column_set_init(fpta_column_set *column_set);
+static __inline void fpta_column_set_init(fpta_column_set *column_set) {
+  column_set->count = 0;
+  column_set->shoves[0] = 0;
+}
 
 /* Деструктор fpta_column_set.
  * В случае успеха возвращает ноль, иначе код ошибки. */

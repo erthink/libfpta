@@ -258,11 +258,6 @@ int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
 
 //----------------------------------------------------------------------------
 
-void fpta_column_set_init(fpta_column_set *column_set) {
-  column_set->count = 0;
-  column_set->shoves[0] = 0;
-}
-
 int fpta_column_describe(const char *column_name, enum fptu_type data_type,
                          fpta_index_type index_type,
                          fpta_column_set *column_set) {
