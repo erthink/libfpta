@@ -73,11 +73,11 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
     assert(false && "wrong index");
     stub(_type, _index);
     break;
-  case fpta_primary_withdups:
-    unroll<fpta_primary_withdups>(_type);
+  case fpta_primary_withdups_ordered_obverse:
+    unroll<fpta_primary_withdups_ordered_obverse>(_type);
     break;
-  case fpta_primary_unique:
-    unroll<fpta_primary_unique>(_type);
+  case fpta_primary_unique_ordered_obverse:
+    unroll<fpta_primary_unique_ordered_obverse>(_type);
     break;
   case fpta_primary_withdups_unordered:
     unroll<fpta_primary_withdups_unordered>(_type);
@@ -85,17 +85,17 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
   case fpta_primary_unique_unordered:
     unroll<fpta_primary_unique_unordered>(_type);
     break;
-  case fpta_primary_withdups_reverse:
-    unroll<fpta_primary_withdups_reverse>(_type);
+  case fpta_primary_withdups_ordered_reverse:
+    unroll<fpta_primary_withdups_ordered_reverse>(_type);
     break;
-  case fpta_primary_unique_reverse:
-    unroll<fpta_primary_unique_reverse>(_type);
+  case fpta_primary_unique_ordered_reverse:
+    unroll<fpta_primary_unique_ordered_reverse>(_type);
     break;
-  case fpta_secondary_withdups:
-    unroll<fpta_secondary_withdups>(_type);
+  case fpta_secondary_withdups_ordered_obverse:
+    unroll<fpta_secondary_withdups_ordered_obverse>(_type);
     break;
-  case fpta_secondary_unique:
-    unroll<fpta_secondary_unique>(_type);
+  case fpta_secondary_unique_ordered_obverse:
+    unroll<fpta_secondary_unique_ordered_obverse>(_type);
     break;
   case fpta_secondary_withdups_unordered:
     unroll<fpta_secondary_withdups_unordered>(_type);
@@ -103,11 +103,11 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
   case fpta_secondary_unique_unordered:
     unroll<fpta_secondary_unique_unordered>(_type);
     break;
-  case fpta_secondary_withdups_reverse:
-    unroll<fpta_secondary_withdups_reverse>(_type);
+  case fpta_secondary_withdups_ordered_reverse:
+    unroll<fpta_secondary_withdups_ordered_reverse>(_type);
     break;
-  case fpta_secondary_unique_reverse:
-    unroll<fpta_secondary_unique_reverse>(_type);
+  case fpta_secondary_unique_ordered_reverse:
+    unroll<fpta_secondary_unique_ordered_reverse>(_type);
     break;
   }
 }

@@ -21,7 +21,7 @@
 
 int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
                          const fptu_ro &row_old, const fptu_ro &row_new,
-                         unsigned stepover) {
+                         const unsigned stepover) {
   MDB_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_id, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -30,9 +30,9 @@ int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
     const auto shove = table_id->table.def->columns[i];
     const auto index = fpta_shove2index(shove);
-    if (index == fpta_index_none)
-      break;
     assert(i < fpta_max_indexes);
+    if (!fpta_index_is_secondary(index))
+      break;
     if (i == stepover || !fpta_index_is_unique(index))
       continue;
 
@@ -62,7 +62,7 @@ int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val pk_key_old, const fptu_ro &row_old,
                           MDB_val pk_key_new, const fptu_ro &row_new,
-                          unsigned stepover) {
+                          const unsigned stepover) {
   MDB_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_id, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -71,9 +71,9 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
     const auto shove = table_id->table.def->columns[i];
     const auto index = fpta_shove2index(shove);
-    if (index == fpta_index_none)
-      break;
     assert(i < fpta_max_indexes);
+    if (!fpta_index_is_secondary(index))
+      break;
     if (i == stepover)
       continue;
 
@@ -140,7 +140,7 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
 }
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
-                          const fptu_ro &row_old, unsigned stepover) {
+                          const fptu_ro &row_old, const unsigned stepover) {
   MDB_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_id, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -149,9 +149,9 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
     const auto shove = table_id->table.def->columns[i];
     const auto index = fpta_shove2index(shove);
-    if (index == fpta_index_none)
-      break;
     assert(i < fpta_max_indexes);
+    if (!fpta_index_is_secondary(index))
+      break;
     if (i == stepover)
       continue;
 

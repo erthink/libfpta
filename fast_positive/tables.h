@@ -980,8 +980,10 @@ FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
  *   фиксированного размера.
  *
  * Индексы со сравнением ключей с конца:
- *   - fpta_primary_unique_reverse, fpta_primary_withdups_reverse;
- *   - fpta_secondary_unique_reverse, fpta_secondary_withdups_reverse.
+ *   - fpta_primary_unique_ordered_reverse,
+ *     fpta_primary_withdups_ordered_reverse;
+ *   - fpta_secondary_unique_ordered_reverse,
+ *     fpta_secondary_withdups_ordered_reverse.
  *
  *   Индексы этого типа применимы только для строк и бинарных данных (типы
  *   fptu_96..fptu_256, fptu_cstr и fptu_opaque При этом значения ключей
@@ -999,6 +1001,7 @@ typedef enum fpta_index_type {
   /* Колонка НЕ индексируется и в последствии не может быть указана
    * при открытии курсора как опорная. */
   fpta_index_none = 0,
+  fpta_noindex_nullable = fpta_index_fnullable,
 
   /* Первичный ключ/индекс.
    *
@@ -1007,27 +1010,40 @@ typedef enum fpta_index_type {
    * ключи/индексы допустимы только при уникальности по первичному ключу. */
 
   /* с повторами */
-  fpta_primary_withdups = fpta_index_fordered + fpta_index_fobverse,
-  fpta_primary_withdups_obverse = fpta_primary_withdups,
+  fpta_primary_withdups_ordered_obverse /* сравнение с первого байта */ =
+      fpta_index_fordered + fpta_index_fobverse,
+  fpta_primary_withdups_ordered_obverse_nullable =
+      fpta_primary_withdups_ordered_obverse + fpta_index_fnullable,
+  fpta_primary_withdups_ordered_reverse /* сравнение от последнего байта */ =
+      fpta_primary_withdups_ordered_obverse - fpta_index_fobverse,
+  fpta_primary_withdups_ordered_reverse_nullable =
+      fpta_primary_withdups_ordered_reverse + fpta_index_fnullable,
 
   /* с контролем уникальности */
-  fpta_primary_unique = fpta_primary_withdups + fpta_index_funique,
-  fpta_primary_unique_obverse = fpta_primary_unique,
+  fpta_primary_unique_ordered_obverse /* сравнение с первого байта */ =
+      fpta_primary_withdups_ordered_obverse + fpta_index_funique,
+  fpta_primary_unique_ordered_obverse_nullable =
+      fpta_primary_unique_ordered_obverse + fpta_index_fnullable,
+  fpta_primary_unique_ordered_reverse /* сравнение от последнего байта */ =
+      fpta_primary_unique_ordered_obverse - fpta_index_fobverse,
+  fpta_primary_unique_ordered_reverse_nullable =
+      fpta_primary_unique_ordered_reverse + fpta_index_fnullable,
 
   /* неупорядоченный, с контролем уникальности */
-  fpta_primary_unique_unordered = fpta_primary_unique - fpta_index_fordered,
+  fpta_primary_unique_unordered =
+      fpta_primary_unique_ordered_obverse - fpta_index_fordered,
+  fpta_primary_unique_unordered_nullable_obverse =
+      fpta_primary_unique_unordered + fpta_index_fnullable,
+  fpta_primary_unique_unordered_nullable_reverse =
+      fpta_primary_unique_unordered_nullable_obverse - fpta_index_fobverse,
 
   /* неупорядоченный с повторами */
-  fpta_primary_withdups_unordered = fpta_primary_withdups - fpta_index_fordered,
-
-  /* строки и binary сравниваются с конца, с контролем уникальности */
-  fpta_primary_unique_reverse = fpta_primary_unique - fpta_index_fobverse,
-
-  /* строки и binary сравниваются с конца, с повторами */
-  fpta_primary_withdups_reverse = fpta_primary_withdups - fpta_index_fobverse,
-
-  /* базовый вариант для основного индекса */
-  fpta_primary = fpta_primary_unique_obverse,
+  fpta_primary_withdups_unordered =
+      fpta_primary_withdups_ordered_obverse - fpta_index_fordered,
+  /* fpta_primary_withdups_unordered_nullable_reverse = НЕДОСТУПЕН,
+   * так как битовая коминация совпадает с fpta_noindex_nullable */
+  fpta_primary_withdups_unordered_nullable_obverse =
+      fpta_primary_withdups_unordered + fpta_index_fnullable,
 
   /* Вторичный ключ/индекс.
    *
@@ -1044,38 +1060,49 @@ typedef enum fpta_index_type {
    */
 
   /* с повторами */
-  fpta_secondary_withdups = fpta_primary_withdups + fpta_index_fsecondary,
-  fpta_secondary_withdups_obverse = fpta_secondary_withdups,
+  fpta_secondary_withdups_ordered_obverse /* сравнение с первого байта */ =
+      fpta_index_fsecondary + fpta_index_fordered + fpta_index_fobverse,
+  fpta_secondary_withdups_ordered_obverse_nullable =
+      fpta_secondary_withdups_ordered_obverse + fpta_index_fnullable,
+  fpta_secondary_withdups_ordered_reverse /* сравнение от последнего байта */ =
+      fpta_secondary_withdups_ordered_obverse - fpta_index_fobverse,
+  fpta_secondary_withdups_ordered_reverse_nullable =
+      fpta_secondary_withdups_ordered_reverse + fpta_index_fnullable,
 
   /* с контролем уникальности */
-  fpta_secondary_unique = fpta_secondary_withdups + fpta_index_funique,
-  fpta_secondary_unique_obverse = fpta_secondary_unique,
+  fpta_secondary_unique_ordered_obverse /* сравнение с первого байта */ =
+      fpta_secondary_withdups_ordered_obverse + fpta_index_funique,
+  fpta_secondary_unique_ordered_obverse_nullable =
+      fpta_secondary_unique_ordered_obverse + fpta_index_fnullable,
+  fpta_secondary_unique_ordered_reverse /* сравнение от последнего байта */ =
+      fpta_secondary_unique_ordered_obverse - fpta_index_fobverse,
+  fpta_secondary_unique_ordered_reverse_nullable =
+      fpta_secondary_unique_ordered_reverse + fpta_index_fnullable,
 
   /* неупорядоченный, с контролем уникальности */
-  fpta_secondary_unique_unordered = fpta_secondary_unique - fpta_index_fordered,
+  fpta_secondary_unique_unordered =
+      fpta_secondary_unique_ordered_obverse - fpta_index_fordered,
+  fpta_secondary_unique_unordered_nullable_obverse =
+      fpta_secondary_unique_unordered + fpta_index_fnullable,
+  fpta_secondary_unique_unordered_nullable_reverse =
+      fpta_secondary_unique_unordered_nullable_obverse - fpta_index_fobverse,
 
   /* неупорядоченный с повторами */
   fpta_secondary_withdups_unordered =
-      fpta_secondary_withdups - fpta_index_fordered,
-
-  /* строки и binary сравниваются с конца, с контролем уникальности */
-  fpta_secondary_unique_reverse = fpta_secondary_unique - fpta_index_fobverse,
-
-  /* строки и binary сравниваются с конца, с повторами */
-  fpta_secondary_withdups_reverse =
-      fpta_secondary_withdups - fpta_index_fobverse,
-
-  /* базовый вариант для вторичных индексов */
-  fpta_secondary = fpta_secondary_withdups_obverse,
+      fpta_secondary_withdups_ordered_obverse - fpta_index_fordered,
+  fpta_secondary_withdups_unordered_nullable_obverse =
+      fpta_secondary_withdups_unordered + fpta_index_fnullable,
+  fpta_secondary_withdups_unordered_nullable_reverse =
+      fpta_secondary_withdups_unordered_nullable_obverse - fpta_index_fobverse
 } fpta_index_type;
 
 #ifdef __cplusplus
-inline fpta_index_type operator|(const fpta_index_type a,
-                                 const fpta_index_type b) {
+inline constexpr fpta_index_type operator|(const fpta_index_type a,
+                                           const fpta_index_type b) {
   return (fpta_index_type)((unsigned)a | (unsigned)b);
 }
 
-inline fpta_index_type nullable(const fpta_index_type index) {
+inline constexpr fpta_index_type nullable(const fpta_index_type index) {
   return index | fpta_index_fnullable;
 }
 #endif

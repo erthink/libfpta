@@ -101,14 +101,11 @@ enum fpta_internals {
    * отличать таблицу от колонки, у таблицы в internal будет fpta_ftable. */
   fpta_flag_table = fpta_index_fsecondary,
   fpta_dbi_cache_size = fpta_tables_max * 5,
-  FTPA_SCHEMA_SIGNATURE = 603397211,
-  FTPA_SCHEMA_CHECKSEED = 1546032023
-};
-
-enum fpta_denil_mode {
-  fpta_denil_none = 0,
-  fpta_denil_obverse = 1,
-  fpta_denil_reverse = -1
+  FTPA_SCHEMA_SIGNATURE = 1636722823,
+  FTPA_SCHEMA_CHECKSEED = 67413473,
+  fpta_shoved_keylen = fpta_max_keylen + 8,
+  fpta_notnil_prefix_byte = 42,
+  fpta_notnil_prefix_length = 1
 };
 
 //----------------------------------------------------------------------------
@@ -241,10 +238,12 @@ static __inline fptu_type fpta_shove2type(fpta_shove_t shove) {
 }
 
 static __inline fpta_index_type fpta_shove2index(fpta_shove_t shove) {
-  static_assert((int)fpta_primary < fpta_column_index_mask,
+  static_assert((int)fpta_primary_unique_ordered_obverse <
+                    fpta_column_index_mask,
                 "check fpta_column_index_mask");
-  static_assert((int)fpta_primary > (1 << fpta_column_index_shift) - 1,
-                "expect fpta_primary is shifted");
+  static_assert((int)fpta_primary_unique_ordered_obverse >
+                    (1 << fpta_column_index_shift) - 1,
+                "expect fpta_primary_unique_ordered_obverse is shifted");
   static_assert((fpta_column_index_mask & fpta_column_typeid_mask) == 0,
                 "seems a bug");
   unsigned index = shove & fpta_column_index_mask;
@@ -268,7 +267,7 @@ bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value);
 
 int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
                          fpta_key &key, bool copy = false);
-int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx_key,
+int fpta_index_key2value(fpta_shove_t shove, MDB_val mdbx_key,
                          fpta_value &key_value);
 
 int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
@@ -277,14 +276,16 @@ int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDB_val pk_key_old, const fptu_ro &row_old,
                           MDB_val pk_key_new, const fptu_ro &row_new,
-                          unsigned stepover);
+                          const unsigned stepover);
 
 int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
                          const fptu_ro &row_old, const fptu_ro &row_new,
-                         unsigned stepover);
+                         const unsigned stepover);
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
-                          const fptu_ro &row_old, unsigned stepover);
+                          const fptu_ro &row_old, const unsigned stepover);
+
+int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row);
 
 //----------------------------------------------------------------------------
 
@@ -300,64 +301,55 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor);
 
 //----------------------------------------------------------------------------
 
-static __inline bool fpta_index_is_unique(fpta_shove_t index) {
-  assert(index != fpta_index_none);
+static __inline bool fpta_is_indexed(const fpta_shove_t index) {
+  return (index & (fpta_column_index_mask - fpta_index_fnullable)) != 0;
+}
+
+static __inline bool fpta_index_is_unique(const fpta_shove_t index) {
+  assert(fpta_is_indexed(index));
   return (index & fpta_index_funique) != 0;
 }
 
-static __inline bool fpta_index_is_ordered(fpta_shove_t index) {
-  assert(index != fpta_index_none);
+static __inline bool fpta_index_is_ordered(const fpta_shove_t index) {
+  assert(fpta_is_indexed(index));
   return (index & fpta_index_fordered) != 0;
 }
 
-static __inline bool fpta_index_is_obverse(fpta_shove_t index) {
-  assert(index != fpta_index_none);
+static __inline bool fpta_index_is_obverse(const fpta_shove_t index) {
   return (index & fpta_index_fobverse) != 0;
 }
 
-static __inline bool fpta_index_is_reverse(fpta_shove_t index) {
-  assert(index != fpta_index_none);
+static __inline bool fpta_index_is_reverse(const fpta_shove_t index) {
   return (index & fpta_index_fobverse) == 0;
 }
 
-static __inline bool fpta_index_is_primary(fpta_shove_t index) {
-  assert(index != fpta_index_none);
+static __inline bool fpta_index_is_primary(const fpta_shove_t index) {
+  assert(fpta_is_indexed(index));
   return (index & fpta_index_fsecondary) == 0;
 }
 
-static __inline bool fpta_index_is_secondary(fpta_shove_t index) {
-  assert(index != fpta_index_none);
+static __inline bool fpta_index_is_secondary(const fpta_shove_t index) {
   return (index & fpta_index_fsecondary) != 0;
 }
 
-static __inline bool fpta_index_is_nilable(fpta_shove_t index) {
-  return (index & fpta_index_fnullable) != 0;
+static __inline bool fpta_index_is_nullable(const fpta_index_type index) {
+  assert(index == (index & fpta_column_index_mask));
+  return index > fpta_index_fnullable;
 }
 
-static __inline fpta_denil_mode fpta_index_denil_mode(fpta_shove_t index) {
-  if (!fpta_index_is_nilable(index))
-    return fpta_denil_none;
-  return fpta_index_is_obverse(index) ? fpta_denil_obverse : fpta_denil_reverse;
+static __inline bool fpta_column_is_nullable(const fpta_name *column_id) {
+  return (column_id->shove & fpta_index_fnullable) != 0;
 }
 
-static __inline bool fpta_column_is_nilable(const fpta_name *column_id) {
-  return fpta_index_is_nilable(column_id->shove);
-}
-
-static __inline fpta_denil_mode
-fpta_column_denil_mode(const fpta_name *column_id) {
-  return fpta_index_denil_mode(column_id->shove);
-}
-
-static __inline bool fpta_cursor_is_ordered(fpta_cursor_options op) {
+static __inline bool fpta_cursor_is_ordered(const fpta_cursor_options op) {
   return (op & (fpta_descending | fpta_ascending)) != fpta_unsorted;
 }
 
-static __inline bool fpta_cursor_is_descending(fpta_cursor_options op) {
+static __inline bool fpta_cursor_is_descending(const fpta_cursor_options op) {
   return (op & (fpta_descending | fpta_ascending)) == fpta_descending;
 }
 
-static __inline bool fpta_cursor_is_ascending(fpta_cursor_options op) {
+static __inline bool fpta_cursor_is_ascending(const fpta_cursor_options op) {
   return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
 }
 
@@ -384,6 +376,11 @@ static __inline bool binary_ne(const type &a, const type &b) {
 }
 
 //----------------------------------------------------------------------------
+
+static __inline bool fpta_nullable_reverse_sensitive(const fptu_type type) {
+  return type == fptu_uint16 || type == fptu_uint32 || type == fptu_uint64 ||
+         (type >= fptu_96 && type <= fptu_256);
+}
 
 typedef union {
   uint32_t __i;
@@ -414,3 +411,56 @@ FPTA_API extern const fpta_fp64_t fpta_fp32x64_qsnan;
 #define FPTA_QSNAN_FP32 (fpta_fp32_qsnan.__f)
 #endif
 #define FPTA_DENIL_FP64 FPTA_DENIL_FP
+
+template <fptu_type type>
+static __inline bool is_fixbin_denil(const fpta_index_type index,
+                                     const void *fixbin) {
+  assert(fpta_index_is_nullable(index));
+  const uint64_t denil = fpta_index_is_obverse(index)
+                             ? FPTA_DENIL_FIXBIN_OBVERSE |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 8 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 16 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 24 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 32 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 40 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 48 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 56
+                             : FPTA_DENIL_FIXBIN_REVERSE |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 8 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 16 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 24 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 32 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 40 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 48 |
+                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 56;
+
+  /* FIXME: unaligned access */
+  const uint64_t *by64 = (const uint64_t *)fixbin;
+  const uint32_t *by32 = (const uint32_t *)fixbin;
+
+  switch (type) {
+  case fptu_96:
+    return by64[0] == denil && by32[2] == (uint32_t)denil;
+  case fptu_128:
+    return by64[0] == denil && by64[1] == denil;
+  case fptu_160:
+    return by64[0] == denil && by64[1] == denil && by32[4] == (uint32_t)denil;
+  case fptu_256:
+    return by64[0] == denil && by64[1] == denil && by64[2] == denil &&
+           by64[3] == denil;
+  default:
+    assert(false);
+  }
+}
+
+static __inline bool check_fixbin_not_denil(const fpta_index_type index,
+                                            const fptu_payload *payload,
+                                            const size_t bytes) {
+  assert(fpta_index_is_nullable(index));
+  for (size_t i = 0; i < bytes; i++)
+    if (payload->fixbin[i] != (fpta_index_is_obverse(index)
+                                   ? FPTA_DENIL_FIXBIN_OBVERSE
+                                   : FPTA_DENIL_FIXBIN_REVERSE))
+      return true;
+  return false;
+}

@@ -70,10 +70,10 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  fpta_index_type index = fpta_shove2index(column_id->shove);
-  if (unlikely(index == fpta_index_none))
+  if (unlikely(!fpta_is_indexed(column_id->shove)))
     return FPTA_NO_INDEX;
 
+  const fpta_index_type index = fpta_shove2index(column_id->shove);
   if (!fpta_index_is_ordered(index)) {
     if (unlikely(fpta_cursor_is_ordered(op)))
       return FPTA_NO_INDEX;
@@ -890,6 +890,10 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
+
+  rc = fpta_check_notindexed_cols(cursor->table_id, new_row_value);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   fpta_key column_key;
   rc = fpta_index_row2key(cursor->index.shove, cursor->index.column_order,

@@ -25,63 +25,10 @@
 /*FPTA_API*/ const fpta_fp64_t fpta_fp32x64_denil = {FPTA_DENIL_FP32x64_BIN};
 /*FPTA_API*/ const fpta_fp64_t fpta_fp32x64_qsnan = {FPTA_QSNAN_FP32x64_BIN};
 
-template <fptu_type type>
-static __inline bool is_fixbin_denil(const fpta_denil_mode mode,
-                                     const void *fixbin) {
-  assert(mode != fpta_denil_none);
-
-  const uint64_t denil = (mode == fpta_denil_obverse)
-                             ? FPTA_DENIL_FIXBIN_OBVERSE |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 8 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 16 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 24 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 32 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 40 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 48 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 56
-                             : FPTA_DENIL_FIXBIN_REVERSE |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 8 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 16 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 24 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 32 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 40 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 48 |
-                                   (uint64_t)FPTA_DENIL_FIXBIN_REVERSE << 56;
-
-  /* FIXME: unaligned access */
-  const uint64_t *by64 = (const uint64_t *)fixbin;
-  const uint32_t *by32 = (const uint32_t *)fixbin;
-
-  switch (type) {
-  case fptu_96:
-    return by64[0] == denil && by32[2] == (uint32_t)denil;
-  case fptu_128:
-    return by64[0] == denil && by64[1] == denil;
-  case fptu_160:
-    return by64[0] == denil && by64[1] == denil && by32[4] == (uint32_t)denil;
-  case fptu_256:
-    return by64[0] == denil && by64[1] == denil && by64[2] == denil &&
-           by64[3] == denil;
-  default:
-    assert(false);
-  }
-}
-
-static __inline bool check_fixbin_not_denil(const fpta_denil_mode mode,
-                                            const fptu_payload *payload,
-                                            const size_t bytes) {
-  for (size_t i = 0; i < bytes; i++)
-    if (payload->fixbin[i] != ((mode == fpta_denil_obverse)
-                                   ? FPTA_DENIL_FIXBIN_OBVERSE
-                                   : FPTA_DENIL_FIXBIN_REVERSE))
-      return true;
-  return false;
-}
-
 //----------------------------------------------------------------------------
 
 static fpta_value fpta_field2value_ex(const fptu_field *field,
-                                      const fpta_denil_mode mode) {
+                                      const fpta_index_type index) {
   fpta_value result = {fpta_null, 0, {0}};
 
   if (unlikely(!field))
@@ -106,8 +53,8 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_uint16:
-    if (mode != fpta_denil_none) {
-      const uint16_t denil = (mode == fpta_denil_obverse)
+    if (fpta_index_is_nullable(index)) {
+      const uint16_t denil = fpta_index_is_obverse(index)
                                  ? FPTA_DENIL_UINT16_OBVERSE
                                  : FPTA_DENIL_UINT16_REVERSE;
       if (FPTA_CLEAN_DENIL && unlikely(field->get_payload_uint16() == denil))
@@ -119,7 +66,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_int32:
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const int32_t denil = FPTA_DENIL_SINT32;
       if (FPTA_CLEAN_DENIL && unlikely(payload->i32 == denil))
         break;
@@ -130,8 +77,8 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_uint32:
-    if (mode != fpta_denil_none) {
-      const uint32_t denil = (mode == fpta_denil_obverse)
+    if (fpta_index_is_nullable(index)) {
+      const uint32_t denil = fpta_index_is_obverse(index)
                                  ? FPTA_DENIL_UINT32_OBVERSE
                                  : FPTA_DENIL_UINT32_REVERSE;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
@@ -143,7 +90,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_fp32:
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const uint32_t denil = FPTA_DENIL_FP32_BIN;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
         break;
@@ -155,7 +102,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_int64:
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const int64_t denil = FPTA_DENIL_SINT64;
       if (FPTA_CLEAN_DENIL && unlikely(payload->i64 == denil))
         break;
@@ -166,8 +113,8 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_uint64:
-    if (mode != fpta_denil_none) {
-      const uint64_t denil = (mode == fpta_denil_obverse)
+    if (fpta_index_is_nullable(index)) {
+      const uint64_t denil = fpta_index_is_obverse(index)
                                  ? FPTA_DENIL_UINT64_OBVERSE
                                  : FPTA_DENIL_UINT64_REVERSE;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
@@ -179,7 +126,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_fp64:
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_FP64_BIN;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
@@ -191,7 +138,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_datetime:
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
@@ -202,10 +149,10 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_96:
-    if (mode != fpta_denil_none) {
-      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_96>(mode, payload->fixbin))
+    if (fpta_index_is_nullable(index)) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_96>(index, payload->fixbin))
         break;
-      assert(check_fixbin_not_denil(mode, payload, 96 / 8));
+      assert(check_fixbin_not_denil(index, payload, 96 / 8));
     }
     result.type = fpta_binary;
     result.binary_length = 96 / 8;
@@ -213,10 +160,10 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_128:
-    if (mode != fpta_denil_none) {
-      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_128>(mode, payload->fixbin))
+    if (fpta_index_is_nullable(index)) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_128>(index, payload->fixbin))
         break;
-      assert(check_fixbin_not_denil(mode, payload, 128 / 8));
+      assert(check_fixbin_not_denil(index, payload, 128 / 8));
     }
     result.type = fpta_binary;
     result.binary_length = 128 / 8;
@@ -224,10 +171,10 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_160:
-    if (mode != fpta_denil_none) {
-      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_160>(mode, payload->fixbin))
+    if (fpta_index_is_nullable(index)) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_160>(index, payload->fixbin))
         break;
-      assert(check_fixbin_not_denil(mode, payload, 160 / 8));
+      assert(check_fixbin_not_denil(index, payload, 160 / 8));
     }
     result.type = fpta_binary;
     result.binary_length = 160 / 8;
@@ -235,10 +182,10 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_256:
-    if (mode != fpta_denil_none) {
-      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_256>(mode, payload->fixbin))
+    if (fpta_index_is_nullable(index)) {
+      if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_256>(index, payload->fixbin))
         break;
-      assert(check_fixbin_not_denil(mode, payload, 256 / 8));
+      assert(check_fixbin_not_denil(index, payload, 256 / 8));
     }
     result.type = fpta_binary;
     result.binary_length = 256 / 8;
@@ -255,7 +202,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
 }
 
 fpta_value fpta_field2value(const fptu_field *field) {
-  return fpta_field2value_ex(field, fpta_denil_none);
+  return fpta_field2value_ex(field, fpta_index_none);
 }
 
 int fpta_get_column(fptu_ro row, const fpta_name *column_id,
@@ -265,7 +212,7 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
 
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column_id->column.num,
                                            fpta_name_coltype(column_id));
-  *value = fpta_field2value_ex(field, fpta_column_denil_mode(column_id));
+  *value = fpta_field2value_ex(field, fpta_name_colindex(column_id));
   return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
 
@@ -277,7 +224,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   fptu_type coltype = fpta_shove2type(column_id->shove);
   assert(column_id->column.num <= fptu_max_cols);
   const unsigned col = (unsigned)column_id->column.num;
-  const fpta_denil_mode mode = fpta_column_denil_mode(column_id);
+  const fpta_index_type index = fpta_name_colindex(column_id);
 
   if (unlikely(value.type == fpta_null))
     goto erase_field;
@@ -314,8 +261,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-      if (mode != fpta_denil_none) {
-        const uint16_t denil = (mode == fpta_denil_obverse)
+      if (fpta_index_is_nullable(index)) {
+        const uint16_t denil = fpta_index_is_obverse(index)
                                    ? FPTA_DENIL_UINT16_OBVERSE
                                    : FPTA_DENIL_UINT16_REVERSE;
         if (unlikely(value.uint == denil))
@@ -334,7 +281,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.uint > INT32_MAX))
         return FPTA_EVALUE;
     case fpta_signed_int:
-      if (mode != fpta_denil_none) {
+      if (fpta_index_is_nullable(index)) {
         const int32_t denil = FPTA_DENIL_SINT32;
         if (unlikely(value.sint == denil))
           goto denil_catched;
@@ -352,8 +299,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-      if (mode != fpta_denil_none) {
-        const uint32_t denil = (mode == fpta_denil_obverse)
+      if (fpta_index_is_nullable(index)) {
+        const uint32_t denil = fpta_index_is_obverse(index)
                                    ? FPTA_DENIL_UINT32_OBVERSE
                                    : FPTA_DENIL_UINT32_REVERSE;
         if (unlikely(value.uint == denil))
@@ -367,7 +314,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_fp32:
     if (unlikely(value.type != fpta_float_point))
       return FPTA_ETYPE;
-    if (mode != fpta_denil_none &&
+    if (fpta_index_is_nullable(index) &&
         /* LY: проверяем на DENIL с учетом усечения при конвертации во float */
         unlikely(value.uint >= FPTA_DENIL_FP32x64_BIN)) {
       if (value.uint == FPTA_DENIL_FP32x64_BIN)
@@ -391,7 +338,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.uint > INT64_MAX))
         return FPTA_EVALUE;
     case fpta_signed_int:
-      if (mode != fpta_denil_none) {
+      if (fpta_index_is_nullable(index)) {
         const int64_t denil = FPTA_DENIL_SINT64;
         if (unlikely(value.sint == denil))
           goto denil_catched;
@@ -407,8 +354,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-      if (mode != fpta_denil_none) {
-        const uint64_t denil = (mode == fpta_denil_obverse)
+      if (fpta_index_is_nullable(index)) {
+        const uint64_t denil = fpta_index_is_obverse(index)
                                    ? FPTA_DENIL_UINT64_OBVERSE
                                    : FPTA_DENIL_UINT64_REVERSE;
         if (unlikely(value.uint == denil))
@@ -420,7 +367,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_fp64:
     if (unlikely(value.type != fpta_float_point))
       return FPTA_ETYPE;
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_FP64_BIN;
       if (unlikely(value.uint == denil))
         goto denil_catched;
@@ -432,7 +379,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_datetime:
     if (value.type != fpta_datetime)
       return FPTA_ETYPE;
-    if (mode != fpta_denil_none) {
+    if (fpta_index_is_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
       if (unlikely(value.datetime.fixedpoint == denil))
         goto denil_catched;
@@ -446,8 +393,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (mode != fpta_denil_none &&
-        is_fixbin_denil<fptu_96>(mode, value.binary_data))
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_96>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_96(pt, col, value.binary_data);
 
@@ -458,8 +405,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (mode != fpta_denil_none &&
-        is_fixbin_denil<fptu_128>(mode, value.binary_data))
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_128>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_128(pt, col, value.binary_data);
 
@@ -470,8 +417,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (mode != fpta_denil_none &&
-        is_fixbin_denil<fptu_160>(mode, value.binary_data))
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_160>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_160(pt, col, value.binary_data);
 
@@ -482,8 +429,8 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (mode != fpta_denil_none &&
-        is_fixbin_denil<fptu_160>(mode, value.binary_data))
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_160>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_256(pt, col, value.binary_data);
 
@@ -541,7 +488,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   default:
     assert(false && "unreachable");
     __unreachable();
-    return FPTA_EINVAL;
+    return FPTA_EOOPS;
   case fpta_insert:
     if (fpta_index_is_unique(table_id->table.pk)) {
       if (present_row.sys.iov_base)
@@ -596,6 +543,10 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
       flags |= MDB_NOOVERWRITE;
     break;
   }
+
+  rc = fpta_check_notindexed_cols(table_id, row);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   fpta_key pk_key;
   rc = fpta_index_row2key(table_id->table.pk, 0, row, pk_key, false);
@@ -712,8 +663,11 @@ int fpta_get(fpta_txn *txn, fpta_name *column_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  fpta_index_type index = fpta_shove2index(column_id->shove);
-  if (unlikely(index == fpta_index_none || !fpta_index_is_unique(index)))
+  if (unlikely(!fpta_is_indexed(column_id->shove)))
+    return FPTA_NO_INDEX;
+
+  const fpta_index_type index = fpta_shove2index(column_id->shove);
+  if (unlikely(!fpta_index_is_unique(index)))
     return FPTA_NO_INDEX;
 
   fpta_key column_key;

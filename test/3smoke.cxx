@@ -63,7 +63,8 @@ TEST(SmokeIndex, Primary) {
   fpta_column_set_init(&def);
 
   EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("pk_str_uniq", fptu_cstr, fpta_primary, &def));
+            fpta_column_describe("pk_str_uniq", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("a_uint", fptu_uint64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
@@ -318,9 +319,11 @@ TEST(SmokeIndex, Secondary) {
   fpta_column_set_init(&def);
 
   EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("pk_str_uniq", fptu_cstr, fpta_primary, &def));
-  EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("a_uint", fptu_uint64, fpta_secondary, &def));
+            fpta_column_describe("pk_str_uniq", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "a_uint", fptu_uint64,
+                         fpta_secondary_withdups_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("b_fp", fptu_fp64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -732,12 +735,13 @@ public:
     fpta_column_set_init(&def);
 
     EXPECT_EQ(FPTA_OK, fpta_column_describe("time", fptu_datetime,
-                                            fpta_index_none, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("uint", fptu_uint32,
-                                            fpta_primary_unique, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
-              fpta_column_describe("str", fptu_cstr,
-                                   fpta_secondary_unique_reverse, &def));
+              fpta_column_describe("uint", fptu_uint32,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "str", fptu_cstr,
+                           fpta_secondary_unique_ordered_reverse, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("real", fptu_fp64,
                                    fpta_secondary_withdups_unordered, &def));
@@ -2022,11 +2026,12 @@ TEST_P(SmokeSelect, Filter) {
 
 INSTANTIATE_TEST_CASE_P(
     Combine, SmokeSelect,
-    ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_withdups,
-                          fpta_primary_unique_unordered,
-                          fpta_primary_withdups_unordered),
-        ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
+    ::testing::Combine(::testing::Values(fpta_primary_unique_ordered_obverse,
+                                         fpta_primary_withdups_ordered_obverse,
+                                         fpta_primary_unique_unordered,
+                                         fpta_primary_withdups_unordered),
+                       ::testing::Values(fpta_unsorted, fpta_ascending,
+                                         fpta_descending)));
 #else
 
 TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
@@ -2051,7 +2056,8 @@ TEST(SmoceCrud, OneRowOneColumn) {
   fpta_column_set def;
   fpta_column_set_init(&def);
   ASSERT_EQ(FPTA_OK,
-            fpta_column_describe("StrColumn", fptu_cstr, fpta_primary, &def));
+            fpta_column_describe("StrColumn", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
   ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
   // запускам транзакцию и создаем таблицу с обозначенным набором колонок
@@ -2158,11 +2164,14 @@ TEST(Smoke, DirectDirtyDeletions) {
   fpta_column_set def;
   fpta_column_set_init(&def);
   EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("Nnn", fptu_int64, fpta_primary_unique, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("_createdAt", fptu_datetime,
-                                          fpta_secondary, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("_id", fptu_int64,
-                                          fpta_secondary_unique, &def));
+            fpta_column_describe("Nnn", fptu_int64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_createdAt", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_int64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "bugged", &def));
 
@@ -2382,9 +2391,11 @@ TEST(Smoke, UpdateViolateUnique) {
   fpta_column_set def;
   fpta_column_set_init(&def);
   EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("key", fptu_int64, fpta_primary_unique, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("value", fptu_int64,
-                                          fpta_secondary_unique, &def));
+            fpta_column_describe("key", fptu_int64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("value", fptu_int64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "map", &def));
 

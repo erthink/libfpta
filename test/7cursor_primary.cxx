@@ -119,9 +119,8 @@ public:
      *
      * Соответственно ниже для descending-курсора выполняется "переворот"
      * контрольного номера дубликата. */
-    const unsigned expected_dup_id = fpta_index_is_unique(index)
-                                         ? 42
-                                         : fpta_cursor_is_descending(ordering)
+    const unsigned expected_dup_id =
+        fpta_index_is_unique(index) ? 42 : fpta_cursor_is_descending(ordering)
                                                ? n_dups - (dup_id + 1)
                                                : dup_id;
 
@@ -268,7 +267,7 @@ public:
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -1532,8 +1531,10 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reverse,
-                          fpta_primary_withdups, fpta_primary_withdups_reverse,
+        ::testing::Values(fpta_primary_unique_ordered_obverse,
+                          fpta_primary_unique_ordered_reverse,
+                          fpta_primary_withdups_ordered_obverse,
+                          fpta_primary_withdups_ordered_reverse,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
@@ -1546,7 +1547,8 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_primary_withdups, fpta_primary_withdups_reverse,
+        ::testing::Values(fpta_primary_withdups_ordered_obverse,
+                          fpta_primary_withdups_ordered_reverse,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
 

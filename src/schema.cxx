@@ -193,8 +193,10 @@ static __hot int fpta_dbi_open(fpta_txn *txn, fpta_shove_t shove,
 static int fpta_schema_open(fpta_txn *txn, bool create) {
   assert(fpta_txn_validate(txn, create ? fpta_schema : fpta_read) ==
          FPTA_SUCCESS);
-  const auto key_shove = fpta_column_shove(0, fptu_uint64, fpta_primary);
-  const auto data_shove = fpta_column_shove(0, fptu_opaque, fpta_primary);
+  const auto key_shove =
+      fpta_column_shove(0, fptu_uint64, fpta_primary_unique_ordered_obverse);
+  const auto data_shove =
+      fpta_column_shove(0, fptu_opaque, fpta_primary_unique_ordered_obverse);
   return fpta_dbi_open(txn, 0, &txn->db->schema_dbi,
                        create ? MDB_INTEGERKEY | MDB_CREATE : 0u, key_shove,
                        data_shove);
@@ -205,7 +207,8 @@ int fpta_open_table(fpta_txn *txn, fpta_name *table_id) {
   assert(table_id->mdbx_dbi < 1);
 
   fpta_shove_t dbi_shove = fpta_dbi_shove(table_id->shove, 0);
-  const auto data_shove = fpta_column_shove(0, fptu_nested, fpta_primary);
+  const auto data_shove =
+      fpta_column_shove(0, fptu_nested, fpta_primary_unique_ordered_obverse);
   return fpta_dbi_open(txn, dbi_shove, &table_id->mdbx_dbi, 0,
                        table_id->table.pk, data_shove);
 }
@@ -240,7 +243,7 @@ int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
   dbi_array[0] = table_id->mdbx_dbi;
   for (size_t i = 1; i < table_id->table.def->count; ++i) {
     const fpta_shove_t shove = table_id->table.def->columns[i];
-    if (fpta_shove2index(shove) == fpta_index_none)
+    if (!fpta_is_indexed(shove))
       break;
 
     const fpta_shove_t dbi_shove = fpta_dbi_shove(table_id->shove, i);
@@ -271,41 +274,64 @@ int fpta_column_describe(const char *column_name, enum fptu_type data_type,
                data_type > (fptu_nested /* TODO: | fptu_farray */)))
     return FPTA_EINVAL;
 
-  if (index_type && data_type < fptu_96 && fpta_index_is_reverse(index_type))
-    return FPTA_EINVAL;
+  if (fpta_is_indexed(index_type) && fpta_index_is_reverse(index_type) &&
+      (!fpta_index_is_ordered(index_type) || data_type < fptu_96)) {
+    if (!fpta_index_is_nullable(index_type) ||
+        !fpta_nullable_reverse_sensitive(data_type))
+      return FPTA_EINVAL;
+  }
 
   switch (index_type) {
   default:
     return FPTA_EINVAL;
 
-  case fpta_primary_unique_unordered:
-  case fpta_primary_withdups_unordered:
-  case fpta_secondary_unique_unordered:
-  case fpta_secondary_withdups_unordered:
-
-  case fpta_primary_unique:
-  case fpta_primary_withdups:
-  case fpta_primary_unique_reverse:
-  case fpta_primary_withdups_reverse:
-
-  case fpta_secondary_unique:
-  case fpta_secondary_withdups:
-  case fpta_secondary_unique_reverse:
-  case fpta_secondary_withdups_reverse:
-
   case fpta_index_none:
+  case fpta_noindex_nullable:
+
+  case fpta_primary_withdups_ordered_obverse:
+  case fpta_primary_withdups_ordered_obverse_nullable:
+  case fpta_primary_withdups_ordered_reverse:
+  case fpta_primary_withdups_ordered_reverse_nullable:
+
+  case fpta_primary_unique_ordered_obverse:
+  case fpta_primary_unique_ordered_obverse_nullable:
+  case fpta_primary_unique_ordered_reverse:
+  case fpta_primary_unique_ordered_reverse_nullable:
+
+  case fpta_primary_unique_unordered:
+  case fpta_primary_unique_unordered_nullable_obverse:
+  case fpta_primary_unique_unordered_nullable_reverse:
+
+  case fpta_primary_withdups_unordered:
+  case fpta_primary_withdups_unordered_nullable_obverse:
+  /* fpta_primary_withdups_unordered_nullable_reverse = НЕДОСТУПЕН,
+   * так как битовая коминация совпадает с fpta_noindex_nullable */
+
+  case fpta_secondary_withdups_ordered_obverse:
+  case fpta_secondary_withdups_ordered_obverse_nullable:
+  case fpta_secondary_withdups_ordered_reverse:
+  case fpta_secondary_withdups_ordered_reverse_nullable:
+
+  case fpta_secondary_unique_ordered_obverse:
+  case fpta_secondary_unique_ordered_obverse_nullable:
+  case fpta_secondary_unique_ordered_reverse:
+  case fpta_secondary_unique_ordered_reverse_nullable:
+
+  case fpta_secondary_unique_unordered:
+  case fpta_secondary_unique_unordered_nullable_obverse:
+  case fpta_secondary_unique_unordered_nullable_reverse:
+
+  case fpta_secondary_withdups_unordered:
+  case fpta_secondary_withdups_unordered_nullable_obverse:
+  case fpta_secondary_withdups_unordered_nullable_reverse:
     assert((index_type & fpta_column_index_mask) == index_type);
-    break;
+    assert(index_type != (fpta_index_type)fpta_flag_table);
   }
-  assert(index_type != (fpta_index_type)fpta_flag_table);
 
   if (unlikely(column_set == nullptr || column_set->count > fpta_max_cols))
     return FPTA_EINVAL;
 
-  if (unlikely(column_set->count == fpta_max_cols))
-    return FPTA_TOOMANY;
-
-  fpta_shove_t shove = fpta_column_shove(
+  const fpta_shove_t shove = fpta_column_shove(
       fpta_shove_name(column_name, fpta_column), data_type, index_type);
   assert(fpta_shove2index(shove) != (fpta_index_type)fpta_flag_table);
 
@@ -314,16 +340,18 @@ int fpta_column_describe(const char *column_name, enum fptu_type data_type,
       return FPTA_EEXIST;
   }
 
-  if (index_type && fpta_index_is_primary(index_type)) {
+  if (fpta_is_indexed(index_type) && fpta_index_is_primary(index_type)) {
     if (column_set->shoves[0])
       return FPTA_EEXIST;
     column_set->shoves[0] = shove;
     if (column_set->count < 1)
       column_set->count = 1;
   } else {
-    if (index_type != fpta_index_none && column_set->shoves[0] &&
+    if (fpta_index_is_secondary(index_type) && column_set->shoves[0] &&
         !fpta_index_is_unique(column_set->shoves[0]))
       return FPTA_EINVAL;
+    if (unlikely(column_set->count == fpta_max_cols))
+      return FPTA_TOOMANY;
     size_t place = (column_set->count > 0) ? column_set->count : 1;
     column_set->shoves[place] = shove;
     column_set->count = (unsigned)place + 1;
@@ -340,31 +368,55 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
 
   size_t index_count = 0;
   for (size_t i = 0; i < count; ++i) {
-    fpta_shove_t shove = def[i];
-    fpta_index_type index_type = fpta_shove2index(shove);
+    const fpta_shove_t shove = def[i];
+    const fpta_index_type index_type = fpta_shove2index(shove);
     switch (index_type) {
     default:
       return FPTA_EINVAL;
 
-    case fpta_primary_unique:
-    case fpta_primary_withdups:
+    case fpta_primary_withdups_ordered_obverse:
+    case fpta_primary_withdups_ordered_obverse_nullable:
+    case fpta_primary_withdups_ordered_reverse:
+    case fpta_primary_withdups_ordered_reverse_nullable:
+
+    case fpta_primary_unique_ordered_obverse:
+    case fpta_primary_unique_ordered_obverse_nullable:
+    case fpta_primary_unique_ordered_reverse:
+    case fpta_primary_unique_ordered_reverse_nullable:
+
     case fpta_primary_unique_unordered:
+    case fpta_primary_unique_unordered_nullable_obverse:
+    case fpta_primary_unique_unordered_nullable_reverse:
+
     case fpta_primary_withdups_unordered:
-    case fpta_primary_unique_reverse:
-    case fpta_primary_withdups_reverse:
+    case fpta_primary_withdups_unordered_nullable_obverse:
+      /* fpta_primary_withdups_unordered_nullable_reverse = НЕДОСТУПЕН,
+       * так как битовая коминация совпадает с fpta_noindex_nullable */
+
       if (i != 0)
         /* первичный ключ может быть только один и только в самом
          * начале */
         return FPTA_EINVAL;
       break;
 
-    case fpta_secondary_unique:
-    case fpta_secondary_withdups:
+    case fpta_secondary_withdups_ordered_obverse:
+    case fpta_secondary_withdups_ordered_obverse_nullable:
+    case fpta_secondary_withdups_ordered_reverse:
+    case fpta_secondary_withdups_ordered_reverse_nullable:
+
+    case fpta_secondary_unique_ordered_obverse:
+    case fpta_secondary_unique_ordered_obverse_nullable:
+    case fpta_secondary_unique_ordered_reverse:
+    case fpta_secondary_unique_ordered_reverse_nullable:
+
     case fpta_secondary_unique_unordered:
+    case fpta_secondary_unique_unordered_nullable_obverse:
+    case fpta_secondary_unique_unordered_nullable_reverse:
+
     case fpta_secondary_withdups_unordered:
-    case fpta_secondary_unique_reverse:
-    case fpta_secondary_withdups_reverse:
-      if (i > 0 && fpta_shove2index(def[i - 1]) == fpta_index_none)
+    case fpta_secondary_withdups_unordered_nullable_obverse:
+    case fpta_secondary_withdups_unordered_nullable_reverse:
+      if (i > 0 && !fpta_is_indexed(def[i - 1]))
         /* сначала должны идти все индексируемые колонки, потом не
          * индексируемые */
         return FPTA_EINVAL;
@@ -375,6 +427,7 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
       if (++index_count > fpta_max_indexes)
         return FPTA_TOOMANY;
     case fpta_index_none:
+    case fpta_noindex_nullable:
       if (i == 0)
         return FPTA_EINVAL;
       break;
@@ -382,17 +435,32 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
     assert((index_type & fpta_column_index_mask) == index_type);
     assert(index_type != (fpta_index_type)fpta_flag_table);
 
-    fptu_type data_type = fpta_shove2type(shove);
+    const fptu_type data_type = fpta_shove2type(shove);
     if (data_type < fptu_uint16 || data_type == (fptu_null | fptu_farray) ||
         data_type > (fptu_nested /* TODO: | fptu_farray */))
       return false;
 
-    if (index_type && data_type < fptu_96 && fpta_index_is_reverse(index_type))
-      return FPTA_EINVAL;
+    if (fpta_is_indexed(index_type) && fpta_index_is_reverse(index_type) &&
+        (!fpta_index_is_ordered(index_type) || data_type < fptu_96)) {
+      if (!fpta_index_is_nullable(index_type) ||
+          !fpta_nullable_reverse_sensitive(data_type))
+        return FPTA_EINVAL;
+    }
+
+    for (size_t j = 0; j < i; ++j)
+      if (fpta_shove_eq(shove, def[j]))
+        return FPTA_EINVAL;
   }
 
-  // FIXME: check for distinctness.
   return FPTA_SUCCESS;
+}
+
+static __inline int weight(const fpta_shove_t index) {
+  if (fpta_is_indexed(index))
+    return 3;
+  if (index & fpta_index_fnullable)
+    return 1;
+  return 0;
 }
 
 int fpta_column_set_validate(fpta_column_set *column_set) {
@@ -407,7 +475,9 @@ int fpta_column_set_validate(fpta_column_set *column_set) {
   std::stable_sort(column_set->shoves + 1,
                    column_set->shoves + column_set->count,
                    [](const fpta_shove_t &left, const fpta_shove_t &right) {
-                     return fpta_shove2index(left) > fpta_shove2index(right);
+                     const auto left_weight = weight(left);
+                     const auto rigth_weight = weight(right);
+                     return left_weight > rigth_weight;
                    });
 
   return fpta_column_def_validate(column_set->shoves, column_set->count);
@@ -798,12 +868,14 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
 
   for (size_t i = 0; i < column_set->count; ++i) {
     const auto shove = column_set->shoves[i];
-    const auto index = fpta_shove2index(shove);
-    if (index == fpta_index_none)
+    if (!fpta_is_indexed(shove))
       break;
     assert(i < fpta_max_indexes);
-    const auto data_shove = i ? column_set->shoves[0]
-                              : fpta_column_shove(0, fptu_nested, fpta_primary);
+
+    const auto data_shove =
+        i ? column_set->shoves[0]
+          : fpta_column_shove(0, fptu_nested,
+                              fpta_primary_unique_ordered_obverse);
     int err = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), &dbi[i], 0,
                             shove, data_shove);
     if (err != MDB_NOTFOUND)
@@ -812,15 +884,18 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
 
   for (size_t i = 0; i < column_set->count; ++i) {
     const auto shove = column_set->shoves[i];
-    const auto index = fpta_shove2index(shove);
-    if (index == fpta_index_none)
+    if (!fpta_is_indexed(shove))
       break;
-    unsigned dbi_flags =
+    assert(i < fpta_max_indexes);
+
+    const unsigned dbi_flags =
         (i == 0) ? fpta_index_shove2primary_dbiflags(column_set->shoves[0])
                  : fpta_index_shove2secondary_dbiflags(column_set->shoves[0],
                                                        column_set->shoves[i]);
-    const auto data_shove = i ? column_set->shoves[0]
-                              : fpta_column_shove(0, fptu_nested, fpta_primary);
+    const auto data_shove =
+        i ? column_set->shoves[0]
+          : fpta_column_shove(0, fptu_nested,
+                              fpta_primary_unique_ordered_obverse);
     rc = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), &dbi[i], dbi_flags,
                        shove, data_shove);
     if (rc != MDB_SUCCESS)
@@ -853,7 +928,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
 bailout:
   for (size_t i = 0; i < fpta_max_indexes && dbi[i] > 0; ++i) {
     fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
-    int err = mdbx_drop(txn->mdbx_txn, dbi[i], 1);
+    int err = mdbx_drop(txn->mdbx_txn, dbi[i], true);
     if (unlikely(err != MDB_SUCCESS))
       return fpta_internal_abort(txn, err);
   }
@@ -891,12 +966,14 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   const fpta_table_schema *def = (const fpta_table_schema *)data.mv_data;
   for (size_t i = 0; i < def->count; ++i) {
     const auto shove = def->columns[i];
-    const auto index = fpta_shove2index(shove);
-    if (index == fpta_index_none)
+    if (!fpta_is_indexed(shove))
       break;
     assert(i < fpta_max_indexes);
+
     const auto data_shove =
-        i ? def->columns[0] : fpta_column_shove(0, fptu_nested, fpta_primary);
+        i ? def->columns[0]
+          : fpta_column_shove(0, fptu_nested,
+                              fpta_primary_unique_ordered_obverse);
     rc = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), &dbi[i], 0, shove,
                        data_shove);
     if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND)
@@ -908,12 +985,37 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
     return rc;
 
   txn->schema_version() = txn->db_version;
-  for (size_t i = 0; i < fpta_max_indexes && dbi[i] > 0; ++i) {
-    fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
-    int err = mdbx_drop(txn->mdbx_txn, dbi[i], 1);
-    if (unlikely(err != MDB_SUCCESS))
-      return fpta_internal_abort(txn, err);
+  for (size_t i = 0; i < def->count; ++i) {
+    if (dbi[i] > 0) {
+      fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
+      int err = mdbx_drop(txn->mdbx_txn, dbi[i], true);
+      if (unlikely(err != MDB_SUCCESS))
+        return fpta_internal_abort(txn, err);
+    }
   }
 
   return rc;
+}
+
+//----------------------------------------------------------------------------
+
+int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row) {
+  assert(table_id->table.def->count > 0);
+  for (size_t i = table_id->table.def->count; --i > 0;) {
+    const auto shove = table_id->table.def->columns[i];
+    const auto index = fpta_shove2index(shove);
+    assert(i < fpta_max_indexes);
+    if (index > fpta_index_none) {
+      assert(fpta_index_is_secondary(index) || (index & fpta_index_fnullable));
+#ifdef NDEBUG
+      break;
+#endif
+    } else {
+      const fptu_type type = fpta_shove2type(shove);
+      const fptu_field *field = fptu_lookup_ro(row, (unsigned)i, type);
+      if (unlikely(field == nullptr))
+        return FPTA_COLUMN_MISSING;
+    }
+  }
+  return FPTA_SUCCESS;
 }

@@ -84,14 +84,16 @@ public:
     fpta_column_set def;
     fpta_column_set_init(&def);
 
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
-                                            secondary ? fpta_primary
-                                                      : fpta_primary_withdups,
-                                            &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("se_opaque_dups", fptu_opaque,
-                                            secondary ? fpta_secondary_withdups
-                                                      : fpta_index_none,
-                                            &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "pk_str_uniq", fptu_cstr,
+                           secondary ? fpta_primary_unique_ordered_obverse
+                                     : fpta_primary_withdups_ordered_obverse,
+                           &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "se_opaque_dups", fptu_opaque,
+                           secondary ? fpta_secondary_withdups_ordered_obverse
+                                     : fpta_index_none,
+                           &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("col_uint", fptu_uint64,
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));

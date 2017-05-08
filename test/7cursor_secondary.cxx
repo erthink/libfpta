@@ -309,7 +309,7 @@ public:
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -1646,8 +1646,10 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorSecondary,
     ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reverse,
-                          fpta_primary_withdups, fpta_primary_withdups_reverse,
+        ::testing::Values(fpta_primary_unique_ordered_obverse,
+                          fpta_primary_unique_ordered_reverse,
+                          fpta_primary_withdups_ordered_obverse,
+                          fpta_primary_withdups_ordered_reverse,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
@@ -1655,9 +1657,10 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_unique, fpta_secondary_unique_reverse,
-                          fpta_secondary_withdups,
-                          fpta_secondary_withdups_reverse,
+        ::testing::Values(fpta_secondary_unique_ordered_obverse,
+                          fpta_secondary_unique_ordered_reverse,
+                          fpta_secondary_withdups_ordered_obverse,
+                          fpta_secondary_withdups_ordered_reverse,
                           fpta_secondary_unique_unordered,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
@@ -1670,15 +1673,16 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorSecondaryDups,
     ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reverse,
+        ::testing::Values(fpta_primary_unique_ordered_obverse,
+                          fpta_primary_unique_ordered_reverse,
                           fpta_primary_unique_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_withdups,
-                          fpta_secondary_withdups_reverse,
+        ::testing::Values(fpta_secondary_withdups_ordered_obverse,
+                          fpta_secondary_withdups_ordered_reverse,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,

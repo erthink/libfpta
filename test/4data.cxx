@@ -256,8 +256,9 @@ TEST(Data, UpsertColumn) {
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("o256", fptu_256, fpta_index_none, &def));
 
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("string", fptu_cstr,
-                                          fpta_primary_unique, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("string", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("opaque", fptu_opaque, fpta_index_none, &def));
 

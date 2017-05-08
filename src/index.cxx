@@ -212,7 +212,7 @@ void *__fpta_index_shove2comparator(fpta_shove_t shove) {
   return (void *)fpta_index_shove2comparator(shove);
 }
 
-static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
+static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
                                     bool copy) {
   static_assert(fpta_max_keylen % sizeof(uint64_t) == 0,
                 "wrong fpta_max_keylen");
@@ -221,7 +221,7 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
   if (unlikely(key.mdbx.mv_data == nullptr) && key.mdbx.mv_size)
     return FPTA_EINVAL;
 
-  if (!fpta_index_is_ordered(shove)) {
+  if (!fpta_index_is_ordered(index)) {
     // хешируем ключ для неупорядоченного индекса
     key.place.u64 = t1ha(key.mdbx.iov_base, key.mdbx.iov_len, 2017);
     key.mdbx.iov_base = &key.place.u64;
@@ -236,7 +236,7 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
 
   //--------------------------------------------------------------------------
 
-  if (fpta_index_is_nilable(shove)) {
+  if (fpta_index_is_nullable(index)) {
     /* Чтобы отличать NIL от ключей нулевой длины и при этом сохранить
      * упорядоченность для всех ключей - нужно дополнить ключ префиксом
      * в порядка сравнения байтов ключа.
@@ -249,23 +249,25 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
       /* ключ (вместе с префиксом) не слишком длинный, дополнение
        * хешем не нужно, просто добавляем префикс и копируем ключ. */
       uint8_t *nillable = (uint8_t *)&key.place;
-      if (fpta_index_is_obverse(shove)) {
-        *nillable++ = 42;
+      if (fpta_index_is_obverse(index)) {
+        *nillable = fpta_notnil_prefix_byte;
+        nillable += fpta_notnil_prefix_length;
       } else {
-        nillable[key.mdbx.mv_size] = 42;
+        nillable[key.mdbx.mv_size] = fpta_notnil_prefix_byte;
       }
       memcpy(nillable, key.mdbx.mv_data, key.mdbx.mv_size);
-      key.mdbx.mv_size += 1;
+      key.mdbx.mv_size += fpta_notnil_prefix_length;
       key.mdbx.mv_data = &key.place;
       return FPTA_SUCCESS;
     }
 
-    const size_t chunk = fpta_max_keylen - 1;
-    if (fpta_index_is_obverse(shove)) {
+    const size_t chunk = fpta_max_keylen - fpta_notnil_prefix_length;
+    if (fpta_index_is_obverse(index)) {
       /* ключ сравнивается от головы к хвосту (как memcpy),
        * копируем начало и хэшируем хвост. */
       uint8_t *nillable = (uint8_t *)&key.place.longkey_obverse.head;
-      *nillable++ = 42;
+      *nillable = fpta_notnil_prefix_byte;
+      nillable += fpta_notnil_prefix_length;
       memcpy(nillable, key.mdbx.mv_data, chunk);
       key.place.longkey_obverse.tailhash =
           t1ha((const uint8_t *)key.mdbx.mv_data + chunk,
@@ -274,7 +276,7 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
       /* ключ сравнивается от хвоста к голове,
        * копируем хвост и хэшируем начало. */
       uint8_t *nillable = (uint8_t *)&key.place.longkey_reverse.tail;
-      nillable[chunk] = 42;
+      nillable[chunk] = fpta_notnil_prefix_byte;
       memcpy(nillable,
              (const uint8_t *)key.mdbx.mv_data + key.mdbx.mv_size - chunk,
              chunk);
@@ -296,7 +298,7 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
   }
 
   /* ключ слишком большой, сохраняем сколько допустимо остальное хэшируем */
-  if (fpta_index_is_obverse(shove)) {
+  if (fpta_index_is_obverse(index)) {
     /* ключ сравнивается от головы к хвосту (как memcpy),
      * копируем начало и хэшируем хвост. */
     memcpy(key.place.longkey_obverse.head, key.mdbx.mv_data, fpta_max_keylen);
@@ -327,15 +329,15 @@ static __hot int fpta_normalize_key(fpta_shove_t shove, fpta_key &key,
 //----------------------------------------------------------------------------
 
 static __inline unsigned shove2dbiflags(fpta_shove_t shove) {
-  fptu_type type = fpta_shove2type(shove);
-  fpta_index_type index = fpta_shove2index(shove);
+  assert(fpta_is_indexed(shove));
+  const fptu_type type = fpta_shove2type(shove);
+  const fpta_index_type index = fpta_shove2index(shove);
   assert(type != fptu_null);
-  assert(index != fpta_index_none);
 
   unsigned dbi_flags = fpta_index_is_unique(index) ? 0u : (unsigned)MDB_DUPSORT;
   if (type < fptu_96 || !fpta_index_is_ordered(index))
     dbi_flags |= MDB_INTEGERKEY;
-  else if (fpta_index_is_reverse(index))
+  else if (fpta_index_is_reverse(index) && type >= fptu_96)
     dbi_flags |= MDB_REVERSEKEY;
 
   return dbi_flags | MDB_CREATE;
@@ -359,7 +361,7 @@ unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
       dbi_flags |= MDB_DUPFIXED;
     if (pk_type < fptu_96 || !fpta_index_is_ordered(pk_index))
       dbi_flags |= MDB_INTEGERDUP;
-    else if (fpta_index_is_reverse(pk_index))
+    else if (fpta_index_is_reverse(pk_index) && pk_type >= fptu_96)
       dbi_flags |= MDB_REVERSEDUP;
   }
   return dbi_flags;
@@ -483,12 +485,11 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
                value.type == fpta_null))
     return FPTA_ETYPE;
 
-  fptu_type type = fpta_shove2type(shove);
-  fpta_index_type index = fpta_shove2index(shove);
-
-  if (unlikely(index == fpta_index_none || type == fptu_null))
+  const fptu_type type = fpta_shove2type(shove);
+  if (unlikely(!fpta_is_indexed(shove) || type == fptu_null))
     return FPTA_EOOPS;
 
+  const fpta_index_type index = fpta_shove2index(shove);
   if (fpta_index_is_ordered(index)) {
     // упорядоченный индекс
     if (unlikely(!fpta_index_ordered_is_compat(type, value.type)))
@@ -682,7 +683,7 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     break;
   }
 
-  return fpta_normalize_key(shove, key, copy);
+  return fpta_normalize_key(index, key, copy);
 }
 
 int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
@@ -692,14 +693,13 @@ int __fpta_index_value2key(fpta_shove_t shove, const fpta_value *value,
 
 //----------------------------------------------------------------------------
 
-int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
-                         fpta_value &value) {
-  fptu_type type = fpta_shove2type(shove);
-  fpta_index_type index = fpta_shove2index(shove);
+int fpta_index_key2value(fpta_shove_t shove, MDB_val mdbx, fpta_value &value) {
+  const fptu_type type = fpta_shove2type(shove);
+  const fpta_index_type index = fpta_shove2index(shove);
 
-  if (type > fptu_fp64 && !fpta_index_is_ordered(index)) {
+  if (type >= fptu_96 && !fpta_index_is_ordered(index)) {
     if (unlikely(mdbx.mv_size != sizeof(uint64_t)))
-      return FPTA_INDEX_CORRUPTED;
+      goto return_corrupted;
 
     value.uint = *(uint64_t *)mdbx.mv_data;
     value.binary_data = &value.uint;
@@ -708,123 +708,216 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
     return FPTA_SUCCESS;
   }
 
+  if (type >= fptu_cstr) {
+    if (mdbx.mv_size > fpta_max_keylen) {
+      if (unlikely(mdbx.mv_size != fpta_shoved_keylen))
+        goto return_corrupted;
+      value.type = fpta_shoved;
+      value.binary_data = mdbx.mv_data;
+      value.binary_length = fpta_shoved_keylen;
+      return FPTA_SUCCESS;
+    }
+
+    if (fpta_index_is_nullable(index)) {
+      // null если ключ нулевой длины
+      if (mdbx.mv_size == 0)
+        goto return_null;
+
+      // проверяем и отрезаем добавленый not-null префикс
+      const uint8_t *body = (const uint8_t *)mdbx.mv_data;
+      mdbx.mv_size -= fpta_notnil_prefix_length;
+      if (fpta_index_is_obverse(index)) {
+        if (unlikely(body[0] != fpta_notnil_prefix_byte))
+          goto return_corrupted;
+        mdbx.mv_data = (void *)(body + fpta_notnil_prefix_length);
+      } else {
+        if (unlikely(body[mdbx.mv_size] != fpta_notnil_prefix_byte))
+          goto return_corrupted;
+      }
+    }
+
+    switch (type) {
+    default:
+    /* TODO: проверить корректность размера для fptu_farray */
+    case fptu_nested:
+      if (unlikely(mdbx.mv_size % sizeof(fptu_unit)))
+        goto return_corrupted;
+    case fptu_opaque:
+      value.type = fpta_binary;
+      value.binary_data = mdbx.mv_data;
+      value.binary_length = (unsigned)mdbx.mv_size;
+      return FPTA_SUCCESS;
+
+    case fptu_cstr:
+      value.type = fpta_string;
+      value.binary_data = mdbx.mv_data;
+      value.binary_length = (unsigned)mdbx.mv_size;
+      return FPTA_SUCCESS;
+    }
+  }
+
   switch (type) {
+  default:
+    assert(false && "unreachable");
+    __unreachable();
+    return FPTA_EOOPS;
+
   case fptu_null:
     value.type = fpta_null;
     value.binary_data = nullptr;
     value.binary_length = 0;
     return FPTA_EOOPS;
 
-  default:
-  /* TODO: проверить корректность размера для fptu_farray */
-  case fptu_nested:
-    if (unlikely(mdbx.mv_size % sizeof(fptu_unit)))
-      return FPTA_INDEX_CORRUPTED;
-  case fptu_opaque:
-    value.type = (mdbx.mv_size > fpta_max_keylen) ? fpta_shoved : fpta_binary;
-    value.binary_data = mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
-    return FPTA_SUCCESS;
-
-  case fptu_cstr:
-    value.type = (mdbx.mv_size > fpta_max_keylen) ? fpta_shoved : fpta_string;
-    value.binary_data = mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
-    return FPTA_SUCCESS;
-
   case fptu_uint16: {
     if (unlikely(mdbx.mv_size != sizeof(uint32_t)))
-      return FPTA_INDEX_CORRUPTED;
-    auto tmp = *(uint32_t *)mdbx.mv_data;
-    if (tmp != (uint16_t)tmp)
-      return FPTA_INDEX_CORRUPTED;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index)) {
+      const unsigned denil = fpta_index_is_obverse(index)
+                                 ? FPTA_DENIL_UINT16_OBVERSE
+                                 : FPTA_DENIL_UINT16_REVERSE;
+      if (unlikely(*(uint32_t *)mdbx.mv_data == denil))
+        goto return_null;
+    }
+    value.uint = *(uint32_t *)mdbx.mv_data;
+    if (unlikely(value.uint > UINT16_MAX))
+      goto return_corrupted;
     value.type = fpta_unsigned_int;
-    value.uint = tmp;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    value.binary_length = sizeof(uint32_t);
     return FPTA_SUCCESS;
   }
 
   case fptu_uint32: {
     if (unlikely(mdbx.mv_size != sizeof(uint32_t)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_unsigned_int;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index)) {
+      const uint32_t denil = fpta_index_is_obverse(index)
+                                 ? FPTA_DENIL_UINT32_OBVERSE
+                                 : FPTA_DENIL_UINT32_REVERSE;
+      if (unlikely(*(uint32_t *)mdbx.mv_data == denil))
+        goto return_null;
+    }
     value.uint = *(uint32_t *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    value.type = fpta_unsigned_int;
+    value.binary_length = sizeof(uint32_t);
     return FPTA_SUCCESS;
   }
 
   case fptu_int32: {
     if (unlikely(mdbx.mv_size != sizeof(int32_t)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_signed_int;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index)) {
+      const int32_t denil = FPTA_DENIL_SINT32;
+      if (unlikely(*(int32_t *)mdbx.mv_data == denil))
+        goto return_null;
+    }
     value.sint = *(int32_t *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    value.type = fpta_signed_int;
+    value.binary_length = sizeof(int32_t);
     return FPTA_SUCCESS;
   }
 
   case fptu_fp32: {
-    if (unlikely(mdbx.mv_size != sizeof(float)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_float_point;
+    if (unlikely(mdbx.mv_size != sizeof(uint32_t)))
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index)) {
+      const uint32_t denil = FPTA_DENIL_FP32_BIN;
+      if (unlikely(*(uint32_t *)mdbx.mv_data == denil))
+        goto return_null;
+    }
     value.fp = *(float *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    value.type = fpta_float_point;
+    value.binary_length = sizeof(float);
     return FPTA_SUCCESS;
   }
 
   case fptu_fp64: {
-    if (unlikely(mdbx.mv_size != sizeof(double)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_float_point;
+    if (unlikely(mdbx.mv_size != sizeof(uint64_t)))
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index)) {
+      const uint64_t denil = FPTA_DENIL_FP64_BIN;
+      if (unlikely(*(uint64_t *)mdbx.mv_data == denil))
+        goto return_null;
+    }
     value.fp = *(double *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    value.type = fpta_float_point;
+    value.binary_length = sizeof(double);
     return FPTA_SUCCESS;
   }
 
   case fptu_uint64: {
     if (unlikely(mdbx.mv_size != sizeof(uint64_t)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_unsigned_int;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index)) {
+      const uint64_t denil = fpta_index_is_obverse(index)
+                                 ? FPTA_DENIL_UINT64_OBVERSE
+                                 : FPTA_DENIL_UINT64_REVERSE;
+      if (unlikely(*(uint64_t *)mdbx.mv_data == denil))
+        goto return_null;
+    }
     value.uint = *(uint64_t *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    value.type = fpta_unsigned_int;
+    value.binary_length = sizeof(uint64_t);
     return FPTA_SUCCESS;
   }
 
   case fptu_int64: {
     if (unlikely(mdbx.mv_size != sizeof(int64_t)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_signed_int;
+      goto return_corrupted;
     value.sint = *(int64_t *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    if (fpta_index_is_nullable(index)) {
+      const int64_t denil = FPTA_DENIL_SINT64;
+      if (unlikely(value.sint == denil))
+        goto return_null;
+    }
+    value.type = fpta_signed_int;
+    value.binary_length = sizeof(int64_t);
     return FPTA_SUCCESS;
   }
 
   case fptu_datetime: {
     if (unlikely(mdbx.mv_size != sizeof(uint64_t)))
-      return FPTA_INDEX_CORRUPTED;
-    value.type = fpta_datetime;
+      goto return_corrupted;
     value.datetime.fixedpoint = *(uint64_t *)mdbx.mv_data;
-    value.binary_length = (unsigned)mdbx.mv_size;
+    if (fpta_index_is_nullable(index)) {
+      const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
+      if (unlikely(value.datetime.fixedpoint == denil))
+        goto return_null;
+    }
+    value.type = fpta_datetime;
+    value.binary_length = sizeof(uint64_t);
     return FPTA_SUCCESS;
   }
 
   case fptu_96:
     if (unlikely(mdbx.mv_size != 96 / 8))
-      return FPTA_INDEX_CORRUPTED;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_96>(index, mdbx.mv_data))
+      goto return_null;
     break;
 
   case fptu_128:
     if (unlikely(mdbx.mv_size != 128 / 8))
-      return FPTA_INDEX_CORRUPTED;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_128>(index, mdbx.mv_data))
+      goto return_null;
     break;
 
   case fptu_160:
     if (unlikely(mdbx.mv_size != 160 / 8))
-      return FPTA_INDEX_CORRUPTED;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_160>(index, mdbx.mv_data))
+      goto return_null;
     break;
 
   case fptu_256:
     if (unlikely(mdbx.mv_size != 256 / 8))
-      return FPTA_INDEX_CORRUPTED;
+      goto return_corrupted;
+    if (fpta_index_is_nullable(index) &&
+        is_fixbin_denil<fptu_256>(index, mdbx.mv_data))
+      goto return_null;
     break;
   }
 
@@ -832,6 +925,18 @@ int fpta_index_key2value(fpta_shove_t shove, const MDB_val &mdbx,
   value.binary_data = mdbx.mv_data;
   value.binary_length = (unsigned)mdbx.mv_size;
   return FPTA_SUCCESS;
+
+return_null:
+  value.type = fpta_null;
+  value.binary_data = nullptr;
+  value.binary_length = 0;
+  return FPTA_SUCCESS;
+
+return_corrupted:
+  value.type = fpta_invalid;
+  value.binary_data = nullptr;
+  value.binary_length = ~0u;
+  return FPTA_INDEX_CORRUPTED;
 }
 
 //----------------------------------------------------------------------------
@@ -843,11 +948,11 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
 #endif
 
   const fptu_type type = fpta_shove2type(shove);
-  const fpta_denil_mode mode = fpta_index_denil_mode(shove);
+  const fpta_index_type index = fpta_shove2index(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
   if (unlikely(field == nullptr)) {
-    if (mode == fpta_denil_none)
+    if (!fpta_index_is_nullable(index))
       return FPTA_COLUMN_MISSING;
 
     switch (type) {
@@ -860,7 +965,7 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
         }
         assert(type >= fptu_96 && type <= fptu_256);
 
-        const uint8_t fillbyte = (mode == fpta_denil_obverse)
+        const uint8_t fillbyte = fpta_index_is_obverse(shove)
                                      ? FPTA_DENIL_FIXBIN_OBVERSE
                                      : FPTA_DENIL_FIXBIN_REVERSE;
         key.mdbx.mv_data = &key.place;
@@ -896,21 +1001,21 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
       return FPTA_SUCCESS;
 
     case fptu_uint16:
-      key.place.u32 = (mode == fpta_denil_obverse) ? FPTA_DENIL_UINT16_OBVERSE
+      key.place.u32 = fpta_index_is_obverse(shove) ? FPTA_DENIL_UINT16_OBVERSE
                                                    : FPTA_DENIL_UINT16_REVERSE;
       key.mdbx.mv_size = sizeof(key.place.u32);
       key.mdbx.mv_data = &key.place.u32;
       return FPTA_SUCCESS;
 
     case fptu_uint32:
-      key.place.u32 = (mode == fpta_denil_obverse) ? FPTA_DENIL_UINT32_OBVERSE
+      key.place.u32 = fpta_index_is_obverse(shove) ? FPTA_DENIL_UINT32_OBVERSE
                                                    : FPTA_DENIL_UINT32_REVERSE;
       key.mdbx.mv_size = sizeof(key.place.u32);
       key.mdbx.mv_data = &key.place.u32;
       return FPTA_SUCCESS;
 
     case fptu_uint64:
-      key.place.u64 = (mode == fpta_denil_obverse) ? FPTA_DENIL_UINT64_OBVERSE
+      key.place.u64 = fpta_index_is_obverse(shove) ? FPTA_DENIL_UINT64_OBVERSE
                                                    : FPTA_DENIL_UINT64_REVERSE;
       key.mdbx.mv_size = sizeof(key.place.u64);
       key.mdbx.mv_data = &key.place.u64;
@@ -1032,5 +1137,5 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
     break;
   }
 
-  return fpta_normalize_key(shove, key, copy);
+  return fpta_normalize_key(index, key, copy);
 }

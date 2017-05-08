@@ -215,32 +215,70 @@ __cold string to_string(const fpta_index_type index) {
 
   case fpta_index_none:
     return "index-none";
+  case fpta_noindex_nullable:
+    return "index-none.nullable";
 
-  case fpta_primary_withdups:
-    return "primary-withdups-obverse";
-  case fpta_primary_unique:
-    return "primary-unique-obverse";
-  case fpta_primary_withdups_unordered:
-    return "primary-withdups-unordered";
+  case fpta_primary_withdups_ordered_obverse:
+    return "primary-withdups-ordered.obverse";
+  case fpta_primary_withdups_ordered_obverse_nullable:
+    return "primary-withdups-ordered.obverse-nullable";
+  case fpta_primary_withdups_ordered_reverse:
+    return "primary-withdups-ordered.reverse";
+  case fpta_primary_withdups_ordered_reverse_nullable:
+    return "primary-withdups-ordered.reverse-nullable";
+
+  case fpta_primary_unique_ordered_obverse:
+    return "primary-unique-ordered.obverse";
+  case fpta_primary_unique_ordered_obverse_nullable:
+    return "primary-unique-ordered.obverse-nullable";
+  case fpta_primary_unique_ordered_reverse:
+    return "primary-unique-ordered.reverse";
+  case fpta_primary_unique_ordered_reverse_nullable:
+    return "primary-unique-ordered.reverse-nullable";
+
   case fpta_primary_unique_unordered:
     return "primary-unique-unordered";
-  case fpta_primary_withdups_reverse:
-    return "primary-withdups-reverse";
-  case fpta_primary_unique_reverse:
-    return "primary-unique-reverse";
+  case fpta_primary_unique_unordered_nullable_obverse:
+    return "primary-unique-unordered.nullable-obverse";
+  case fpta_primary_unique_unordered_nullable_reverse:
+    return "primary-unique-unordered.nullable-reverse";
 
-  case fpta_secondary_withdups:
-    return "secondary-withdups-obverse";
-  case fpta_secondary_unique:
-    return "secondary-unique-obverse";
-  case fpta_secondary_withdups_unordered:
-    return "secondary-withdups-unordered";
+  case fpta_primary_withdups_unordered:
+    return "primary-withdups-unordered";
+  case fpta_primary_withdups_unordered_nullable_obverse:
+    return "primary-withdups-unordered.nullable-obverse";
+
+  case fpta_secondary_withdups_ordered_obverse:
+    return "secondary-withdups-ordered.obverse";
+  case fpta_secondary_withdups_ordered_obverse_nullable:
+    return "secondary-withdups-ordered.obverse-nullable";
+  case fpta_secondary_withdups_ordered_reverse:
+    return "secondary-withdups-ordered.reverse";
+  case fpta_secondary_withdups_ordered_reverse_nullable:
+    return "secondary-withdups-ordered.reverse-nullable";
+
+  case fpta_secondary_unique_ordered_obverse:
+    return "secondary-unique-ordered.obverse";
+  case fpta_secondary_unique_ordered_obverse_nullable:
+    return "secondary-unique-ordered.obverse-nullable";
+  case fpta_secondary_unique_ordered_reverse:
+    return "secondary-unique-ordered.reverse";
+  case fpta_secondary_unique_ordered_reverse_nullable:
+    return "secondary-unique-ordered.reverse-nullable";
+
   case fpta_secondary_unique_unordered:
     return "secondary-unique-unordered";
-  case fpta_secondary_withdups_reverse:
-    return "secondary-withdups-reverse";
-  case fpta_secondary_unique_reverse:
-    return "secondary-unique-reverse";
+  case fpta_secondary_unique_unordered_nullable_obverse:
+    return "secondary-unique-unordered.nullable-obverse";
+  case fpta_secondary_unique_unordered_nullable_reverse:
+    return "secondary-unique-unordered.nullable-reverse";
+
+  case fpta_secondary_withdups_unordered:
+    return "secondary-withdups-unordered";
+  case fpta_secondary_withdups_unordered_nullable_obverse:
+    return "secondary-withdups-unordered.nullable-obverse";
+  case fpta_secondary_withdups_unordered_nullable_reverse:
+    return "secondary-withdups-unordered.nullable-reverse";
   }
 }
 
@@ -290,11 +328,11 @@ __cold string to_string(const fpta_cursor_options op) {
   case fpta_descending:
     return "descending";
   case fpta_unsorted_dont_fetch:
-    return "unsorted-dont-fetch";
+    return "unsorted.dont-fetch";
   case fpta_ascending_dont_fetch:
-    return "ascending-dont-fetch";
+    return "ascending.dont-fetch";
   case fpta_descending_dont_fetch:
-    return "descending-dont-fetch";
+    return "descending.dont-fetch";
   }
 }
 

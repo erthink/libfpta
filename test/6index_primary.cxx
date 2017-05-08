@@ -101,7 +101,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -418,7 +418,7 @@ typedef ::testing::Types<glue<fptu_null>, glue<fptu_uint16>, glue<fptu_int32>,
 TYPED_TEST_CASE(PrimaryIndex, ColumnTypes);
 
 TYPED_TEST(PrimaryIndex, obverse_unique) {
-  TestPrimary<TypeParam::type, fpta_primary_unique>();
+  TestPrimary<TypeParam::type, fpta_primary_unique_ordered_obverse>();
 }
 
 TYPED_TEST(PrimaryIndex, unordered_unique) {
@@ -426,11 +426,11 @@ TYPED_TEST(PrimaryIndex, unordered_unique) {
 }
 
 TYPED_TEST(PrimaryIndex, reverse_unique) {
-  TestPrimary<TypeParam::type, fpta_primary_unique_reverse>();
+  TestPrimary<TypeParam::type, fpta_primary_unique_ordered_reverse>();
 }
 
 TYPED_TEST(PrimaryIndex, obverse_withdups) {
-  TestPrimary<TypeParam::type, fpta_primary_withdups>();
+  TestPrimary<TypeParam::type, fpta_primary_withdups_ordered_obverse>();
 }
 
 TYPED_TEST(PrimaryIndex, unordered_withdups) {
@@ -438,7 +438,7 @@ TYPED_TEST(PrimaryIndex, unordered_withdups) {
 }
 
 TYPED_TEST(PrimaryIndex, reverse_withdups) {
-  TestPrimary<TypeParam::type, fpta_primary_withdups_reverse>();
+  TestPrimary<TypeParam::type, fpta_primary_withdups_ordered_reverse>();
 }
 
 int main(int argc, char **argv) {

@@ -94,13 +94,13 @@ template <fptu_type data_type, fpta_index_type index_type> struct probe_key {
 };
 
 template <fptu_type data_type> struct probe_triplet {
-  typedef probe_key<data_type, fpta_primary_unique> obverse_key;
+  typedef probe_key<data_type, fpta_primary_unique_ordered_obverse> obverse_key;
   typedef std::map<obverse_key, int> obverse_map;
 
   typedef probe_key<data_type, fpta_primary_unique_unordered> unordered_key;
   typedef std::map<unordered_key, int> unordered_map;
 
-  typedef probe_key<data_type, fpta_primary_unique_reverse> reverse_key;
+  typedef probe_key<data_type, fpta_primary_unique_ordered_reverse> reverse_key;
   typedef std::map<reverse_key, int> reverse_map;
 
   obverse_map obverse;
