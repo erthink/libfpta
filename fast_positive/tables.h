@@ -1153,6 +1153,17 @@ static __inline int fpta_column_set_destroy(fpta_column_set *column_set) {
   return FPTA_EINVAL;
 }
 
+/* Сбрасывает (повторно инициализирует) column_set для повторного заполнения
+ * посредством fpta_column_describe(). */
+static __inline int fpta_column_set_reset(fpta_column_set *column_set) {
+  if (column_set != nullptr && column_set->count != FPTA_DEADBEEF) {
+    fpta_column_set_init(column_set);
+    return FPTA_SUCCESS;
+  }
+
+  return FPTA_EINVAL;
+}
+
 /* Создание таблицы.
  *
  * Аргумент table_name задает имя таблицы. Для совместимости в именах
