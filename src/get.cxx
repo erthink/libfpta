@@ -19,6 +19,11 @@
 
 #include "fast_positive/tuples_internal.h"
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4738) /* storing 32-bit float result in memory,      \
+                                   possible loss of performance */
+#endif                          /* _MSC_VER (warnings) */
+
 fptu_type fptu_field_type(const fptu_field *pf) {
   if (unlikely(pf == nullptr))
     return fptu_null;
@@ -77,7 +82,7 @@ double fptu_field_fp64(const fptu_field *pf) {
   return fptu_field_payload(pf)->fp64;
 }
 
-float fptu_field_fp32(const fptu_field *pf) {
+float_t fptu_field_fp32(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_fp32))
     return FPTU_DENIL_FP32;
 
@@ -244,7 +249,7 @@ double fptu_get_fp64(fptu_ro ro, unsigned column, int *error) {
   return fptu_field_fp64(pf);
 }
 
-float fptu_get_fp32(fptu_ro ro, unsigned column, int *error) {
+float_t fptu_get_fp32(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_fp32);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;

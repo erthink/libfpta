@@ -72,6 +72,7 @@
 #endif                          /* _MSC_VER (warnings) */
 
 #include <errno.h>  // for error codes
+#include <float.h>  // for FLT_EVAL_METHOD and float_t
 #include <math.h>   // for NaNs
 #include <string.h> // for strlen()
 #include <time.h>   // for struct timespec, struct timeval
@@ -591,7 +592,7 @@ FPTU_API int fptu_upsert_uint32(fptu_rw *pt, unsigned column, uint32_t value);
 FPTU_API int fptu_upsert_int64(fptu_rw *pt, unsigned column, int64_t value);
 FPTU_API int fptu_upsert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 FPTU_API int fptu_upsert_fp64(fptu_rw *pt, unsigned column, double value);
-FPTU_API int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float value);
+FPTU_API int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_upsert_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
 
@@ -648,7 +649,7 @@ FPTU_API int fptu_insert_uint32(fptu_rw *pt, unsigned column, uint32_t value);
 FPTU_API int fptu_insert_int64(fptu_rw *pt, unsigned column, int64_t value);
 FPTU_API int fptu_insert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 FPTU_API int fptu_insert_fp64(fptu_rw *pt, unsigned column, double value);
-FPTU_API int fptu_insert_fp32(fptu_rw *pt, unsigned column, float value);
+FPTU_API int fptu_insert_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_insert_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
 
@@ -702,7 +703,7 @@ FPTU_API int fptu_update_uint32(fptu_rw *pt, unsigned column, uint32_t value);
 FPTU_API int fptu_update_int64(fptu_rw *pt, unsigned column, int64_t value);
 FPTU_API int fptu_update_uint64(fptu_rw *pt, unsigned column, uint64_t value);
 FPTU_API int fptu_update_fp64(fptu_rw *pt, unsigned column, double value);
-FPTU_API int fptu_update_fp32(fptu_rw *pt, unsigned column, float value);
+FPTU_API int fptu_update_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_update_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
 
@@ -809,7 +810,7 @@ FPTU_API uint32_t fptu_field_uint32(const fptu_field *pf);
 FPTU_API int64_t fptu_field_int64(const fptu_field *pf);
 FPTU_API uint64_t fptu_field_uint64(const fptu_field *pf);
 FPTU_API double fptu_field_fp64(const fptu_field *pf);
-FPTU_API float fptu_field_fp32(const fptu_field *pf);
+FPTU_API float_t fptu_field_fp32(const fptu_field *pf);
 FPTU_API fptu_time fptu_field_datetime(const fptu_field *pf);
 FPTU_API const uint8_t *fptu_field_96(const fptu_field *pf);
 FPTU_API const uint8_t *fptu_field_128(const fptu_field *pf);
@@ -825,7 +826,7 @@ FPTU_API uint32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error);
 FPTU_API int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
 FPTU_API uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
 FPTU_API double fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
-FPTU_API float fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
+FPTU_API float_t fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
 FPTU_API fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error);
 
 FPTU_API int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);
