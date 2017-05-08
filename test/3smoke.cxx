@@ -18,6 +18,7 @@
  */
 
 #include "fpta_test.h"
+#include "tools.hpp"
 
 static const char testdb_name[] = "ut_smoke.fpta";
 static const char testdb_name_lck[] = "ut_smoke.fpta" MDBX_LOCK_SUFFIX;
@@ -2467,6 +2468,373 @@ TEST(Smoke, UpdateViolateUnique) {
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
   ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
   ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+}
+
+//----------------------------------------------------------------------------
+
+class SmokeNullable : public ::testing::Test {
+public:
+  scoped_db_guard db_quard;
+  scoped_txn_guard txn_guard;
+  scoped_cursor_guard cursor_guard;
+  scoped_ptrw_guard ptrw_guard;
+
+  fpta_name table, c0_uint64, c1_date, c2_str, c3_int64, c4_uint32, c5_ip4,
+      c6_sha1, c7_fp32, c8_enum, c9_fp64;
+
+  fptu_ro MakeRow(int stepover) {
+    EXPECT_EQ(FPTU_OK, fptu_clear(ptrw_guard.get()));
+
+    if (stepover >= 0) {
+      // формируем не пустую строку, со скользящим NIL
+      if (stepover != 0)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
+                                              fpta_value_uint(stepover)));
+      if (stepover != 1)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c1_date,
+                                     fpta_value_datetime(fptu_now_fine())));
+      if (stepover != 2)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c2_str,
+                                     fpta_value_str(std::to_string(stepover))));
+      if (stepover != 3)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c3_int64,
+                                              fpta_value_sint(-stepover)));
+      if (stepover != 4)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
+                                              fpta_value_uint(stepover)));
+      if (stepover != 5)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
+                                              fpta_value_uint(stepover + 42)));
+      if (stepover != 6) {
+        uint8_t sha1[160 / 8];
+        memset(sha1, stepover + 1, sizeof(sha1));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c6_sha1,
+                                     fpta_value_binary(sha1, sizeof(sha1))));
+      }
+      if (stepover != 7)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c7_fp32,
+                                     fpta_value_float(stepover * M_PI)));
+      if (stepover != 8)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c8_enum,
+                                              fpta_value_sint(11 + stepover)));
+      if (stepover != 9)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c9_fp64,
+                                     fpta_value_float(M_E * stepover)));
+    }
+
+    return fptu_take_noshrink(ptrw_guard.get());
+  }
+
+  void OpenCursor(int colnum) {
+    if (cursor_guard)
+      EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+
+    // выбираем колонку по номеру
+    fpta_name *colptr = nullptr;
+    switch (colnum) {
+    case 0:
+      colptr = &c0_uint64;
+      break;
+    case 1:
+      colptr = &c1_date;
+      break;
+    case 2:
+      colptr = &c2_str;
+      break;
+    case 3:
+      colptr = &c3_int64;
+      break;
+    case 4:
+      colptr = &c4_uint32;
+      break;
+    case 5:
+      colptr = &c5_ip4;
+      break;
+    case 6:
+      colptr = &c6_sha1;
+      break;
+    case 7:
+      colptr = &c7_fp32;
+      break;
+    case 8:
+      colptr = &c8_enum;
+      break;
+    case 9:
+      colptr = &c9_fp64;
+      break;
+    }
+
+    // открываем простейщий курсор: на всю таблицу, без фильтра
+    fpta_cursor *cursor = nullptr;
+    EXPECT_EQ(FPTA_OK,
+              fpta_cursor_open(txn_guard.get(), colptr, fpta_value_begin(),
+                               fpta_value_end(), nullptr,
+                               fpta_unsorted_dont_fetch, &cursor));
+    cursor_guard.reset(cursor);
+  }
+
+  virtual void SetUp() {
+    SCOPED_TRACE("setup");
+    // инициализируем идентификаторы таблицы и её колонок
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "xyz"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c0_uint64, "c0_uint64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c1_date, "c1_date"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c2_str, "c2_str"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c3_int64, "c3_int64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c4_uint32, "c4_uint32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c5_ip4, "c5_ip4"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c6_sha1, "c6_sha1"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c7_fp32, "c7_fp32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c8_enum, "c8_enum"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c9_fp64, "c9_fp64"));
+
+    // чистим
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
+
+    // создаем базу
+    fpta_db *db = nullptr;
+    EXPECT_EQ(FPTA_SUCCESS,
+              fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+    ASSERT_NE(nullptr, db);
+    db_quard.reset(db);
+
+    // начинаем транзакцию с созданием таблицы
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+
+    // описываем структуру таблицы и создаем её
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "c0_uint64", fptu_uint64,
+                           fpta_primary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c1_date", fptu_datetime,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c2_str", fptu_cstr,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c3_int64", fptu_int64,
+                  fpta_secondary_withdups_unordered_nullable_obverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c4_uint32", fptu_uint32,
+                  fpta_secondary_withdups_ordered_reverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c5_ip4", fptu_uint32,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c6_sha1", fptu_160,
+                  fpta_secondary_unique_unordered_nullable_obverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c7_fp32", fptu_fp32,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c8_enum", fptu_uint16,
+                  fpta_secondary_withdups_unordered_nullable_reverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c9_fp64", fptu_fp64,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("_", fptu_opaque,
+                                            fpta_noindex_nullable, &def));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+    ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "xyz", &def));
+
+    // завершаем транзакцию
+    ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
+    txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+    // начинаем транзакцию изменения данных
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+
+    //------------------------------------------------------------------------
+
+    // нужен ручной refresh, так как начинать будем с добавления полей в кортеж
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c0_uint64));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c1_date));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c2_str));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c3_int64));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c4_uint32));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c5_ip4));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c6_sha1));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c7_fp32));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c8_enum));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c9_fp64));
+
+    // выделяем кортеж
+    fptu_rw *pt = fptu_alloc(10, 8 * 10 + 42);
+    ASSERT_NE(nullptr, pt);
+    ASSERT_STREQ(nullptr, fptu_check(pt));
+    ptrw_guard.reset(pt);
+  }
+
+  virtual void TearDown() {
+    SCOPED_TRACE("teardown");
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&table);
+    fpta_name_destroy(&c0_uint64);
+    fpta_name_destroy(&c1_date);
+    fpta_name_destroy(&c2_str);
+    fpta_name_destroy(&c3_int64);
+    fpta_name_destroy(&c4_uint32);
+    fpta_name_destroy(&c5_ip4);
+    fpta_name_destroy(&c6_sha1);
+    fpta_name_destroy(&c7_fp32);
+    fpta_name_destroy(&c8_enum);
+    fpta_name_destroy(&c9_fp64);
+
+    // закрываем курсор и завершаем транзакцию
+    if (cursor_guard)
+      EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    if (txn_guard)
+      ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    if (db_quard) {
+      // закрываем и удаляем базу
+      ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+    }
+  }
+};
+
+TEST_F(SmokeNullable, AllNILs) {
+  /* Smoke-проверка обновления строки с нарушением уникальности по
+   * вторичному ключу.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой 10 колонок, все они
+   *     индексированы и допускают NIL. При этом 5 колонок с контролем
+   *     уникальности, а остальные допускают дубликаты.
+   *
+   *  2. Вставляем строку, в которой только одни NIL-ы.
+   *
+   *  3. Удаляем вставленную строку.
+   *
+   *  4. Снова вставляем строку и удаляем её через через курсор.
+   *
+   *  5. Повторяем пункт 4 для курсора по каждой колонке.
+   */
+
+  // формируем строку без колонок
+  fptu_ro allNILs = MakeRow(-1);
+
+  // вставляем строку со всеми NIL
+  EXPECT_EQ(FPTA_OK,
+            fpta_validate_insert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_KEYEXIST,
+            fpta_validate_insert_row(txn_guard.get(), &table, allNILs));
+
+  // обновляем строку без реального изменения данных
+  EXPECT_EQ(FPTA_OK,
+            fpta_validate_upsert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, allNILs));
+
+  // удяляем строку со всеми нулями
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn_guard.get(), &table, allNILs));
+
+  // теперь вставляем строку через upsert
+  EXPECT_EQ(FPTA_OK,
+            fpta_validate_upsert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, allNILs));
+
+  // повторяем что дубликат не лезет
+  EXPECT_EQ(FPTA_KEYEXIST,
+            fpta_validate_insert_row(txn_guard.get(), &table, allNILs));
+
+  //--------------------------------------------------------------------------
+  /* через курсор */
+  for (int colnum = 0; colnum < 10; ++colnum) {
+    SCOPED_TRACE("cursor column #" + std::to_string(colnum));
+    OpenCursor(colnum);
+    ASSERT_TRUE(cursor_guard.operator bool());
+
+    EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, allNILs));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor_guard.get(),
+                                        (colnum & 1) ? fpta_first : fpta_last));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor_guard.get()));
+    EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor_guard.get()));
+  }
+}
+
+TEST_F(SmokeNullable, Base) {
+  /* Smoke-проверка обновления строки с нарушением уникальности по
+   * вторичному ключу.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой 10 колонок, все они
+   *     индексированы и допускают NIL. При этом 5 колонок с контролем
+   *     уникальности, а остальные допускают дубликаты.
+   *
+   *  2. Вставляем 10 строк со "скользящим" NIL и уникальными
+   *     значениям в остальных полях.
+   *
+   *  3. Удаляем 10 строк через курсор открываемый по каждой из колонок.
+   *
+   *  4. Добавляем и удаляем полностью заполненную строку.
+   */
+
+  //--------------------------------------------------------------------------
+  for (int nilcol = 0; nilcol < 10; ++nilcol) {
+    SCOPED_TRACE("NIL-column #" + std::to_string(nilcol));
+    fptu_ro row = MakeRow(nilcol);
+    EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, row));
+
+    // проверяем обновлени (без какого-либо зименения данных)
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(txn_guard.get(), &table, row));
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn_guard.get(), &table, row));
+
+    // повторяем что дубликат не лезет
+    EXPECT_EQ(FPTA_KEYEXIST,
+              fpta_validate_insert_row(txn_guard.get(), &table, row));
+  }
+
+  // проверяем что не лезет строка со всеми NIL
+  EXPECT_EQ(FPTA_KEYEXIST,
+            fpta_validate_insert_row(txn_guard.get(), &table, MakeRow(-1)));
+
+  // удялем по одной строке через курсор открываемый по каждой из колонок
+  for (int colnum = 0; colnum < 10; ++colnum) {
+    SCOPED_TRACE("cursor column #" + std::to_string(colnum));
+    OpenCursor(colnum);
+    ASSERT_TRUE(cursor_guard.operator bool());
+
+    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor_guard.get(),
+                                        (colnum & 1) ? fpta_first : fpta_last));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor_guard.get()));
+  }
+
+  // вставляем и удаляем полностью заполненную строку (без NIL)/
+  fptu_ro row = MakeRow(11);
+  EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, row));
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn_guard.get(), &table, row));
 }
 
 //----------------------------------------------------------------------------

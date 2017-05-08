@@ -40,9 +40,14 @@ struct cursor_deleter : public std::unary_function<void, fpta_cursor *> {
   }
 };
 
+struct ptrw_deleter : public std::unary_function<void, fptu_rw *> {
+  void operator()(fptu_rw *ptrw) const { free(ptrw); }
+};
+
 typedef std::unique_ptr<fpta_db, db_deleter> scoped_db_guard;
 typedef std::unique_ptr<fpta_txn, txn_deleter> scoped_txn_guard;
 typedef std::unique_ptr<fpta_cursor, cursor_deleter> scoped_cursor_guard;
+typedef std::unique_ptr<fptu_rw, ptrw_deleter> scoped_ptrw_guard;
 
 //----------------------------------------------------------------------------
 
