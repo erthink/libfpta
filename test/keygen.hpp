@@ -375,14 +375,14 @@ struct scalar_range_stepper {
 
     EXPECT_TRUE(is_properly_ordered);
     if (std::numeric_limits<type>::has_infinity) {
-      EXPECT_EQ(1, probe.count(-std::numeric_limits<type>::infinity()));
-      EXPECT_EQ(1, probe.count(std::numeric_limits<type>::infinity()));
+      EXPECT_EQ(1u, probe.count(-std::numeric_limits<type>::infinity()));
+      EXPECT_EQ(1u, probe.count(std::numeric_limits<type>::infinity()));
     }
     EXPECT_EQ(N, probe.size());
-    EXPECT_EQ(1, probe.count(type(0)));
-    EXPECT_EQ(1, probe.count(std::numeric_limits<type>::max()));
-    // EXPECT_EQ(1, probe.count(std::numeric_limits<type>::min()));
-    EXPECT_EQ(1, probe.count(std::numeric_limits<type>::lowest()));
+    EXPECT_EQ(1u, probe.count(type(0)));
+    EXPECT_EQ(1u, probe.count(std::numeric_limits<type>::max()));
+    // EXPECT_EQ(1u, probe.count(std::numeric_limits<type>::min()));
+    EXPECT_EQ(1u, probe.count(std::numeric_limits<type>::lowest()));
   }
 };
 
@@ -477,13 +477,13 @@ template <unsigned keylen> struct fixbin_stepper {
 
     fixbin_type value;
     memset(&value, 0, sizeof(value));
-    EXPECT_EQ(1, probe.count(value));
+    EXPECT_EQ(1u, probe.count(value));
 
     memset(&value, 0xff, sizeof(value));
-    EXPECT_EQ(1, probe.count(value));
+    EXPECT_EQ(1u, probe.count(value));
 
     memset(&value, 0x42, sizeof(value));
-    EXPECT_EQ(0, probe.count(value));
+    EXPECT_EQ(0u, probe.count(value));
   }
 };
 
@@ -513,7 +513,7 @@ template <fptu_type data_type> struct varbin_stepper {
       return fpta_value_binstr<data_type>(&holder[0], keylen_max);
     }
 
-    unsigned keylen = 1 + ((order - 1) % 37) * (keylen_max - 1) / 37;
+    size_t keylen = 1 + ((order - 1) % 37) * (keylen_max - 1) / 37;
     while (keylen <= keylen_max) {
       bool key_is_too_short = string_keygen<data_type == fptu_cstr>(
           keylen, INT32_MAX / scope * (order - 1), &holder[0]);
@@ -544,14 +544,14 @@ template <fptu_type data_type> struct varbin_stepper {
     EXPECT_EQ(N, probe.size());
 
     std::vector<uint8_t> value;
-    EXPECT_EQ(1, probe.count(value));
+    EXPECT_EQ(1u, probe.count(value));
 
     value.resize(keylen_max, 255);
-    EXPECT_EQ(1, probe.count(value));
+    EXPECT_EQ(1u, probe.count(value));
 
     value.clear();
     value.resize(keylen_max / 2, 42);
-    EXPECT_EQ(0, probe.count(value));
+    EXPECT_EQ(0u, probe.count(value));
   }
 };
 

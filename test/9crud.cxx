@@ -181,9 +181,9 @@ TEST_P(CrudSimple, Nulls) {
    */
 
   fpta_value empty_string = fpta_value_cstr("");
-  ASSERT_EQ(0, empty_string.binary_length);
+  ASSERT_EQ(0u, empty_string.binary_length);
   fpta_value empty_binary = fpta_value_binary(nullptr, 0);
-  ASSERT_EQ(0, empty_binary.binary_length);
+  ASSERT_EQ(0u, empty_binary.binary_length);
 
   fptu_rw *row = fptu_alloc(3, 42);
   ASSERT_NE(nullptr, row);

@@ -288,7 +288,7 @@ enum fpta_error {
   FPTA_ENOENT = ENOENT /* FIXME */,
   FPTA_NODATA = -1 /* No data or EOF was reached */,
 
-  FPTA_DEADBEEF = 0xDeadBeef /* Pseudo error for results by pointer,
+  FPTA_DEADBEEF = UINT32_C(0xDeadBeef) /* Pseudo error for results by pointer,
     mean `no value` returned */,
 
   /************************************************* MDBX's error codes ***/

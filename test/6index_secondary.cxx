@@ -166,7 +166,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(UINT16_MAX, NNN * 2);
+    ASSERT_GE(65535u, NNN * 2);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     pk_index = std::tr1::get<0>(GetParam());
     pk_type = std::tr1::get<1>(GetParam());
@@ -455,8 +455,8 @@ TEST_P(IndexSecondary, basic) {
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
     if (fpta_index_is_unique(se_index)) {
-      ASSERT_EQ(42, tuple_dup_id);
-      ASSERT_EQ(1, dups);
+      ASSERT_EQ(42u, tuple_dup_id);
+      ASSERT_EQ(1u, dups);
     } else {
       /* Наличие дубликатов означает что для одного значения ключа
        * в базе есть несколько значений. Причем эти значения хранятся
@@ -474,12 +474,12 @@ TEST_P(IndexSecondary, basic) {
        * первичный индекс не unordered.
        */
       if (!fpta_index_is_ordered(pk_index))
-        ASSERT_GT(2, tuple_dup_id);
+        ASSERT_GT(2u, tuple_dup_id);
       else if (tuple_order % 3)
-        ASSERT_EQ(i & 1, tuple_dup_id);
+        ASSERT_EQ(i & 1u, tuple_dup_id);
       else
-        ASSERT_EQ((i ^ 1) & 1, tuple_dup_id);
-      ASSERT_EQ(2, dups);
+        ASSERT_EQ((i ^ 1) & 1u, tuple_dup_id);
+      ASSERT_EQ(2u, dups);
     }
 
     if (++i < n)

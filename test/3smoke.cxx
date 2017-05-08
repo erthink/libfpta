@@ -103,13 +103,13 @@ TEST(SmokeIndex, Primary) {
   memset(&row_count, 42, sizeof(row_count));
   memset(&stat, 42, sizeof(stat));
   EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, &stat));
-  EXPECT_EQ(0, row_count);
+  EXPECT_EQ(0u, row_count);
   EXPECT_EQ(row_count, stat.row_count);
-  EXPECT_EQ(0, stat.btree_depth);
-  EXPECT_EQ(0, stat.large_pages);
-  EXPECT_EQ(0, stat.branch_pages);
-  EXPECT_EQ(0, stat.leaf_pages);
-  EXPECT_EQ(0, stat.total_bytes);
+  EXPECT_EQ(0u, stat.btree_depth);
+  EXPECT_EQ(0u, stat.large_pages);
+  EXPECT_EQ(0u, stat.branch_pages);
+  EXPECT_EQ(0u, stat.leaf_pages);
+  EXPECT_EQ(0u, stat.total_bytes);
 
   // создаем кортеж, который станет первой записью в таблице
   fptu_rw *pt1 = fptu_alloc(3, 42);
@@ -173,19 +173,19 @@ TEST(SmokeIndex, Primary) {
   // узнам сколько записей за курсором (в таблице).
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(2, count);
+  EXPECT_EQ(2u, count);
 
   // снова проверяем иформацию о таблице (сейчас в таблице две строки)
   memset(&row_count, 42, sizeof(row_count));
   memset(&stat, 42, sizeof(stat));
   EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, &stat));
-  EXPECT_EQ(2, row_count);
+  EXPECT_EQ(2u, row_count);
   EXPECT_EQ(row_count, stat.row_count);
-  EXPECT_EQ(1, stat.btree_depth);
-  EXPECT_EQ(0, stat.large_pages);
-  EXPECT_EQ(0, stat.branch_pages);
-  EXPECT_EQ(1, stat.leaf_pages);
-  EXPECT_LE(512, stat.total_bytes);
+  EXPECT_EQ(1u, stat.btree_depth);
+  EXPECT_EQ(0u, stat.large_pages);
+  EXPECT_EQ(0u, stat.branch_pages);
+  EXPECT_EQ(1u, stat.leaf_pages);
+  EXPECT_LE(512u, stat.total_bytes);
 
   // переходим к последней записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
@@ -195,7 +195,7 @@ TEST(SmokeIndex, Primary) {
   // считаем повторы, их не должно быть
   size_t dups;
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
 
   // получаем текущую строку, она должна совпадать со вторым кортежем
   fptu_ro row2;
@@ -210,7 +210,7 @@ TEST(SmokeIndex, Primary) {
 
   // ради проверки считаем повторы
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
 
   // получаем текущую строку, она должна совпадать с первым кортежем
   fptu_ro row1;
@@ -231,11 +231,11 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
   // считаем сколько записей теперь, должа быть одна
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
   // ради теста проверям что данные есть
   EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
 
   // переходим к первой записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
@@ -244,16 +244,16 @@ TEST(SmokeIndex, Primary) {
 #if FPTA_ENABLE_RETURN_INTO_RANGE
   // теперь должно быть пусто
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(0, dups);
+  EXPECT_EQ(0u, dups);
 #else
   // курсор должен стать неустановленным
   EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(FPTA_DEADBEEF, dups);
+  EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 #endif
   // ради теста проверям что данных больше нет
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
 
   // закрываем курсор и завершаем транзакцию
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
@@ -414,7 +414,7 @@ TEST(SmokeIndex, Secondary) {
   // узнам сколько записей за курсором (в таблице).
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(2, count);
+  EXPECT_EQ(2u, count);
 
   // переходим к первой записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
@@ -424,7 +424,7 @@ TEST(SmokeIndex, Secondary) {
   // считаем повторы, их не должно быть
   size_t dups;
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  ASSERT_EQ(1, dups);
+  ASSERT_EQ(1u, dups);
 
   // переходим к последней записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
@@ -439,7 +439,7 @@ TEST(SmokeIndex, Secondary) {
 
   // считаем повторы, их не должно быть
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  ASSERT_EQ(1, dups);
+  ASSERT_EQ(1u, dups);
 
   // позиционируем курсор на конкретное значение ключевого поля
   fpta_value pk = fpta_value_uint(34);
@@ -448,7 +448,7 @@ TEST(SmokeIndex, Secondary) {
 
   // ради проверки считаем повторы
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
 
   // получаем текущую строку, она должна совпадать с первым кортежем
   fptu_ro row1;
@@ -469,11 +469,11 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
   // считаем сколько записей теперь, должа быть одна
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
   // ради теста проверям что данные есть
   EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
 
   // переходим к первой записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
@@ -482,16 +482,16 @@ TEST(SmokeIndex, Secondary) {
 #if FPTA_ENABLE_RETURN_INTO_RANGE
   // теперь должно быть пусто
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(0, dups);
+  EXPECT_EQ(0u, dups);
 #else
   // курсор должен стать неустановленным
   EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(FPTA_DEADBEEF, dups);
+  EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 #endif
   // ради теста проверям что данных больше нет
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
 
   // закрываем курсор и завершаем транзакцию
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
@@ -555,22 +555,22 @@ TEST(Smoke, mapdup_order2key) {
     unsigned dup = mapdup_order2key(order, NNN);
     checker[dup] += 1;
   }
-  EXPECT_EQ(1, checker[0]);
-  EXPECT_EQ(1, checker[1]);
-  EXPECT_EQ(1, checker[2]);
-  EXPECT_EQ(1, checker[3]);
-  EXPECT_EQ(1, checker[4]);
-  EXPECT_EQ(1, checker[5]);
-  EXPECT_EQ(1, checker[6]);
-  EXPECT_EQ(1, checker[7]);
-  EXPECT_EQ(2, checker[8]);
-  EXPECT_EQ(2, checker[9]);
-  EXPECT_EQ(2, checker[10]);
-  EXPECT_EQ(2, checker[11]);
-  EXPECT_EQ(4, checker[12]);
-  EXPECT_EQ(4, checker[13]);
-  EXPECT_EQ(8, checker[14]);
-  EXPECT_EQ(15, checker.size());
+  EXPECT_EQ(1u, checker[0]);
+  EXPECT_EQ(1u, checker[1]);
+  EXPECT_EQ(1u, checker[2]);
+  EXPECT_EQ(1u, checker[3]);
+  EXPECT_EQ(1u, checker[4]);
+  EXPECT_EQ(1u, checker[5]);
+  EXPECT_EQ(1u, checker[6]);
+  EXPECT_EQ(1u, checker[7]);
+  EXPECT_EQ(2u, checker[8]);
+  EXPECT_EQ(2u, checker[9]);
+  EXPECT_EQ(2u, checker[10]);
+  EXPECT_EQ(2u, checker[11]);
+  EXPECT_EQ(4u, checker[12]);
+  EXPECT_EQ(4u, checker[13]);
+  EXPECT_EQ(8u, checker[14]);
+  EXPECT_EQ(15u, checker.size());
 }
 
 /* используем для контроля отдельную структуру, чтобы при проблемах/ошибках
@@ -649,7 +649,7 @@ public:
             EXPECT_EQ(item->time.fixedpoint, value.datetime.fixedpoint);
           }
         }
-        ASSERT_EQ(1, row_present);
+        ASSERT_EQ(1u, row_present);
         count++;
         move_result = fpta_cursor_move(cursor, fpta_next);
         ASSERT_TRUE(move_result == FPTA_OK || move_result == FPTA_NODATA);
@@ -1043,7 +1043,7 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
       if (m & 1)
@@ -1193,7 +1193,7 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
       if (m & 1)
@@ -1331,13 +1331,13 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
       EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
       EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(FPTA_DEADBEEF, dups);
+      EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 
       /* LY: удалять элемент нужно после использования key, так как
        * в key просто указатель на данные std::string, которые будут
@@ -1412,7 +1412,7 @@ TEST_F(SmokeCRUD, none) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-        EXPECT_EQ(FPTA_DEADBEEF, dups);
+        EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
       } else {
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
@@ -1456,7 +1456,7 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       container[n].reset();
@@ -1465,7 +1465,7 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
       EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
       EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(FPTA_DEADBEEF, dups);
+      EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 
       ASSERT_NO_FATAL_FAILURE(Check());
     }
@@ -1671,7 +1671,7 @@ TEST_P(SmokeSelect, Range) {
   // проверяем кол-во записей и закрываем курсор
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1684,7 +1684,7 @@ TEST_P(SmokeSelect, Range) {
     cursor_guard.reset(cursor);
     // проверяем кол-во записей и закрываем курсор
     EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-    EXPECT_EQ(42, count);
+    EXPECT_EQ(42u, count);
     EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
     cursor = nullptr;
   } else {
@@ -1705,7 +1705,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1719,7 +1719,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1737,7 +1737,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1749,7 +1749,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1761,7 +1761,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1773,7 +1773,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1785,7 +1785,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1797,7 +1797,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1809,7 +1809,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1821,7 +1821,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1833,7 +1833,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 }
@@ -1883,7 +1883,7 @@ TEST_P(SmokeSelect, Filter) {
   // проверяем кол-во записей и закрываем курсор
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1900,7 +1900,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1913,7 +1913,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1929,7 +1929,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1957,7 +1957,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42 - count_value_3, count);
+  EXPECT_EQ(42u - count_value_3, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1972,7 +1972,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(31, count);
+  EXPECT_EQ(31u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1985,7 +1985,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(10, count);
+  EXPECT_EQ(10u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1999,7 +1999,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(5, count);
+  EXPECT_EQ(5u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -2013,7 +2013,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 }
@@ -2106,7 +2106,7 @@ TEST(SmoceCrud, OneRowOneColumn) {
 
   size_t count = 0xBADBADBAD;
   ASSERT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  ASSERT_EQ(1, count);
+  ASSERT_EQ(1u, count);
   ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
 
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));

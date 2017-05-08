@@ -74,7 +74,7 @@ public:
   unsigned n_records;
   std::unordered_map<int, int> reorder;
 
-  void CheckPosition(int linear, int dup_id, int expected_n_dups = 0,
+  void CheckPosition(int linear, int dup_id, unsigned expected_n_dups = 0,
                      bool check_dup_id = true) {
     if (linear < 0) {
       /* для удобства и выразительности теста linear = -1 здесь
@@ -98,7 +98,7 @@ public:
                  std::to_string(reorder.size() - 1) + "], linear-dup " +
                  (check_dup_id ? std::to_string(dup_id) : "any"));
 
-    ASSERT_EQ(1, reorder.count(linear));
+    ASSERT_EQ(1u, reorder.count(linear));
     const auto expected_order = reorder.at(linear);
 
     /* Пояснения относительно порядка следования строк-дубликатов (с однаковым
@@ -243,7 +243,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(UINT16_MAX, NNN * NDUP);
+    ASSERT_GE(65535u, NNN * NDUP);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     pk_index = std::tr1::get<0>(GetParam());
     pk_type = std::tr1::get<1>(GetParam());
@@ -577,7 +577,7 @@ TEST_P(CursorSecondary, basicMoves) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -767,7 +767,7 @@ TEST_P(CursorSecondaryDups, dupMoves) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -1150,7 +1150,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   /* заполняем present "номерами" значений ключа существующих записей,
    * важно что эти "номера" через карту позволяют получить соответствующее
    * значения от генератора ключей */
@@ -1199,7 +1199,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
     // проверяем позиционирование
     for (size_t i = 0; i < initial.size(); ++i) {
       const auto linear = initial.at(i);
-      ASSERT_EQ(1, reorder.count(linear));
+      ASSERT_EQ(1u, reorder.count(linear));
       const auto order = reorder[linear];
       int expected_dups =
           dups_countdown.count(linear) ? dups_countdown.at(linear) : 0;
@@ -1216,7 +1216,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
-        ASSERT_EQ(FPTA_DEADBEEF, dups);
+        ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
         if (present.size()) {
           /* но какие-то строки в таблице еще есть, поэтому неточный
            * поиск (exactly=false) должен вернуть "ОК" если:
@@ -1252,7 +1252,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
             ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
             ASSERT_EQ(FPTA_ECURSOR,
                       fpta_cursor_dups(cursor_guard.get(), &dups));
-            ASSERT_EQ(FPTA_DEADBEEF, dups);
+            ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
           }
         } else {
           if (fpta_cursor_is_ordered(ordering) ||
@@ -1265,7 +1265,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
           }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
-          ASSERT_EQ(FPTA_DEADBEEF, dups);
+          ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
         }
         continue;
       case 1:
@@ -1348,7 +1348,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
     for (size_t i = present.size(); i > present.size() / 2;) {
       const auto linear = present.at(--i);
       const auto order = reorder.at(linear);
-      auto expected_dups = dups_countdown.at(linear);
+      unsigned expected_dups = dups_countdown.at(linear);
       SCOPED_TRACE("delete: linear " + std::to_string(linear) + ", order " +
                    std::to_string(order) + ", dups left " +
                    std::to_string(expected_dups));
@@ -1371,7 +1371,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       if (present.empty()) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
-        ASSERT_EQ(0, dups);
+        ASSERT_EQ(0u, dups);
       } else if (expected_dups) {
         ASSERT_NO_FATAL_FAILURE(
             CheckPosition(linear,
@@ -1395,7 +1395,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
         } else {
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
-          ASSERT_EQ(0, dups);
+          ASSERT_EQ(0u, dups);
         }
       }
     }
@@ -1478,7 +1478,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
 
   any_keygen keygen(se_type, se_index);
   const unsigned expected_dups = fpta_index_is_unique(se_index) ? 1 : NDUP;
