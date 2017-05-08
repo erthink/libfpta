@@ -100,7 +100,7 @@ TEST(Init, Base) {
       size_t avail =
           FPT_ALIGN_FLOOR(extra, fptu_unit_size) - fptu_unit_size * items;
       EXPECT_EQ(avail, fptu_space4data(pt));
-      EXPECT_EQ(0, fptu_junkspace(pt));
+      EXPECT_EQ(0u, fptu_junkspace(pt));
 
       EXPECT_STREQ(nullptr, fptu_check_ro(io));
       EXPECT_STREQ(nullptr, fptu_check(pt));

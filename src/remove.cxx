@@ -80,7 +80,7 @@ int fptu_erase(fptu_rw *pt, unsigned column, int type_or_filter) {
   }
 
   fptu_field *pf =
-      fptu_lookup_ct(pt, fptu_pack_coltype(column, (unsigned)type_or_filter));
+      fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
   if (pf == nullptr)
     return 0;
 

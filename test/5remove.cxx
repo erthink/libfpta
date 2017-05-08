@@ -41,14 +41,14 @@ TEST(Remove, Base) {
   ASSERT_STREQ(nullptr, fptu_check(pt));
   EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0, 0));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(1u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
   EXPECT_EQ(1, fptu_erase(pt, 0, fptu_uint16));
   EXPECT_STREQ(nullptr, fptu_check(pt));
   EXPECT_EQ(0, fptu_erase(pt, 0, fptu_uint32));
   EXPECT_STREQ(nullptr, fptu_check(pt));
 
-  EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(0u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
   EXPECT_EQ(pt->pivot, pt->head);
   EXPECT_EQ(pt->pivot, pt->tail);
 
@@ -57,17 +57,17 @@ TEST(Remove, Base) {
   EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0xA, 0));
   EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0xB, 0));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(2, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(2u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
   EXPECT_EQ(1, fptu_erase(pt, 0xB, fptu_uint16));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(1u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
 
   EXPECT_EQ(1, fptu_erase(pt, 0xA, fptu_uint16));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(0u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
   EXPECT_EQ(pt->pivot, pt->head);
   EXPECT_EQ(pt->pivot, pt->tail);
 
@@ -76,17 +76,17 @@ TEST(Remove, Base) {
   EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0xA, 0));
   EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0xB, 0));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(2, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(2u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
   EXPECT_EQ(1, fptu_erase(pt, 0xA, fptu_uint16));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(1, pt->junk);
+  EXPECT_EQ(1u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(1u, pt->junk);
 
   EXPECT_EQ(1, fptu_erase(pt, 0xB, fptu_uint16));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(0u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
   EXPECT_EQ(pt->pivot, pt->head);
   EXPECT_EQ(pt->pivot, pt->tail);
 
@@ -95,17 +95,17 @@ TEST(Remove, Base) {
   EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0xA, 0));
   EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0xB, 0));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(2, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(2u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
   EXPECT_EQ(1, fptu_erase(pt, 0xB, fptu_uint32));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(1u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
 
   EXPECT_EQ(1, fptu_erase(pt, 0xA, fptu_uint32));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(0u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
   EXPECT_EQ(pt->pivot, pt->head);
   EXPECT_EQ(pt->pivot, pt->tail);
 
@@ -114,17 +114,17 @@ TEST(Remove, Base) {
   EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0xA, 0));
   EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0xB, 0));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(2, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(2u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
   EXPECT_EQ(1, fptu_erase(pt, 0xA, fptu_uint32));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(1, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(2, pt->junk);
+  EXPECT_EQ(1u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(2u, pt->junk);
 
   EXPECT_EQ(1, fptu_erase(pt, 0xB, fptu_uint32));
   EXPECT_STREQ(nullptr, fptu_check(pt));
-  EXPECT_EQ(0, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-  EXPECT_EQ(0, pt->junk);
+  EXPECT_EQ(0u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+  EXPECT_EQ(0u, pt->junk);
   EXPECT_EQ(pt->pivot, pt->head);
   EXPECT_EQ(pt->pivot, pt->tail);
 }
@@ -146,12 +146,12 @@ TEST(Remove, Serie) {
     EXPECT_EQ(n * 4,
               fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
-    EXPECT_EQ(n, fptu_erase(pt, 1, fptu_filter | (1 << fptu_uint16)));
+    EXPECT_EQ((int)n, fptu_erase(pt, 1, fptu_filter | (1u << fptu_uint16)));
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(n * 3,
               fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
-    EXPECT_EQ(n, fptu_erase(pt, 1, fptu_filter | (1 << fptu_uint32)));
+    EXPECT_EQ((int)n, fptu_erase(pt, 1, fptu_filter | (1u << fptu_uint32)));
     EXPECT_STREQ(nullptr, fptu_check(pt));
     EXPECT_EQ(n * 2,
               fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
@@ -169,8 +169,8 @@ TEST(Remove, Serie) {
     }
 
     EXPECT_STREQ(nullptr, fptu_check(pt));
-    ASSERT_EQ(0, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
-    ASSERT_EQ(0, fptu_junkspace(pt));
+    ASSERT_EQ(0u, fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
+    ASSERT_EQ(0u, fptu_junkspace(pt));
   }
 }
 
@@ -189,7 +189,7 @@ TEST(Remove, Shuffle) {
       SCOPED_TRACE("shuffle #" + std::to_string(n) + ", create-mask " +
                    std::to_string(create_mask));
 
-      int created_count = 0;
+      unsigned created_count = 0;
       for (unsigned i = 0; i < 6; ++i) {
         if (create_mask & (1 << i)) {
           switch (i % 3) {
@@ -210,7 +210,7 @@ TEST(Remove, Shuffle) {
       }
 
       ASSERT_STREQ(nullptr, fptu_check(pt));
-      EXPECT_EQ(0, fptu_junkspace(pt));
+      EXPECT_EQ(0u, fptu_junkspace(pt));
       EXPECT_EQ(created_count,
                 fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
 
@@ -242,7 +242,7 @@ TEST(Remove, Shuffle) {
                   fptu_field_count_ex(pt, field_filter_any, nullptr, nullptr));
       }
 
-      ASSERT_EQ(0, fptu_junkspace(pt));
+      ASSERT_EQ(0u, fptu_junkspace(pt));
     }
   }
 }

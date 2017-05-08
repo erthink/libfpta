@@ -50,9 +50,9 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
   if (unlikely(column > fptu_max_cols))
     return nullptr;
 
-  unsigned items = (unsigned)ro.units[0].varlen.tuple_items & fptu_lt_mask;
   const fptu_field *begin = &ro.units[1].field;
-  const fptu_field *end = begin + items;
+  const fptu_field *end =
+      begin + (ro.units[0].varlen.tuple_items & fptu_lt_mask);
 
   if (fptu_lx_mask & ro.units[0].varlen.tuple_items) {
     // TODO: support for ordered tuples
@@ -64,7 +64,7 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
         return pf;
     }
   } else {
-    unsigned ct = fptu_pack_coltype(column, (unsigned)type_or_filter);
+    unsigned ct = fptu_pack_coltype(column, type_or_filter);
     for (const fptu_field *pf = begin; pf < end; ++pf) {
       if (pf->ct == ct)
         return pf;
@@ -98,8 +98,7 @@ __hot fptu_field *fptu_lookup(fptu_rw *pt, unsigned column,
     return nullptr;
   }
 
-  return fptu_lookup_ct(pt,
-                        fptu_pack_coltype(column, (unsigned)type_or_filter));
+  return fptu_lookup_ct(pt, fptu_pack_coltype(column, type_or_filter));
 }
 
 //----------------------------------------------------------------------------

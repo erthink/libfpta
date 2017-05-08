@@ -325,10 +325,10 @@ static __inline fptu_type fptu_get_type(unsigned packed) {
   return (fptu_type)(packed & fptu_ty_mask);
 }
 
-static __inline unsigned fptu_pack_coltype(unsigned column, unsigned type) {
+static __inline unsigned fptu_pack_coltype(unsigned column, int type) {
   assert(type <= fptu_ty_mask);
   assert(column <= fptu_max_cols);
-  return type + (column << fptu_co_shift);
+  return (unsigned)type + (column << fptu_co_shift);
 }
 
 static __inline bool fptu_ct_match(const fptu_field *pf, unsigned column,

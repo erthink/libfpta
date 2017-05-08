@@ -78,28 +78,28 @@ TEST(Trivia, Apriory) {
   ASSERT_LT(fptu_fr_mask, 1 << fptu_co_shift);
   ASSERT_GT(fptu_limit, fptu_max_cols << fptu_co_shift);
 
-  ASSERT_GT(fptu_filter, fptu_ty_mask);
+  ASSERT_GT((size_t)fptu_filter, (size_t)fptu_ty_mask);
   ASSERT_EQ(fptu_filter, fptu_filter & fptu_any);
 
-  ASSERT_EQ(0, ct_elem_size(fptu_null));
-  ASSERT_EQ(0, ct_elem_size(fptu_uint16));
-  ASSERT_EQ(0, ct_elem_size(fptu_16));
+  ASSERT_EQ(0u, ct_elem_size(fptu_null));
+  ASSERT_EQ(0u, ct_elem_size(fptu_uint16));
+  ASSERT_EQ(0u, ct_elem_size(fptu_16));
 
-  ASSERT_EQ(4, ct_elem_size(fptu_int32));
-  ASSERT_EQ(4, ct_elem_size(fptu_uint32));
-  ASSERT_EQ(4, ct_elem_size(fptu_fp32));
-  ASSERT_EQ(4, ct_elem_size(fptu_32));
+  ASSERT_EQ(4u, ct_elem_size(fptu_int32));
+  ASSERT_EQ(4u, ct_elem_size(fptu_uint32));
+  ASSERT_EQ(4u, ct_elem_size(fptu_fp32));
+  ASSERT_EQ(4u, ct_elem_size(fptu_32));
 
-  ASSERT_EQ(8, ct_elem_size(fptu_int64));
-  ASSERT_EQ(8, ct_elem_size(fptu_uint64));
-  ASSERT_EQ(8, ct_elem_size(fptu_fp64));
-  ASSERT_EQ(8, ct_elem_size(fptu_64));
+  ASSERT_EQ(8u, ct_elem_size(fptu_int64));
+  ASSERT_EQ(8u, ct_elem_size(fptu_uint64));
+  ASSERT_EQ(8u, ct_elem_size(fptu_fp64));
+  ASSERT_EQ(8u, ct_elem_size(fptu_64));
 
-  ASSERT_EQ(12, ct_elem_size(fptu_96));
-  ASSERT_EQ(16, ct_elem_size(fptu_128));
-  ASSERT_EQ(20, ct_elem_size(fptu_160));
-  ASSERT_EQ(8, ct_elem_size(fptu_datetime));
-  ASSERT_EQ(32, ct_elem_size(fptu_256));
+  ASSERT_EQ(12u, ct_elem_size(fptu_96));
+  ASSERT_EQ(16u, ct_elem_size(fptu_128));
+  ASSERT_EQ(20u, ct_elem_size(fptu_160));
+  ASSERT_EQ(8u, ct_elem_size(fptu_datetime));
+  ASSERT_EQ(32u, ct_elem_size(fptu_256));
 
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_null)),
             fptu_internal_map_t2u[fptu_null]);
@@ -133,9 +133,9 @@ TEST(Trivia, Apriory) {
   ASSERT_EQ(bytes2units(ct_elem_size(fptu_256)),
             fptu_internal_map_t2u[fptu_256]);
 
-  ASSERT_EQ(4, sizeof(fptu_varlen));
-  ASSERT_EQ(4, sizeof(fptu_field));
-  ASSERT_EQ(4, sizeof(fptu_unit));
+  ASSERT_EQ(4u, sizeof(fptu_varlen));
+  ASSERT_EQ(4u, sizeof(fptu_field));
+  ASSERT_EQ(4u, sizeof(fptu_unit));
   ASSERT_EQ(sizeof(struct iovec), sizeof(fptu_ro));
 
   ASSERT_EQ(sizeof(fptu_rw), fptu_space(0, 0));
@@ -144,19 +144,19 @@ TEST(Trivia, Apriory) {
 TEST(Trivia, ColType) {
   unsigned ct;
   ct = fptu_pack_coltype(0, fptu_null);
-  ASSERT_EQ(0, ct);
+  ASSERT_EQ(0u, ct);
   ASSERT_GT(fptu_limit, ct);
-  EXPECT_EQ(0, fptu_get_col(ct));
+  EXPECT_EQ(0u, fptu_get_col(ct));
   EXPECT_EQ(fptu_null, fptu_get_type(ct));
 
   ct = fptu_pack_coltype(42, fptu_int64);
-  ASSERT_NE(0, ct);
+  ASSERT_NE(0u, ct);
   ASSERT_GT(fptu_limit, ct);
-  EXPECT_EQ(42, fptu_get_col(ct));
+  EXPECT_EQ(42u, fptu_get_col(ct));
   EXPECT_EQ(fptu_int64, fptu_get_type(ct));
 
   ct = fptu_pack_coltype(fptu_max_cols, fptu_cstr | fptu_farray);
-  ASSERT_NE(0, ct);
+  ASSERT_NE(0u, ct);
   ASSERT_GT(fptu_limit, ct);
   EXPECT_EQ(fptu_max_cols, fptu_get_col(ct));
   EXPECT_EQ(fptu_cstr | fptu_farray, fptu_get_type(ct));
@@ -366,7 +366,7 @@ TEST(Trivia, time_grain) {
       ASSERT_GE(fine.fixedpoint, grained.fixedpoint);
       for (int bit = 0; - bit > grain; ++bit) {
         SCOPED_TRACE("bit " + std::to_string(bit));
-        EXPECT_EQ(0, grained.fractional & (1 << bit));
+        EXPECT_EQ(0u, grained.fractional & (1 << bit));
       }
       usleep(37);
     }

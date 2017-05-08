@@ -201,43 +201,44 @@ typedef struct FPTU_API fptu_rw {
 /* Основные ограничения, константы и их производные. */
 enum fptu_bits {
   // базовые лимиты и параметры
-  fptu_bits = 16, // ширина счетчиков
-  fptu_typeid_bits = 5, // ширина типа в идентификаторе поля
-  fptu_ct_reserve_bits = 1, // резерв в идентификаторе поля
-  fptu_unit_size = 4,       // размер одного юнита
+  fptu_bits = 16u, // ширина счетчиков
+  fptu_typeid_bits = 5u, // ширина типа в идентификаторе поля
+  fptu_ct_reserve_bits = 1u, // резерв в идентификаторе поля
+  fptu_unit_size = 4u,       // размер одного юнита
   // количество служебных (зарезервированных) бит в заголовке кортежа,
   // для признаков сортированности и отсутствия повторяющихся полей
-  fptu_lx_bits = 2,
+  fptu_lx_bits = 2u,
 
   // производные константы и параметры
   // log2(fptu_unit_size)
-  fptu_unit_shift = 2,
+  fptu_unit_shift = 2u,
 
   // базовый лимит значений
-  fptu_limit = ((size_t)1 << fptu_bits) - 1,
+  fptu_limit = (UINT32_C(1) << fptu_bits) - 1u,
   // максимальный суммарный размер сериализованного представления кортежа,
   fptu_max_tuple_bytes = fptu_limit * fptu_unit_size,
 
   // ширина тега-номера поля/колонки
   fptu_co_bits = fptu_bits - fptu_typeid_bits - fptu_ct_reserve_bits,
   // маска для получения типа из идентификатора поля/колонки
-  fptu_ty_mask = ((size_t)1 << fptu_typeid_bits) - 1,
+  fptu_ty_mask = (UINT32_C(1) << fptu_typeid_bits) - 1u,
   // маска резервных битов в идентификаторе поля/колонки
-  fptu_fr_mask = (((size_t)1 << fptu_ct_reserve_bits) - 1) << fptu_typeid_bits,
+  fptu_fr_mask = ((UINT32_C(1) << fptu_ct_reserve_bits) - 1u)
+                 << fptu_typeid_bits,
 
   // сдвиг для получения тега-номера из идентификатора поля/колонки
   fptu_co_shift = fptu_typeid_bits + fptu_ct_reserve_bits,
   // значение тега-номера для удаленных полей/колонок
-  fptu_co_dead = ((size_t)1 << fptu_co_bits) - 1,
+  fptu_co_dead = (UINT32_C(1) << fptu_co_bits) - 1u,
   // максимальный тег-номер поля/колонки
-  fptu_max_cols = fptu_co_dead - 1,
+  fptu_max_cols = fptu_co_dead - 1u,
 
   // кол-во бит доступных для хранения размера массива дескрипторов полей
   fptu_lt_bits = fptu_bits - fptu_lx_bits,
   // маска для выделения служебных бит из заголовка кортежа
-  fptu_lx_mask = (((size_t)1 << fptu_lx_bits) - 1) << fptu_lt_bits,
+  fptu_lx_mask = ((UINT32_C(1) << fptu_lx_bits) - 1u) << fptu_lt_bits,
   // маска для получения размера массива дескрипторов из заголовка кортежа
-  fptu_lt_mask = ((size_t)1 << fptu_lt_bits) - 1,
+  fptu_lt_mask = (UINT32_C(1) << fptu_lt_bits) - 1u,
   // максимальное кол-во полей/колонок в одном кортеже
   fptu_max_fields = fptu_lt_mask,
 
@@ -288,17 +289,18 @@ typedef enum fptu_type {
   fptu_nested = 15, // nested tuple
   fptu_farray = 16, // flag
 
-  fptu_typeid_max = (1 << fptu_typeid_bits) - 1,
+  fptu_typeid_max = (INT32_C(1) << fptu_typeid_bits) - 1,
 
   // pseudo types for lookup and filtering
-  fptu_filter = 1 << (fptu_null | fptu_farray),
-  fptu_any = -1, // match any type
-  fptu_any_int =
-      fptu_filter | (1 << fptu_int32) | (1 << fptu_int64), // match int32/int64
-  fptu_any_uint = fptu_filter | (1 << fptu_uint16) | (1 << fptu_uint32) |
-                  (1 << fptu_uint64), // match uint16/uint32/uint64
-  fptu_any_fp =
-      fptu_filter | (1 << fptu_fp32) | (1 << fptu_fp64), // match fp32/fp64
+  fptu_filter = INT32_C(1) << (fptu_null | fptu_farray),
+  fptu_any = INT32_C(-1), // match any type
+  fptu_any_int = fptu_filter | (INT32_C(1) << fptu_int32) |
+                 (INT32_C(1) << fptu_int64), // match int32/int64
+  fptu_any_uint = fptu_filter | (INT32_C(1) << fptu_uint16) |
+                  (INT32_C(1) << fptu_uint32) |
+                  (INT32_C(1) << fptu_uint64), // match uint16/uint32/uint64
+  fptu_any_fp = fptu_filter | (INT32_C(1) << fptu_fp32) |
+                (INT32_C(1) << fptu_fp64), // match fp32/fp64
 
   // aliases
   fptu_16 = fptu_uint16,
@@ -798,7 +800,7 @@ FPTU_API size_t fptu_field_count_ex(const fptu_rw *pt, fptu_field_filter filter,
 FPTU_API size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
                                        void *context, void *param);
 
-FPTU_API int fptu_field_type(const fptu_field *pf);
+FPTU_API fptu_type fptu_field_type(const fptu_field *pf);
 FPTU_API int fptu_field_column(const fptu_field *pf);
 
 FPTU_API uint16_t fptu_field_uint16(const fptu_field *pf);

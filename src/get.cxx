@@ -19,7 +19,7 @@
 
 #include "fast_positive/tuples_internal.h"
 
-int fptu_field_type(const fptu_field *pf) {
+fptu_type fptu_field_type(const fptu_field *pf) {
   if (unlikely(pf == nullptr))
     return fptu_null;
 
