@@ -430,7 +430,7 @@ __cold string to_string(const fpta_txn *txt) {
 }
 
 __cold string to_string(const MDB_val &value) {
-  return fptu::format("%zu_%p (", value.iov_len, value.iov_base) +
+  return fptu::format("%" PRIuPTR "_%p (", value.iov_len, value.iov_base) +
          fptu::hexadecimal(value.iov_base, value.iov_len) + ")";
 }
 
