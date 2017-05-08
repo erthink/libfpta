@@ -1646,8 +1646,8 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorSecondary,
     ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_withdups, fpta_primary_withdups_reversed,
+        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reverse,
+                          fpta_primary_withdups, fpta_primary_withdups_reverse,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
@@ -1655,9 +1655,9 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_unique, fpta_secondary_unique_reversed,
+        ::testing::Values(fpta_secondary_unique, fpta_secondary_unique_reverse,
                           fpta_secondary_withdups,
-                          fpta_secondary_withdups_reversed,
+                          fpta_secondary_withdups_reverse,
                           fpta_secondary_unique_unordered,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
@@ -1670,7 +1670,7 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorSecondaryDups,
     ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
+        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reverse,
                           fpta_primary_unique_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
@@ -1678,7 +1678,7 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
         ::testing::Values(fpta_secondary_withdups,
-                          fpta_secondary_withdups_reversed,
+                          fpta_secondary_withdups_reverse,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
                           fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,

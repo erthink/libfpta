@@ -1532,8 +1532,8 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_withdups, fpta_primary_withdups_reversed,
+        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reverse,
+                          fpta_primary_withdups, fpta_primary_withdups_reverse,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
@@ -1546,7 +1546,7 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_primary_withdups, fpta_primary_withdups_reversed,
+        ::testing::Values(fpta_primary_withdups, fpta_primary_withdups_reverse,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
 

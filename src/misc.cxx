@@ -224,9 +224,9 @@ __cold string to_string(const fpta_index_type index) {
     return "primary-withdups-unordered";
   case fpta_primary_unique_unordered:
     return "primary-unique-unordered";
-  case fpta_primary_withdups_reversed:
+  case fpta_primary_withdups_reverse:
     return "primary-withdups-reverse";
-  case fpta_primary_unique_reversed:
+  case fpta_primary_unique_reverse:
     return "primary-unique-reverse";
 
   case fpta_secondary_withdups:
@@ -237,9 +237,9 @@ __cold string to_string(const fpta_index_type index) {
     return "secondary-withdups-unordered";
   case fpta_secondary_unique_unordered:
     return "secondary-unique-unordered";
-  case fpta_secondary_withdups_reversed:
+  case fpta_secondary_withdups_reverse:
     return "secondary-withdups-reverse";
-  case fpta_secondary_unique_reversed:
+  case fpta_secondary_unique_reverse:
     return "secondary-unique-reverse";
   }
 }

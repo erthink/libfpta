@@ -426,7 +426,7 @@ TYPED_TEST(PrimaryIndex, unordered_unique) {
 }
 
 TYPED_TEST(PrimaryIndex, reverse_unique) {
-  TestPrimary<TypeParam::type, fpta_primary_unique_reversed>();
+  TestPrimary<TypeParam::type, fpta_primary_unique_reverse>();
 }
 
 TYPED_TEST(PrimaryIndex, obverse_withdups) {
@@ -438,7 +438,7 @@ TYPED_TEST(PrimaryIndex, unordered_withdups) {
 }
 
 TYPED_TEST(PrimaryIndex, reverse_withdups) {
-  TestPrimary<TypeParam::type, fpta_primary_withdups_reversed>();
+  TestPrimary<TypeParam::type, fpta_primary_withdups_reverse>();
 }
 
 int main(int argc, char **argv) {

@@ -45,7 +45,7 @@ TEST(Schema, Trivia) {
 
   EXPECT_EQ(FPTA_EINVAL,
             fpta_column_describe("column_a", fptu_uint64,
-                                 fpta_primary_unique_reversed, &def));
+                                 fpta_primary_unique_reverse, &def));
   EXPECT_EQ(FPTA_EINVAL, fpta_column_describe("column_a", fptu_null,
                                               fpta_primary_unique, &def));
 

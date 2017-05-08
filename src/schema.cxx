@@ -285,13 +285,13 @@ int fpta_column_describe(const char *column_name, enum fptu_type data_type,
 
   case fpta_primary_unique:
   case fpta_primary_withdups:
-  case fpta_primary_unique_reversed:
-  case fpta_primary_withdups_reversed:
+  case fpta_primary_unique_reverse:
+  case fpta_primary_withdups_reverse:
 
   case fpta_secondary_unique:
   case fpta_secondary_withdups:
-  case fpta_secondary_unique_reversed:
-  case fpta_secondary_withdups_reversed:
+  case fpta_secondary_unique_reverse:
+  case fpta_secondary_withdups_reverse:
 
   case fpta_index_none:
     assert((index_type & fpta_column_index_mask) == index_type);
@@ -350,8 +350,8 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
     case fpta_primary_withdups:
     case fpta_primary_unique_unordered:
     case fpta_primary_withdups_unordered:
-    case fpta_primary_unique_reversed:
-    case fpta_primary_withdups_reversed:
+    case fpta_primary_unique_reverse:
+    case fpta_primary_withdups_reverse:
       if (i != 0)
         /* первичный ключ может быть только один и только в самом
          * начале */
@@ -362,8 +362,8 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
     case fpta_secondary_withdups:
     case fpta_secondary_unique_unordered:
     case fpta_secondary_withdups_unordered:
-    case fpta_secondary_unique_reversed:
-    case fpta_secondary_withdups_reversed:
+    case fpta_secondary_unique_reverse:
+    case fpta_secondary_withdups_reverse:
       if (i > 0 && fpta_shove2index(def[i - 1]) == fpta_index_none)
         /* сначала должны идти все индексируемые колонки, потом не
          * индексируемые */

@@ -30,7 +30,7 @@ TEST(Value2Key, Invalid) {
   static const fpta_index_type index_cases[] = {
       /* clang-format off */
         fpta_primary_unique, fpta_primary_unique_unordered,
-        fpta_primary_unique_reversed
+        fpta_primary_unique_reverse
       /* clang-format on */
   };
 
@@ -732,7 +732,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
   /* Базовый тест преобразования строковых значений в "ключи индекса" для
    * всех "строковых" типов: fptu_cstr, fptu_opaque и fptu_96/128/160/256.
    * Важной составляющей теста является проверка сравнения ключей равной
-   * длины индексными компараторами для obverse/reversed индексов.
+   * длины индексными компараторами для obverse/reverse индексов.
    *
    * Сценарий:
    *  1. Проверяем конвертацию значений:
@@ -749,7 +749,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
    *    - для проверки компараторов для каждого итерируемого размера ключа
    *      конвертируются и сравниваются пары значений, полученные движением
    *      "скользящего окна" по возрастающей последовательности байтов.
-   *    - всё перечисленное выполняется для obverse/reversed индексов.
+   *    - всё перечисленное выполняется для obverse/reverse индексов.
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
@@ -759,7 +759,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
   static const fpta_index_type index_cases[] = {
       /* clang-format off */
         fpta_primary_unique, fpta_primary_unique_unordered,
-        fpta_primary_unique_reversed
+        fpta_primary_unique_reverse
       /* clang-format on */
   };
 
@@ -838,20 +838,20 @@ TYPED_TEST(Value2Key_AllString, basic) {
     value_left = fpta_value_binstr<type>(nullptr, 0);
     value_right = fpta_value_binstr<type>(zeros, keylen_max);
     expect_lt<type, fpta_primary_unique>(value_left, value_right);
-    expect_lt<type, fpta_primary_unique_reversed>(value_left, value_right);
+    expect_lt<type, fpta_primary_unique_reverse>(value_left, value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
   }
 
   value_left = fpta_value_binstr<type>(zeros, keylen_max);
   value_right = fpta_value_binstr<type>(ones, keylen_max);
   expect_lt<type, fpta_primary_unique>(value_left, value_right);
-  expect_lt<type, fpta_primary_unique_reversed>(value_left, value_right);
+  expect_lt<type, fpta_primary_unique_reverse>(value_left, value_right);
   expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
   expect_eq<type, fpta_primary_unique>(value_left, value_left);
   expect_eq<type, fpta_primary_unique>(value_right, value_right);
-  expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
-  expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
+  expect_eq<type, fpta_primary_unique_reverse>(value_left, value_left);
+  expect_eq<type, fpta_primary_unique_reverse>(value_right, value_right);
   expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
   expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
 
@@ -862,12 +862,12 @@ TYPED_TEST(Value2Key_AllString, basic) {
     value_right = fpta_value_binstr<type>(obverse, keylen);
 
     expect_lt<type, fpta_primary_unique>(value_left, value_right);
-    expect_lt<type, fpta_primary_unique_reversed>(value_left, value_right);
+    expect_lt<type, fpta_primary_unique_reverse>(value_left, value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
     value_left = fpta_value_binstr<type>(ones, keylen);
     expect_gt<type, fpta_primary_unique>(value_left, value_right);
-    expect_gt<type, fpta_primary_unique_reversed>(value_left, value_right);
+    expect_gt<type, fpta_primary_unique_reverse>(value_left, value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
     for (size_t offset = 1; offset < keybuf_len - keylen; ++offset) {
@@ -880,20 +880,20 @@ TYPED_TEST(Value2Key_AllString, basic) {
 
       expect_eq<type, fpta_primary_unique>(value_left, value_left);
       expect_eq<type, fpta_primary_unique>(value_right, value_right);
-      expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
+      expect_eq<type, fpta_primary_unique_reverse>(value_left, value_left);
+      expect_eq<type, fpta_primary_unique_reverse>(value_right, value_right);
       expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
       expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
 
       value_left = fpta_value_binstr<type>(reverse, keylen);
       value_right = fpta_value_binstr<type>(reverse + offset, keylen);
-      expect_gt<type, fpta_primary_unique_reversed>(value_left, value_right);
+      expect_gt<type, fpta_primary_unique_reverse>(value_left, value_right);
       expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
       expect_eq<type, fpta_primary_unique>(value_left, value_left);
       expect_eq<type, fpta_primary_unique>(value_right, value_right);
-      expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
+      expect_eq<type, fpta_primary_unique_reverse>(value_left, value_left);
+      expect_eq<type, fpta_primary_unique_reverse>(value_right, value_right);
       expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
       expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
     }
@@ -983,7 +983,7 @@ TYPED_TEST(Value2Key_VariableString, long_keys) {
    *    строки, который не поместился в префикс.
    *  - таким образом (это общепринятый подход) выполняется "сжатие" исходных
    *    длинных значений в ключи ограниченной длины.
-   *  - для reversed индексов данные рассматриваются и записываются в обратном
+   *  - для reverse индексов данные рассматриваются и записываются в обратном
    *    порядке.
    *
    * Соответственно, тест проверяет корректность всех описанных преобразований

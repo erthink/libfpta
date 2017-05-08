@@ -825,8 +825,8 @@ FPTA_API int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
  *   фиксированного размера.
  *
  * Индексы со сравнением ключей с конца:
- *   - fpta_primary_unique_reversed, fpta_primary_withdups_reversed;
- *   - fpta_secondary_unique_reversed, fpta_secondary_withdups_reversed.
+ *   - fpta_primary_unique_reverse, fpta_primary_withdups_reverse;
+ *   - fpta_secondary_unique_reverse, fpta_secondary_withdups_reverse.
  *
  *   Индексы этого типа применимы только для строк и бинарных данных (типы
  *   fptu_96..fptu_256, fptu_cstr и fptu_opaque При этом значения ключей
@@ -866,10 +866,10 @@ typedef enum fpta_index_type {
   fpta_primary_withdups_unordered = fpta_primary_withdups - fpta_index_fordered,
 
   /* строки и binary сравниваются с конца, с контролем уникальности */
-  fpta_primary_unique_reversed = fpta_primary_unique - fpta_index_fobverse,
+  fpta_primary_unique_reverse = fpta_primary_unique - fpta_index_fobverse,
 
   /* строки и binary сравниваются с конца, с повторами */
-  fpta_primary_withdups_reversed = fpta_primary_withdups - fpta_index_fobverse,
+  fpta_primary_withdups_reverse = fpta_primary_withdups - fpta_index_fobverse,
 
   /* базовый вариант для основного индекса */
   fpta_primary = fpta_primary_unique_obverse,
@@ -904,10 +904,10 @@ typedef enum fpta_index_type {
       fpta_secondary_withdups - fpta_index_fordered,
 
   /* строки и binary сравниваются с конца, с контролем уникальности */
-  fpta_secondary_unique_reversed = fpta_secondary_unique - fpta_index_fobverse,
+  fpta_secondary_unique_reverse = fpta_secondary_unique - fpta_index_fobverse,
 
   /* строки и binary сравниваются с конца, с повторами */
-  fpta_secondary_withdups_reversed =
+  fpta_secondary_withdups_reverse =
       fpta_secondary_withdups - fpta_index_fobverse,
 
   /* базовый вариант для вторичных индексов */

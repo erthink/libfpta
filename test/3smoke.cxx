@@ -737,7 +737,7 @@ public:
                                             fpta_primary_unique, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("str", fptu_cstr,
-                                   fpta_secondary_unique_reversed, &def));
+                                   fpta_secondary_unique_reverse, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("real", fptu_fp64,
                                    fpta_secondary_withdups_unordered, &def));
@@ -1018,7 +1018,7 @@ TEST_F(SmokeCRUD, none) {
   }
 
   /* обновляем строки через курсор по col_str. */ {
-    SCOPED_TRACE("update.cursor-ordered_unique_reversed_str");
+    SCOPED_TRACE("update.cursor-ordered_unique_reverse_str");
     // открываем курсор по col_str: на всю таблицу, без фильтра
     fpta_cursor *cursor;
     EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),
@@ -1306,7 +1306,7 @@ TEST_F(SmokeCRUD, none) {
   }
 
   /* удаляем строки через курсор по col_str. */ {
-    SCOPED_TRACE("delete.cursor-ordered_unique_reversed_str");
+    SCOPED_TRACE("delete.cursor-ordered_unique_reverse_str");
     // открываем курсор по col_str: на всю таблицу, без фильтра
     fpta_cursor *cursor;
     EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),

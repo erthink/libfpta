@@ -85,11 +85,11 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
   case fpta_primary_unique_unordered:
     unroll<fpta_primary_unique_unordered>(_type);
     break;
-  case fpta_primary_withdups_reversed:
-    unroll<fpta_primary_withdups_reversed>(_type);
+  case fpta_primary_withdups_reverse:
+    unroll<fpta_primary_withdups_reverse>(_type);
     break;
-  case fpta_primary_unique_reversed:
-    unroll<fpta_primary_unique_reversed>(_type);
+  case fpta_primary_unique_reverse:
+    unroll<fpta_primary_unique_reverse>(_type);
     break;
   case fpta_secondary_withdups:
     unroll<fpta_secondary_withdups>(_type);
@@ -103,11 +103,11 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
   case fpta_secondary_unique_unordered:
     unroll<fpta_secondary_unique_unordered>(_type);
     break;
-  case fpta_secondary_withdups_reversed:
-    unroll<fpta_secondary_withdups_reversed>(_type);
+  case fpta_secondary_withdups_reverse:
+    unroll<fpta_secondary_withdups_reverse>(_type);
     break;
-  case fpta_secondary_unique_reversed:
-    unroll<fpta_secondary_unique_reversed>(_type);
+  case fpta_secondary_unique_reverse:
+    unroll<fpta_secondary_unique_reverse>(_type);
     break;
   }
 }

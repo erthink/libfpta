@@ -100,7 +100,7 @@ template <fptu_type data_type> struct probe_triplet {
   typedef probe_key<data_type, fpta_primary_unique_unordered> unordered_key;
   typedef std::map<unordered_key, int> unordered_map;
 
-  typedef probe_key<data_type, fpta_primary_unique_reversed> reverse_key;
+  typedef probe_key<data_type, fpta_primary_unique_reverse> reverse_key;
   typedef std::map<reverse_key, int> reverse_map;
 
   obverse_map obverse;
