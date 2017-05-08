@@ -100,7 +100,7 @@ enum fpta_internals {
   /* используем некорретный для индекса набор флагов, чтобы в fpta_name
    * отличать таблицу от колонки, у таблицы в internal будет fpta_ftable. */
   fpta_flag_table = fpta_index_fsecondary,
-  fpta_dbi_cache_size = fpta_tables_max * 2,
+  fpta_dbi_cache_size = fpta_tables_max * 5,
   FTPA_SCHEMA_SIGNATURE = 603397211,
   FTPA_SCHEMA_CHECKSEED = 1546032023
 };
