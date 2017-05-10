@@ -161,7 +161,7 @@ struct fpta_cursor {
   MDB_cursor *mdbx_cursor;
   MDB_val current;
 
-#if defined(_MSC_VER) && (_MSC_FULL_VER < 190024215)
+#if __cplusplus < 201103L
 #define poor nullptr
 #else
   static constexpr void *poor = nullptr;

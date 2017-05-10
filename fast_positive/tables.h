@@ -1096,7 +1096,7 @@ typedef enum fpta_index_type {
       fpta_secondary_withdups_unordered_nullable_obverse - fpta_index_fobverse
 } fpta_index_type;
 
-#ifdef __cplusplus
+#if defined(___cplusplus) && __cplusplus >= 201103L
 inline constexpr fpta_index_type operator|(const fpta_index_type a,
                                            const fpta_index_type b) {
   return (fpta_index_type)((unsigned)a | (unsigned)b);
@@ -1105,7 +1105,7 @@ inline constexpr fpta_index_type operator|(const fpta_index_type a,
 inline constexpr fpta_index_type nullable(const fpta_index_type index) {
   return index | fpta_index_fnullable;
 }
-#endif
+#endif /* __cplusplus >= 201103L */
 
 /* Внутренний тип для сжатых описаний идентификаторов. */
 typedef uint64_t fpta_shove_t;
