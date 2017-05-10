@@ -388,20 +388,23 @@ typedef union {
 } fpta_fp32_t;
 
 #define FPTA_DENIL_FP32_BIN UINT32_C(0xFFFFffff)
-#define FPTA_DENIL_FP32_MAS "8388607"
 FPTA_API extern const fpta_fp32_t fpta_fp32_denil;
 
 #define FPTA_QSNAN_FP32_BIN UINT32_C(0xFFFFfffE)
-#define FPTA_QSNAN_FP32_MAS "8388606"
 FPTA_API extern const fpta_fp32_t fpta_fp32_qsnan;
 
 #define FPTA_DENIL_FP32x64_BIN UINT64_C(0xFFFFffffE0000000)
-#define FPTA_DENIL_FP32x64_MAS "4503599090499584"
 FPTA_API extern const fpta_fp64_t fpta_fp32x64_denil;
 
 #define FPTA_QSNAN_FP32x64_BIN UINT64_C(0xFFFFffffC0000000)
-#define FPTA_QSNAN_FP32x64_MAS "4503598553628672"
 FPTA_API extern const fpta_fp64_t fpta_fp32x64_qsnan;
+
+#ifndef _MSC_VER /* MSVC provides invalid nan() */
+#define FPTA_DENIL_FP32_MAS "8388607"
+#define FPTA_QSNAN_FP32_MAS "8388606"
+#define FPTA_DENIL_FP32x64_MAS "4503599090499584"
+#define FPTA_QSNAN_FP32x64_MAS "4503598553628672"
+#endif /* ! _MSC_VER */
 
 #if __GNUC_PREREQ(3, 3) || __CLANG_PREREQ(3, 6)
 #define FPTA_DENIL_FP32 (-__builtin_nanf(FPTA_DENIL_FP32_MAS))

@@ -76,38 +76,45 @@ TEST(Corny, DeNIL_NaNs) {
   fpta_fp32_t fp32;
   fpta_fp64_t fp64;
 
+#ifdef FPTA_DENIL_FP32 /* LY: undefined for buggy compilers like MSVC */
   // проверка FPTA_DENIL_FP32
   fp32.__f = FPTA_DENIL_FP32;
   EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
   EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+#endif /* FPTA_DENIL_FP32 */
+
+#ifdef FPTA_DENIL_FP32_MAS /* LY: undefined for buggy compilers like MSVC */
   // проверка FPTA_DENIL_FP32_MAS
   fp32.__f = -std::nanf(FPTA_DENIL_FP32_MAS);
-#ifndef _MSC_VER /* TODO: FIXME */
   EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
   EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
-#endif /* _MSC_VER */
+#endif /* FPTA_DENIL_FP32_MAS */
 
+#ifdef FPTA_DENIL_FP64 /* LY: undefined for buggy compilers like MSVC */
   // проверка FPTA_DENIL_FP64
   fp64.__d = FPTA_DENIL_FP64;
   EXPECT_TRUE(binary_eq(fpta_fp64_denil, fp64));
   EXPECT_EQ(fpta_fp64_denil.__i, fp64.__i);
+#endif /* FPTA_DENIL_FP64 */
+
+#ifdef FPTA_DENIL_FP64_MAS /* LY: undefined for buggy compilers like MSVC */
   // проверка FPTA_DENIL_FP64_MAS
   fp64.__d = -std::nan(FPTA_DENIL_FP64_MAS);
-#ifndef _MSC_VER /* TODO: FIXME */
   EXPECT_TRUE(binary_eq(fpta_fp64_denil, fp64));
   EXPECT_EQ(fpta_fp64_denil.__i, fp64.__i);
-#endif /* _MSC_VER */
+#endif /* FPTA_DENIL_FP64_MAS */
 
+#ifdef FPTA_DENIL_FP32x64_MAS /* LY: undefined for mad compilers like MSVC */
   // проверка FPTA_DENIL_FP32x64_MAS
   fp64.__d = -std::nan(FPTA_DENIL_FP32x64_MAS);
-#ifndef _MSC_VER /* TODO: FIXME */
   EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
-#endif /* _MSC_VER */
+#endif /* FPTA_DENIL_FP32x64_MAS */
+
+#ifdef FPTA_QSNAN_FP32x64_MAS /* LY: undefined for mad compilers like MSVC */
   // проверка FPTA_QSNAN_FP32x64_MAS
   fp64.__d = -std::nan(FPTA_QSNAN_FP32x64_MAS);
-#ifndef _MSC_VER /* TODO: FIXME */
   EXPECT_TRUE(binary_eq(fpta_fp32x64_qsnan, fp64));
-#endif /* _MSC_VER */
+#endif /* FPTA_QSNAN_FP32x64_MAS */
 
   // преобразование DENIL с усечением.
   fp32.__f = fpta_fp64_denil.__d;
