@@ -449,7 +449,9 @@ static __inline bool is_fixbin_denil(const fpta_index_type index,
     return by64[0] == denil && by64[1] == denil && by64[2] == denil &&
            by64[3] == denil;
   default:
-    assert(false);
+    assert(false && "unexpected column type");
+    __unreachable();
+    return true;
   }
 }
 
