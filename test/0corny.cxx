@@ -34,6 +34,30 @@ TEST(Corny, NameValidate) {
   EXPECT_FALSE(fpta_validate_name(""));
   EXPECT_FALSE(fpta_validate_name(nullptr));
   EXPECT_FALSE(fpta_validate_name("a_very_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
                                   "long_long_long_long_long_long_name"));
 
   EXPECT_FALSE(fpta_validate_name("not valid"));
