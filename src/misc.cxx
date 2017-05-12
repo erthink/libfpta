@@ -72,6 +72,7 @@ __cold std::string format(const char *fmt, ...) {
   std::string result;
   result.reserve((size_t)needed + 1);
   result.resize((size_t)needed, '\0');
+  assert((int)result.capacity() > needed);
   int actual = vsnprintf((char *)result.data(), result.capacity(), fmt, ones);
   assert(actual == needed);
   (void)actual;
@@ -82,7 +83,7 @@ __cold std::string format(const char *fmt, ...) {
 __cold std::string hexadecimal(const void *data, size_t bytes) {
   std::string result;
   if (bytes > 0) {
-    result.reserve(bytes * 2);
+    result.reserve(bytes * 2 + 1);
     const uint8_t *ptr = (const uint8_t *)data;
     const uint8_t *const end = ptr + bytes;
     do {
@@ -102,7 +103,7 @@ __cold std::string hexadecimal(const void *data, size_t bytes) {
 __cold const char *fptu_type_name(const fptu_type type) {
   switch ((int /* hush 'not in enumerated' */)type) {
   default: {
-    static __thread char buf[16];
+    static __thread char buf[32];
     snprintf(buf, sizeof(buf), "invalid(fptu_type)%i", (int)type);
     return buf;
   }
@@ -479,7 +480,12 @@ __cold string to_string(const fptu_time &time) {
   snprintf(datetime, sizeof(datetime), "%04d-%02d-%02d_%02d:%02d:%02d",
            utc_tm.tm_year + 1900, utc_tm.tm_mon + 1, utc_tm.tm_mday,
            utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec);
-  return string(datetime) + (fractional + /* skip leading */ 1);
+
+  string result;
+  result.reserve(31);
+  result = datetime;
+  result.append(fractional + /* skip leading digit before the dot */ 1);
+  return result;
 }
 
 /* #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__) */
