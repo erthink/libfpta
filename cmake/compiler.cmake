@@ -256,6 +256,7 @@ macro(setup_compile_flags)
   add_definitions("-D__STDC_FORMAT_MACROS=1")
   add_definitions("-D__STDC_LIMIT_MACROS=1")
   add_definitions("-D__STDC_CONSTANT_MACROS=1")
+  add_definitions("-D_HAS_EXCEPTIONS=0")
 
   # Only add -Werror if it's a debug build, done by developers.
   # Release builds should not cause extra trouble.
