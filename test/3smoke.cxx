@@ -2912,7 +2912,8 @@ TEST(Smoke, ReOpenAfterAbort) {
   EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &column_id, "host"));
 
   fpta_value value = fpta_value_cstr("administrator");
-  fptu_ro record = {nullptr, 0};
+  fptu_ro record;
+  memset(&record, 0, sizeof(record));
 
   EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn, &column_id, &value, &record));
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
