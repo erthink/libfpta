@@ -408,8 +408,8 @@ __cold string to_string(const fpta_name *id) {
     return fptu::format("table.%p{@%" PRIx64 ", v%" PRIu64 ", ", id, id->shove,
                         id->version) +
            to_string(index) + "." + to_string(type) +
-           fptu::format(", dbi#%u, ", id->mdbx_dbi) + to_string(id->table.def) +
-           "}";
+           fptu::format(", dbi-hint#%u, ", id->handle_cache_hint) +
+           to_string(id->table.def) + "}";
   }
 
   const fpta_index_type index = fpta_name_colindex(id);
@@ -419,7 +419,7 @@ __cold string to_string(const fpta_name *id) {
              id, id->shove, id->version, id->column.num,
              id->column.table ? id->column.table->shove : 0, id->column.table) +
          to_string(index) + "." + to_string(type) +
-         fptu::format(", dbi#%u}", id->mdbx_dbi);
+         fptu::format(", dbi-hint#%u}", id->handle_cache_hint);
 }
 
 __cold string to_string(const fpta_column_set *) { return FIXME; }
@@ -496,8 +496,9 @@ __cold string to_string(const fpta_cursor *cursor) {
     result += ",\n\t" + to_string(cursor->table_id) +
               fptu::format(",\n\tindex {@%" PRIx64 ".", shove) +
               to_string(index) + "." + to_string(type) +
-              fptu::format(", col#%u, dbi#%u},\n\trange-from-key ",
-                           cursor->index.column_order, cursor->index.mdbx_dbi) +
+              fptu::format(", col#%u, dbi#%u_%u},\n\trange-from-key ",
+                           cursor->index.column_order, cursor->tbl_handle,
+                           cursor->idx_handle) +
               to_string(cursor->range_from_key) + ",\n\trange-to-key " +
               to_string(cursor->range_to_key) + ",\n\tfilter " +
               to_string(cursor->filter) + ",\n\ttxn " + to_string(cursor->txn) +

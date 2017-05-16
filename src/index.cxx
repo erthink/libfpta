@@ -340,7 +340,7 @@ static __inline unsigned shove2dbiflags(fpta_shove_t shove) {
   else if (fpta_index_is_reverse(index) && type >= fptu_96)
     dbi_flags |= MDB_REVERSEKEY;
 
-  return dbi_flags | MDB_CREATE;
+  return dbi_flags;
 }
 
 unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t shove) {

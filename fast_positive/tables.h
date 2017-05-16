@@ -1267,7 +1267,7 @@ typedef struct FPTA_API fpta_name {
       int num; /* номер поля в кортеже. */
     } column;
   };
-  unsigned mdbx_dbi; /* дескриптор движка */
+  unsigned handle_cache_hint; /* подсказка для кэша дескрипторов */
 } fpta_name;
 
 /* Инициализирует операционный идентификатор таблицы.

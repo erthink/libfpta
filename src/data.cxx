@@ -467,16 +467,15 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->mdbx_dbi < 1)) {
-    rc = fpta_open_table(txn, table_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi handle;
+  rc = fpta_open_table(txn, table_id, handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   fptu_ro present_row;
   int rows_with_same_key;
-  rc = mdbx_get_ex(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx,
-                   &present_row.sys, &rows_with_same_key);
+  rc = mdbx_get_ex(txn->mdbx_txn, handle, &pk_key.mdbx, &present_row.sys,
+                   &rows_with_same_key);
   if (rc != MDB_SUCCESS) {
     if (unlikely(rc != MDB_NOTFOUND))
       return rc;
@@ -553,15 +552,13 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->mdbx_dbi < 1)) {
-    rc = fpta_open_table(txn, table_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi handle;
+  rc = fpta_open_table(txn, table_id, handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (!fpta_table_has_secondary(table_id))
-    return mdbx_put(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx, &row.sys,
-                    flags);
+    return mdbx_put(txn->mdbx_txn, handle, &pk_key.mdbx, &row.sys, flags);
 
   fptu_ro old;
 #if defined(NDEBUG) && __cplusplus >= 201103L
@@ -573,13 +570,13 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   old.sys.iov_base = buffer;
   old.sys.iov_len = likely_enough;
 
-  rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx, &row.sys,
-                    &old.sys, flags);
+  rc = mdbx_replace(txn->mdbx_txn, handle, &pk_key.mdbx, &row.sys, &old.sys,
+                    flags);
   if (unlikely(rc == MDBX_RESULT_TRUE)) {
     assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
     old.sys.iov_base = alloca(old.sys.iov_len);
-    rc = mdbx_replace(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key.mdbx, &row.sys,
-                      &old.sys, flags);
+    rc = mdbx_replace(txn->mdbx_txn, handle, &pk_key.mdbx, &row.sys, &old.sys,
+                      flags);
   }
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
@@ -626,13 +623,12 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->mdbx_dbi < 1)) {
-    rc = fpta_open_table(txn, table_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi handle;
+  rc = fpta_open_table(txn, table_id, handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
-  rc = mdbx_del(txn->mdbx_txn, table_id->mdbx_dbi, &key.mdbx, &row.sys);
+  rc = mdbx_del(txn->mdbx_txn, handle, &key.mdbx, &row.sys);
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
 
@@ -675,22 +671,20 @@ int fpta_get(fpta_txn *txn, fpta_name *column_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(column_id->mdbx_dbi < 1)) {
-    rc = fpta_open_column(txn, column_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi tbl_handle, idx_handle;
+  rc = fpta_open_column(txn, column_id, tbl_handle, idx_handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   if (fpta_index_is_primary(index))
-    return mdbx_get(txn->mdbx_txn, column_id->mdbx_dbi, &column_key.mdbx,
-                    &row->sys);
+    return mdbx_get(txn->mdbx_txn, idx_handle, &column_key.mdbx, &row->sys);
 
   MDB_val pk_key;
-  rc = mdbx_get(txn->mdbx_txn, column_id->mdbx_dbi, &column_key.mdbx, &pk_key);
+  rc = mdbx_get(txn->mdbx_txn, idx_handle, &column_key.mdbx, &pk_key);
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
 
-  rc = mdbx_get(txn->mdbx_txn, table_id->mdbx_dbi, &pk_key, &row->sys);
+  rc = mdbx_get(txn->mdbx_txn, tbl_handle, &pk_key, &row->sys);
   if (unlikely(rc == MDB_NOTFOUND))
     return FPTA_INDEX_CORRUPTED;
 

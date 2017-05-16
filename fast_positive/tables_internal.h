@@ -200,8 +200,8 @@ struct fpta_cursor {
   struct {
     unsigned shove;
     unsigned column_order;
-    unsigned mdbx_dbi;
   } index;
+  MDB_dbi tbl_handle, idx_handle;
   fpta_cursor_options options;
 
   fpta_key range_from_key;
@@ -288,8 +288,9 @@ int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row);
 
 //----------------------------------------------------------------------------
 
-int fpta_open_column(fpta_txn *txn, fpta_name *column_id);
-int fpta_open_table(fpta_txn *txn, fpta_name *table_id);
+int fpta_open_table(fpta_txn *txn, fpta_name *table_id, MDB_dbi &handle);
+int fpta_open_column(fpta_txn *txn, fpta_name *column_id, MDB_dbi &tbl_handle,
+                     MDB_dbi &idx_handle);
 int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
                           MDB_dbi *dbi_array);
 

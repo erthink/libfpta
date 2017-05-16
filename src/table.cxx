@@ -25,15 +25,13 @@ int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->mdbx_dbi < 1)) {
-    rc = fpta_open_table(txn, table_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi handle;
+  rc = fpta_open_table(txn, table_id, handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   MDBX_stat mdbx_stat;
-  rc = mdbx_dbi_stat(txn->mdbx_txn, table_id->mdbx_dbi, &mdbx_stat,
-                     sizeof(mdbx_stat));
+  rc = mdbx_dbi_stat(txn->mdbx_txn, handle, &mdbx_stat, sizeof(mdbx_stat));
   if (unlikely(rc != MDB_SUCCESS))
     return rc;
 
@@ -65,13 +63,12 @@ int fpta_table_sequence(fpta_txn *txn, fpta_name *table_id, uint64_t *result,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->mdbx_dbi < 1)) {
-    rc = fpta_open_table(txn, table_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi handle;
+  rc = fpta_open_table(txn, table_id, handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
-  rc = mdbx_dbi_sequence(txn->mdbx_txn, table_id->mdbx_dbi, result, increment);
+  rc = mdbx_dbi_sequence(txn->mdbx_txn, handle, result, increment);
   static_assert(FPTA_NODATA == MDBX_RESULT_TRUE, "expect equal");
   return rc;
 }
@@ -81,11 +78,10 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->mdbx_dbi < 1)) {
-    rc = fpta_open_table(txn, table_id);
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
-  }
+  MDB_dbi handle;
+  rc = fpta_open_table(txn, table_id, handle);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   MDB_dbi dbi[fpta_max_indexes];
   if (fpta_table_has_secondary(table_id)) {
@@ -96,12 +92,12 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
 
   uint64_t sequence = 0;
   if (!reset_sequence) {
-    rc = mdbx_dbi_sequence(txn->mdbx_txn, table_id->mdbx_dbi, &sequence, 0);
+    rc = mdbx_dbi_sequence(txn->mdbx_txn, handle, &sequence, 0);
     if (unlikely(rc != FPTA_SUCCESS))
       return rc;
   }
 
-  rc = mdbx_drop(txn->mdbx_txn, table_id->mdbx_dbi, 0);
+  rc = mdbx_drop(txn->mdbx_txn, handle, 0);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -114,8 +110,7 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
   }
 
   if (sequence) {
-    rc =
-        mdbx_dbi_sequence(txn->mdbx_txn, table_id->mdbx_dbi, nullptr, sequence);
+    rc = mdbx_dbi_sequence(txn->mdbx_txn, handle, nullptr, sequence);
     if (unlikely(rc != FPTA_SUCCESS))
       return fpta_internal_abort(txn, rc);
   }
