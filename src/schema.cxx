@@ -200,7 +200,7 @@ static __hot int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
   int rc = mdbx_dbi_open_ex(txn->mdbx_txn, dbi_name.cstr, dbi_flags, &handle,
                             keycmp, datacmp);
   if (likely(rc == FPTA_SUCCESS)) {
-    if (cache_hint)
+    if (cache_hint && txn->level /* FIXME: remote this crutch */ == fpta_read)
       *cache_hint = fpta_dbicache_update(db, shove, handle);
   } else
     handle = 0;
