@@ -2843,6 +2843,86 @@ TEST_F(SmokeNullable, Base) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, ReOpenAfterAbort) {
+  // чистим
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // открываем/создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  // описываем простейшую таблицу с одним PK (int64) и колонками (_last_changed,
+  // fp64, int64, string, datetime)
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("host", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_last_changed", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_int64,
+                                 fpta_secondary_unique_unordered, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("user_name", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("date", fptu_datetime,
+                                          fpta_noindex_nullable, &def));
+
+  ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+  // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+  fpta_txn *txn = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "Table", &def));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  db = nullptr;
+
+  // открываем базу
+  EXPECT_EQ(FPTA_OK,
+            fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  fpta_name table_id;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table_id, "Table"));
+
+  // открываем транзакцию на запись, позже мы ее абортируем
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+  size_t row_count = 0;
+  EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table_id, &row_count, nullptr));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+
+  // открываем еще одну транзакцию на запись
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+
+  // пытаемся сделать поиск
+  fpta_name column_id;
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &column_id, "host"));
+
+  fpta_value value = fpta_value_cstr("administrator");
+  fptu_ro record = {nullptr, 0};
+
+  EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn, &column_id, &value, &record));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
