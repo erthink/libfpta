@@ -24,9 +24,11 @@ add_library(mdbx STATIC
   )
 
 if(ENABLE_VALGRIND)
-  set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG -DENABLE_VALGRIND")
+  target_compile_definitions(mdbx PRIVATE "-DENABLE_VALGRIND -DMDB_DEBUG=1")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  target_compile_definitions(mdbx PRIVATE "-DMDB_DEBUG=1")
 else()
-  set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG")
+  target_compile_definitions(mdbx PRIVATE "-DMDB_DEBUG=0")
 endif()
 
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
