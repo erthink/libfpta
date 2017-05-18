@@ -2924,6 +2924,160 @@ TEST(Smoke, ReOpenAfterAbort) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, Kamerades) {
+  /* Smoke-проверка совместных операций.
+   *
+   * Сценарий:
+   *  1. Открываем базу "коррелятором".
+   *  2. Открываем базу "коммандером", создаём одну таблицу, в одна колонка
+   *     и один (primary) индекс.
+   *  2. Через хэндл "коррелятора" добавляем в эту таблицу данные:
+   *     - добавляем одну запись
+   *  3. Через хэндл "коммандера" получаем сведения о таблице.
+   *  4. Завершаем операции и освобождаем ресурсы.
+   */
+  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  fpta_db *correlator_db = nullptr;
+  fpta_db *commander_db = nullptr;
+
+  {
+    // открываем/создаем базульку в 1 мегабайт
+    EXPECT_EQ(FPTA_SUCCESS,
+              fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
+                           &commander_db)); // таблица создаётся из "коммандера"
+    ASSERT_NE(nullptr, commander_db);
+
+    // описываем простейшую таблицу с тремя колонками и одним PK
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("nnn", fptu_int64,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(commander_db, fpta_schema, &txn));
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_1", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // закрываем из коммандера (опционально)
+    if (false) {
+      EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(commander_db));
+      commander_db = nullptr;
+    }
+  }
+
+  {
+    // создаем кортеж, который станет единственной записью в таблице
+    fptu_rw *pt1 = fptu_alloc(1, 8);
+    ASSERT_NE(nullptr, pt1);
+    ASSERT_STREQ(nullptr, fptu_check(pt1));
+
+    // инициализируем идентификаторы таблицы
+    fpta_name table, col_pk;
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_1"));
+
+    // открываем из коррелятора
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644, 1,
+                                         false, &correlator_db));
+    ASSERT_NE(nullptr, correlator_db);
+
+    // начинаем транзакцию для вставки данных
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(
+                           correlator_db, fpta_write,
+                           &txn)); // вставляем запись из "коррелятора"
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, "nnn"));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
+    // ради теста делаем привязку вручную
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+
+    // добавляем нормальные значения
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_pk, fpta_value_sint(567)));
+    ASSERT_STREQ(nullptr, fptu_check(pt1));
+    fptu_ro taken_noshrink;
+    taken_noshrink = fptu_take_noshrink(pt1);
+    EXPECT_EQ(FPTA_OK,
+              fpta_validate_put(txn, &table, taken_noshrink, fpta_insert));
+    EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, taken_noshrink, fpta_insert));
+    free(pt1);
+    pt1 = nullptr;
+
+    // фиксируем изменения из коррелятора
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&col_pk);
+    fpta_name_destroy(&table);
+
+    // закрываем из коррелятора (опционально)
+    if (false) {
+      EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(correlator_db));
+      correlator_db = nullptr;
+    }
+  }
+
+  {
+    // инициализируем идентификаторы таблицы со стороны "коммандера"
+    fpta_name same_table;
+
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&same_table, "table_1"));
+
+    if (!commander_db) {
+      // вновь открываем из коммандера
+      EXPECT_EQ(
+          FPTA_SUCCESS,
+          fpta_db_open(
+              testdb_name, fpta_async, 0644, 1, false,
+              &commander_db)); // теперь пытаемся только читать из "коммандера"
+    }
+
+    // и начинаем читающую транзакцию из "коммандера"
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(commander_db, fpta_read, &txn));
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh(txn, &same_table)); // здесь было MDB_CORRUPTED
+
+    size_t num;
+    EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &same_table, &num, NULL));
+    EXPECT_EQ(num, 1u);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&same_table);
+  }
+
+  // закрываем базульку из коррелятора
+  if (correlator_db) {
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(correlator_db));
+    correlator_db = nullptr;
+  }
+
+  // закрываем базульку из коммандера
+  if (commander_db) {
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(commander_db));
+    commander_db = nullptr;
+  }
+
+  // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
+  if (false) {
+    ASSERT_TRUE(unlink(testdb_name) == 0);
+    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  }
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
