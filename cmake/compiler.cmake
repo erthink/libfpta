@@ -125,6 +125,7 @@ check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
 check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
 check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
 check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
+check_c_compiler_flag("-Og" CC_HAS_DEBUG_FRENDLY_OPTIMIZATION)
 
 #
 # Check for an omp support
@@ -197,6 +198,26 @@ macro(setup_compile_flags)
   # LY: reset C/CXX flags
   set(CXX_FLAGS "")
   set(C_FLAGS "")
+
+  # For CI enable optimization for Debug builds to avoid tests timeout.
+  if (NOT "${CI}" STREQUAL "")
+    if(CC_HAS_DEBUG_FRENDLY_OPTIMIZATION)
+      #string(CONCAT CMAKE_C_FLAGS_DEBUG " -Og")
+      #string(CONCAT CMAKE_CXX_FLAGS_DEBUG " -Og")
+      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og")
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og")
+    elseif(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+      #string(CONCAT CMAKE_C_FLAGS_DEBUG " /O")
+      #string(CONCAT CMAKE_CXX_FLAGS_DEBUG " /O")
+      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /O")
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /O")
+    else()
+      #string(CONCAT CMAKE_C_FLAGS_DEBUG " -O")
+      #string(CONCAT CMAKE_CXX_FLAGS_DEBUG " -O")
+      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O")
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O")
+    endif()
+  endif()
 
   if (CC_HAS_FNO_COMMON)
     add_compile_flags("C;CXX" "-fno-common")
