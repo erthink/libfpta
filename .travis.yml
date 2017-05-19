@@ -18,4 +18,4 @@ compiler:
 os:
   - linux
 
-script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE:String=RelWithDebInfo . && make all && make test; fi
