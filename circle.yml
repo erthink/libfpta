@@ -12,6 +12,7 @@ dependencies:
     - sudo apt install cmake libgtest-dev
   post:
     - c++ --version
+    - cmake --version
 
 checkout:
   post:

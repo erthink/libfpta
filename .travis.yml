@@ -21,4 +21,5 @@ os:
 script:
   - git fetch --tags --prune
   - git submodule foreach --recursive git fetch --tags --prune
+  - cmake --version
   - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi

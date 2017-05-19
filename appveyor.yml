@@ -18,6 +18,7 @@ install:
   - git submodule update --init --recursive
   - git fetch --tags --prune
   - git submodule foreach --recursive git fetch --tags --prune
+  - cmake --version
 
 build:
   verbosity: minimal
