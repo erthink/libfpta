@@ -16,6 +16,7 @@ dependencies:
 checkout:
   post:
     - git fetch --tags --prune
+    - git submodule foreach --recursive git fetch --tags --prune
     - git submodule sync
     - git submodule update --init --recursive
 
