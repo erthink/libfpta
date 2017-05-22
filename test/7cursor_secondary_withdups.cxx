@@ -110,6 +110,7 @@ TEST_P(CursorSecondaryDups, dupMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(se_index))
     return;
 

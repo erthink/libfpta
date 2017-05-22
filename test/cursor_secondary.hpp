@@ -537,6 +537,7 @@ TEST_P(CursorSecondary, basicMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -726,6 +727,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -1054,6 +1056,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
    * 6. Выполняется проверка всех строк, как исходных, так и измененных.
    *    Измененные строки ищутся по значению колонки "dup_id".
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 

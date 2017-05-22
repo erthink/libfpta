@@ -487,6 +487,7 @@ TEST_P(CursorPrimary, basicMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -672,6 +673,7 @@ TEST_P(CursorPrimaryDups, dupMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(index))
     return;
 
@@ -1050,6 +1052,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -1368,6 +1371,7 @@ TEST_P(CursorPrimary, update_and_KeyMismatch) {
    *    При наличии дубликатов, измененные строки ищутся по значению
    *    колонки "dup_id".
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 

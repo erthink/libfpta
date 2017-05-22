@@ -403,6 +403,7 @@ TEST_P(IndexSecondary, basic) {
    *
    *  5. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_pk || !valid_se)
     return;
 

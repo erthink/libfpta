@@ -113,3 +113,44 @@ inline bool is_valid4secondary(fptu_type pk_type, fpta_index_type pk_index,
 
   return true;
 }
+
+//----------------------------------------------------------------------------
+
+/* Ограничитель по времени выполнения.
+ * Нужен для предотвращения таумаута тестов в CI. Предполагается, что он
+ * используется вместе с установкой GTEST_SHUFFLE=1, что в сумме дает
+ * выполнение части тестов в случайном порядке, пока не будет превышен лимит
+ * заданный через переменную среды окружения GTEST_RUNTIME_LIMIT. */
+class runtime_limiter {
+  const time_t edge;
+
+  static time_t fetch() {
+    const char *GTEST_RUNTIME_LIMIT = getenv("GTEST_RUNTIME_LIMIT");
+    if (GTEST_RUNTIME_LIMIT) {
+      long limit = atol(GTEST_RUNTIME_LIMIT);
+      if (limit > 0)
+        return time(nullptr) + limit;
+    }
+    return 0;
+  }
+
+public:
+  runtime_limiter() : edge(fetch()) {}
+
+  bool should_continue() {
+    if (edge)
+      return time(nullptr) < edge;
+    return true;
+  }
+};
+
+extern runtime_limiter ci_runtime_limiter;
+
+#define CHECK_RUNTIME_LIMIT_OR_SKIP()                                          \
+  do {                                                                         \
+    if (!ci_runtime_limiter.should_continue()) {                               \
+      std::cout << "[  SKIPPED ] RUNTIME_LIMIT was reached" << std::endl;      \
+      SUCCEED() << "SKIPPEND by RUNTIME_LIMIT";                                \
+      return;                                                                  \
+    }                                                                          \
+  } while (0)

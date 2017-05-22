@@ -1662,7 +1662,7 @@ TEST_P(SmokeSelect, Range) {
    *
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   SCOPED_TRACE("index " + std::to_string(index) + ", ordering " +
                std::to_string(ordering) +
                (valid_ops ? ", (valid case)" : ", (invalid case)"));
@@ -1874,7 +1874,7 @@ TEST_P(SmokeSelect, Filter) {
    *
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   SCOPED_TRACE("index " + std::to_string(index) + ", ordering " +
                std::to_string(ordering) +
                (valid_ops ? ", (valid case)" : ", (invalid case)"));
