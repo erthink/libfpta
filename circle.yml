@@ -2,6 +2,9 @@ machine:
   timezone:
     Europe/Moscow
 
+  environment:
+    GTEST_SHUFFLE: 1
+
 database:
   override:
 

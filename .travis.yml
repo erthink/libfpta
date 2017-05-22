@@ -18,6 +18,10 @@ compiler:
 os:
   - linux
 
+env:
+  global:
+    - GTEST_SHUFFLE=1
+
 script:
   - git fetch --tags --prune
   - git submodule foreach --recursive git fetch --tags --prune

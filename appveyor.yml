@@ -2,9 +2,10 @@ image: Visual Studio 2015
 
 environment:
   matrix:
-  - Toolset: v120
-  - Toolset: v140
-#  - Toolset: v141
+    - Toolset: v120
+    - Toolset: v140
+#   - Toolset: v141
+  GTEST_SHUFFLE: 1
 
 platform:
   - x86
