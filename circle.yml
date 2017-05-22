@@ -4,6 +4,7 @@ machine:
 
   environment:
     GTEST_SHUFFLE: 1
+    GTEST_RUNTIME_LIMIT: 142
 
 database:
   override:

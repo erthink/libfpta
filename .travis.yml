@@ -21,6 +21,7 @@ os:
 env:
   global:
     - GTEST_SHUFFLE=1
+    - GTEST_RUNTIME_LIMIT=142
 
 script:
   - git fetch --tags --prune

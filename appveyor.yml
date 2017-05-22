@@ -6,6 +6,7 @@ environment:
     - Toolset: v140
 #   - Toolset: v141
   GTEST_SHUFFLE: 1
+  GTEST_RUNTIME_LIMIT: 142
 
 platform:
   - x86
