@@ -21,14 +21,15 @@ add_library(mdbx STATIC
   libmdbx/src/mdbx.c
   libmdbx/src/osal.c
   libmdbx/src/lck-${LIBMDBX_OSAL}.c
+  libmdbx/src/version.c
   )
 
 if(ENABLE_VALGRIND)
-  target_compile_definitions(mdbx PRIVATE "-DENABLE_VALGRIND -DMDB_DEBUG=1")
+  target_compile_definitions(mdbx PRIVATE "-DENABLE_VALGRIND -DMDBX_DEBUG=1")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" AND "${CI}" STREQUAL "")
-  target_compile_definitions(mdbx PRIVATE "-DMDB_DEBUG=1")
+  target_compile_definitions(mdbx PRIVATE "-DMDBX_DEBUG=1")
 else()
-  target_compile_definitions(mdbx PRIVATE "-DMDB_DEBUG=0")
+  target_compile_definitions(mdbx PRIVATE "-DMDBX_DEBUG=0")
 endif()
 
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})

@@ -467,7 +467,7 @@ __cold string to_string(const fpta_txn *txt) {
   return fptu::format("%p." FIXME, txt);
 }
 
-__cold string to_string(const MDB_val &value) {
+__cold string to_string(const MDBX_val &value) {
   return fptu::format("%" PRIuPTR "_%p (", value.iov_len, value.iov_base) +
          fptu::hexadecimal(value.iov_base, value.iov_len) + ")";
 }

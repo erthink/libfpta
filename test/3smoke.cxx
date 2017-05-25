@@ -3044,7 +3044,7 @@ TEST(Smoke, Kamerades) {
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(commander_db, fpta_read, &txn));
     ASSERT_NE(nullptr, txn);
     EXPECT_EQ(FPTA_OK,
-              fpta_name_refresh(txn, &same_table)); // здесь было MDB_CORRUPTED
+              fpta_name_refresh(txn, &same_table)); // здесь было MDBX_CORRUPTED
 
     size_t num;
     EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &same_table, &num, NULL));

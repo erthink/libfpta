@@ -91,7 +91,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   if (unlikely(!fpta_filter_validate(filter)))
     return FPTA_EINVAL;
 
-  MDB_dbi tbl_handle, idx_handle;
+  MDBX_dbi tbl_handle, idx_handle;
   rc = fpta_open_column(txn, column_id, tbl_handle, idx_handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -129,12 +129,12 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
 
   rc =
       mdbx_cursor_open(txn->mdbx_txn, cursor->idx_handle, &cursor->mdbx_cursor);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   if ((op & fpta_dont_fetch) == 0) {
     rc = fpta_cursor_move(cursor, fpta_first);
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDBX_SUCCESS))
       goto bailout;
   }
 
@@ -150,10 +150,10 @@ bailout:
 
 //----------------------------------------------------------------------------
 
-static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
-                            MDB_cursor_op mdbx_step_op,
-                            const MDB_val *mdbx_seek_key,
-                            const MDB_val *mdbx_seek_data) {
+static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
+                            MDBX_cursor_op mdbx_step_op,
+                            const MDBX_val *mdbx_seek_key,
+                            const MDBX_val *mdbx_seek_data) {
   assert(mdbx_seek_key != &cursor->current);
   int rc;
   fptu_ro mdbx_data;
@@ -168,7 +168,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
      * в cursor->current и mdbx_data, это требуется для того чтобы:
      *   - после возврата из mdbx_cursor_get() в cursor->current и mdbx_data
      *     уже был указатели на ключ и данные в БД, без необходимости
-     *     еще одного вызова mdbx_cursor_get(MDB_GET_CURRENT).
+     *     еще одного вызова mdbx_cursor_get(MDBX_GET_CURRENT).
      *   - если передать непосредственно mdbx_seek_key и mdbx_seek_data,
      *     то исходные значения будут потеряны (перезаписаны), что создаст
      *     сложности при последующей корректировке позиции. Например, для
@@ -189,19 +189,20 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
       mdbx_data.sys = *mdbx_seek_data;
       rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                            &mdbx_data.sys, mdbx_seek_op);
-      if (likely(rc == MDB_SUCCESS))
+      if (likely(rc == MDBX_SUCCESS))
         rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                             &mdbx_data.sys, MDB_GET_CURRENT);
+                             &mdbx_data.sys, MDBX_GET_CURRENT);
     }
 
-    if (rc == MDB_SUCCESS) {
+    if (rc == MDBX_SUCCESS) {
       assert(cursor->current.iov_base != mdbx_seek_key->iov_base);
       if (mdbx_seek_data)
         assert(mdbx_data.sys.iov_base != mdbx_seek_data->iov_base);
     }
 
     if (fpta_cursor_is_descending(cursor->options) &&
-        (mdbx_seek_op == MDB_GET_BOTH_RANGE || mdbx_seek_op == MDB_SET_RANGE)) {
+        (mdbx_seek_op == MDBX_GET_BOTH_RANGE ||
+         mdbx_seek_op == MDBX_SET_RANGE)) {
       /* Корректировка перемещения для курсора с сортировкой по-убыванию.
        *
        * Внутри mdbx_cursor_get() выполняет позиционирование аналогично
@@ -209,7 +210,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
        * поиске для курсора с сортировкой в обратном порядке необходимо
        * выполнить махинации:
        *  - Если ключ в фактически самой последней строке оказался меньше
-       *    искомого, то при результате MDB_NOTFOUND от mdbx_cursor_get()
+       *    искомого, то при результате MDBX_NOTFOUND от mdbx_cursor_get()
        *    следует к последней строке, что будет соответствовать переходу
        *    к самой первой позиции при обратной сортировке.
        *  - Если искомый ключ не найден и курсор стоит на фактически самой
@@ -221,21 +222,21 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
        *    По эстетическим соображениям этот переход реализован не здесь,
        *    а в fpta_cursor_locate().
        */
-      if (rc == MDB_SUCCESS &&
+      if (rc == MDBX_SUCCESS &&
           mdbx_cursor_on_first(cursor->mdbx_cursor) == MDBX_RESULT_TRUE &&
           mdbx_cmp(cursor->txn->mdbx_txn, cursor->idx_handle, &cursor->current,
                    mdbx_seek_key) < 0) {
         goto eof;
-      } else if (rc == MDB_NOTFOUND &&
+      } else if (rc == MDBX_NOTFOUND &&
                  mdbx_cursor_on_last(cursor->mdbx_cursor) == MDBX_RESULT_TRUE) {
         rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                             &mdbx_data.sys, MDB_LAST);
+                             &mdbx_data.sys, MDBX_LAST);
       }
     }
   }
 
-  while (rc == MDB_SUCCESS) {
-    MDB_cursor_op step_op = mdbx_step_op;
+  while (rc == MDBX_SUCCESS) {
+    MDBX_cursor_op step_op = mdbx_step_op;
 
     if (cursor->range_from_key.mdbx.iov_base &&
         mdbx_cmp(cursor->txn->mdbx_txn, cursor->idx_handle, &cursor->current,
@@ -244,24 +245,24 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
       switch (step_op) {
       default:
         assert(false);
-      case MDB_PREV_DUP:
-      case MDB_NEXT_DUP:
+      case MDBX_PREV_DUP:
+      case MDBX_NEXT_DUP:
         /* нет смысла идти по дубликатам (без изменения значения ключа) */
         break;
-      case MDB_PREV:
-        step_op = MDB_PREV_NODUP;
-      case MDB_PREV_NODUP:
+      case MDBX_PREV:
+        step_op = MDBX_PREV_NODUP;
+      case MDBX_PREV_NODUP:
         /* идти в сторону уменьшения ключа есть смысл только в случае
          * unordered (хэшированного) индекса, при этом логично пропустить
          * все дубликаты, так как они заведомо не попадают в диапазон курсора */
         if (!fpta_index_is_ordered(cursor->index.shove))
           goto next;
         break;
-      case MDB_NEXT:
+      case MDBX_NEXT:
         /* при движении в сторону увеличения ключа логично пропустить все
          * дубликаты, так как они заведомо не попадают в диапазон курсора */
-        step_op = MDB_NEXT_NODUP;
-      case MDB_NEXT_NODUP:
+        step_op = MDBX_NEXT_NODUP;
+      case MDBX_NEXT_NODUP:
         goto next;
       }
       goto eof;
@@ -274,19 +275,19 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
       switch (step_op) {
       default:
         assert(false);
-      case MDB_PREV_DUP:
-      case MDB_NEXT_DUP:
+      case MDBX_PREV_DUP:
+      case MDBX_NEXT_DUP:
         /* нет смысла идти по дубликатам (без изменения значения ключа) */
         break;
-      case MDB_PREV:
+      case MDBX_PREV:
         /* при движении в сторону уменьшения ключа логично пропустить все
          * дубликаты, так как они заведомо не попадают в диапазон курсора */
-        step_op = MDB_PREV_NODUP;
-      case MDB_PREV_NODUP:
+        step_op = MDBX_PREV_NODUP;
+      case MDBX_PREV_NODUP:
         goto next;
-      case MDB_NEXT:
-        step_op = MDB_NEXT_NODUP;
-      case MDB_NEXT_NODUP:
+      case MDBX_NEXT:
+        step_op = MDBX_NEXT_NODUP;
+      case MDBX_NEXT_NODUP:
         /* идти в сторону увелияения ключа есть смысл только в случае
          * unordered (хэшированного) индекса, при этом логично пропустить
          * все дубликаты, так как они заведомо не попадают в диапазон курсора */
@@ -301,11 +302,11 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
       return FPTA_SUCCESS;
 
     if (fpta_index_is_secondary(cursor->index.shove)) {
-      MDB_val pk_key = mdbx_data.sys;
+      MDBX_val pk_key = mdbx_data.sys;
       rc = mdbx_get(cursor->txn->mdbx_txn, cursor->tbl_handle, &pk_key,
                     &mdbx_data.sys);
-      if (unlikely(rc != MDB_SUCCESS))
-        return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+      if (unlikely(rc != MDBX_SUCCESS))
+        return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
     }
 
     if (fpta_filter_match(cursor->filter, mdbx_data))
@@ -316,7 +317,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDB_cursor_op mdbx_seek_op,
                          step_op);
   }
 
-  if (unlikely(rc != MDB_NOTFOUND)) {
+  if (unlikely(rc != MDBX_NOTFOUND)) {
     cursor->set_poor();
     return rc;
   }
@@ -327,18 +328,18 @@ eof:
     cursor->set_poor();
     return FPTA_NODATA;
 
-  case MDB_NEXT:
-  case MDB_NEXT_NODUP:
+  case MDBX_NEXT:
+  case MDBX_NEXT_NODUP:
     cursor->set_eof(fpta_cursor::after_last);
     return FPTA_NODATA;
 
-  case MDB_PREV:
-  case MDB_PREV_NODUP:
+  case MDBX_PREV:
+  case MDBX_PREV_NODUP:
     cursor->set_eof(fpta_cursor::before_first);
     return FPTA_NODATA;
 
-  case MDB_PREV_DUP:
-  case MDB_NEXT_DUP:
+  case MDBX_PREV_DUP:
+  case MDBX_NEXT_DUP:
     return FPTA_NODATA;
   }
 }
@@ -356,8 +357,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   if (fpta_cursor_is_descending(cursor->options))
     op = (fpta_seek_operations)(op ^ 1);
 
-  MDB_val *mdbx_seek_key = nullptr;
-  MDB_cursor_op mdbx_seek_op, mdbx_step_op;
+  MDBX_val *mdbx_seek_key = nullptr;
+  MDBX_cursor_op mdbx_seek_op, mdbx_step_op;
   switch (op) {
   default:
     assert(false && "unexpected seek-op");
@@ -367,36 +368,36 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
   case fpta_first:
     if (cursor->range_from_key.mdbx.iov_base == nullptr ||
         !fpta_index_is_ordered(cursor->index.shove)) {
-      mdbx_seek_op = MDB_FIRST;
+      mdbx_seek_op = MDBX_FIRST;
     } else {
       mdbx_seek_key = &cursor->range_from_key.mdbx;
-      mdbx_seek_op = MDB_SET_RANGE;
+      mdbx_seek_op = MDBX_SET_RANGE;
     }
-    mdbx_step_op = MDB_NEXT;
+    mdbx_step_op = MDBX_NEXT;
     break;
 
   case fpta_last:
     if (cursor->range_to_key.mdbx.iov_base == nullptr ||
         !fpta_index_is_ordered(cursor->index.shove)) {
-      mdbx_seek_op = MDB_LAST;
+      mdbx_seek_op = MDBX_LAST;
     } else {
       mdbx_seek_key = &cursor->range_to_key.mdbx;
-      mdbx_seek_op = MDB_SET_RANGE;
+      mdbx_seek_op = MDBX_SET_RANGE;
     }
-    mdbx_step_op = MDB_PREV;
+    mdbx_step_op = MDBX_PREV;
     break;
 
   case fpta_next:
     if (unlikely(cursor->is_poor()))
       return FPTA_ECURSOR;
-    mdbx_seek_op = unlikely(cursor->is_before_first()) ? MDB_FIRST : MDB_NEXT;
-    mdbx_step_op = MDB_NEXT;
+    mdbx_seek_op = unlikely(cursor->is_before_first()) ? MDBX_FIRST : MDBX_NEXT;
+    mdbx_step_op = MDBX_NEXT;
     break;
   case fpta_prev:
     if (unlikely(cursor->is_poor()))
       return FPTA_ECURSOR;
-    mdbx_seek_op = unlikely(cursor->is_after_last()) ? MDB_LAST : MDB_PREV;
-    mdbx_step_op = MDB_PREV;
+    mdbx_seek_op = unlikely(cursor->is_after_last()) ? MDBX_LAST : MDBX_PREV;
+    mdbx_step_op = MDBX_PREV;
     break;
 
   /* Перемещение по дубликатам значения ключа, в случае если
@@ -406,8 +407,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
       return cursor->unladed_state();
     if (unlikely(fpta_index_is_unique(cursor->index.shove)))
       return FPTA_SUCCESS;
-    mdbx_seek_op = MDB_FIRST_DUP;
-    mdbx_step_op = MDB_NEXT_DUP;
+    mdbx_seek_op = MDBX_FIRST_DUP;
+    mdbx_step_op = MDBX_NEXT_DUP;
     break;
 
   case fpta_dup_last:
@@ -415,8 +416,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
       return cursor->unladed_state();
     if (unlikely(fpta_index_is_unique(cursor->index.shove)))
       return FPTA_SUCCESS;
-    mdbx_seek_op = MDB_LAST_DUP;
-    mdbx_step_op = MDB_PREV_DUP;
+    mdbx_seek_op = MDBX_LAST_DUP;
+    mdbx_step_op = MDBX_PREV_DUP;
     break;
 
   case fpta_dup_next:
@@ -424,8 +425,8 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
       return cursor->unladed_state();
     if (unlikely(fpta_index_is_unique(cursor->index.shove)))
       return FPTA_NODATA;
-    mdbx_seek_op = MDB_NEXT_DUP;
-    mdbx_step_op = MDB_NEXT_DUP;
+    mdbx_seek_op = MDBX_NEXT_DUP;
+    mdbx_step_op = MDBX_NEXT_DUP;
     break;
 
   case fpta_dup_prev:
@@ -433,24 +434,24 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
       return cursor->unladed_state();
     if (unlikely(fpta_index_is_unique(cursor->index.shove)))
       return FPTA_NODATA;
-    mdbx_seek_op = MDB_PREV_DUP;
-    mdbx_step_op = MDB_PREV_DUP;
+    mdbx_seek_op = MDBX_PREV_DUP;
+    mdbx_step_op = MDBX_PREV_DUP;
     break;
 
   case fpta_key_next:
     if (unlikely(cursor->is_poor()))
       return FPTA_ECURSOR;
     mdbx_seek_op =
-        unlikely(cursor->is_before_first()) ? MDB_FIRST : MDB_NEXT_NODUP;
-    mdbx_step_op = MDB_NEXT_NODUP;
+        unlikely(cursor->is_before_first()) ? MDBX_FIRST : MDBX_NEXT_NODUP;
+    mdbx_step_op = MDBX_NEXT_NODUP;
     break;
 
   case fpta_key_prev:
     if (unlikely(cursor->is_poor()))
       return FPTA_ECURSOR;
     mdbx_seek_op =
-        unlikely(cursor->is_after_last()) ? MDB_LAST : MDB_PREV_NODUP;
-    mdbx_step_op = MDB_PREV_NODUP;
+        unlikely(cursor->is_after_last()) ? MDBX_LAST : MDBX_PREV_NODUP;
+    mdbx_step_op = MDBX_PREV_NODUP;
     break;
   }
 
@@ -481,8 +482,8 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
   }
 
   /* устанавливаем базовый режим поиска */
-  MDB_cursor_op mdbx_seek_op = exactly ? MDB_SET_KEY : MDB_SET_RANGE;
-  const MDB_val *mdbx_seek_data = nullptr;
+  MDBX_cursor_op mdbx_seek_op = exactly ? MDBX_SET_KEY : MDBX_SET_RANGE;
+  const MDBX_val *mdbx_seek_data = nullptr;
 
   fpta_key seek_key, pk_key;
   if (key) {
@@ -520,7 +521,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
            * есть соответствующая колонка. При этом игнорируем отсутствие
            * колонки (ошибку FPTA_COLUMN_MISSING). */
           mdbx_seek_data = &pk_key.mdbx;
-          mdbx_seek_op = exactly ? MDB_GET_BOTH : MDB_GET_BOTH_RANGE;
+          mdbx_seek_op = exactly ? MDBX_GET_BOTH : MDBX_GET_BOTH_RANGE;
         } else if (rc != FPTA_COLUMN_MISSING) {
           cursor->set_poor();
           return rc;
@@ -544,14 +545,14 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
         /* базовый режим поиска уже был выставлен, переключаем только
          * для нечеткого поиска среди дубликатов (как описано выше). */
         mdbx_seek_data = &row->sys;
-        mdbx_seek_op = MDB_GET_BOTH_RANGE;
+        mdbx_seek_op = MDBX_GET_BOTH_RANGE;
       }
     }
   }
 
   rc = fpta_cursor_seek(cursor, mdbx_seek_op,
-                        fpta_cursor_is_descending(cursor->options) ? MDB_PREV
-                                                                   : MDB_NEXT,
+                        fpta_cursor_is_descending(cursor->options) ? MDBX_PREV
+                                                                   : MDBX_NEXT,
                         &seek_key.mdbx, mdbx_seek_data);
   if (unlikely(rc != FPTA_SUCCESS)) {
     cursor->set_poor();
@@ -582,9 +583,9 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
 
       /* Неточный поиск с уточнением по дубликатам. Переход на другую
        * сторону lower_bound следует делать с учетом сравнения данных. */
-      MDB_val mdbx_data;
+      MDBX_val mdbx_data;
       rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &mdbx_data,
-                           MDB_GET_CURRENT);
+                           MDBX_GET_CURRENT);
       if (unlikely(rc != FPTA_SUCCESS)) {
         cursor->set_poor();
         return rc;
@@ -596,7 +597,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
         return FPTA_SUCCESS;
     }
 
-    rc = fpta_cursor_seek(cursor, MDB_PREV, MDB_PREV, nullptr, nullptr);
+    rc = fpta_cursor_seek(cursor, MDBX_PREV, MDBX_PREV, nullptr, nullptr);
     if (unlikely(rc != FPTA_SUCCESS)) {
       cursor->set_poor();
       return rc;
@@ -608,7 +609,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
   if (!fpta_index_is_unique(cursor->index.shove)) {
     size_t dups;
     if (unlikely(mdbx_cursor_count(cursor->mdbx_cursor, &dups) !=
-                 MDB_SUCCESS)) {
+                 MDBX_SUCCESS)) {
       cursor->set_poor();
       return FPTA_EOOPS;
     }
@@ -617,7 +618,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
       /* Переходим к последнему дубликату (последнему мульти-значению
        * для одного значения ключа), а если значение не подходит под
        * фильтр, то двигаемся в обратном порядке дальше. */
-      rc = fpta_cursor_seek(cursor, MDB_LAST_DUP, MDB_PREV, nullptr, nullptr);
+      rc = fpta_cursor_seek(cursor, MDBX_LAST_DUP, MDBX_PREV, nullptr, nullptr);
       if (unlikely(rc != FPTA_SUCCESS)) {
         cursor->set_poor();
         return rc;
@@ -691,7 +692,7 @@ int fpta_cursor_dups(fpta_cursor *cursor, size_t *pdups) {
 
   *pdups = 0;
   rc = mdbx_cursor_count(cursor->mdbx_cursor, pdups);
-  return (rc == MDB_NOTFOUND) ? (int)FPTA_NODATA : rc;
+  return (rc == MDBX_NOTFOUND) ? (int)FPTA_NODATA : rc;
 }
 
 //----------------------------------------------------------------------------
@@ -712,16 +713,16 @@ int fpta_cursor_get(fpta_cursor *cursor, fptu_ro *row) {
 
   if (fpta_index_is_primary(cursor->index.shove))
     return mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &row->sys,
-                           MDB_GET_CURRENT);
+                           MDBX_GET_CURRENT);
 
-  MDB_val pk_key;
+  MDBX_val pk_key;
   rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
-                       MDB_GET_CURRENT);
-  if (unlikely(rc != MDB_SUCCESS))
+                       MDBX_GET_CURRENT);
+  if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
   rc = mdbx_get(cursor->txn->mdbx_txn, cursor->tbl_handle, &pk_key, &row->sys);
-  return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+  return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 }
 
 int fpta_cursor_key(fpta_cursor *cursor, fpta_value *key) {
@@ -753,7 +754,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       return rc;
     }
   } else {
-    MDB_val pk_key;
+    MDBX_val pk_key;
     if (fpta_index_is_primary(cursor->index.shove)) {
       pk_key = cursor->current;
       if (pk_key.iov_len > 0 &&
@@ -766,10 +767,10 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       }
     } else {
       rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &pk_key,
-                           MDB_GET_CURRENT);
-      if (unlikely(rc != MDB_SUCCESS)) {
+                           MDBX_GET_CURRENT);
+      if (unlikely(rc != MDBX_SUCCESS)) {
         cursor->set_poor();
-        return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+        return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
       }
     }
 
@@ -784,28 +785,28 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     old.sys.iov_len = likely_enough;
 
     rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->tbl_handle, &pk_key,
-                      nullptr, &old.sys, MDB_CURRENT);
+                      nullptr, &old.sys, MDBX_CURRENT);
     if (unlikely(rc == MDBX_RESULT_TRUE)) {
       assert(old.sys.iov_base == nullptr && old.sys.iov_len > likely_enough);
       old.sys.iov_base = alloca(old.sys.iov_len);
       rc = mdbx_replace(cursor->txn->mdbx_txn, cursor->tbl_handle, &pk_key,
-                        nullptr, &old.sys, MDB_CURRENT);
+                        nullptr, &old.sys, MDBX_CURRENT);
     }
-    if (unlikely(rc != MDB_SUCCESS)) {
+    if (unlikely(rc != MDBX_SUCCESS)) {
       cursor->set_poor();
       return rc;
     }
 
     rc = fpta_secondary_remove(cursor->txn, cursor->table_id, pk_key, old,
                                cursor->index.column_order);
-    if (unlikely(rc != MDB_SUCCESS)) {
+    if (unlikely(rc != MDBX_SUCCESS)) {
       cursor->set_poor();
       return fpta_internal_abort(cursor->txn, rc);
     }
 
     if (!fpta_index_is_primary(cursor->index.shove)) {
       rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
-      if (unlikely(rc != MDB_SUCCESS)) {
+      if (unlikely(rc != MDBX_SUCCESS)) {
         cursor->set_poor();
         return fpta_internal_abort(cursor->txn, rc);
       }
@@ -815,14 +816,14 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
   if (fpta_cursor_is_descending(cursor->options)) {
     /* Для курсора с обратным порядком строк требуется перейти к предыдущей
      * строке, в том числе подходящей под условие фильтрации. */
-    fpta_cursor_seek(cursor, MDB_PREV, MDB_PREV, nullptr, nullptr);
+    fpta_cursor_seek(cursor, MDBX_PREV, MDBX_PREV, nullptr, nullptr);
   } else if (mdbx_cursor_eof(cursor->mdbx_cursor) == MDBX_RESULT_TRUE) {
     cursor->set_eof(fpta_cursor::after_last);
   } else {
     /* Для курсора с прямым порядком строк требуется перейти
      * к следующей строке подходящей под условие фильтрации, но
      * не выполнять переход если текущая строка уже подходит под фильтр. */
-    fpta_cursor_seek(cursor, MDB_GET_CURRENT, MDB_NEXT, nullptr, nullptr);
+    fpta_cursor_seek(cursor, MDBX_GET_CURRENT, MDBX_NEXT, nullptr, nullptr);
   }
 
   return FPTA_SUCCESS;
@@ -853,18 +854,18 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   fptu_ro present_row;
   if (fpta_index_is_primary(cursor->index.shove)) {
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
-                         &present_row.sys, MDB_GET_CURRENT);
-    if (unlikely(rc != MDB_SUCCESS))
+                         &present_row.sys, MDBX_GET_CURRENT);
+    if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 
     return fpta_secondary_check(cursor->txn, cursor->table_id, present_row,
                                 new_row_value, 0);
   }
 
-  MDB_val present_pk_key;
+  MDBX_val present_pk_key;
   rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &present_pk_key,
-                       MDB_GET_CURRENT);
-  if (unlikely(rc != MDB_SUCCESS))
+                       MDBX_GET_CURRENT);
+  if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
   fpta_key new_pk_key;
@@ -875,8 +876,8 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
   rc = mdbx_get(cursor->txn->mdbx_txn, cursor->tbl_handle, &present_pk_key,
                 &present_row.sys);
-  if (unlikely(rc != MDB_SUCCESS))
-    return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+  if (unlikely(rc != MDBX_SUCCESS))
+    return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 
   return fpta_secondary_check(cursor->txn, cursor->table_id, present_row,
                               new_row_value, cursor->index.column_order);
@@ -905,28 +906,28 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
   if (!fpta_table_has_secondary(cursor->table_id)) {
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
-                         &new_row_value.sys, MDB_CURRENT | MDB_NODUPDATA);
-    if (likely(rc == MDB_SUCCESS) &&
+                         &new_row_value.sys, MDBX_CURRENT | MDBX_NODUPDATA);
+    if (likely(rc == MDBX_SUCCESS) &&
         /* актуализируем текущий ключ, если он был в грязной странице, то при
          * изменении мог быть перемещен с перезаписью старого значения */
         mdbx_is_dirty(cursor->txn->mdbx_txn, cursor->current.iov_base)) {
       rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
-                           MDB_GET_CURRENT);
+                           MDBX_GET_CURRENT);
     }
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDBX_SUCCESS))
       cursor->set_poor();
     return rc;
   }
 
-  MDB_val old_pk_key;
+  MDBX_val old_pk_key;
   if (fpta_index_is_primary(cursor->index.shove)) {
     old_pk_key = cursor->current;
   } else {
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, &old_pk_key,
-                         MDB_GET_CURRENT);
-    if (unlikely(rc != MDB_SUCCESS)) {
+                         MDBX_GET_CURRENT);
+    if (unlikely(rc != MDBX_SUCCESS)) {
       cursor->set_poor();
-      return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+      return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
     }
   }
 
@@ -946,15 +947,15 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
    *
    * Поэтому, чтобы не потерять старое значение PK и одновременно избежать
    * лишних копирований, здесь используется mdbx_get_ex(). В свою очередь
-   * mdbx_get_ex() использует MDB_SET_KEY для получения как данных, так и
+   * mdbx_get_ex() использует MDBX_SET_KEY для получения как данных, так и
    * данных ключа. */
 
   fptu_ro old;
   rc = mdbx_get_ex(cursor->txn->mdbx_txn, cursor->tbl_handle, &old_pk_key,
                    &old.sys, nullptr);
-  if (unlikely(rc != MDB_SUCCESS)) {
+  if (unlikely(rc != MDBX_SUCCESS)) {
     cursor->set_poor();
-    return (rc != MDB_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
+    return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
   }
 
   fpta_key new_pk_key;
@@ -976,7 +977,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, old_pk_key, old,
                              new_pk_key.mdbx, new_row_value,
                              cursor->index.column_order);
-  if (unlikely(rc != MDB_SUCCESS)) {
+  if (unlikely(rc != MDBX_SUCCESS)) {
     cursor->set_poor();
     return fpta_internal_abort(cursor->txn, rc);
   }
@@ -985,34 +986,34 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (pk_changed) {
     rc = mdbx_del(cursor->txn->mdbx_txn, cursor->tbl_handle, &old_pk_key,
                   nullptr);
-    if (unlikely(rc != MDB_SUCCESS)) {
+    if (unlikely(rc != MDBX_SUCCESS)) {
       cursor->set_poor();
       return fpta_internal_abort(cursor->txn, rc);
     }
 
     rc = mdbx_put(cursor->txn->mdbx_txn, cursor->tbl_handle, &new_pk_key.mdbx,
-                  &new_row_value.sys, MDB_NODUPDATA | MDB_NOOVERWRITE);
-    if (unlikely(rc != MDB_SUCCESS)) {
+                  &new_row_value.sys, MDBX_NODUPDATA | MDBX_NOOVERWRITE);
+    if (unlikely(rc != MDBX_SUCCESS)) {
       cursor->set_poor();
       return fpta_internal_abort(cursor->txn, rc);
     }
 
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
-                         &new_pk_key.mdbx, MDB_CURRENT | MDB_NODUPDATA);
+                         &new_pk_key.mdbx, MDBX_CURRENT | MDBX_NODUPDATA);
 
   } else {
     rc = mdbx_put(cursor->txn->mdbx_txn, cursor->tbl_handle, &new_pk_key.mdbx,
-                  &new_row_value.sys, MDB_CURRENT | MDB_NODUPDATA);
+                  &new_row_value.sys, MDBX_CURRENT | MDBX_NODUPDATA);
   }
 
-  if (likely(rc == MDB_SUCCESS) &&
+  if (likely(rc == MDBX_SUCCESS) &&
       /* актуализируем текущий ключ, если он был в грязной странице, то при
        * изменении мог быть перемещен с перезаписью старого значения */
       mdbx_is_dirty(cursor->txn->mdbx_txn, cursor->current.iov_base)) {
     rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
-                         MDB_GET_CURRENT);
+                         MDBX_GET_CURRENT);
   }
-  if (unlikely(rc != MDB_SUCCESS)) {
+  if (unlikely(rc != MDBX_SUCCESS)) {
     cursor->set_poor();
     return fpta_internal_abort(cursor->txn, rc);
   }

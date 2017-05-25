@@ -369,8 +369,8 @@ enum fpta_error {
 
   FPTA_DB_INCOMPAT = -30784 /* Operation and DB incompatible (mdbx internal),
    This can mean:
-     - The operation expects an MDB_DUPSORT/MDB_DUPFIXED database.
-     - Opening a named DB when the unnamed DB has MDB_DUPSORT/MDB_INTEGERKEY.
+     - The operation expects an MDBX_DUPSORT/MDBX_DUPFIXED database.
+     - Opening a named DB when the unnamed DB has MDBX_DUPSORT/MDBX_INTEGERKEY.
      - Accessing a data record as a database, or vice versa.
      - The database was dropped and recreated with different flags. */,
 

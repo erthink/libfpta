@@ -61,8 +61,8 @@ static __inline int value2key(fpta_shove_t shove, const fpta_value &value,
   return __fpta_index_value2key(shove, &value, &key);
 }
 
-static __inline MDB_cmp_func *shove2comparator(fpta_shove_t shove) {
-  return (MDB_cmp_func *)__fpta_index_shove2comparator(shove);
+static __inline MDBX_cmp_func *shove2comparator(fpta_shove_t shove) {
+  return (MDBX_cmp_func *)__fpta_index_shove2comparator(shove);
 }
 
 //----------------------------------------------------------------------------

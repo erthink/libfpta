@@ -24,18 +24,18 @@
 struct fpta_db {
   fpta_db(const fpta_db &) = delete;
   fpta_rwl_t schema_rwlock;
-  MDB_env *mdbx_env;
-  MDB_dbi schema_dbi;
+  MDBX_env *mdbx_env;
+  MDBX_dbi schema_dbi;
   bool alterable_schema;
   char unused_gap[3];
 
   fpta_mutex_t dbi_mutex;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
-  MDB_dbi dbi_handles[fpta_dbi_cache_size];
+  MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
 
 bool fpta_filter_validate(const fpta_filter *filter);
-bool fpta_schema_validate(const MDB_val def);
+bool fpta_schema_validate(const MDBX_val def);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
   return table_id->table.def->count > 1 &&

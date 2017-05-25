@@ -25,14 +25,14 @@ int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  MDB_dbi handle;
+  MDBX_dbi handle;
   rc = fpta_open_table(txn, table_id, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   MDBX_stat mdbx_stat;
   rc = mdbx_dbi_stat(txn->mdbx_txn, handle, &mdbx_stat, sizeof(mdbx_stat));
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
   if (unlikely(stat)) {
@@ -63,7 +63,7 @@ int fpta_table_sequence(fpta_txn *txn, fpta_name *table_id, uint64_t *result,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  MDB_dbi handle;
+  MDBX_dbi handle;
   rc = fpta_open_table(txn, table_id, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -78,12 +78,12 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  MDB_dbi handle;
+  MDBX_dbi handle;
   rc = fpta_open_table(txn, table_id, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  MDB_dbi dbi[fpta_max_indexes];
+  MDBX_dbi dbi[fpta_max_indexes];
   if (fpta_table_has_secondary(table_id)) {
     rc = fpta_open_secondaries(txn, table_id, dbi);
     if (unlikely(rc != FPTA_SUCCESS))
@@ -104,7 +104,7 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
   if (fpta_table_has_secondary(table_id)) {
     for (size_t i = 1; i < table_id->table.def->count; ++i) {
       rc = mdbx_drop(txn->mdbx_txn, dbi[i], 0);
-      if (unlikely(rc != MDB_SUCCESS))
+      if (unlikely(rc != MDBX_SUCCESS))
         return fpta_internal_abort(txn, rc);
     }
   }

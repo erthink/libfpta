@@ -112,7 +112,7 @@ enum fpta_internals {
 struct fpta_txn {
   fpta_txn(const fpta_txn &) = delete;
   fpta_db *db;
-  MDB_txn *mdbx_txn;
+  MDBX_txn *mdbx_txn;
   fpta_level level;
   int unused_gap;
   uint64_t db_version;
@@ -135,7 +135,7 @@ struct fpta_key {
   }
   fpta_key(const fpta_key &) = delete;
 
-  MDB_val mdbx;
+  MDBX_val mdbx;
   union {
     int32_t i32;
     uint32_t u32;
@@ -157,8 +157,8 @@ struct fpta_key {
 
 struct fpta_cursor {
   fpta_cursor(const fpta_cursor &) = delete;
-  MDB_cursor *mdbx_cursor;
-  MDB_val current;
+  MDBX_cursor *mdbx_cursor;
+  MDBX_val current;
 
 #if __cplusplus < 201103L
 #define poor nullptr
@@ -201,7 +201,7 @@ struct fpta_cursor {
     unsigned shove;
     unsigned column_order;
   } index;
-  MDB_dbi tbl_handle, idx_handle;
+  MDBX_dbi tbl_handle, idx_handle;
   fpta_cursor_options options;
 
   fpta_key range_from_key;
@@ -257,7 +257,7 @@ static __inline fpta_index_type fpta_id2index(const fpta_name *id) {
   return fpta_shove2index(id->shove);
 }
 
-MDB_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove);
+MDBX_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove);
 unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t shove);
 unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
                                              fpta_shove_t shove);
@@ -266,33 +266,33 @@ bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value);
 
 int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
                          fpta_key &key, bool copy = false);
-int fpta_index_key2value(fpta_shove_t shove, MDB_val mdbx_key,
+int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx_key,
                          fpta_value &key_value);
 
 int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
                        fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
-                          MDB_val pk_key_old, const fptu_ro &row_old,
-                          MDB_val pk_key_new, const fptu_ro &row_new,
+                          MDBX_val pk_key_old, const fptu_ro &row_old,
+                          MDBX_val pk_key_new, const fptu_ro &row_new,
                           const unsigned stepover);
 
 int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
                          const fptu_ro &row_old, const fptu_ro &row_new,
                          const unsigned stepover);
 
-int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDB_val &pk_key,
+int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDBX_val &pk_key,
                           const fptu_ro &row_old, const unsigned stepover);
 
 int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row);
 
 //----------------------------------------------------------------------------
 
-int fpta_open_table(fpta_txn *txn, fpta_name *table_id, MDB_dbi &handle);
-int fpta_open_column(fpta_txn *txn, fpta_name *column_id, MDB_dbi &tbl_handle,
-                     MDB_dbi &idx_handle);
+int fpta_open_table(fpta_txn *txn, fpta_name *table_id, MDBX_dbi &handle);
+int fpta_open_column(fpta_txn *txn, fpta_name *column_id, MDBX_dbi &tbl_handle,
+                     MDBX_dbi &idx_handle);
 int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
-                          MDB_dbi *dbi_array);
+                          MDBX_dbi *dbi_array);
 
 //----------------------------------------------------------------------------
 
@@ -355,13 +355,13 @@ static __inline bool fpta_cursor_is_ascending(const fpta_cursor_options op) {
 
 int fpta_internal_abort(fpta_txn *txn, int errnum);
 
-static __inline bool fpta_is_same(const MDB_val &a, const MDB_val &b) {
+static __inline bool fpta_is_same(const MDBX_val &a, const MDBX_val &b) {
   return a.iov_len == b.iov_len &&
          memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
 }
 
 namespace std {
-FPTA_API string to_string(const MDB_val &);
+FPTA_API string to_string(const MDBX_val &);
 FPTA_API string to_string(const fpta_key &);
 }
 

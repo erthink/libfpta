@@ -100,23 +100,23 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(path == nullptr || *path == '\0'))
     return FPTA_EINVAL;
 
-  unsigned mdbx_flags = MDB_NOSUBDIR;
+  unsigned mdbx_flags = MDBX_NOSUBDIR;
   switch (durability) {
   default:
     return FPTA_EINVAL;
   case fpta_readonly:
-    mdbx_flags |= MDB_RDONLY;
+    mdbx_flags |= MDBX_RDONLY;
     break;
   case fpta_sync:
     mdbx_flags |= MDBX_LIFORECLAIM | MDBX_COALESCE;
     break;
   case fpta_lazy:
     mdbx_flags |=
-        MDBX_LIFORECLAIM | MDBX_COALESCE | MDB_NOSYNC | MDB_NOMETASYNC;
+        MDBX_LIFORECLAIM | MDBX_COALESCE | MDBX_NOSYNC | MDBX_NOMETASYNC;
     break;
   case fpta_async:
-    mdbx_flags |= MDBX_LIFORECLAIM | MDBX_COALESCE | MDB_WRITEMAP |
-                  MDB_MAPASYNC | MDBX_UTTERLY_NOSYNC;
+    mdbx_flags |= MDBX_LIFORECLAIM | MDBX_COALESCE | MDBX_WRITEMAP |
+                  MDBX_MAPASYNC | MDBX_UTTERLY_NOSYNC;
     break;
   }
 
@@ -143,27 +143,27 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   }
 
   rc = mdbx_env_create(&db->mdbx_env);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   rc = mdbx_env_set_userctx(db->mdbx_env, db);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   rc = mdbx_env_set_maxreaders(db->mdbx_env, 42 /* FIXME */);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   rc = mdbx_env_set_maxdbs(db->mdbx_env, fpta_tables_max);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   rc = mdbx_env_set_mapsize(db->mdbx_env, megabytes * (1 << 20));
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   rc = mdbx_env_open(db->mdbx_env, path, mdbx_flags, file_mode);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   *pdb = db;
@@ -172,7 +172,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
 bailout:
   if (db->mdbx_env) {
     int err = mdbx_env_close_ex(db->mdbx_env, true /* don't touch/save/sync */);
-    assert(err == MDB_SUCCESS);
+    assert(err == MDBX_SUCCESS);
     (void)err;
   }
 
@@ -205,7 +205,7 @@ int fpta_db_close(fpta_db *db) {
   }
 
   rc = (fpta_error)mdbx_env_close_ex(db->mdbx_env, false);
-  assert(rc == MDB_SUCCESS);
+  assert(rc == MDBX_SUCCESS);
   db->mdbx_env = nullptr;
 
   int err = fpta_mutex_unlock(&db->dbi_mutex);
@@ -248,13 +248,13 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
     goto bailout;
 
   rc = mdbx_txn_begin(db->mdbx_env, nullptr,
-                      (level == fpta_read) ? (unsigned)MDB_RDONLY : 0u,
+                      (level == fpta_read) ? (unsigned)MDBX_RDONLY : 0u,
                       &txn->mdbx_txn);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   rc = mdbx_canary_get(txn->mdbx_txn, &txn->canary);
-  if (unlikely(rc != MDB_SUCCESS))
+  if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
   txn->db_version = mdbx_txn_id(txn->mdbx_txn);
@@ -287,9 +287,9 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
     rc = fpta_internal_abort(txn, FPTA_OK);
   } else {
     rc = mdbx_canary_put(txn->mdbx_txn, &txn->canary);
-    if (likely(rc == MDB_SUCCESS))
+    if (likely(rc == MDBX_SUCCESS))
       rc = mdbx_txn_commit(txn->mdbx_txn);
-    if (unlikely(rc != MDB_SUCCESS))
+    if (unlikely(rc != MDBX_SUCCESS))
       rc = fpta_internal_abort(txn, rc);
   }
   txn->mdbx_txn = nullptr;
@@ -363,7 +363,7 @@ int fpta_internal_abort(fpta_txn *txn, int errnum) {
    * более серьезной проблемой. */
 
   int rc = mdbx_txn_abort(txn->mdbx_txn);
-  if (unlikely(rc != MDB_SUCCESS)) {
+  if (unlikely(rc != MDBX_SUCCESS)) {
     if (!fpta_panic(errnum, rc))
       abort();
     errnum = FPTA_WANNA_DIE;
