@@ -3078,6 +3078,138 @@ TEST(Smoke, Kamerades) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, OverchargeOnCommit) {
+  /* Smoke-проверка поведения при переполнении БД во время фиксации транзакции.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей и некоторым кол-вом колонок.
+   *
+   *  2. Итеративно вставляем по одной строке за транзакцию,
+   *     пока не закончится место или не случится еще что-то плохое.
+   *
+   *  3. Параметры подобраны так, чтобы переполнение случилось при фиксации
+   *     транзакции (при добавлении записи в garbage-таблицу  внутри libmdbx).
+   */
+
+  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+
+  // открываем/создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0664, 1, true, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  // описываем простейшую таблицу с одним PK
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("primary_key", fptu_uint64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("user_name", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("date", fptu_datetime,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("host", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_last_changed", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_uint64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+  // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+  fpta_txn *txn = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "Table", &def));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  db = nullptr;
+
+  // открываем базу
+  EXPECT_EQ(FPTA_OK,
+            fpta_db_open(testdb_name, fpta_async, 0664, 1, false, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  fpta_name table_id, primary_key, host, id, last_changed, name, date;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table_id, "Table"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &primary_key, "primary_key"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &host, "host"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &id, "_id"));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_init(&table_id, &last_changed, "_last_changed"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &name, "user_name"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &date, "date"));
+
+  fptu_rw *tuple = fptu_alloc(6, 1000);
+  ASSERT_NE(tuple, (fptu_rw *)nullptr);
+
+  int err = FPTA_OK;
+  for (uint64_t pk = 0; err == FPTA_OK; ++pk) {
+    // открываем транзакцию на запись, записываем данные
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &primary_key));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &host));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &id));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &last_changed));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &name));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &date));
+
+    fptu_clear(tuple);
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &primary_key, fpta_value_uint(pk)));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &date, fpta_value_datetime(fptu_now_fine())));
+    EXPECT_EQ(
+        FPTA_OK,
+        fpta_upsert_column(
+            tuple, &name, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &host,
+                                          fpta_value_cstr("administrator")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(pk)));
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &last_changed,
+                                 fpta_value_datetime(fptu_now_fine())));
+
+    err = fpta_probe_and_upsert_row(txn, &table_id, fptu_take(tuple));
+    EXPECT_EQ(FPTA_OK, err);
+
+    if (err != FPTA_OK)
+      // отменяем если была ошибка
+      ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+    else {
+      // коммитим если и ожидаем ошибку здесь
+      err = fpta_transaction_end(txn, false);
+      if (err != FPTA_OK)
+        ASSERT_EQ(FPTA_DB_FULL, err);
+    }
+  }
+
+  free(tuple);
+  fpta_name_destroy(&host);
+  fpta_name_destroy(&id);
+  fpta_name_destroy(&last_changed);
+  fpta_name_destroy(&table_id);
+  fpta_name_destroy(&name);
+  fpta_name_destroy(&date);
+  fpta_name_destroy(&primary_key);
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
