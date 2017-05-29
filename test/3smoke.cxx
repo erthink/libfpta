@@ -2919,6 +2919,7 @@ TEST(Smoke, ReOpenAfterAbort) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
 
   // закрываем базу
+  fpta_name_destroy(&table_id);
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
 }
 
