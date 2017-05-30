@@ -12,7 +12,7 @@ add_library(testutils STATIC
   crutch4windows.cxx)
 target_link_libraries(testutils ${UT_LIBRARIES})
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(fpta_small_timeout 3)
   set(fpta3_smoke_timeout 20)
   set(fpta5_key_timeout 30)
