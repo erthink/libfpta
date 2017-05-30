@@ -932,7 +932,7 @@ TEST_F(SmokeCRUD, none) {
       EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем поле `time`, проверяя как update, так и upsert. */
-      datetime = fptu_now_fine();
+      datetime = NOW_FINE();
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(datetime)));
       if (i & 2)
@@ -1285,9 +1285,8 @@ TEST_F(SmokeCRUD, none) {
       EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
       /* пробуем удалить с различием в данных (поле time) */
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_column(row, &col_time,
-                                   fpta_value_datetime(fptu_now_fine())));
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(NOW_FINE())));
       EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
 
@@ -2495,9 +2494,8 @@ public:
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
                                               fpta_value_uint(stepover)));
       if (stepover != 1)
-        EXPECT_EQ(FPTA_OK,
-                  fpta_upsert_column(ptrw_guard.get(), &c1_date,
-                                     fpta_value_datetime(fptu_now_fine())));
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c1_date,
+                                              fpta_value_datetime(NOW_FINE())));
       if (stepover != 2)
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c2_str,
@@ -3169,8 +3167,8 @@ TEST(Smoke, OverchargeOnCommit) {
     fptu_clear(tuple);
     EXPECT_EQ(FPTA_OK,
               fpta_upsert_column(tuple, &primary_key, fpta_value_uint(pk)));
-    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
-                           tuple, &date, fpta_value_datetime(fptu_now_fine())));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date,
+                                          fpta_value_datetime(NOW_FINE())));
     EXPECT_EQ(
         FPTA_OK,
         fpta_upsert_column(
@@ -3178,9 +3176,8 @@ TEST(Smoke, OverchargeOnCommit) {
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &host,
                                           fpta_value_cstr("administrator")));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(pk)));
-    EXPECT_EQ(FPTA_OK,
-              fpta_upsert_column(tuple, &last_changed,
-                                 fpta_value_datetime(fptu_now_fine())));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &last_changed,
+                                          fpta_value_datetime(NOW_FINE())));
 
     err = fpta_probe_and_upsert_row(txn, &table_id, fptu_take(tuple));
     EXPECT_EQ(FPTA_OK, err);

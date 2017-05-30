@@ -42,4 +42,16 @@ int unlink_crutch(const char *pathname) {
   }
 }
 
+fptu_time fptu_now_fine_crutch(void) {
+  static fptu_time last;
+  fptu_time now;
+
+  do
+    now = fptu_now_fine();
+  while (last.fixedpoint == now.fixedpoint);
+
+  last.fixedpoint = now.fixedpoint;
+  return now;
+}
+
 #endif /* windows */

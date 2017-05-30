@@ -66,12 +66,16 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 
+fptu_time fptu_now_fine_crutch(void);
+#define NOW_FINE() fptu_now_fine_crutch()
+
 int unlink_crutch(const char *pathname);
 #define REMOVE_FILE(pathname) unlink_crutch(pathname)
 #define TEST_DB_DIR ""
 
 #else
 
+#define NOW_FINE() fptu_now_fine()
 #define REMOVE_FILE(pathname) unlink(pathname)
 #ifdef __linux__
 #define TEST_DB_DIR "/dev/shm/"
