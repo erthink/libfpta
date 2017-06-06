@@ -17,11 +17,15 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
+#ifdef _MSC_VER
+#define _USE_MATH_DEFINES
+#endif
+
+#include "fpta_test.h"
+#include "tools.hpp"
 
 static const char testdb_name[] = "ut_smoke.fpta";
-static const char testdb_name_lck[] = "ut_smoke.fpta-lock";
+static const char testdb_name_lck[] = "ut_smoke.fpta" MDBX_LOCK_SUFFIX;
 
 TEST(SmokeIndex, Primary) {
   /* Smoke-проверка жизнеспособности первичных индексов.
@@ -48,8 +52,10 @@ TEST(SmokeIndex, Primary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -62,7 +68,8 @@ TEST(SmokeIndex, Primary) {
   fpta_column_set_init(&def);
 
   EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("pk_str_uniq", fptu_cstr, fpta_primary, &def));
+            fpta_column_describe("pk_str_uniq", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("a_uint", fptu_uint64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
@@ -76,6 +83,10 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_1", &def));
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // инициализируем идентификаторы таблицы и её колонок
   fpta_name table, col_pk, col_a, col_b;
@@ -91,6 +102,20 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_a));
   EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_b));
+
+  // проверяем иформацию о таблице (сейчас таблица пуста)
+  size_t row_count;
+  fpta_table_stat stat;
+  memset(&row_count, 42, sizeof(row_count));
+  memset(&stat, 42, sizeof(stat));
+  EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, &stat));
+  EXPECT_EQ(0u, row_count);
+  EXPECT_EQ(row_count, stat.row_count);
+  EXPECT_EQ(0u, stat.btree_depth);
+  EXPECT_EQ(0u, stat.large_pages);
+  EXPECT_EQ(0u, stat.branch_pages);
+  EXPECT_EQ(0u, stat.leaf_pages);
+  EXPECT_EQ(0u, stat.total_bytes);
 
   // создаем кортеж, который станет первой записью в таблице
   fptu_rw *pt1 = fptu_alloc(3, 42);
@@ -120,22 +145,22 @@ TEST(SmokeIndex, Primary) {
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
   // пытаемся обновить несуществующую запись
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
   // вставляем и обновляем
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
 
   // аналогично со второй записью
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
 
   // фиксируем изменения
@@ -154,7 +179,19 @@ TEST(SmokeIndex, Primary) {
   // узнам сколько записей за курсором (в таблице).
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(2, count);
+  EXPECT_EQ(2u, count);
+
+  // снова проверяем иформацию о таблице (сейчас в таблице две строки)
+  memset(&row_count, 42, sizeof(row_count));
+  memset(&stat, 42, sizeof(stat));
+  EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, &stat));
+  EXPECT_EQ(2u, row_count);
+  EXPECT_EQ(row_count, stat.row_count);
+  EXPECT_EQ(1u, stat.btree_depth);
+  EXPECT_EQ(0u, stat.large_pages);
+  EXPECT_EQ(0u, stat.branch_pages);
+  EXPECT_EQ(1u, stat.leaf_pages);
+  EXPECT_LE(512u, stat.total_bytes);
 
   // переходим к последней записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
@@ -164,7 +201,7 @@ TEST(SmokeIndex, Primary) {
   // считаем повторы, их не должно быть
   size_t dups;
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
 
   // получаем текущую строку, она должна совпадать со вторым кортежем
   fptu_ro row2;
@@ -179,7 +216,7 @@ TEST(SmokeIndex, Primary) {
 
   // ради проверки считаем повторы
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
 
   // получаем текущую строку, она должна совпадать с первым кортежем
   fptu_ro row1;
@@ -200,11 +237,11 @@ TEST(SmokeIndex, Primary) {
   EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
   // считаем сколько записей теперь, должа быть одна
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
   // ради теста проверям что данные есть
   EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
 
   // переходим к первой записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
@@ -213,16 +250,16 @@ TEST(SmokeIndex, Primary) {
 #if FPTA_ENABLE_RETURN_INTO_RANGE
   // теперь должно быть пусто
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(0, dups);
+  EXPECT_EQ(0u, dups);
 #else
   // курсор должен стать неустановленным
   EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(FPTA_DEADBEEF, dups);
+  EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 #endif
   // ради теста проверям что данных больше нет
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
 
   // закрываем курсор и завершаем транзакцию
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
@@ -240,8 +277,8 @@ TEST(SmokeIndex, Primary) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
   }
 }
 
@@ -270,8 +307,10 @@ TEST(SmokeIndex, Secondary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -285,9 +324,11 @@ TEST(SmokeIndex, Secondary) {
   fpta_column_set_init(&def);
 
   EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("pk_str_uniq", fptu_cstr, fpta_primary, &def));
-  EXPECT_EQ(FPTA_OK,
-            fpta_column_describe("a_uint", fptu_uint64, fpta_secondary, &def));
+            fpta_column_describe("pk_str_uniq", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "a_uint", fptu_uint64,
+                         fpta_secondary_withdups_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("b_fp", fptu_fp64, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -299,6 +340,10 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_1", &def));
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // инициализируем идентификаторы таблицы и её колонок
   fpta_name table, col_pk, col_a, col_b;
@@ -343,22 +388,22 @@ TEST(SmokeIndex, Secondary) {
   ASSERT_STREQ(nullptr, fptu_check(pt2));
 
   // пытаемся обновить несуществующую запись
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
   // вставляем и обновляем
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt1)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt1)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
 
   // аналогично со второй записью
-  EXPECT_EQ(MDB_NOTFOUND,
+  EXPECT_EQ(FPTA_NOTFOUND,
             fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn, &table, fptu_take_noshrink(pt2)));
   EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(pt2)));
-  EXPECT_EQ(MDB_KEYEXIST,
+  EXPECT_EQ(FPTA_KEYEXIST,
             fpta_insert_row(txn, &table, fptu_take_noshrink(pt2)));
 
   // фиксируем изменения
@@ -377,7 +422,7 @@ TEST(SmokeIndex, Secondary) {
   // узнам сколько записей за курсором (в таблице).
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(2, count);
+  EXPECT_EQ(2u, count);
 
   // переходим к первой записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
@@ -387,7 +432,7 @@ TEST(SmokeIndex, Secondary) {
   // считаем повторы, их не должно быть
   size_t dups;
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  ASSERT_EQ(1, dups);
+  ASSERT_EQ(1u, dups);
 
   // переходим к последней записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
@@ -402,7 +447,7 @@ TEST(SmokeIndex, Secondary) {
 
   // считаем повторы, их не должно быть
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  ASSERT_EQ(1, dups);
+  ASSERT_EQ(1u, dups);
 
   // позиционируем курсор на конкретное значение ключевого поля
   fpta_value pk = fpta_value_uint(34);
@@ -411,7 +456,7 @@ TEST(SmokeIndex, Secondary) {
 
   // ради проверки считаем повторы
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
 
   // получаем текущую строку, она должна совпадать с первым кортежем
   fptu_ro row1;
@@ -432,11 +477,11 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
   // считаем сколько записей теперь, должа быть одна
   EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(1, dups);
+  EXPECT_EQ(1u, dups);
   // ради теста проверям что данные есть
   EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
 
   // переходим к первой записи
   EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
@@ -445,16 +490,16 @@ TEST(SmokeIndex, Secondary) {
 #if FPTA_ENABLE_RETURN_INTO_RANGE
   // теперь должно быть пусто
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(0, dups);
+  EXPECT_EQ(0u, dups);
 #else
   // курсор должен стать неустановленным
   EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-  EXPECT_EQ(FPTA_DEADBEEF, dups);
+  EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 #endif
   // ради теста проверям что данных больше нет
   EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
 
   // закрываем курсор и завершаем транзакцию
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
@@ -472,8 +517,8 @@ TEST(SmokeIndex, Secondary) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
   }
 }
 
@@ -518,22 +563,22 @@ TEST(Smoke, mapdup_order2key) {
     unsigned dup = mapdup_order2key(order, NNN);
     checker[dup] += 1;
   }
-  EXPECT_EQ(1, checker[0]);
-  EXPECT_EQ(1, checker[1]);
-  EXPECT_EQ(1, checker[2]);
-  EXPECT_EQ(1, checker[3]);
-  EXPECT_EQ(1, checker[4]);
-  EXPECT_EQ(1, checker[5]);
-  EXPECT_EQ(1, checker[6]);
-  EXPECT_EQ(1, checker[7]);
-  EXPECT_EQ(2, checker[8]);
-  EXPECT_EQ(2, checker[9]);
-  EXPECT_EQ(2, checker[10]);
-  EXPECT_EQ(2, checker[11]);
-  EXPECT_EQ(4, checker[12]);
-  EXPECT_EQ(4, checker[13]);
-  EXPECT_EQ(8, checker[14]);
-  EXPECT_EQ(15, checker.size());
+  EXPECT_EQ(1u, checker[0]);
+  EXPECT_EQ(1u, checker[1]);
+  EXPECT_EQ(1u, checker[2]);
+  EXPECT_EQ(1u, checker[3]);
+  EXPECT_EQ(1u, checker[4]);
+  EXPECT_EQ(1u, checker[5]);
+  EXPECT_EQ(1u, checker[6]);
+  EXPECT_EQ(1u, checker[7]);
+  EXPECT_EQ(2u, checker[8]);
+  EXPECT_EQ(2u, checker[9]);
+  EXPECT_EQ(2u, checker[10]);
+  EXPECT_EQ(2u, checker[11]);
+  EXPECT_EQ(4u, checker[12]);
+  EXPECT_EQ(4u, checker[13]);
+  EXPECT_EQ(8u, checker[14]);
+  EXPECT_EQ(15u, checker.size());
 }
 
 /* используем для контроля отдельную структуру, чтобы при проблемах/ошибках
@@ -612,7 +657,7 @@ public:
             EXPECT_EQ(item->time.fixedpoint, value.datetime.fixedpoint);
           }
         }
-        ASSERT_EQ(1, row_present);
+        ASSERT_EQ(1u, row_present);
         count++;
         move_result = fpta_cursor_move(cursor, fpta_next);
         ASSERT_TRUE(move_result == FPTA_OK || move_result == FPTA_NODATA);
@@ -677,8 +722,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_real, "real"));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
     ndeleted = 0;
 
     // открываем/создаем базульку в 1 мегабайт
@@ -693,12 +740,13 @@ public:
     fpta_column_set_init(&def);
 
     EXPECT_EQ(FPTA_OK, fpta_column_describe("time", fptu_datetime,
-                                            fpta_index_none, &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("uint", fptu_uint32,
-                                            fpta_primary_unique, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
-              fpta_column_describe("str", fptu_cstr,
-                                   fpta_secondary_unique_reversed, &def));
+              fpta_column_describe("uint", fptu_uint32,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "str", fptu_cstr,
+                           fpta_secondary_unique_ordered_reverse, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("real", fptu_fp64,
                                    fpta_secondary_withdups_unordered, &def));
@@ -712,6 +760,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table_crud", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
   }
 
   virtual void TearDown() {
@@ -731,8 +783,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 
@@ -844,12 +896,12 @@ TEST_F(SmokeCRUD, none) {
                                             fpta_value_float(se_real_value)));
 
       /* пытаемся обновить несуществующую строку */
-      EXPECT_EQ(MDB_NOTFOUND, fpta_probe_and_update_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_NOTFOUND, fpta_probe_and_update_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       /* пытаемся вставить неполноценную строку, в которой сейчас
        * не хватает одного из индексируемых полей, поэтому вместо
-       * MDB_NOTFOUND должно быть возвращено FPTA_COLUMN_MISSING */
+       * FPTA_NOTFOUND должно быть возвращено FPTA_COLUMN_MISSING */
       EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_upsert_row(
                                          txn, &table, fptu_take_noshrink(row)));
       EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_probe_and_insert_row(
@@ -869,8 +921,8 @@ TEST_F(SmokeCRUD, none) {
                   fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
 
       /* пробуем вставить дубликат */
-      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       /* добавляем поле `time` с нулевым значением и обновлем */
       fptu_time datetime;
@@ -880,7 +932,7 @@ TEST_F(SmokeCRUD, none) {
       EXPECT_EQ(FPTA_OK, fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем поле `time`, проверяя как update, так и upsert. */
-      datetime = fptu_now_fine();
+      datetime = NOW_FINE();
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(datetime)));
       if (i & 2)
@@ -891,14 +943,14 @@ TEST_F(SmokeCRUD, none) {
                                                      fptu_take_noshrink(row)));
 
       /* еще раз пробуем вставить дубликат */
-      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       /* обновляем PK и пробуем вставить дубликат по вторичным ключам */
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_uint, fpta_value_uint(NNN)));
-      EXPECT_EQ(MDB_KEYEXIST, fpta_probe_and_insert_row(
-                                  txn, &table, fptu_take_noshrink(row)));
+      EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
+                                   txn, &table, fptu_take_noshrink(row)));
 
       // добавляем аналог строки в проверочный набор
       fpta_value se_str_value;
@@ -975,7 +1027,7 @@ TEST_F(SmokeCRUD, none) {
   }
 
   /* обновляем строки через курсор по col_str. */ {
-    SCOPED_TRACE("update.cursor-ordered_unique_reversed_str");
+    SCOPED_TRACE("update.cursor-ordered_unique_reverse_str");
     // открываем курсор по col_str: на всю таблицу, без фильтра
     fpta_cursor *cursor;
     EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),
@@ -1000,7 +1052,7 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
       if (m & 1)
@@ -1150,7 +1202,7 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
       if (m & 1)
@@ -1230,13 +1282,12 @@ TEST_F(SmokeCRUD, none) {
                                             fpta_value_uint(item->pk_uint)));
 
       /* пробуем удалить без одного поля */
-      EXPECT_EQ(MDB_NOTFOUND,
+      EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
       /* пробуем удалить с различием в данных (поле time) */
-      ASSERT_EQ(FPTA_OK,
-                fpta_upsert_column(row, &col_time,
-                                   fpta_value_datetime(fptu_now_fine())));
-      EXPECT_EQ(MDB_NOTFOUND,
+      ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
+                                            fpta_value_datetime(NOW_FINE())));
+      EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
 
       /* пробуем удалить с другим различием в данных (поле real) */
@@ -1245,7 +1296,7 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_real,
                                    fpta_value_float(item->se_real + 42)));
-      EXPECT_EQ(MDB_NOTFOUND,
+      EXPECT_EQ(FPTA_NOTFOUND,
                 fpta_delete(txn, &table, fptu_take_noshrink(row)));
 
       /* устряняем расхождение и удаляем */
@@ -1263,7 +1314,7 @@ TEST_F(SmokeCRUD, none) {
   }
 
   /* удаляем строки через курсор по col_str. */ {
-    SCOPED_TRACE("delete.cursor-ordered_unique_reversed_str");
+    SCOPED_TRACE("delete.cursor-ordered_unique_reverse_str");
     // открываем курсор по col_str: на всю таблицу, без фильтра
     fpta_cursor *cursor;
     EXPECT_EQ(FPTA_OK, fpta_cursor_open(txn, &col_str, fpta_value_begin(),
@@ -1288,13 +1339,13 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
       EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
       EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(FPTA_DEADBEEF, dups);
+      EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 
       /* LY: удалять элемент нужно после использования key, так как
        * в key просто указатель на данные std::string, которые будут
@@ -1369,7 +1420,7 @@ TEST_F(SmokeCRUD, none) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-        EXPECT_EQ(FPTA_DEADBEEF, dups);
+        EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
       } else {
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
         EXPECT_EQ(FPTA_OK, fpta_cursor_eof(cursor));
@@ -1413,7 +1464,7 @@ TEST_F(SmokeCRUD, none) {
       // ради проверки считаем повторы
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(1, dups);
+      EXPECT_EQ(1u, dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       container[n].reset();
@@ -1422,7 +1473,7 @@ TEST_F(SmokeCRUD, none) {
       ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
       EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
       EXPECT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(FPTA_DEADBEEF, dups);
+      EXPECT_EQ((size_t)FPTA_DEADBEEF, dups);
 
       ASSERT_NO_FATAL_FAILURE(Check());
     }
@@ -1499,8 +1550,10 @@ public:
     if (!valid_ops)
       return;
 
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -1526,6 +1579,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
     // начинаем транзакцию для вставки данных
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
@@ -1583,8 +1640,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };
@@ -1604,7 +1661,7 @@ TEST_P(SmokeSelect, Range) {
    *
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   SCOPED_TRACE("index " + std::to_string(index) + ", ordering " +
                std::to_string(ordering) +
                (valid_ops ? ", (valid case)" : ", (invalid case)"));
@@ -1622,21 +1679,63 @@ TEST_P(SmokeSelect, Range) {
   // проверяем кол-во записей и закрываем курсор
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
   // открываем простейщий курсор c диапазоном (полное покрытие)
+  if (fpta_index_is_ordered(index)) {
+    EXPECT_EQ(FPTA_OK, fpta_cursor_open(
+                           txn_guard.get(), &col_1, fpta_value_sint(-1),
+                           fpta_value_sint(43), nullptr, ordering, &cursor));
+    ASSERT_NE(nullptr, cursor);
+    cursor_guard.reset(cursor);
+    // проверяем кол-во записей и закрываем курсор
+    EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+    EXPECT_EQ(42u, count);
+    EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    cursor = nullptr;
+  } else {
+    EXPECT_EQ(FPTA_NO_INDEX,
+              fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_sint(-1),
+                               fpta_value_sint(43), nullptr, ordering,
+                               &cursor));
+    ASSERT_EQ(nullptr, cursor);
+  }
+
+  // открываем простейщий курсор c диапазоном (полное покрытие, от begin)
+  // LY: в случае unordered индексов здесь эксплуатируется недокументированное
+  //     свойство unordered_index(integer) == ordered_index(integer)
   EXPECT_EQ(FPTA_OK,
-            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_sint(-1),
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_begin(),
                              fpta_value_sint(43), nullptr, ordering, &cursor));
   ASSERT_NE(nullptr, cursor);
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
+
+  // открываем простейщий курсор c диапазоном (полное покрытие, до begin)
+  // LY: в случае unordered индексов здесь эксплуатируется недокументированное
+  //     свойство unordered_index(integer) == ordered_index(integer)
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn_guard.get(), &col_1, fpta_value_sint(-1),
+                             fpta_value_end(), nullptr, ordering, &cursor));
+  ASSERT_NE(nullptr, cursor);
+  cursor_guard.reset(cursor);
+  // проверяем кол-во записей и закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
+  EXPECT_EQ(42u, count);
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+  cursor = nullptr;
+
+  if (!fpta_index_is_ordered(index)) {
+    // для unordered индексов тесты ниже вернут FPTA_NO_INDEX
+    // и это уже было проверенно выше
+    return;
+  }
 
   // открываем c диапазоном (нулевое пересечение, курсор "ниже")
   EXPECT_EQ(FPTA_OK,
@@ -1646,7 +1745,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1658,7 +1757,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1670,7 +1769,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1682,7 +1781,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1694,7 +1793,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1706,7 +1805,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1718,7 +1817,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1730,7 +1829,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1742,7 +1841,7 @@ TEST_P(SmokeSelect, Range) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 }
@@ -1774,7 +1873,7 @@ TEST_P(SmokeSelect, Filter) {
    *
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   SCOPED_TRACE("index " + std::to_string(index) + ", ordering " +
                std::to_string(ordering) +
                (valid_ops ? ", (valid case)" : ", (invalid case)"));
@@ -1792,7 +1891,7 @@ TEST_P(SmokeSelect, Filter) {
   // проверяем кол-во записей и закрываем курсор
   size_t count;
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1809,7 +1908,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42, count);
+  EXPECT_EQ(42u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1822,7 +1921,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(0, count);
+  EXPECT_EQ(0u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1838,7 +1937,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(21, count);
+  EXPECT_EQ(21u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1866,7 +1965,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(42 - count_value_3, count);
+  EXPECT_EQ(42u - count_value_3, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1881,7 +1980,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(31, count);
+  EXPECT_EQ(31u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1894,7 +1993,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(10, count);
+  EXPECT_EQ(10u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1908,7 +2007,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(5, count);
+  EXPECT_EQ(5u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 
@@ -1922,7 +2021,7 @@ TEST_P(SmokeSelect, Filter) {
   cursor_guard.reset(cursor);
   // проверяем кол-во записей и закрываем курсор
   EXPECT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1u, count);
   EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
   cursor = nullptr;
 }
@@ -1931,11 +2030,12 @@ TEST_P(SmokeSelect, Filter) {
 
 INSTANTIATE_TEST_CASE_P(
     Combine, SmokeSelect,
-    ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_withdups,
-                          fpta_primary_unique_unordered,
-                          fpta_primary_withdups_unordered),
-        ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
+    ::testing::Combine(::testing::Values(fpta_primary_unique_ordered_obverse,
+                                         fpta_primary_withdups_ordered_obverse,
+                                         fpta_primary_unique_unordered,
+                                         fpta_primary_withdups_unordered),
+                       ::testing::Values(fpta_unsorted, fpta_ascending,
+                                         fpta_descending)));
 #else
 
 TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
@@ -1945,8 +2045,10 @@ TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 //----------------------------------------------------------------------------
 
 TEST(SmoceCrud, OneRowOneColumn) {
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -1958,7 +2060,8 @@ TEST(SmoceCrud, OneRowOneColumn) {
   fpta_column_set def;
   fpta_column_set_init(&def);
   ASSERT_EQ(FPTA_OK,
-            fpta_column_describe("StrColumn", fptu_cstr, fpta_primary, &def));
+            fpta_column_describe("StrColumn", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
   ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
   // запускам транзакцию и создаем таблицу с обозначенным набором колонок
@@ -1967,6 +2070,10 @@ TEST(SmoceCrud, OneRowOneColumn) {
   ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "Table", &def));
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   txn = nullptr;
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // инициализируем идентификаторы таблицы и её колонок
   fpta_name table, col_pk;
@@ -2009,7 +2116,7 @@ TEST(SmoceCrud, OneRowOneColumn) {
 
   size_t count = 0xBADBADBAD;
   ASSERT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
-  ASSERT_EQ(1, count);
+  ASSERT_EQ(1u, count);
   ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
 
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
@@ -2020,6 +2127,1082 @@ TEST(SmoceCrud, OneRowOneColumn) {
 
   // закрываем базу
   ASSERT_EQ(FPTA_OK, fpta_db_close(db));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Smoke, DirectDirtyDeletions) {
+  /* Smoke-проверка удаления строки из "грязной" страницы, при наличии
+   * вторичных индексов.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой несколько колонок
+   *   и есть хотя-бы один вторичный индекс.
+   *
+   *  2. Вставляем 11 строки, при этом некоторые значения близкие
+   *     и точно попадут в одну страницу БД.
+   *
+   *  3. Удаляем одну строку, затем в той-же транзакции ищем и удаляем
+   *     вторую строку, которая после первого удаления должна располагаться
+   *     в измененной "грязной" страницы.
+   *
+   *  4. Завершаем операции и освобождаем ресурсы.
+   */
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // начинаем транзакцию с добавлениями
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // описываем структуру таблицы и создаем её
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("Nnn", fptu_int64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_createdAt", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_int64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "bugged", &def));
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+  // готовим идентификаторы для манипуляций с данными
+  fpta_name table, col_num, col_date, col_str;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "bugged"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_num, "Nnn"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_date, "_createdAt"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_str, "_id"));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_num));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_date));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_str));
+
+  // выделяем кортеж и вставляем 11 строк
+  fptu_rw *pt = fptu_alloc(3, 8 + 8 + 8);
+  ASSERT_NE(nullptr, pt);
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+
+  // 1
+  fptu_time datetime;
+  datetime.fixedpoint = 1492170771;
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(100)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824664381050880)));
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+  fptu_ro row = fptu_take_noshrink(pt);
+  ASSERT_STREQ(nullptr, fptu_check_ro(row));
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 2
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(101)));
+
+  datetime.fixedpoint = 1492170775;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824680314742784)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 3
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(102)));
+
+  datetime.fixedpoint = 1492170777;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824688070591488)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 4
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(103)));
+  datetime.fixedpoint = 1492170778;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824693901869056)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 5
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(104)));
+  datetime.fixedpoint = 1492170779;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824699339551744)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 6
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(105)));
+  datetime.fixedpoint = 1492170781;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824705469209600)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 7
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(106)));
+  datetime.fixedpoint = 1492170782;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824710579991552)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 8
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(107)));
+  datetime.fixedpoint = 1492170784;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824719167151104)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 9
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(108)));
+  datetime.fixedpoint = 1492170786;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824727095985152)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 10
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(109)));
+  datetime.fixedpoint = 1492170788;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824736249964544)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 11
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(110)));
+  datetime.fixedpoint = 1492170790;
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824744270998528)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // завершаем транзакцию с добавлениями
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // начинаем транзакцию с удалениями
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+  fptu_ro row2;
+  fpta_value num2;
+
+  // читаем вторую строку для проверки что сейчас она НЕ в грязной странице.
+  num2 = fpta_value_sint(6408824736249964544);
+  EXPECT_EQ(FPTA_OK, fpta_get(txn, &col_str, &num2, &row2));
+  EXPECT_EQ(MDBX_RESULT_FALSE, mdbx_is_dirty(txn->mdbx_txn, row2.sys.iov_base));
+
+  // читаем и удаляем первую строку
+  num2 = fpta_value_sint(6408824727095985152);
+  EXPECT_EQ(FPTA_OK, fpta_get(txn, &col_str, &num2, &row2));
+  EXPECT_EQ(MDBX_RESULT_FALSE, mdbx_is_dirty(txn->mdbx_txn, row2.sys.iov_base));
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn, &table, row2));
+
+  // снова читаем вторую строку (теперь она должна быть в "грязной" странице)
+  // и удаляем её
+  num2 = fpta_value_sint(6408824736249964544);
+  EXPECT_EQ(FPTA_OK, fpta_get(txn, &col_str, &num2, &row2));
+  EXPECT_EQ(MDBX_RESULT_TRUE, mdbx_is_dirty(txn->mdbx_txn, row2.sys.iov_base));
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn, &table, row2));
+
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // освобождаем ресурсы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_num);
+  fpta_name_destroy(&col_date);
+  fpta_name_destroy(&col_str);
+  free(pt);
+  pt = nullptr;
+
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Smoke, UpdateViolateUnique) {
+  /* Smoke-проверка обновления строки с нарушением уникальности по
+   * вторичному ключу.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой две колонки и два
+   *     индекса с контролем уникальности.
+   *
+   *  2. Вставляем 2 строки с уникальными значениями всех полей.
+   *
+   *  3. Пытаемся обновить одну из строк с нарушением уникальности.
+   *
+   *  4. Завершаем операции и освобождаем ресурсы.
+   */
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // начинаем транзакцию с добавлениями
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // описываем структуру таблицы и создаем её
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("key", fptu_int64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("value", fptu_int64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "map", &def));
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+  // готовим идентификаторы для манипуляций с данными
+  fpta_name table, col_key, col_value;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "Map"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_key, "Key"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_value, "Value"));
+  // начнём с добавления значений полей, поэтому нужен ручной refresh
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_key));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_value));
+
+  // выделяем кортеж и вставляем 2 строки
+  fptu_rw *pt = fptu_alloc(2, 8 * 2);
+  ASSERT_NE(nullptr, pt);
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+
+  // 1
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_key, fpta_value_sint(1)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_value, fpta_value_sint(2)));
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+  fptu_ro row = fptu_take_noshrink(pt);
+  ASSERT_STREQ(nullptr, fptu_check_ro(row));
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // 2
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_key, fpta_value_sint(2)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_value, fpta_value_sint(3)));
+  row = fptu_take_noshrink(pt);
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // завершаем транзакцию вставки
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // начинаем транзакцию обновления
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // формируем строку с нарушением
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_key, fpta_value_sint(1)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_value, fpta_value_sint(3)));
+  row = fptu_take_noshrink(pt);
+
+  // пробуем с пред-проверкой
+  EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_update_row(txn, &table, row));
+  EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(txn, &table, row));
+
+  // пробуем сломать уникальность, транзакция должна быть отменена
+  EXPECT_EQ(FPTA_KEYEXIST, fpta_update_row(txn, &table, row));
+
+  // транзакция должна быть уже отменена
+  ASSERT_EQ(FPTA_TXN_CANCELLED, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // освобождаем ресурсы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_key);
+  fpta_name_destroy(&col_value);
+  free(pt);
+  pt = nullptr;
+
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+}
+
+//----------------------------------------------------------------------------
+
+class SmokeNullable : public ::testing::Test {
+public:
+  scoped_db_guard db_quard;
+  scoped_txn_guard txn_guard;
+  scoped_cursor_guard cursor_guard;
+  scoped_ptrw_guard ptrw_guard;
+
+  fpta_name table, c0_uint64, c1_date, c2_str, c3_int64, c4_uint32, c5_ip4,
+      c6_sha1, c7_fp32, c8_enum, c9_fp64;
+
+  fptu_ro MakeRow(int stepover) {
+    EXPECT_EQ(FPTU_OK, fptu_clear(ptrw_guard.get()));
+
+    if (stepover >= 0) {
+      // формируем не пустую строку, со скользящим NIL
+      if (stepover != 0)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
+                                              fpta_value_uint(stepover)));
+      if (stepover != 1)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c1_date,
+                                              fpta_value_datetime(NOW_FINE())));
+      if (stepover != 2)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c2_str,
+                                     fpta_value_str(std::to_string(stepover))));
+      if (stepover != 3)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c3_int64,
+                                              fpta_value_sint(-stepover)));
+      if (stepover != 4)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
+                                              fpta_value_uint(stepover)));
+      if (stepover != 5)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
+                                              fpta_value_uint(stepover + 42)));
+      if (stepover != 6) {
+        uint8_t sha1[160 / 8];
+        memset(sha1, stepover + 1, sizeof(sha1));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c6_sha1,
+                                     fpta_value_binary(sha1, sizeof(sha1))));
+      }
+      if (stepover != 7)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c7_fp32,
+                                     fpta_value_float(stepover * M_PI)));
+      if (stepover != 8)
+        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c8_enum,
+                                              fpta_value_sint(11 + stepover)));
+      if (stepover != 9)
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c9_fp64,
+                                     fpta_value_float(M_E * stepover)));
+    }
+
+    return fptu_take_noshrink(ptrw_guard.get());
+  }
+
+  void OpenCursor(int colnum) {
+    if (cursor_guard)
+      EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+
+    // выбираем колонку по номеру
+    fpta_name *colptr = nullptr;
+    switch (colnum) {
+    case 0:
+      colptr = &c0_uint64;
+      break;
+    case 1:
+      colptr = &c1_date;
+      break;
+    case 2:
+      colptr = &c2_str;
+      break;
+    case 3:
+      colptr = &c3_int64;
+      break;
+    case 4:
+      colptr = &c4_uint32;
+      break;
+    case 5:
+      colptr = &c5_ip4;
+      break;
+    case 6:
+      colptr = &c6_sha1;
+      break;
+    case 7:
+      colptr = &c7_fp32;
+      break;
+    case 8:
+      colptr = &c8_enum;
+      break;
+    case 9:
+      colptr = &c9_fp64;
+      break;
+    }
+
+    // открываем простейщий курсор: на всю таблицу, без фильтра
+    fpta_cursor *cursor = nullptr;
+    EXPECT_EQ(FPTA_OK,
+              fpta_cursor_open(txn_guard.get(), colptr, fpta_value_begin(),
+                               fpta_value_end(), nullptr,
+                               fpta_unsorted_dont_fetch, &cursor));
+    cursor_guard.reset(cursor);
+  }
+
+  virtual void SetUp() {
+    SCOPED_TRACE("setup");
+    // инициализируем идентификаторы таблицы и её колонок
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "xyz"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c0_uint64, "c0_uint64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c1_date, "c1_date"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c2_str, "c2_str"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c3_int64, "c3_int64"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c4_uint32, "c4_uint32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c5_ip4, "c5_ip4"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c6_sha1, "c6_sha1"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c7_fp32, "c7_fp32"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c8_enum, "c8_enum"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c9_fp64, "c9_fp64"));
+
+    // чистим
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
+
+    // создаем базу
+    fpta_db *db = nullptr;
+    EXPECT_EQ(FPTA_SUCCESS,
+              fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+    ASSERT_NE(nullptr, db);
+    db_quard.reset(db);
+
+    // начинаем транзакцию с созданием таблицы
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+
+    // описываем структуру таблицы и создаем её
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "c0_uint64", fptu_uint64,
+                           fpta_primary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c1_date", fptu_datetime,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c2_str", fptu_cstr,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c3_int64", fptu_int64,
+                  fpta_secondary_withdups_unordered_nullable_obverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c4_uint32", fptu_uint32,
+                  fpta_secondary_withdups_ordered_reverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c5_ip4", fptu_uint32,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c6_sha1", fptu_160,
+                  fpta_secondary_unique_unordered_nullable_obverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c7_fp32", fptu_fp32,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c8_enum", fptu_uint16,
+                  fpta_secondary_withdups_unordered_nullable_reverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "c9_fp64", fptu_fp64,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("_", fptu_opaque,
+                                            fpta_noindex_nullable, &def));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+    ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "xyz", &def));
+
+    // завершаем транзакцию
+    ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
+    txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+    // начинаем транзакцию изменения данных
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+    ASSERT_NE(nullptr, txn);
+    txn_guard.reset(txn);
+
+    //------------------------------------------------------------------------
+
+    // нужен ручной refresh, так как начинать будем с добавления полей в кортеж
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c0_uint64));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c1_date));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c2_str));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c3_int64));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c4_uint32));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c5_ip4));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c6_sha1));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c7_fp32));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c8_enum));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &c9_fp64));
+
+    // выделяем кортеж
+    fptu_rw *pt = fptu_alloc(10, 8 * 10 + 42);
+    ASSERT_NE(nullptr, pt);
+    ASSERT_STREQ(nullptr, fptu_check(pt));
+    ptrw_guard.reset(pt);
+  }
+
+  virtual void TearDown() {
+    SCOPED_TRACE("teardown");
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&table);
+    fpta_name_destroy(&c0_uint64);
+    fpta_name_destroy(&c1_date);
+    fpta_name_destroy(&c2_str);
+    fpta_name_destroy(&c3_int64);
+    fpta_name_destroy(&c4_uint32);
+    fpta_name_destroy(&c5_ip4);
+    fpta_name_destroy(&c6_sha1);
+    fpta_name_destroy(&c7_fp32);
+    fpta_name_destroy(&c8_enum);
+    fpta_name_destroy(&c9_fp64);
+
+    // закрываем курсор и завершаем транзакцию
+    if (cursor_guard)
+      EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    if (txn_guard)
+      ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    if (db_quard) {
+      // закрываем и удаляем базу
+      ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+    }
+  }
+};
+
+TEST_F(SmokeNullable, AllNILs) {
+  /* Smoke-проверка обновления строки с нарушением уникальности по
+   * вторичному ключу.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой 10 колонок, все они
+   *     индексированы и допускают NIL. При этом 5 колонок с контролем
+   *     уникальности, а остальные допускают дубликаты.
+   *
+   *  2. Вставляем строку, в которой только одни NIL-ы.
+   *
+   *  3. Удаляем вставленную строку.
+   *
+   *  4. Снова вставляем строку и удаляем её через через курсор.
+   *
+   *  5. Повторяем пункт 4 для курсора по каждой колонке.
+   */
+
+  // формируем строку без колонок
+  fptu_ro allNILs = MakeRow(-1);
+
+  // вставляем строку со всеми NIL
+  EXPECT_EQ(FPTA_OK,
+            fpta_validate_insert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_KEYEXIST,
+            fpta_validate_insert_row(txn_guard.get(), &table, allNILs));
+
+  // обновляем строку без реального изменения данных
+  EXPECT_EQ(FPTA_OK,
+            fpta_validate_upsert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, allNILs));
+
+  // удяляем строку со всеми нулями
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn_guard.get(), &table, allNILs));
+
+  // теперь вставляем строку через upsert
+  EXPECT_EQ(FPTA_OK,
+            fpta_validate_upsert_row(txn_guard.get(), &table, allNILs));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, allNILs));
+
+  // повторяем что дубликат не лезет
+  EXPECT_EQ(FPTA_KEYEXIST,
+            fpta_validate_insert_row(txn_guard.get(), &table, allNILs));
+
+  //--------------------------------------------------------------------------
+  /* через курсор */
+  for (int colnum = 0; colnum < 10; ++colnum) {
+    SCOPED_TRACE("cursor column #" + std::to_string(colnum));
+    OpenCursor(colnum);
+    ASSERT_TRUE(cursor_guard.operator bool());
+
+    EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, allNILs));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor_guard.get(),
+                                        (colnum & 1) ? fpta_first : fpta_last));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor_guard.get()));
+    EXPECT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor_guard.get()));
+  }
+}
+
+TEST_F(SmokeNullable, Base) {
+  /* Smoke-проверка обновления строки с нарушением уникальности по
+   * вторичному ключу.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей, в которой 10 колонок, все они
+   *     индексированы и допускают NIL. При этом 5 колонок с контролем
+   *     уникальности, а остальные допускают дубликаты.
+   *
+   *  2. Вставляем 10 строк со "скользящим" NIL и уникальными
+   *     значениям в остальных полях.
+   *
+   *  3. Удаляем 10 строк через курсор открываемый по каждой из колонок.
+   *
+   *  4. Добавляем и удаляем полностью заполненную строку.
+   */
+
+  //--------------------------------------------------------------------------
+  for (int nilcol = 0; nilcol < 10; ++nilcol) {
+    SCOPED_TRACE("NIL-column #" + std::to_string(nilcol));
+    fptu_ro row = MakeRow(nilcol);
+    EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, row));
+
+    // проверяем обновлени (без какого-либо зименения данных)
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(txn_guard.get(), &table, row));
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn_guard.get(), &table, row));
+
+    // повторяем что дубликат не лезет
+    EXPECT_EQ(FPTA_KEYEXIST,
+              fpta_validate_insert_row(txn_guard.get(), &table, row));
+  }
+
+  // проверяем что не лезет строка со всеми NIL
+  EXPECT_EQ(FPTA_KEYEXIST,
+            fpta_validate_insert_row(txn_guard.get(), &table, MakeRow(-1)));
+
+  // удялем по одной строке через курсор открываемый по каждой из колонок
+  for (int colnum = 0; colnum < 10; ++colnum) {
+    SCOPED_TRACE("cursor column #" + std::to_string(colnum));
+    OpenCursor(colnum);
+    ASSERT_TRUE(cursor_guard.operator bool());
+
+    EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor_guard.get(),
+                                        (colnum & 1) ? fpta_first : fpta_last));
+    EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor_guard.get()));
+  }
+
+  // вставляем и удаляем полностью заполненную строку (без NIL)/
+  fptu_ro row = MakeRow(11);
+  EXPECT_EQ(FPTA_OK, fpta_upsert_row(txn_guard.get(), &table, row));
+  EXPECT_EQ(FPTA_OK, fpta_delete(txn_guard.get(), &table, row));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Smoke, ReOpenAfterAbort) {
+  // чистим
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // открываем/создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  // описываем простейшую таблицу с одним PK (int64) и колонками (_last_changed,
+  // fp64, int64, string, datetime)
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("host", fptu_cstr,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_last_changed", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_int64,
+                                 fpta_secondary_unique_unordered, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("user_name", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("date", fptu_datetime,
+                                          fpta_noindex_nullable, &def));
+
+  ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+  // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+  fpta_txn *txn = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "Table", &def));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  db = nullptr;
+
+  // открываем базу
+  EXPECT_EQ(FPTA_OK,
+            fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  fpta_name table_id;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table_id, "Table"));
+
+  // открываем транзакцию на запись, позже мы ее абортируем
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+  size_t row_count = 0;
+  EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table_id, &row_count, nullptr));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+
+  // открываем еще одну транзакцию на запись
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+
+  // пытаемся сделать поиск
+  fpta_name column_id;
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &column_id, "host"));
+
+  fpta_value value = fpta_value_cstr("administrator");
+  fptu_ro record;
+  memset(&record, 0, sizeof(record));
+
+  EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn, &column_id, &value, &record));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+
+  // закрываем базу
+  fpta_name_destroy(&table_id);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Smoke, Kamerades) {
+  /* Smoke-проверка совместных операций.
+   *
+   * Сценарий:
+   *  1. Открываем базу "коррелятором".
+   *  2. Открываем базу "коммандером", создаём одну таблицу, в одна колонка
+   *     и один (primary) индекс.
+   *  2. Через хэндл "коррелятора" добавляем в эту таблицу данные:
+   *     - добавляем одну запись
+   *  3. Через хэндл "коммандера" получаем сведения о таблице.
+   *  4. Завершаем операции и освобождаем ресурсы.
+   */
+  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  fpta_db *correlator_db = nullptr;
+  fpta_db *commander_db = nullptr;
+
+  {
+    // открываем/создаем базульку в 1 мегабайт
+    EXPECT_EQ(FPTA_SUCCESS,
+              fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
+                           &commander_db)); // таблица создаётся из "коммандера"
+    ASSERT_NE(nullptr, commander_db);
+
+    // описываем простейшую таблицу с тремя колонками и одним PK
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("nnn", fptu_int64,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(commander_db, fpta_schema, &txn));
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table_1", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // закрываем из коммандера (опционально)
+    if (false) {
+      EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(commander_db));
+      commander_db = nullptr;
+    }
+  }
+
+  {
+    // создаем кортеж, который станет единственной записью в таблице
+    fptu_rw *pt1 = fptu_alloc(1, 8);
+    ASSERT_NE(nullptr, pt1);
+    ASSERT_STREQ(nullptr, fptu_check(pt1));
+
+    // инициализируем идентификаторы таблицы
+    fpta_name table, col_pk;
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table_1"));
+
+    // открываем из коррелятора
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_open(testdb_name, fpta_async, 0644, 1,
+                                         false, &correlator_db));
+    ASSERT_NE(nullptr, correlator_db);
+
+    // начинаем транзакцию для вставки данных
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(
+                           correlator_db, fpta_write,
+                           &txn)); // вставляем запись из "коррелятора"
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, "nnn"));
+    ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
+    // ради теста делаем привязку вручную
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_pk));
+
+    // добавляем нормальные значения
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_pk, fpta_value_sint(567)));
+    ASSERT_STREQ(nullptr, fptu_check(pt1));
+    fptu_ro taken_noshrink;
+    taken_noshrink = fptu_take_noshrink(pt1);
+    EXPECT_EQ(FPTA_OK,
+              fpta_validate_put(txn, &table, taken_noshrink, fpta_insert));
+    EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, taken_noshrink, fpta_insert));
+    free(pt1);
+    pt1 = nullptr;
+
+    // фиксируем изменения из коррелятора
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&col_pk);
+    fpta_name_destroy(&table);
+
+    // закрываем из коррелятора (опционально)
+    if (false) {
+      EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(correlator_db));
+      correlator_db = nullptr;
+    }
+  }
+
+  {
+    // инициализируем идентификаторы таблицы со стороны "коммандера"
+    fpta_name same_table;
+
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&same_table, "table_1"));
+
+    if (!commander_db) {
+      // вновь открываем из коммандера
+      EXPECT_EQ(
+          FPTA_SUCCESS,
+          fpta_db_open(
+              testdb_name, fpta_async, 0644, 1, false,
+              &commander_db)); // теперь пытаемся только читать из "коммандера"
+    }
+
+    // и начинаем читающую транзакцию из "коммандера"
+    fpta_txn *txn = (fpta_txn *)&txn;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(commander_db, fpta_read, &txn));
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh(txn, &same_table)); // здесь было MDBX_CORRUPTED
+
+    size_t num;
+    EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &same_table, &num, NULL));
+    EXPECT_EQ(num, 1u);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // разрушаем привязанные идентификаторы
+    fpta_name_destroy(&same_table);
+  }
+
+  // закрываем базульку из коррелятора
+  if (correlator_db) {
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(correlator_db));
+    correlator_db = nullptr;
+  }
+
+  // закрываем базульку из коммандера
+  if (commander_db) {
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(commander_db));
+    commander_db = nullptr;
+  }
+
+  // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
+  if (false) {
+    ASSERT_TRUE(unlink(testdb_name) == 0);
+    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  }
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Smoke, OverchargeOnCommit) {
+  /* Smoke-проверка поведения при переполнении БД во время фиксации транзакции.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей и некоторым кол-вом колонок.
+   *
+   *  2. Итеративно вставляем по одной строке за транзакцию,
+   *     пока не закончится место или не случится еще что-то плохое.
+   *
+   *  3. Параметры подобраны так, чтобы переполнение случилось при фиксации
+   *     транзакции (при добавлении записи в garbage-таблицу  внутри libmdbx).
+   */
+
+  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+
+  // открываем/создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0664, 1, true, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  // описываем простейшую таблицу с одним PK
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("primary_key", fptu_uint64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("user_name", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("date", fptu_datetime,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("host", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_last_changed", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_uint64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+  // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+  fpta_txn *txn = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE((fpta_txn *)nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "Table", &def));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  db = nullptr;
+
+  // открываем базу
+  EXPECT_EQ(FPTA_OK,
+            fpta_db_open(testdb_name, fpta_async, 0664, 1, false, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+
+  fpta_name table_id, primary_key, host, id, last_changed, name, date;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table_id, "Table"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &primary_key, "primary_key"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &host, "host"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &id, "_id"));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_init(&table_id, &last_changed, "_last_changed"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &name, "user_name"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id, &date, "date"));
+
+  fptu_rw *tuple = fptu_alloc(6, 1000);
+  ASSERT_NE(tuple, (fptu_rw *)nullptr);
+
+  int err = FPTA_OK;
+  for (uint64_t pk = 0; err == FPTA_OK; ++pk) {
+    // открываем транзакцию на запись, записываем данные
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &primary_key));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &host));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &id));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &last_changed));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &name));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &date));
+
+	const auto now = fpta_value_datetime(fptu_now_coarse());
+    fptu_clear(tuple);
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &primary_key, fpta_value_uint(pk)));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date, now));
+    EXPECT_EQ(
+        FPTA_OK,
+        fpta_upsert_column(
+            tuple, &name, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &host,
+                                          fpta_value_cstr("administrator")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(pk)));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &last_changed, now));
+
+    err = fpta_probe_and_upsert_row(txn, &table_id, fptu_take(tuple));
+    EXPECT_EQ(FPTA_OK, err);
+
+    if (err != FPTA_OK)
+      // отменяем если была ошибка
+      ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+    else {
+      // коммитим и ожидаем ошибку переполнения здесь
+      err = fpta_transaction_end(txn, false);
+      if (err != FPTA_OK)
+        ASSERT_EQ(FPTA_DB_FULL, err);
+    }
+  }
+
+  free(tuple);
+  fpta_name_destroy(&host);
+  fpta_name_destroy(&id);
+  fpta_name_destroy(&last_changed);
+  fpta_name_destroy(&table_id);
+  fpta_name_destroy(&name);
+  fpta_name_destroy(&date);
+  fpta_name_destroy(&primary_key);
+
+  // закрываем базу
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
 }
 
 //----------------------------------------------------------------------------

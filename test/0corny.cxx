@@ -17,9 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 TEST(Corny, NameValidate) {
@@ -36,15 +34,143 @@ TEST(Corny, NameValidate) {
   EXPECT_FALSE(fpta_validate_name(""));
   EXPECT_FALSE(fpta_validate_name(nullptr));
   EXPECT_FALSE(fpta_validate_name("a_very_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
+                                  "long_long_long_long_long_long_long_"
                                   "long_long_long_long_long_long_name"));
 
-  EXPECT_FALSE(fpta_validate_name("no valid"));
+  EXPECT_FALSE(fpta_validate_name("not valid"));
   EXPECT_FALSE(fpta_validate_name("1nvalid"));
+#if FPTA_ALLOW_DOT4NAMES
+  EXPECT_TRUE(fpta_validate_name("val.d"));
+  EXPECT_TRUE(fpta_validate_name(".val.d"));
+#else
   EXPECT_FALSE(fpta_validate_name("inval.d"));
-  EXPECT_FALSE(fpta_validate_name("_1nvalid"));
+  EXPECT_FALSE(fpta_validate_name(".nval.d"));
+#endif
+  EXPECT_FALSE(fpta_validate_name("inval$d"));
+  EXPECT_TRUE(fpta_validate_name("_1nvalid"));
   EXPECT_FALSE(fpta_validate_name("invalid#"));
   EXPECT_FALSE(fpta_validate_name("invalid/"));
+#if !defined(_MSC_VER) || defined(NDEBUG)
   EXPECT_FALSE(fpta_validate_name("invalid_ещераз"));
+#endif
+}
+
+TEST(Corny, DeNIL_NaNs) {
+  /* Проверка NAN-значений для designaned NILs. */
+
+  // тест базовых констант
+  EXPECT_TRUE(std::isnan(fpta_fp32_denil.__f));
+  EXPECT_TRUE(std::isnan(fpta_fp32_qsnan.__f));
+  EXPECT_TRUE(std::isnan(fpta_fp64_denil.__d));
+  EXPECT_TRUE(std::isnan(fpta_fp32x64_denil.__d));
+  EXPECT_TRUE(std::isnan(fpta_fp32x64_qsnan.__d));
+  EXPECT_FALSE(binary_eq(fpta_fp32_denil, fpta_fp32_qsnan));
+  EXPECT_FALSE(binary_eq(fpta_fp64_denil, fpta_fp32x64_qsnan));
+  EXPECT_FALSE(binary_eq(fpta_fp64_denil, fpta_fp32x64_denil));
+  EXPECT_EQ(FPTA_DENIL_FP32_BIN, fpta_fp32_denil.__i);
+  EXPECT_EQ(FPTA_QSNAN_FP32_BIN, fpta_fp32_qsnan.__i);
+  EXPECT_EQ(FPTA_DENIL_FP32_BIN, fpta_fp32_qsnan.__i + 1);
+  EXPECT_EQ(FPTA_DENIL_FP64_BIN, fpta_fp64_denil.__i);
+  EXPECT_EQ(FPTA_DENIL_FP32x64_BIN, fpta_fp32x64_denil.__i);
+  EXPECT_EQ(FPTA_QSNAN_FP32x64_BIN, fpta_fp32x64_qsnan.__i);
+
+  fpta_fp32_t fp32;
+  fpta_fp64_t fp64;
+
+#ifdef FPTA_DENIL_FP32 /* LY: undefined for buggy compilers like MSVC */
+  // проверка FPTA_DENIL_FP32
+  fp32.__f = FPTA_DENIL_FP32;
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+#endif /* FPTA_DENIL_FP32 */
+
+#ifdef FPTA_DENIL_FP32_MAS /* LY: undefined for buggy compilers like MSVC */
+  // проверка FPTA_DENIL_FP32_MAS
+  fp32.__f = -std::nanf(FPTA_DENIL_FP32_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+#endif /* FPTA_DENIL_FP32_MAS */
+
+#ifdef FPTA_DENIL_FP64 /* LY: undefined for buggy compilers like MSVC */
+  // проверка FPTA_DENIL_FP64
+  fp64.__d = FPTA_DENIL_FP64;
+  EXPECT_TRUE(binary_eq(fpta_fp64_denil, fp64));
+  EXPECT_EQ(fpta_fp64_denil.__i, fp64.__i);
+#endif /* FPTA_DENIL_FP64 */
+
+#ifdef FPTA_DENIL_FP64_MAS /* LY: undefined for buggy compilers like MSVC */
+  // проверка FPTA_DENIL_FP64_MAS
+  fp64.__d = -std::nan(FPTA_DENIL_FP64_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp64_denil, fp64));
+  EXPECT_EQ(fpta_fp64_denil.__i, fp64.__i);
+#endif /* FPTA_DENIL_FP64_MAS */
+
+#ifdef FPTA_DENIL_FP32x64_MAS /* LY: undefined for mad compilers like MSVC */
+  // проверка FPTA_DENIL_FP32x64_MAS
+  fp64.__d = -std::nan(FPTA_DENIL_FP32x64_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
+#endif /* FPTA_DENIL_FP32x64_MAS */
+
+#ifdef FPTA_QSNAN_FP32x64_MAS /* LY: undefined for mad compilers like MSVC */
+  // проверка FPTA_QSNAN_FP32x64_MAS
+  fp64.__d = -std::nan(FPTA_QSNAN_FP32x64_MAS);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_qsnan, fp64));
+#endif /* FPTA_QSNAN_FP32x64_MAS */
+
+  // преобразование DENIL с усечением.
+  fp32.__f = fpta_fp64_denil.__d;
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+  fp32.__f = FPTA_DENIL_FP64;
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
+
+  // преобразование DENIL с расширением.
+  fp64.__d = fpta_fp32_denil.__f;
+  EXPECT_EQ(fpta_fp32x64_denil.__i, fp64.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
+  fp64.__d = FPTA_DENIL_FP32;
+  EXPECT_EQ(fpta_fp32x64_denil.__i, fp64.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_denil, fp64));
+  // а так не должно совпадать, ибо мантисса просто шире.
+  EXPECT_NE(fpta_fp64_denil.__i, fp64.__i);
+  EXPECT_FALSE(binary_eq(fpta_fp64_denil, fp64));
+
+  // преобразование QSNAN с усечением.
+  fp32.__f = fpta_fp32x64_qsnan.__d;
+  EXPECT_NE(fpta_fp32_denil.__i, fp32.__i);
+  EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i + 1);
+  EXPECT_FALSE(binary_eq(fpta_fp32_denil, fp32));
+  EXPECT_EQ(fpta_fp32_qsnan.__i, fp32.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32_qsnan, fp32));
+
+  // преобразование QSNAN с расширением.
+  fp64.__d = fpta_fp32_qsnan.__f;
+  EXPECT_EQ(fpta_fp32x64_qsnan.__i, fp64.__i);
+  EXPECT_TRUE(binary_eq(fpta_fp32x64_qsnan, fp64));
 }
 
 TEST(Corny, KeyGenerator) {

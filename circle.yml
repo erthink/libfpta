@@ -1,0 +1,36 @@
+machine:
+  timezone:
+    Europe/Moscow
+
+  environment:
+    GTEST_SHUFFLE: 1
+    GTEST_RUNTIME_LIMIT: 142
+
+database:
+  override:
+
+dependencies:
+  pre:
+    - sudo apt update -q
+  override:
+    - sudo apt install cmake libgtest-dev
+  post:
+    - c++ --version
+    - cmake --version
+
+checkout:
+  post:
+    - git fetch --tags --prune
+    - git submodule foreach --recursive git fetch --tags --prune
+    - git submodule sync
+    - git submodule update --init --recursive
+
+compile:
+  pre:
+    - cmake .
+  override:
+    - make all
+
+test:
+  override:
+    - make test

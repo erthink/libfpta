@@ -2,8 +2,6 @@ language: cpp
 sudo: false
 dist: trusty
 cache: bundler
-notifications:
-  email: false
 
 addons:
   apt:
@@ -20,4 +18,13 @@ compiler:
 os:
   - linux
 
-script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi
+env:
+  global:
+    - GTEST_SHUFFLE=1
+    - GTEST_RUNTIME_LIMIT=142
+
+script:
+  - git fetch --tags --prune
+  - git submodule foreach --recursive git fetch --tags --prune
+  - cmake --version
+  - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi

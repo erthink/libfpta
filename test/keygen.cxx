@@ -17,19 +17,8 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
-#include <array>
-#include <cmath>
-#include <limits>
-#include <map>
-#include <type_traits>
-#include <typeinfo>
-#include <utility>
-#include <vector>
-
 #include "keygen.hpp"
+#include "fpta_test.h"
 
 template <fpta_index_type _index, fptu_type _type>
 void any_keygen::init_tier::glue() {
@@ -84,11 +73,11 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
     assert(false && "wrong index");
     stub(_type, _index);
     break;
-  case fpta_primary_withdups:
-    unroll<fpta_primary_withdups>(_type);
+  case fpta_primary_withdups_ordered_obverse:
+    unroll<fpta_primary_withdups_ordered_obverse>(_type);
     break;
-  case fpta_primary_unique:
-    unroll<fpta_primary_unique>(_type);
+  case fpta_primary_unique_ordered_obverse:
+    unroll<fpta_primary_unique_ordered_obverse>(_type);
     break;
   case fpta_primary_withdups_unordered:
     unroll<fpta_primary_withdups_unordered>(_type);
@@ -96,17 +85,17 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
   case fpta_primary_unique_unordered:
     unroll<fpta_primary_unique_unordered>(_type);
     break;
-  case fpta_primary_withdups_reversed:
-    unroll<fpta_primary_withdups_reversed>(_type);
+  case fpta_primary_withdups_ordered_reverse:
+    unroll<fpta_primary_withdups_ordered_reverse>(_type);
     break;
-  case fpta_primary_unique_reversed:
-    unroll<fpta_primary_unique_reversed>(_type);
+  case fpta_primary_unique_ordered_reverse:
+    unroll<fpta_primary_unique_ordered_reverse>(_type);
     break;
-  case fpta_secondary_withdups:
-    unroll<fpta_secondary_withdups>(_type);
+  case fpta_secondary_withdups_ordered_obverse:
+    unroll<fpta_secondary_withdups_ordered_obverse>(_type);
     break;
-  case fpta_secondary_unique:
-    unroll<fpta_secondary_unique>(_type);
+  case fpta_secondary_unique_ordered_obverse:
+    unroll<fpta_secondary_unique_ordered_obverse>(_type);
     break;
   case fpta_secondary_withdups_unordered:
     unroll<fpta_secondary_withdups_unordered>(_type);
@@ -114,11 +103,11 @@ any_keygen::init_tier::init_tier(fptu_type _type, fpta_index_type _index) {
   case fpta_secondary_unique_unordered:
     unroll<fpta_secondary_unique_unordered>(_type);
     break;
-  case fpta_secondary_withdups_reversed:
-    unroll<fpta_secondary_withdups_reversed>(_type);
+  case fpta_secondary_withdups_ordered_reverse:
+    unroll<fpta_secondary_withdups_ordered_reverse>(_type);
     break;
-  case fpta_secondary_unique_reversed:
-    unroll<fpta_secondary_unique_reversed>(_type);
+  case fpta_secondary_unique_ordered_reverse:
+    unroll<fpta_secondary_unique_ordered_reverse>(_type);
     break;
   }
 }
@@ -151,3 +140,11 @@ bool isPrime(unsigned number) {
   }
   return true;
 }
+
+//----------------------------------------------------------------------------
+/* Ограничитель по времени выполнения.
+ * Нужен для предотвращения таумаута тестов в CI. Предполагается, что он
+ * используется вместе с установкой GTEST_SHUFFLE=1, что в сумме дает
+ * выполнение части тестов в случайном порядке, пока не будет превышен лимит
+ * заданный через переменную среды окружения GTEST_RUNTIME_LIMIT. */
+runtime_limiter ci_runtime_limiter;

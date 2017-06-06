@@ -17,42 +17,6 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <algorithm>
-#include <gtest/gtest.h>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
-
-#include "keygen.hpp"
-
-/* Кол-во проверочных точек в диапазонах значений индексируемых типов.
- *
- * Значение не может быть больше чем 65536, так как это предел кол-ва
- * уникальных значений для fptu_uint16.
- *
- * Но для парного генератора не может быть больше 65536/NDUP,
- * так как для не-уникальных вторичных индексов нам требуются дубликаты,
- * что требует больше уникальных значений для первичного ключа.
- *
- * Использовать тут большие значения смысла нет. Время работы тестов
- * растет примерно линейно (чуть быстрее), тогда как вероятность
- * проявления каких-либо ошибок растет в лучшем случае как Log(NNN),
- * а скорее даже как SquareRoot(Log(NNN)).
- */
-static constexpr unsigned NDUP = 5;
-#if FPTA_CURSOR_UT_LONG
-static constexpr unsigned NNN = 13103; // около часа в /dev/shm/
-#else
-static constexpr unsigned NNN = 41; // порядка 10-15 секунд в /dev/shm/
-#endif
-
-#define TEST_DB_DIR "/dev/shm/"
-
-static const char testdb_name[] = TEST_DB_DIR "ut_cursor_secondary.fpta";
-static const char testdb_name_lck[] =
-    TEST_DB_DIR "ut_cursor_secondary.fpta-lock";
-
 class CursorSecondary
     : public ::testing::TestWithParam<
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
@@ -82,7 +46,7 @@ public:
   unsigned n_records;
   std::unordered_map<int, int> reorder;
 
-  void CheckPosition(int linear, int dup_id, int expected_n_dups = 0,
+  void CheckPosition(int linear, int dup_id, unsigned expected_n_dups = 0,
                      bool check_dup_id = true) {
     if (linear < 0) {
       /* для удобства и выразительности теста linear = -1 здесь
@@ -106,7 +70,7 @@ public:
                  std::to_string(reorder.size() - 1) + "], linear-dup " +
                  (check_dup_id ? std::to_string(dup_id) : "any"));
 
-    ASSERT_EQ(1, reorder.count(linear));
+    ASSERT_EQ(1u, reorder.count(linear));
     const auto expected_order = reorder.at(linear);
 
     /* Пояснения относительно порядка следования строк-дубликатов (с однаковым
@@ -251,7 +215,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(UINT16_MAX, NNN * NDUP);
+    ASSERT_GE(65535u, NNN * NDUP);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     pk_index = std::tr1::get<0>(GetParam());
     pk_type = std::tr1::get<1>(GetParam());
@@ -294,6 +258,10 @@ public:
     if (!valid_pk) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
                                                   pk_index, &def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
@@ -301,6 +269,10 @@ public:
     if (!valid_se) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
                                                   se_index, &def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
@@ -309,14 +281,16 @@ public:
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
 #ifdef FPTA_CURSOR_UT_LONG
     // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -343,6 +317,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
     //------------------------------------------------------------------------
 
@@ -498,11 +476,13 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };
+
+//----------------------------------------------------------------------------
 
 TEST_P(CursorSecondary, basicMoves) {
   /* Проверка базовых перемещений курсора по вторичному (secondary) индексу.
@@ -557,6 +537,7 @@ TEST_P(CursorSecondary, basicMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -571,7 +552,7 @@ TEST_P(CursorSecondary, basicMoves) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -686,390 +667,6 @@ TEST_P(CursorSecondary, basicMoves) {
 
 //----------------------------------------------------------------------------
 
-/* Другое имя класса требуется для инстанцирования другого (меньшего)
- * набора комбинаций в INSTANTIATE_TEST_CASE_P. */
-class CursorSecondaryDups : public CursorSecondary {};
-
-TEST_P(CursorSecondaryDups, dupMoves) {
-  /* Проверка перемещений курсора по дубликатами во вторичном (secondary)
-   * индексе.
-   *
-   * Сценарий (общий для всех комбинаций всех типов полей, всех видов
-   * первичных и вторичных индексов, всех видов курсоров):
-   *  1. Создается тестовая база с одной таблицей, в которой пять колонок:
-   *      - "col_pk" (primary key) с типом, для которого производится
-   *        тестирование работы первичного индекса.
-   *      - "col_se" (secondary key) с типом, для которого производится
-   *        тестирование работы вторичного индекса.
-   *      - Колонка "order", в которую записывается контрольный (ожидаемый)
-   *        порядковый номер следования строки, при сортировке по col_se и
-   *        проверяемому виду индекса.
-   *      - Колонка "dup_id", которая используется для нумерации дубликатов.
-   *      - Колонка "t1ha", в которую записывается "контрольная сумма" от
-   *        ожидаемого порядка строки, типа col_se и вида индекса.
-   *        Принципиальной необходимости в этой колонке нет, она используется
-   *        как "утяжелитель", а также для дополнительного контроля.
-   *
-   *  2. Для валидных комбинаций вида индекса и типов данных таблица
-   *     заполняется строками, значения col_pk и col_se в которых
-   *     генерируется соответствующими генераторами значений:
-   *      - Сами генераторы проверяются в одном из тестов 0corny.
-   *      - Для каждого значения ключа вставляется 5 строк с разным dup_id.
-   *      - FIXME: Дополнительно, для тестирования межстраничных переходов,
-   *        генерируется длинная серия повторов, которая более чем в три раза
-   *        превышает размер страницы БД.
-   *
-   *  3. Перебираются все комбинации индексов, типов колонок и видов курсора.
-   *     Для НЕ валидных комбинаций контролируются коды ошибок.
-   *
-   *  4. Для валидных комбинаций индекса и типа курсора, после заполнения
-   *     в отдельной транзакции формируется "карта" верификации перемещений:
-   *      - "карта" строится как неупорядоченное отображение линейных номеров
-   *        строк в порядке просмотра через курсор, на ожидаемые (контрольные)
-   *        значения колонки "order".
-   *      - при построении "карты" все строки читаются последовательно через
-   *        проверяемый курсор.
-   *      - для построенной "карты" проверяется размер (что прочитали все
-   *        строки и только по одному разу) и соответствия порядка строк
-   *        типу курсора (возрастание/убывание).
-   *
-   *  5. После формирования "карты" верификации перемещений выполняется ряд
-   *     базовых перемещений курсора по дубликатам:
-   *      - переход к первой/последней строке,
-   *        к первому и последнему дубликату.
-   *      - попытки перейти за последнюю и за первую строки,
-   *        за первый/последний дубликат.
-   *      - переход в начало с отступлением к концу.
-   *      - переход к концу с отступление к началу.
-   *      - при каждом перемещении проверяется корректность кода ошибки,
-   *        соответствие текущей строки ожидаемому порядку, включая
-   *        содержимое строки и номера дубликата.
-   *
-   *  6. Завершаются операции и освобождаются ресурсы.
-   */
-  if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(se_index))
-    return;
-
-  SCOPED_TRACE("pk_type " + std::to_string(pk_type) + ", pk_index " +
-               std::to_string(pk_index) + ", se_type " +
-               std::to_string(se_type) + ", se_index " +
-               std::to_string(se_index) +
-               (valid_index_ops ? ", (valid case)" : ", (invalid case)"));
-
-  SCOPED_TRACE(
-      "ordering " + std::to_string(ordering) + ", index " +
-      std::to_string(se_index) +
-      (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
-
-  ASSERT_GT(n_records, 5);
-  fpta_cursor *const cursor = cursor_guard.get();
-  ASSERT_NE(nullptr, cursor);
-
-  /* переходим туда-сюда и к первой строке, такие переходы уже проверялись
-   * в предыдущем тесте, здесь же для проверки жизнеспособности курсора. */
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-
-  // к последнему, затем к первому дубликату первой строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, -1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-
-  // вперед по дубликатам первой строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 4));
-  // пробуем выйти за последний дубликат
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 4));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 4));
-
-  // назад по дубликатам первой строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-  // пробуем выйти за первый дубликат
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-
-  // вперед в обход дубликатов, ко второй строке, затем к третьей и четвертой
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(3, 0));
-
-  // назад в обход дубликатов, до первой строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, -1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, -1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, -1));
-  // пробуем выйти за первую строку
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#if FPTA_ENABLE_RETURN_INTO_RANGE
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#else
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#endif
-
-// последовательно вперед от начала по каждому дубликату
-#if FPTA_ENABLE_RETURN_INTO_RANGE
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-#else
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_first));
-#endif
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(3, 0));
-
-  // последовательно назад к началу по каждому дубликату
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(2, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(1, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(0, 0));
-  // пробуем выйти за первую строку
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#if FPTA_ENABLE_RETURN_INTO_RANGE
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#else
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#endif
-
-  //--------------------------------------------------------------------------
-
-  // к последней строке
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
-  // к первому, затем к последнему дубликату последней строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_first));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_last));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
-
-  // назад по дубликатам последней строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-  // пробуем выйти за первый дубликат
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-
-  // вперед по дубликатам первой строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 4));
-  // пробуем выйти за последний дубликат
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_dup_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, -1));
-
-  // назад в обход дубликатов, к предпоследней строке,
-  // затем к пред-предпоследней...
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, -1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, -1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-4, -1));
-
-  // вперед в обход дубликатов, до последней строки
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-  // пробуем выйти за первую строку
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#if FPTA_ENABLE_RETURN_INTO_RANGE
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#else
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_key_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#endif
-
-// последовательно назад от конца по каждому дубликату
-#if FPTA_ENABLE_RETURN_INTO_RANGE
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-#else
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_last));
-#endif
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 0));
-
-  // последовательно вперед до конца по каждому дубликату
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-3, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-2, 4));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 0));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 1));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 2));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 3));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 4));
-  // пробуем выйти за последнюю строку
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-#if FPTA_ENABLE_RETURN_INTO_RANGE
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_prev));
-#else
-  ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_move(cursor, fpta_next));
-  ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
-  ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_last));
-#endif
-  ASSERT_NO_FATAL_FAILURE(CheckPosition(-1, 4));
-}
-
-//----------------------------------------------------------------------------
-
 TEST_P(CursorSecondary, locate_and_delele) {
   /* Проверка позиционирования курсора по вторичному (secondary) индексу.
    *
@@ -1130,6 +727,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -1144,7 +742,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   /* заполняем present "номерами" значений ключа существующих записей,
    * важно что эти "номера" через карту позволяют получить соответствующее
    * значения от генератора ключей */
@@ -1193,7 +791,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
     // проверяем позиционирование
     for (size_t i = 0; i < initial.size(); ++i) {
       const auto linear = initial.at(i);
-      ASSERT_EQ(1, reorder.count(linear));
+      ASSERT_EQ(1u, reorder.count(linear));
       const auto order = reorder[linear];
       int expected_dups =
           dups_countdown.count(linear) ? dups_countdown.at(linear) : 0;
@@ -1210,7 +808,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
-        ASSERT_EQ(FPTA_DEADBEEF, dups);
+        ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
         if (present.size()) {
           /* но какие-то строки в таблице еще есть, поэтому неточный
            * поиск (exactly=false) должен вернуть "ОК" если:
@@ -1246,7 +844,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
             ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
             ASSERT_EQ(FPTA_ECURSOR,
                       fpta_cursor_dups(cursor_guard.get(), &dups));
-            ASSERT_EQ(FPTA_DEADBEEF, dups);
+            ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
           }
         } else {
           if (fpta_cursor_is_ordered(ordering) ||
@@ -1259,7 +857,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
           }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
-          ASSERT_EQ(FPTA_DEADBEEF, dups);
+          ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
         }
         continue;
       case 1:
@@ -1342,7 +940,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
     for (size_t i = present.size(); i > present.size() / 2;) {
       const auto linear = present.at(--i);
       const auto order = reorder.at(linear);
-      auto expected_dups = dups_countdown.at(linear);
+      unsigned expected_dups = dups_countdown.at(linear);
       SCOPED_TRACE("delete: linear " + std::to_string(linear) + ", order " +
                    std::to_string(order) + ", dups left " +
                    std::to_string(expected_dups));
@@ -1365,7 +963,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       if (present.empty()) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
-        ASSERT_EQ(0, dups);
+        ASSERT_EQ(0u, dups);
       } else if (expected_dups) {
         ASSERT_NO_FATAL_FAILURE(
             CheckPosition(linear,
@@ -1389,7 +987,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
         } else {
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
-          ASSERT_EQ(0, dups);
+          ASSERT_EQ(0u, dups);
         }
       }
     }
@@ -1458,6 +1056,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
    * 6. Выполняется проверка всех строк, как исходных, так и измененных.
    *    Измененные строки ищутся по значению колонки "dup_id".
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -1472,7 +1071,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
 
   any_keygen keygen(se_type, se_index);
   const unsigned expected_dups = fpta_index_is_unique(se_index) ? 1 : NDUP;
@@ -1631,63 +1230,4 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
       expected_order = -expected_order;
     EXPECT_EQ(expected_order, tuple_order);
   }
-}
-
-//----------------------------------------------------------------------------
-
-#if GTEST_HAS_COMBINE
-
-INSTANTIATE_TEST_CASE_P(
-    Combine, CursorSecondary,
-    ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_withdups, fpta_primary_withdups_reversed,
-                          fpta_primary_unique_unordered,
-                          fpta_primary_withdups_unordered),
-        ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
-                          fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
-                          fptu_cstr, fptu_opaque
-                          /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_unique, fpta_secondary_unique_reversed,
-                          fpta_secondary_withdups,
-                          fpta_secondary_withdups_reversed,
-                          fpta_secondary_unique_unordered,
-                          fpta_secondary_withdups_unordered),
-        ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
-                          fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
-                          fptu_cstr, fptu_opaque
-                          /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
-
-INSTANTIATE_TEST_CASE_P(
-    Combine, CursorSecondaryDups,
-    ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_unique_unordered),
-        ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
-                          fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
-                          fptu_cstr, fptu_opaque
-                          /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_withdups,
-                          fpta_secondary_withdups_reversed,
-                          fpta_secondary_withdups_unordered),
-        ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
-                          fptu_fp32, fptu_int64, fptu_uint64, fptu_fp64,
-                          fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
-                          fptu_cstr, fptu_opaque
-                          /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
-#else
-
-TEST(CursorSecondary, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
-TEST(CursorSecondaryDups, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
-
-#endif /* GTEST_HAS_COMBINE */
-
-int main(int argc, char **argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

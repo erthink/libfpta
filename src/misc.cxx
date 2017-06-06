@@ -17,8 +17,17 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
+
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#endif
+
 #include <cinttypes> // for PRId64, PRIu64
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
@@ -206,32 +215,70 @@ __cold string to_string(const fpta_index_type index) {
 
   case fpta_index_none:
     return "index-none";
+  case fpta_noindex_nullable:
+    return "index-none.nullable";
 
-  case fpta_primary_withdups:
-    return "primary-withdups-obverse";
-  case fpta_primary_unique:
-    return "primary-unique-obverse";
-  case fpta_primary_withdups_unordered:
-    return "primary-withdups-unordered";
+  case fpta_primary_withdups_ordered_obverse:
+    return "primary-withdups-ordered.obverse";
+  case fpta_primary_withdups_ordered_obverse_nullable:
+    return "primary-withdups-ordered.obverse-nullable";
+  case fpta_primary_withdups_ordered_reverse:
+    return "primary-withdups-ordered.reverse";
+  case fpta_primary_withdups_ordered_reverse_nullable:
+    return "primary-withdups-ordered.reverse-nullable";
+
+  case fpta_primary_unique_ordered_obverse:
+    return "primary-unique-ordered.obverse";
+  case fpta_primary_unique_ordered_obverse_nullable:
+    return "primary-unique-ordered.obverse-nullable";
+  case fpta_primary_unique_ordered_reverse:
+    return "primary-unique-ordered.reverse";
+  case fpta_primary_unique_ordered_reverse_nullable:
+    return "primary-unique-ordered.reverse-nullable";
+
   case fpta_primary_unique_unordered:
     return "primary-unique-unordered";
-  case fpta_primary_withdups_reversed:
-    return "primary-withdups-reverse";
-  case fpta_primary_unique_reversed:
-    return "primary-unique-reverse";
+  case fpta_primary_unique_unordered_nullable_obverse:
+    return "primary-unique-unordered.nullable-obverse";
+  case fpta_primary_unique_unordered_nullable_reverse:
+    return "primary-unique-unordered.nullable-reverse";
 
-  case fpta_secondary_withdups:
-    return "secondary-withdups-obverse";
-  case fpta_secondary_unique:
-    return "secondary-unique-obverse";
-  case fpta_secondary_withdups_unordered:
-    return "secondary-withdups-unordered";
+  case fpta_primary_withdups_unordered:
+    return "primary-withdups-unordered";
+  case fpta_primary_withdups_unordered_nullable_obverse:
+    return "primary-withdups-unordered.nullable-obverse";
+
+  case fpta_secondary_withdups_ordered_obverse:
+    return "secondary-withdups-ordered.obverse";
+  case fpta_secondary_withdups_ordered_obverse_nullable:
+    return "secondary-withdups-ordered.obverse-nullable";
+  case fpta_secondary_withdups_ordered_reverse:
+    return "secondary-withdups-ordered.reverse";
+  case fpta_secondary_withdups_ordered_reverse_nullable:
+    return "secondary-withdups-ordered.reverse-nullable";
+
+  case fpta_secondary_unique_ordered_obverse:
+    return "secondary-unique-ordered.obverse";
+  case fpta_secondary_unique_ordered_obverse_nullable:
+    return "secondary-unique-ordered.obverse-nullable";
+  case fpta_secondary_unique_ordered_reverse:
+    return "secondary-unique-ordered.reverse";
+  case fpta_secondary_unique_ordered_reverse_nullable:
+    return "secondary-unique-ordered.reverse-nullable";
+
   case fpta_secondary_unique_unordered:
     return "secondary-unique-unordered";
-  case fpta_secondary_withdups_reversed:
-    return "secondary-withdups-reverse";
-  case fpta_secondary_unique_reversed:
-    return "secondary-unique-reverse";
+  case fpta_secondary_unique_unordered_nullable_obverse:
+    return "secondary-unique-unordered.nullable-obverse";
+  case fpta_secondary_unique_unordered_nullable_reverse:
+    return "secondary-unique-unordered.nullable-reverse";
+
+  case fpta_secondary_withdups_unordered:
+    return "secondary-withdups-unordered";
+  case fpta_secondary_withdups_unordered_nullable_obverse:
+    return "secondary-withdups-unordered.nullable-obverse";
+  case fpta_secondary_withdups_unordered_nullable_reverse:
+    return "secondary-withdups-unordered.nullable-reverse";
   }
 }
 
@@ -281,11 +328,11 @@ __cold string to_string(const fpta_cursor_options op) {
   case fpta_descending:
     return "descending";
   case fpta_unsorted_dont_fetch:
-    return "unsorted-dont-fetch";
+    return "unsorted.dont-fetch";
   case fpta_ascending_dont_fetch:
-    return "ascending-dont-fetch";
+    return "ascending.dont-fetch";
   case fpta_descending_dont_fetch:
-    return "descending-dont-fetch";
+    return "descending.dont-fetch";
   }
 }
 
@@ -335,7 +382,7 @@ __cold string to_string(const struct fpta_table_schema *def) {
 
   string result = fptu::format(
       "%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64 ", %" PRIu32 "=[",
-      def, def->version, def->signature, def->checksum, def->shove, def->count);
+      def, def->csn, def->signature, def->checksum, def->shove, def->count);
 
   for (size_t i = 0; i < def->count; ++i) {
     const fpta_shove_t shove = def->columns[i];
@@ -361,8 +408,8 @@ __cold string to_string(const fpta_name *id) {
     return fptu::format("table.%p{@%" PRIx64 ", v%" PRIu64 ", ", id, id->shove,
                         id->version) +
            to_string(index) + "." + to_string(type) +
-           fptu::format(", dbi#%u, ", id->mdbx_dbi) + to_string(id->table.def) +
-           "}";
+           fptu::format(", dbi-hint#%u, ", id->handle_cache_hint) +
+           to_string(id->table.def) + "}";
   }
 
   const fpta_index_type index = fpta_name_colindex(id);
@@ -372,7 +419,7 @@ __cold string to_string(const fpta_name *id) {
              id, id->shove, id->version, id->column.num,
              id->column.table ? id->column.table->shove : 0, id->column.table) +
          to_string(index) + "." + to_string(type) +
-         fptu::format(", dbi#%u}", id->mdbx_dbi);
+         fptu::format(", dbi-hint#%u}", id->handle_cache_hint);
 }
 
 __cold string to_string(const fpta_column_set *) { return FIXME; }
@@ -420,8 +467,8 @@ __cold string to_string(const fpta_txn *txt) {
   return fptu::format("%p." FIXME, txt);
 }
 
-__cold string to_string(const MDB_val &value) {
-  return fptu::format("%zu_%p (", value.iov_len, value.iov_base) +
+__cold string to_string(const MDBX_val &value) {
+  return fptu::format("%" PRIuPTR "_%p (", value.iov_len, value.iov_base) +
          fptu::hexadecimal(value.iov_base, value.iov_len) + ")";
 }
 
@@ -449,8 +496,9 @@ __cold string to_string(const fpta_cursor *cursor) {
     result += ",\n\t" + to_string(cursor->table_id) +
               fptu::format(",\n\tindex {@%" PRIx64 ".", shove) +
               to_string(index) + "." + to_string(type) +
-              fptu::format(", col#%u, dbi#%u},\n\trange-from-key ",
-                           cursor->index.column_order, cursor->index.mdbx_dbi) +
+              fptu::format(", col#%u, dbi#%u_%u},\n\trange-from-key ",
+                           cursor->index.column_order, cursor->tbl_handle,
+                           cursor->idx_handle) +
               to_string(cursor->range_from_key) + ",\n\trange-to-key " +
               to_string(cursor->range_to_key) + ",\n\tfilter " +
               to_string(cursor->filter) + ",\n\ttxn " + to_string(cursor->txn) +
@@ -458,6 +506,12 @@ __cold string to_string(const fpta_cursor *cursor) {
   }
   return result + "}";
 }
+}
+
+int32_t mrand64(void) {
+  static uint64_t state;
+  state = state * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+  return (int32_t)(state >> 32);
 }
 
 void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {

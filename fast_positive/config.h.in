@@ -27,3 +27,13 @@
 #cmakedefine HAVE_TIMESPEC_TV_NSEC
 #cmakedefine CMAKE_HAVE_PTHREAD_H
 #cmakedefine HAVE_VALGRIND_MEMCHECK_H
+#cmakedefine HAVE_nanf
+#cmakedefine HAVE_nan
+#cmakedefine HAVE_IEEE754_H
+
+#cmakedefine ENABLE_VALGRIND
+#cmakedefine ENABLE_GPROF
+#cmakedefine ENABLE_GCOV
+
+#cmakedefine01 LIBFPTU_STATIC
+#cmakedefine01 LIBFPTA_STATIC

@@ -17,13 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <algorithm>
-#include <gtest/gtest.h>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 /* Кол-во проверочных точек в диапазонах значений индексируемых типов.
@@ -42,10 +36,9 @@ static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/sh
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
-#define TEST_DB_DIR "/dev/shm/"
-
 static const char testdb_name[] = TEST_DB_DIR "ut_cursor_primary.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_cursor_primary.fpta-lock";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_cursor_primary.fpta" MDBX_LOCK_SUFFIX;
 
 class CursorPrimary
     : public ::testing::TestWithParam<
@@ -74,7 +67,7 @@ public:
 
   static unsigned mesh(unsigned n) { return (163 + n * 42101) % NNN; }
 
-  void CheckPosition(int linear, int dup_id, int expected_n_dups = 0,
+  void CheckPosition(int linear, int dup_id, unsigned expected_n_dups = 0,
                      bool check_dup_id = true) {
     if (linear < 0) {
       /* для удобства и выразительности теста linear = -1 здесь
@@ -98,7 +91,7 @@ public:
                  std::to_string(reorder.size() - 1) + "], linear-dup " +
                  (check_dup_id ? std::to_string(dup_id) : "any"));
 
-    ASSERT_EQ(1, reorder.count(linear));
+    ASSERT_EQ(1u, reorder.count(linear));
     const auto expected_order = reorder.at(linear);
 
     /* Следует пояснить (в том числе напомнить себе), почему порядок
@@ -126,7 +119,7 @@ public:
      *
      * Соответственно ниже для descending-курсора выполняется "переворот"
      * контрольного номера дубликата. */
-    const auto expected_dup_id =
+    const unsigned expected_dup_id =
         fpta_index_is_unique(index) ? 42 : fpta_cursor_is_descending(ordering)
                                                ? n_dups - (dup_id + 1)
                                                : dup_id;
@@ -222,7 +215,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(UINT16_MAX, NNN);
+    ASSERT_GE(65535u, NNN);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     type = std::tr1::get<0>(GetParam());
     index = std::tr1::get<1>(GetParam());
@@ -262,6 +255,10 @@ public:
       EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
                                               fpta_index_none, &def));
       ASSERT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
 
@@ -270,14 +267,16 @@ public:
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
 #ifdef FPTA_CURSOR_UT_LONG
     // пытаемся обойтись меньшей базой,
@@ -310,6 +309,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
     /* Для полноты тесты переоткрываем базу. В этом нет явной необходимости,
      * но только так можно проверить работу некоторых механизмов.
@@ -426,8 +429,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };
@@ -484,6 +487,7 @@ TEST_P(CursorPrimary, basicMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -496,7 +500,7 @@ TEST_P(CursorPrimary, basicMoves) {
       std::to_string(index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -669,6 +673,7 @@ TEST_P(CursorPrimaryDups, dupMoves) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops || fpta_index_is_unique(index))
     return;
 
@@ -681,7 +686,7 @@ TEST_P(CursorPrimaryDups, dupMoves) {
       std::to_string(index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -1047,6 +1052,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
    *
    *  6. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -1058,7 +1064,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
       "ordering " + std::to_string(ordering) + ", index " +
       std::to_string(index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
-  ASSERT_GT(n_records, 5);
+  ASSERT_LT(5u, n_records);
 
   /* заполняем present "номерами" значений ключа существующих записей,
    * важно что эти "номера" через карту позволяют получить соответствующее
@@ -1108,7 +1114,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
     // проверяем позиционирование
     for (size_t i = 0; i < initial.size(); ++i) {
       const auto linear = initial.at(i);
-      ASSERT_EQ(1, reorder.count(linear));
+      ASSERT_EQ(1u, reorder.count(linear));
       const auto order = reorder[linear];
       int expected_dups =
           dups_countdown.count(linear) ? dups_countdown.at(linear) : 0;
@@ -1125,7 +1131,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_locate(cursor, true, &key, nullptr));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
-        ASSERT_EQ(FPTA_DEADBEEF, dups);
+        ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
         if (present.size()) {
           /* но какие-то строки в таблице еще есть, поэтому неточный
            * поиск (exactly=false) должен вернуть "ОК" если:
@@ -1161,7 +1167,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
             ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
             ASSERT_EQ(FPTA_ECURSOR,
                       fpta_cursor_dups(cursor_guard.get(), &dups));
-            ASSERT_EQ(FPTA_DEADBEEF, dups);
+            ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
           }
         } else {
           if (fpta_cursor_is_ordered(ordering) ||
@@ -1174,7 +1180,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
           }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
-          ASSERT_EQ(FPTA_DEADBEEF, dups);
+          ASSERT_EQ((size_t)FPTA_DEADBEEF, dups);
         }
         continue;
       case 1:
@@ -1251,7 +1257,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
     for (size_t i = present.size(); i > present.size() / 2;) {
       const auto linear = present.at(--i);
       const auto order = reorder.at(linear);
-      auto expected_dups = dups_countdown.at(linear);
+      unsigned expected_dups = dups_countdown.at(linear);
       SCOPED_TRACE("delete: linear " + std::to_string(linear) + ", order " +
                    std::to_string(order) + ", dups left " +
                    std::to_string(expected_dups));
@@ -1274,7 +1280,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
       if (present.empty()) {
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
         ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
-        ASSERT_EQ(0, dups);
+        ASSERT_EQ(0u, dups);
       } else if (expected_dups) {
         ASSERT_NO_FATAL_FAILURE(
             CheckPosition(linear,
@@ -1298,7 +1304,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
         } else {
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_dups(cursor_guard.get(), &dups));
-          ASSERT_EQ(0, dups);
+          ASSERT_EQ(0u, dups);
         }
       }
     }
@@ -1365,6 +1371,7 @@ TEST_P(CursorPrimary, update_and_KeyMismatch) {
    *    При наличии дубликатов, измененные строки ищутся по значению
    *    колонки "dup_id".
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_index_ops || !valid_cursor_ops)
     return;
 
@@ -1528,8 +1535,10 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_withdups, fpta_primary_withdups_reversed,
+        ::testing::Values(fpta_primary_unique_ordered_obverse,
+                          fpta_primary_unique_ordered_reverse,
+                          fpta_primary_withdups_ordered_obverse,
+                          fpta_primary_withdups_ordered_reverse,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
@@ -1542,7 +1551,8 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_datetime, fptu_96, fptu_128, fptu_160, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_primary_withdups, fpta_primary_withdups_reversed,
+        ::testing::Values(fpta_primary_withdups_ordered_obverse,
+                          fpta_primary_withdups_ordered_reverse,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fpta_unsorted, fpta_ascending, fpta_descending)));
 

@@ -17,9 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 /* Кол-во проверочных точек в диапазонах значений индексируемых типов.
@@ -37,11 +35,9 @@ static constexpr unsigned NNN = 32749; // около 1-2 минуты в /dev/sh
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
-#define TEST_DB_DIR "/dev/shm/"
-
 static const char testdb_name[] = TEST_DB_DIR "ut_index_secondary.fpta";
 static const char testdb_name_lck[] =
-    TEST_DB_DIR "ut_index_secondary.fpta-lock";
+    TEST_DB_DIR "ut_index_secondary.fpta" MDBX_LOCK_SUFFIX;
 
 //----------------------------------------------------------------------------
 
@@ -101,7 +97,7 @@ public:
                                    order_checksum(order, se_type, se_index)));
 
       // пытаемся обновить несуществующую запись
-      ASSERT_EQ(MDB_NOTFOUND,
+      ASSERT_EQ(FPTA_NOTFOUND,
                 fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
       if (fpta_index_is_unique(se_index)) {
@@ -110,13 +106,13 @@ public:
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
         n++;
         // проверяем что полный дубликат не вставляется
-        ASSERT_EQ(MDB_KEYEXIST,
+        ASSERT_EQ(FPTA_KEYEXIST,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
         // обновляем dup_id и проверям что дубликат по ключу не проходит
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-        ASSERT_EQ(MDB_KEYEXIST,
+        ASSERT_EQ(FPTA_KEYEXIST,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
         // TODO: обновить PK и попробовать вставить дубликат по secondaty,
@@ -142,7 +138,7 @@ public:
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
         n++;
         // проверяем что полный дубликат не вставляется
-        ASSERT_EQ(MDB_KEYEXIST,
+        ASSERT_EQ(FPTA_KEYEXIST,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
         // обновляем dup_id и вставляем дубль по ключу
@@ -150,7 +146,7 @@ public:
         // НЕ должен вставится
         ASSERT_EQ(FPTA_OK,
                   fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-        ASSERT_EQ(MDB_KEYEXIST, fpta_insert_row(txn, &table, fptu_take(row)));
+        ASSERT_EQ(FPTA_KEYEXIST, fpta_insert_row(txn, &table, fptu_take(row)));
 
         // теперь обновляем primary key и вставляем дубль по вторичному
         // ключу
@@ -170,7 +166,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(UINT16_MAX, NNN * 2);
+    ASSERT_GE(65535u, NNN * 2);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     pk_index = std::tr1::get<0>(GetParam());
     pk_type = std::tr1::get<1>(GetParam());
@@ -209,6 +205,10 @@ public:
     if (!valid_pk) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
                                                   pk_index, &def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
@@ -216,6 +216,10 @@ public:
     if (!valid_se) {
       EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
                                                   se_index, &def));
+
+      // разрушаем описание таблицы
+      EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+      EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
       return;
     }
     EXPECT_EQ(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
@@ -224,14 +228,16 @@ public:
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
 #ifdef FPTA_INDEX_UT_LONG
     // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -258,6 +264,10 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
     /* Для полноты тесты переоткрываем базу. В этом нет явной необходимости,
      * но только так можно проверить работу некоторых механизмов.
@@ -342,8 +352,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };
@@ -393,6 +403,7 @@ TEST_P(IndexSecondary, basic) {
    *
    *  5. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   if (!valid_pk || !valid_se)
     return;
 
@@ -445,8 +456,8 @@ TEST_P(IndexSecondary, basic) {
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
     if (fpta_index_is_unique(se_index)) {
-      ASSERT_EQ(42, tuple_dup_id);
-      ASSERT_EQ(1, dups);
+      ASSERT_EQ(42u, tuple_dup_id);
+      ASSERT_EQ(1u, dups);
     } else {
       /* Наличие дубликатов означает что для одного значения ключа
        * в базе есть несколько значений. Причем эти значения хранятся
@@ -464,12 +475,12 @@ TEST_P(IndexSecondary, basic) {
        * первичный индекс не unordered.
        */
       if (!fpta_index_is_ordered(pk_index))
-        ASSERT_GT(2, tuple_dup_id);
+        ASSERT_GT(2u, tuple_dup_id);
       else if (tuple_order % 3)
-        ASSERT_EQ(i & 1, tuple_dup_id);
+        ASSERT_EQ(i & 1u, tuple_dup_id);
       else
-        ASSERT_EQ((i ^ 1) & 1, tuple_dup_id);
-      ASSERT_EQ(2, dups);
+        ASSERT_EQ((i ^ 1) & 1u, tuple_dup_id);
+      ASSERT_EQ(2u, dups);
     }
 
     if (++i < n)
@@ -490,8 +501,10 @@ TEST_P(IndexSecondary, basic) {
 INSTANTIATE_TEST_CASE_P(
     Combine, IndexSecondary,
     ::testing::Combine(
-        ::testing::Values(fpta_primary_unique, fpta_primary_unique_reversed,
-                          fpta_primary_withdups, fpta_primary_withdups_reversed,
+        ::testing::Values(fpta_primary_unique_ordered_obverse,
+                          fpta_primary_unique_ordered_reverse,
+                          fpta_primary_withdups_ordered_obverse,
+                          fpta_primary_withdups_ordered_reverse,
                           fpta_primary_unique_unordered,
                           fpta_primary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,
@@ -499,9 +512,10 @@ INSTANTIATE_TEST_CASE_P(
                           fptu_96, fptu_128, fptu_160, fptu_datetime, fptu_256,
                           fptu_cstr, fptu_opaque
                           /*, fptu_nested, fptu_farray */),
-        ::testing::Values(fpta_secondary_unique, fpta_secondary_unique_reversed,
-                          fpta_secondary_withdups,
-                          fpta_secondary_withdups_reversed,
+        ::testing::Values(fpta_secondary_unique_ordered_obverse,
+                          fpta_secondary_unique_ordered_reverse,
+                          fpta_secondary_withdups_ordered_obverse,
+                          fpta_secondary_withdups_ordered_reverse,
                           fpta_secondary_unique_unordered,
                           fpta_secondary_withdups_unordered),
         ::testing::Values(fptu_null, fptu_uint16, fptu_int32, fptu_uint32,

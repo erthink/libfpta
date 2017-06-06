@@ -2,46 +2,59 @@ add_subdirectory(libfptu/src)
 add_subdirectory(libfptu/test)
 
 add_library(t1ha STATIC
-   t1ha/src/t1ha0.c
-   t1ha/src/t1ha1.c
-)
+  t1ha/src/t1ha0.c
+  t1ha/src/t1ha1.c
+  )
 
 if (CC_HAS_ARCH_NATIVE)
-   target_compile_options(t1ha PRIVATE "-march=native")
+  target_compile_options(t1ha PRIVATE "-march=native")
 endif()
 
-###
-
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    message (WARNING "Sorry, but Windows MUST DIE, so only a stub will be provided.")
+  set(LIBMDBX_OSAL windows)
 else()
+  set(LIBMDBX_OSAL posix)
+endif()
 
 add_library(mdbx STATIC
-   libmdbx/mdbx.h
-   libmdbx/mdbx.c
-)
+  libmdbx/mdbx.h
+  libmdbx/src/mdbx.c
+  libmdbx/src/osal.c
+  libmdbx/src/lck-${LIBMDBX_OSAL}.c
+  libmdbx/src/version.c
+  )
 
 if(ENABLE_VALGRIND)
-    set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG -DENABLE_VALGRIND")
+  target_compile_definitions(mdbx PRIVATE "-DENABLE_VALGRIND -DMDBX_DEBUG=1")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" AND "${CI}" STREQUAL "")
+  target_compile_definitions(mdbx PRIVATE "-DMDBX_DEBUG=1")
 else()
-    set_target_properties(mdbx PROPERTIES COMPILE_FLAGS "-DNDEBUG")
+  target_compile_definitions(mdbx PRIVATE "-DMDBX_DEBUG=0")
 endif()
 
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
-add_executable(mdbx_chk libmdbx/mdbx_chk.c)
-target_link_libraries(mdbx_chk mdbx)
+if(UNIX AND NOT APPLE)
+  target_link_libraries(mdbx rt)
+endif()
 
-add_executable(mdbx_stat libmdbx/mdbx_stat.c)
-target_link_libraries(mdbx_stat mdbx)
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  message (WARNING "Now skiping MDBX-tools for Windows (TODO)")
+else()
 
-add_executable(mdbx_copy libmdbx/mdbx_copy.c)
-target_link_libraries(mdbx_copy mdbx)
+  add_executable(mdbx_chk libmdbx/src/tools/mdbx_chk.c)
+  target_link_libraries(mdbx_chk mdbx)
 
-add_executable(mdbx_dump libmdbx/mdbx_dump.c)
-target_link_libraries(mdbx_dump mdbx)
+  add_executable(mdbx_stat libmdbx/src/tools/mdbx_stat.c)
+  target_link_libraries(mdbx_stat mdbx)
 
-add_executable(mdbx_load libmdbx/mdbx_load.c)
-target_link_libraries(mdbx_load mdbx)
+  add_executable(mdbx_copy libmdbx/src/tools/mdbx_copy.c)
+  target_link_libraries(mdbx_copy mdbx)
+
+  add_executable(mdbx_dump libmdbx/src/tools/mdbx_dump.c)
+  target_link_libraries(mdbx_dump mdbx)
+
+  add_executable(mdbx_load libmdbx/src/tools/mdbx_load.c)
+  target_link_libraries(mdbx_load mdbx)
 
 endif()

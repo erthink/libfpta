@@ -17,9 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 TEST(Value2Key, Invalid) {
@@ -31,8 +29,8 @@ TEST(Value2Key, Invalid) {
    */
   static const fpta_index_type index_cases[] = {
       /* clang-format off */
-        fpta_primary_unique, fpta_primary_unique_unordered,
-        fpta_primary_unique_reversed
+        fpta_primary_unique_ordered_obverse, fpta_primary_unique_unordered,
+        fpta_primary_unique_ordered_reverse
       /* clang-format on */
   };
 
@@ -40,8 +38,10 @@ TEST(Value2Key, Invalid) {
   EXPECT_EQ(FPTA_EOOPS,
             value2key(fpta_column_shove(0, fptu_cstr, fpta_index_none),
                       fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_EOOPS, value2key(fpta_column_shove(0, fptu_null, fpta_primary),
-                                  fpta_value_cstr("42"), key));
+  EXPECT_EQ(FPTA_EOOPS,
+            value2key(fpta_column_shove(0, fptu_null,
+                                        fpta_primary_unique_ordered_obverse),
+                      fpta_value_cstr("42"), key));
 
   for (auto type = fptu_null; type <= fptu_nested; type = fptu_type(type + 1)) {
     for (auto index : index_cases) {
@@ -80,7 +80,8 @@ TEST(Value2Key, uint16) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_uint16, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_uint16, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_uint16, fpta_primary_unique_unordered);
   fpta_key key;
@@ -142,31 +143,35 @@ TEST(Value2Key, uint32) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_uint32, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_uint32, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_uint32, fpta_primary_unique_unordered);
   fpta_key key;
 
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_uint(UINT32_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(ordered, fpta_value_uint(UINT32_MAX + 1l), key));
+            value2key(ordered, fpta_value_uint(UINT32_MAX + UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            value2key(unordered, fpta_value_uint(UINT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered,
+                               fpta_value_uint(UINT32_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT32_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_uint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(
+      FPTA_EVALUE,
+      value2key(unordered, fpta_value_uint(UINT32_MAX + UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_sint(UINT32_MAX + 1l), key));
+  EXPECT_EQ(
+      FPTA_EVALUE,
+      value2key(unordered, fpta_value_sint(UINT32_MAX + INT64_C(1)), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
@@ -204,13 +209,15 @@ TEST(Value2Key, uint64) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_uint64, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_uint64, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_uint64, fpta_primary_unique_unordered);
   fpta_key key;
 
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT64_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_uint(UINT64_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(UINT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
@@ -218,8 +225,8 @@ TEST(Value2Key, uint64) {
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_binary("42", 2), key));
 
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
-  EXPECT_EQ(FPTA_OK,
-            value2key(unordered, fpta_value_uint(UINT64_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK, value2key(unordered,
+                               fpta_value_uint(UINT64_MAX - UINT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(UINT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE, value2key(unordered, fpta_value_sint(-42), key));
@@ -262,20 +269,22 @@ TEST(Value2Key, int32) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_int32, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_int32, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_int32, fpta_primary_unique_unordered);
   fpta_key key;
 
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(ordered, fpta_value_sint(INT32_MIN - 1l), key));
+            value2key(ordered, fpta_value_sint(INT32_MIN - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MIN + 1), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MAX - 1l), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_sint(INT32_MAX - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_sint(INT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(ordered, fpta_value_sint(INT32_MAX + 1l), key));
+            value2key(ordered, fpta_value_sint(INT32_MAX + INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_uint(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(ordered, fpta_value_cstr("42"), key));
@@ -283,18 +292,19 @@ TEST(Value2Key, int32) {
 
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(42), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_sint(INT32_MIN - 1l), key));
+            value2key(unordered, fpta_value_sint(INT32_MIN - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MIN + 1), key));
   EXPECT_EQ(FPTA_OK,
-            value2key(unordered, fpta_value_sint(INT32_MAX - 1l), key));
+            value2key(unordered, fpta_value_sint(INT32_MAX - INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_sint(INT32_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_sint(INT32_MAX + 1l), key));
+            value2key(unordered, fpta_value_sint(INT32_MAX + INT64_C(1)), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(42), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_uint(INT32_MAX), key));
-  EXPECT_EQ(FPTA_EVALUE,
-            value2key(unordered, fpta_value_uint(INT32_MAX + 1l), key));
+  EXPECT_EQ(
+      FPTA_EVALUE,
+      value2key(unordered, fpta_value_uint(INT32_MAX + UINT64_C(1)), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_cstr("42"), key));
   EXPECT_EQ(FPTA_ETYPE, value2key(unordered, fpta_value_binary("42", 2), key));
@@ -333,7 +343,8 @@ TEST(Value2Key, int64) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_int64, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_int64, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_int64, fpta_primary_unique_unordered);
   fpta_key key;
@@ -393,7 +404,8 @@ TEST(Value2Key, fp64) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_fp64, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_fp64, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_fp64, fpta_primary_unique_unordered);
   fpta_key key;
@@ -501,7 +513,8 @@ TEST(Value2Key, fp32) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_fp32, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_fp32, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_fp32, fpta_primary_unique_unordered);
   fpta_key key;
@@ -640,7 +653,8 @@ TEST(Value2Key, datetime) {
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
-  const auto ordered = fpta_column_shove(0, fptu_datetime, fpta_primary_unique);
+  const auto ordered =
+      fpta_column_shove(0, fptu_datetime, fpta_primary_unique_ordered_obverse);
   const auto unordered =
       fpta_column_shove(0, fptu_datetime, fpta_primary_unique_unordered);
   fpta_key key;
@@ -728,7 +742,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
   /* Базовый тест преобразования строковых значений в "ключи индекса" для
    * всех "строковых" типов: fptu_cstr, fptu_opaque и fptu_96/128/160/256.
    * Важной составляющей теста является проверка сравнения ключей равной
-   * длины индексными компараторами для obverse/reversed индексов.
+   * длины индексными компараторами для obverse/reverse индексов.
    *
    * Сценарий:
    *  1. Проверяем конвертацию значений:
@@ -745,7 +759,7 @@ TYPED_TEST(Value2Key_AllString, basic) {
    *    - для проверки компараторов для каждого итерируемого размера ключа
    *      конвертируются и сравниваются пары значений, полученные движением
    *      "скользящего окна" по возрастающей последовательности байтов.
-   *    - всё перечисленное выполняется для obverse/reversed индексов.
+   *    - всё перечисленное выполняется для obverse/reverse индексов.
    *    - этим проверяется как корректность формирования ключей, так и
    *      верность результата соответствующих индексных компараторов.
    */
@@ -754,8 +768,8 @@ TYPED_TEST(Value2Key_AllString, basic) {
 
   static const fpta_index_type index_cases[] = {
       /* clang-format off */
-        fpta_primary_unique, fpta_primary_unique_unordered,
-        fpta_primary_unique_reversed
+        fpta_primary_unique_ordered_obverse, fpta_primary_unique_unordered,
+        fpta_primary_unique_ordered_reverse
       /* clang-format on */
   };
 
@@ -765,9 +779,16 @@ TYPED_TEST(Value2Key_AllString, basic) {
   static const size_t keylen_max =
       ct_is_fixedsize(type) ? ct_elem_size(type) : (size_t)fpta_max_keylen;
 
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const zeros = (uint8_t *)_alloca(keylen_max);
+  uint8_t *const ones = (uint8_t *)_alloca(keylen_max);
+  memset(zeros, is_string ? ' ' : 0, keylen_max);
+  memset(ones, ~0u, keylen_max);
+#else
   char zeros[keylen_max], ones[keylen_max];
   memset(zeros, is_string ? ' ' : 0, sizeof(zeros));
   memset(ones, ~0u, sizeof(ones));
+#endif
 
   for (auto index : index_cases) {
     SCOPED_TRACE("index " + std::to_string(index));
@@ -809,32 +830,42 @@ TYPED_TEST(Value2Key_AllString, basic) {
   }
 
   fpta_value value_left, value_right;
-  char obverse[keylen_max + keylen_min], reverse[keylen_max + keylen_min];
-  for (size_t i = 0; i < sizeof(obverse); ++i) {
+  const size_t keybuf_len = keylen_max + keylen_min;
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const obverse = (uint8_t *)_alloca(keybuf_len);
+  uint8_t *const reverse = (uint8_t *)_alloca(keybuf_len);
+#else
+  uint8_t obverse[keybuf_len], reverse[keybuf_len];
+#endif
+  for (size_t i = 0; i < keybuf_len; ++i) {
     obverse[i] = i + 1 + (is_string ? ' ' : 0);
-    reverse[i] = sizeof(obverse) - i + (is_string ? ' ' : 0);
+    reverse[i] = keybuf_len - i + (is_string ? ' ' : 0);
   }
-  ASSERT_TRUE(memcmp(zeros, obverse, sizeof(keylen_max)) < 0);
-  ASSERT_TRUE(memcmp(ones, obverse, sizeof(keylen_max)) > 0);
+  ASSERT_TRUE(memcmp(zeros, obverse, keybuf_len) < 0);
+  ASSERT_TRUE(memcmp(ones, obverse, keybuf_len) > 0);
 
   if (!ct_is_fixedsize(type)) {
     value_left = fpta_value_binstr<type>(nullptr, 0);
     value_right = fpta_value_binstr<type>(zeros, keylen_max);
-    expect_lt<type, fpta_primary_unique>(value_left, value_right);
-    expect_lt<type, fpta_primary_unique_reversed>(value_left, value_right);
+    expect_lt<type, fpta_primary_unique_ordered_obverse>(value_left,
+                                                         value_right);
+    expect_lt<type, fpta_primary_unique_ordered_reverse>(value_left,
+                                                         value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
   }
 
   value_left = fpta_value_binstr<type>(zeros, keylen_max);
   value_right = fpta_value_binstr<type>(ones, keylen_max);
-  expect_lt<type, fpta_primary_unique>(value_left, value_right);
-  expect_lt<type, fpta_primary_unique_reversed>(value_left, value_right);
+  expect_lt<type, fpta_primary_unique_ordered_obverse>(value_left, value_right);
+  expect_lt<type, fpta_primary_unique_ordered_reverse>(value_left, value_right);
   expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
-  expect_eq<type, fpta_primary_unique>(value_left, value_left);
-  expect_eq<type, fpta_primary_unique>(value_right, value_right);
-  expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
-  expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
+  expect_eq<type, fpta_primary_unique_ordered_obverse>(value_left, value_left);
+  expect_eq<type, fpta_primary_unique_ordered_obverse>(value_right,
+                                                       value_right);
+  expect_eq<type, fpta_primary_unique_ordered_reverse>(value_left, value_left);
+  expect_eq<type, fpta_primary_unique_ordered_reverse>(value_right,
+                                                       value_right);
   expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
   expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
 
@@ -844,39 +875,53 @@ TYPED_TEST(Value2Key_AllString, basic) {
     value_left = fpta_value_binstr<type>(zeros, keylen);
     value_right = fpta_value_binstr<type>(obverse, keylen);
 
-    expect_lt<type, fpta_primary_unique>(value_left, value_right);
-    expect_lt<type, fpta_primary_unique_reversed>(value_left, value_right);
+    expect_lt<type, fpta_primary_unique_ordered_obverse>(value_left,
+                                                         value_right);
+    expect_lt<type, fpta_primary_unique_ordered_reverse>(value_left,
+                                                         value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
     value_left = fpta_value_binstr<type>(ones, keylen);
-    expect_gt<type, fpta_primary_unique>(value_left, value_right);
-    expect_gt<type, fpta_primary_unique_reversed>(value_left, value_right);
+    expect_gt<type, fpta_primary_unique_ordered_obverse>(value_left,
+                                                         value_right);
+    expect_gt<type, fpta_primary_unique_ordered_reverse>(value_left,
+                                                         value_right);
     expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
-    for (size_t offset = 1; offset < sizeof(obverse) - keylen; ++offset) {
+    for (size_t offset = 1; offset < keybuf_len - keylen; ++offset) {
       SCOPED_TRACE("offset " + std::to_string(offset));
 
       value_left = fpta_value_binstr<type>(obverse, keylen);
       value_right = fpta_value_binstr<type>(obverse + offset, keylen);
-      expect_lt<type, fpta_primary_unique>(value_left, value_right);
+      expect_lt<type, fpta_primary_unique_ordered_obverse>(value_left,
+                                                           value_right);
       expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
-      expect_eq<type, fpta_primary_unique>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique>(value_right, value_right);
-      expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
+      expect_eq<type, fpta_primary_unique_ordered_obverse>(value_left,
+                                                           value_left);
+      expect_eq<type, fpta_primary_unique_ordered_obverse>(value_right,
+                                                           value_right);
+      expect_eq<type, fpta_primary_unique_ordered_reverse>(value_left,
+                                                           value_left);
+      expect_eq<type, fpta_primary_unique_ordered_reverse>(value_right,
+                                                           value_right);
       expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
       expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
 
       value_left = fpta_value_binstr<type>(reverse, keylen);
       value_right = fpta_value_binstr<type>(reverse + offset, keylen);
-      expect_gt<type, fpta_primary_unique_reversed>(value_left, value_right);
+      expect_gt<type, fpta_primary_unique_ordered_reverse>(value_left,
+                                                           value_right);
       expect_ne<type, fpta_primary_unique_unordered>(value_left, value_right);
 
-      expect_eq<type, fpta_primary_unique>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique>(value_right, value_right);
-      expect_eq<type, fpta_primary_unique_reversed>(value_left, value_left);
-      expect_eq<type, fpta_primary_unique_reversed>(value_right, value_right);
+      expect_eq<type, fpta_primary_unique_ordered_obverse>(value_left,
+                                                           value_left);
+      expect_eq<type, fpta_primary_unique_ordered_obverse>(value_right,
+                                                           value_right);
+      expect_eq<type, fpta_primary_unique_ordered_reverse>(value_left,
+                                                           value_left);
+      expect_eq<type, fpta_primary_unique_ordered_reverse>(value_right,
+                                                           value_right);
       expect_eq<type, fpta_primary_unique_unordered>(value_left, value_left);
       expect_eq<type, fpta_primary_unique_unordered>(value_right, value_right);
     }
@@ -921,7 +966,11 @@ TYPED_TEST(Value2Key_AllString, normal_keys) {
       ct_is_fixedsize(type) ? ct_elem_size(type) : (size_t)fpta_max_keylen;
   SCOPED_TRACE("type " + std::to_string(type));
 
+#ifdef _MSC_VER /* FIXME: mustdie */
+  uint8_t *const keybuf = (uint8_t *)_alloca(keylen_max);
+#else
   uint8_t keybuf[keylen_max];
+#endif
   probe_triplet<type> probe;
 
   if (!ct_is_fixedsize(type))
@@ -962,7 +1011,7 @@ TYPED_TEST(Value2Key_VariableString, long_keys) {
    *    строки, который не поместился в префикс.
    *  - таким образом (это общепринятый подход) выполняется "сжатие" исходных
    *    длинных значений в ключи ограниченной длины.
-   *  - для reversed индексов данные рассматриваются и записываются в обратном
+   *  - для reverse индексов данные рассматриваются и записываются в обратном
    *    порядке.
    *
    * Соответственно, тест проверяет корректность всех описанных преобразований

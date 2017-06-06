@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include <memory>
 
 struct db_deleter : public std::unary_function<void, fpta_db *> {
   void operator()(fpta_db *db) const {
@@ -41,9 +40,14 @@ struct cursor_deleter : public std::unary_function<void, fpta_cursor *> {
   }
 };
 
+struct ptrw_deleter : public std::unary_function<void, fptu_rw *> {
+  void operator()(fptu_rw *ptrw) const { free(ptrw); }
+};
+
 typedef std::unique_ptr<fpta_db, db_deleter> scoped_db_guard;
 typedef std::unique_ptr<fpta_txn, txn_deleter> scoped_txn_guard;
 typedef std::unique_ptr<fpta_cursor, cursor_deleter> scoped_cursor_guard;
+typedef std::unique_ptr<fptu_rw, ptrw_deleter> scoped_ptrw_guard;
 
 //----------------------------------------------------------------------------
 
@@ -57,27 +61,30 @@ static __inline int value2key(fpta_shove_t shove, const fpta_value &value,
   return __fpta_index_value2key(shove, &value, &key);
 }
 
-static __inline MDB_cmp_func *shove2comparator(fpta_shove_t shove) {
-  return (MDB_cmp_func *)__fpta_index_shove2comparator(shove);
+static __inline MDBX_cmp_func *shove2comparator(fpta_shove_t shove) {
+  return (MDBX_cmp_func *)__fpta_index_shove2comparator(shove);
 }
 
 //----------------------------------------------------------------------------
 
 inline bool is_valid4primary(fptu_type type, fpta_index_type index) {
-  if (index == fpta_index_none || fpta_index_is_secondary(index))
+  if (!fpta_is_indexed(index) || fpta_index_is_secondary(index))
     return false;
 
   if (type <= fptu_null || type >= fptu_farray)
     return false;
 
-  if (fpta_index_is_reverse(index) && type < fptu_96)
-    return false;
+  if (fpta_index_is_reverse(index) && type < fptu_96) {
+    if (!fpta_index_is_nullable(index) ||
+        !fpta_nullable_reverse_sensitive(type))
+      return false;
+  }
 
   return true;
 }
 
 inline bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor) {
-  if (index == fpta_index_none)
+  if (!fpta_is_indexed(index))
     return false;
 
   if (fpta_cursor_is_ordered(cursor) && !fpta_index_is_ordered(index))
@@ -89,17 +96,61 @@ inline bool is_valid4cursor(fpta_index_type index, fpta_cursor_options cursor) {
 inline bool is_valid4secondary(fptu_type pk_type, fpta_index_type pk_index,
                                fptu_type se_type, fpta_index_type se_index) {
   (void)pk_type;
-  if (pk_index == fpta_index_none || !fpta_index_is_unique(pk_index))
+  if (!fpta_is_indexed(pk_index) || !fpta_index_is_unique(pk_index))
     return false;
 
-  if (se_index == fpta_index_none || fpta_index_is_primary(se_index))
+  if (!fpta_is_indexed(se_index) || fpta_index_is_primary(se_index))
     return false;
 
   if (se_type <= fptu_null || se_type >= fptu_farray)
     return false;
 
-  if (fpta_index_is_reverse(se_index) && se_type < fptu_96)
-    return false;
+  if (fpta_index_is_reverse(se_index) && se_type < fptu_96) {
+    if (!fpta_index_is_nullable(se_index) ||
+        !fpta_nullable_reverse_sensitive(se_type))
+      return false;
+  }
 
   return true;
 }
+
+//----------------------------------------------------------------------------
+
+/* Ограничитель по времени выполнения.
+ * Нужен для предотвращения таумаута тестов в CI. Предполагается, что он
+ * используется вместе с установкой GTEST_SHUFFLE=1, что в сумме дает
+ * выполнение части тестов в случайном порядке, пока не будет превышен лимит
+ * заданный через переменную среды окружения GTEST_RUNTIME_LIMIT. */
+class runtime_limiter {
+  const time_t edge;
+
+  static time_t fetch() {
+    const char *GTEST_RUNTIME_LIMIT = getenv("GTEST_RUNTIME_LIMIT");
+    if (GTEST_RUNTIME_LIMIT) {
+      long limit = atol(GTEST_RUNTIME_LIMIT);
+      if (limit > 0)
+        return time(nullptr) + limit;
+    }
+    return 0;
+  }
+
+public:
+  runtime_limiter() : edge(fetch()) {}
+
+  bool should_continue() {
+    if (edge)
+      return time(nullptr) < edge;
+    return true;
+  }
+};
+
+extern runtime_limiter ci_runtime_limiter;
+
+#define CHECK_RUNTIME_LIMIT_OR_SKIP()                                          \
+  do {                                                                         \
+    if (!ci_runtime_limiter.should_continue()) {                               \
+      std::cout << "[  SKIPPED ] RUNTIME_LIMIT was reached" << std::endl;      \
+      SUCCEED() << "SKIPPEND by RUNTIME_LIMIT";                                \
+      return;                                                                  \
+    }                                                                          \
+  } while (0)

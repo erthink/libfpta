@@ -17,7 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
+#include "details.h"
 
 static __hot fptu_lge fpta_cmp_null(const fptu_field *left) {
   auto payload = fptu_field_payload(left);

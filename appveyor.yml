@@ -1,0 +1,79 @@
+image: Visual Studio 2015
+
+environment:
+  matrix:
+    - Toolset: v120
+    - Toolset: v140
+#   - Toolset: v141
+  GTEST_SHUFFLE: 1
+  GTEST_RUNTIME_LIMIT: 142
+
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Release
+  - Debug
+
+install:
+  - git submodule update --init --recursive
+  - git fetch --tags --prune
+  - git submodule foreach --recursive git fetch --tags --prune
+  - cmake --version
+
+build:
+  verbosity: minimal
+
+artifacts:
+  - path: '_build/Testing/Temporary/*'
+    name: test_results
+
+before_build:
+- ps: |
+    Write-Output "*******************************************************************************"
+    Write-Output "Configuration: $env:CONFIGURATION"
+    Write-Output "Platform: $env:PLATFORM"
+    $generator = switch ($env:TOOLSET) {
+        "v141" {"Visual Studio 15 2017"}
+        "v140" {"Visual Studio 14 2015"}
+        "v120" {"Visual Studio 12 2013"}
+        "v110" {"Visual Studio 11 2012"}
+        "v100" {"Visual Studio 10 2010"}
+    }
+    if ($env:PLATFORM -eq "x64") {
+        $generator = "$generator Win64"
+    }
+    Write-Output "Toolchain: $generator ($env:TOOLSET)"
+    Write-Output "*******************************************************************************"
+
+build_script:
+- ps: |
+    if (($env:TOOLSET -eq "v100") -and ($env:PLATFORM -eq "x64")) {
+        return
+    }
+    md _build -Force | Out-Null
+    cd _build
+
+    & cmake -G "$generator" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ..
+    if ($LastExitCode -ne 0) {
+        throw "Exec: $ErrorMessage"
+    }
+    Write-Output "*******************************************************************************"
+
+    & cmake --build . --config $env:CONFIGURATION
+    if ($LastExitCode -ne 0) {
+        throw "Exec: $ErrorMessage"
+    }
+    Write-Output "*******************************************************************************"
+
+test_script:
+- ps: |
+    if (($env:Toolset -eq "v100") -and ($env:PLATFORM -eq "x64")) {
+        return
+    }
+
+    & ctest -C $env:CONFIGURATION --output-on-failure
+    if ($LastExitCode -ne 0) {
+        throw "Exec: $ErrorMessage"
+    }

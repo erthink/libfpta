@@ -17,9 +17,7 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
 /* Кол-во проверочных точек в диапазонах значений индексируемых типов.
@@ -38,10 +36,9 @@ static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/sh
 static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
 #endif
 
-#define TEST_DB_DIR "/dev/shm/"
-
 static const char testdb_name[] = TEST_DB_DIR "ut_index_primary.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_index_primary.fpta-lock";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_index_primary.fpta" MDBX_LOCK_SUFFIX;
 
 template <fptu_type type, fpta_index_type index> void TestPrimary() {
   /* Тест первичных (primary) индексов.
@@ -81,6 +78,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
    *
    *  5. Завершаются операции и освобождаются ресурсы.
    */
+  CHECK_RUNTIME_LIMIT_OR_SKIP();
   const bool valid = is_valid4primary(type, index);
   scoped_db_guard db_quard;
   scoped_txn_guard txn_guard;
@@ -88,7 +86,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   // нужно простое число, иначе сломается переупорядочивание
   ASSERT_TRUE(isPrime(NNN));
   // иначе не сможем проверить fptu_uint16
-  ASSERT_GE(UINT16_MAX, NNN);
+  ASSERT_GE(65535u, NNN);
 
   SCOPED_TRACE("type " + std::to_string(type) + ", index " +
                std::to_string(index) +
@@ -104,7 +102,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("dup_id", fptu_uint16,
-                                            fpta_index_none, &def));
+                                            fpta_noindex_nullable, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -114,12 +112,18 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));
     ASSERT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
     return;
   }
 
   // чистим
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
 #ifdef FPTA_INDEX_UT_LONG
   // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -146,6 +150,10 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
   ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
   txn = nullptr;
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
   // инициализируем идентификаторы колонок
   fpta_name table, col_pk, col_order, col_dup_id, col_t1ha;
@@ -193,7 +201,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
                                           order_checksum(order, type, index)));
 
     // пытаемся обновить несуществующую запись
-    ASSERT_EQ(MDB_NOTFOUND,
+    ASSERT_EQ(FPTA_NOTFOUND,
               fpta_update_row(txn, &table, fptu_take_noshrink(row)));
 
     if (fpta_index_is_unique(index)) {
@@ -201,13 +209,13 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
       // проверяем что полный дубликат не вставляется
-      ASSERT_EQ(MDB_KEYEXIST,
+      ASSERT_EQ(FPTA_KEYEXIST,
                 fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
       // обновляем dup_id и проверям что дубликат по ключу не проходит
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_dup_id, fpta_value_uint(1)));
-      ASSERT_EQ(MDB_KEYEXIST,
+      ASSERT_EQ(FPTA_KEYEXIST,
                 fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
       // проверяем что upsert и update работают,
@@ -225,7 +233,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       ASSERT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
       n++;
       // проверяем что полный дубликат не вставляется
-      ASSERT_EQ(MDB_KEYEXIST,
+      ASSERT_EQ(FPTA_KEYEXIST,
                 fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
 
       // обновляем dup_id и вставляем дубль по ключу
@@ -240,7 +248,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
       // т.е. чтобы получить отказ именно из-за дубликата ключа,
       // а не из-за защиты от полных дубликатов.
       ASSERT_EQ(1, fptu_erase(row, col_dup_id.column.num, fptu_any));
-      ASSERT_EQ(MDB_KEYEXIST, fpta_upsert_row(txn, &table, fptu_take(row)));
+      ASSERT_EQ(FPTA_KEYEXIST, fpta_upsert_row(txn, &table, fptu_take(row)));
     }
   }
 
@@ -338,8 +346,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
     if (fpta_index_is_unique(index)) {
-      ASSERT_EQ(42, tuple_dup_id);
-      ASSERT_EQ(1, dups);
+      ASSERT_EQ(42u, tuple_dup_id);
+      ASSERT_EQ(1u, dups);
     } else {
       /* Наличие дубликатов означает что для одного значения ключа
        * в базе есть несколько значений. Причем эти значения хранятся
@@ -356,7 +364,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
        * Соответственно, строка с dup_id = 0 будет всегда идти первой.
        */
       ASSERT_EQ(i & 1, tuple_dup_id);
-      ASSERT_EQ(2, dups);
+      ASSERT_EQ(2u, dups);
     }
 
     if (++i < n)
@@ -387,8 +395,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
   // закрываем и удаляем базу
   ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-  ASSERT_TRUE(unlink(testdb_name) == 0);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
 }
 
 //----------------------------------------------------------------------------
@@ -411,7 +419,7 @@ typedef ::testing::Types<glue<fptu_null>, glue<fptu_uint16>, glue<fptu_int32>,
 TYPED_TEST_CASE(PrimaryIndex, ColumnTypes);
 
 TYPED_TEST(PrimaryIndex, obverse_unique) {
-  TestPrimary<TypeParam::type, fpta_primary_unique>();
+  TestPrimary<TypeParam::type, fpta_primary_unique_ordered_obverse>();
 }
 
 TYPED_TEST(PrimaryIndex, unordered_unique) {
@@ -419,11 +427,11 @@ TYPED_TEST(PrimaryIndex, unordered_unique) {
 }
 
 TYPED_TEST(PrimaryIndex, reverse_unique) {
-  TestPrimary<TypeParam::type, fpta_primary_unique_reversed>();
+  TestPrimary<TypeParam::type, fpta_primary_unique_ordered_reverse>();
 }
 
 TYPED_TEST(PrimaryIndex, obverse_withdups) {
-  TestPrimary<TypeParam::type, fpta_primary_withdups>();
+  TestPrimary<TypeParam::type, fpta_primary_withdups_ordered_obverse>();
 }
 
 TYPED_TEST(PrimaryIndex, unordered_withdups) {
@@ -431,7 +439,7 @@ TYPED_TEST(PrimaryIndex, unordered_withdups) {
 }
 
 TYPED_TEST(PrimaryIndex, reverse_withdups) {
-  TestPrimary<TypeParam::type, fpta_primary_withdups_reversed>();
+  TestPrimary<TypeParam::type, fpta_primary_withdups_ordered_reverse>();
 }
 
 int main(int argc, char **argv) {

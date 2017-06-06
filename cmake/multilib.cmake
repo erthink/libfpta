@@ -1,5 +1,5 @@
 if(DEFINED MULTILIB)
-    return()
+  return()
 endif()
 
 set(_MULTILIB lib)
@@ -12,14 +12,14 @@ set(_MULTILIB lib)
 # For Debian with multiarch, use 'lib/${CMAKE_LIBRARY_ARCHITECTURE}' if
 # CMAKE_LIBRARY_ARCHITECTURE is set (which contains e.g. "i386-linux-gnu"
 if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|kFreeBSD|GNU)$" AND
-   NOT CMAKE_CROSSCOMPILING)
-    if (EXISTS "/etc/debian_version" AND CMAKE_LIBRARY_ARCHITECTURE)
-        # Debian
-        set(_MULTILIB "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
-    elseif(DEFINED CMAKE_SIZEOF_VOID_P AND "${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-        # Not debian, rely on CMAKE_SIZEOF_VOID_P:
-        set(_MULTILIB "lib64")
-    endif()
+    NOT CMAKE_CROSSCOMPILING)
+  if (EXISTS "/etc/debian_version" AND CMAKE_LIBRARY_ARCHITECTURE)
+    # Debian
+    set(_MULTILIB "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+  elseif(DEFINED CMAKE_SIZEOF_VOID_P AND "${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+    # Not debian, rely on CMAKE_SIZEOF_VOID_P:
+    set(_MULTILIB "lib64")
+  endif()
 endif()
 
 set(MULTILIB "${_MULTILIB}" CACHE PATH "multilib suffix")

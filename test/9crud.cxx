@@ -17,17 +17,12 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "fast_positive/tables_internal.h"
-#include <gtest/gtest.h>
-#include <tuple>
-#include <unordered_map>
-
+#include "fpta_test.h"
 #include "keygen.hpp"
 
-#define TEST_DB_DIR "/dev/shm/"
-
 static const char testdb_name[] = TEST_DB_DIR "ut_crud.fpta";
-static const char testdb_name_lck[] = TEST_DB_DIR "ut_crud.fpta-lock";
+static const char testdb_name_lck[] =
+    TEST_DB_DIR "ut_crud.fpta" MDBX_LOCK_SUFFIX;
 
 class CrudSimple
     : public ::testing::TestWithParam<
@@ -72,8 +67,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_val, "col_uint"));
 
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -87,14 +84,16 @@ public:
     fpta_column_set def;
     fpta_column_set_init(&def);
 
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("pk_str_uniq", fptu_cstr,
-                                            secondary ? fpta_primary
-                                                      : fpta_primary_withdups,
-                                            &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("se_opaque_dups", fptu_opaque,
-                                            secondary ? fpta_secondary_withdups
-                                                      : fpta_index_none,
-                                            &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "pk_str_uniq", fptu_cstr,
+                           secondary ? fpta_primary_unique_ordered_obverse
+                                     : fpta_primary_withdups_ordered_obverse,
+                           &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "se_opaque_dups", fptu_opaque,
+                           secondary ? fpta_secondary_withdups_ordered_obverse
+                                     : fpta_index_none,
+                           &def));
     EXPECT_EQ(FPTA_OK, fpta_column_describe("col_uint", fptu_uint64,
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -107,6 +106,10 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
     ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), false));
     txn = nullptr;
+
+    // разрушаем описание таблицы
+    EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+    EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
 
     //------------------------------------------------------------------------
 
@@ -136,8 +139,8 @@ public:
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
-      ASSERT_TRUE(unlink(testdb_name) == 0);
-      ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+      ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
     }
   }
 };
@@ -180,9 +183,9 @@ TEST_P(CrudSimple, Nulls) {
    */
 
   fpta_value empty_string = fpta_value_cstr("");
-  ASSERT_EQ(0, empty_string.binary_length);
+  ASSERT_EQ(0u, empty_string.binary_length);
   fpta_value empty_binary = fpta_value_binary(nullptr, 0);
-  ASSERT_EQ(0, empty_binary.binary_length);
+  ASSERT_EQ(0u, empty_binary.binary_length);
 
   fptu_rw *row = fptu_alloc(3, 42);
   ASSERT_NE(nullptr, row);
