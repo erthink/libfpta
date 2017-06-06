@@ -290,7 +290,7 @@ int fpta_transaction_end(fpta_txn *txn, bool abort) {
     if (likely(rc == MDBX_SUCCESS))
       rc = mdbx_txn_commit(txn->mdbx_txn);
     if (unlikely(rc != MDBX_SUCCESS))
-      rc = fpta_internal_abort(txn, rc);
+      rc = fpta_internal_abort(txn, rc, true);
   }
   txn->mdbx_txn = nullptr;
 
@@ -354,7 +354,7 @@ int
   return (FPTA_ENABLE_ABORT_ON_PANIC) ? 0 : -1;
 }
 
-int fpta_internal_abort(fpta_txn *txn, int errnum) {
+int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
   /* Некоторые ошибки (например переполнение БД) могут происходить когда
    * мы выполнили лишь часть операций. В таких случаях можно лишь
    * прервать/откатить всю транзакцию, что и делает эта функция.
@@ -363,7 +363,9 @@ int fpta_internal_abort(fpta_txn *txn, int errnum) {
    * более серьезной проблемой. */
 
   int rc = mdbx_txn_abort(txn->mdbx_txn);
-  if (unlikely(rc != MDBX_SUCCESS)) {
+  if (unlikely(
+          rc != MDBX_SUCCESS &&
+          !(txn_maybe_dead && rc == /* already aborted */ MDBX_EBADSIGN))) {
     if (!fpta_panic(errnum, rc))
       abort();
     errnum = FPTA_WANNA_DIE;
