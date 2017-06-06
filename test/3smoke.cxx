@@ -3164,7 +3164,7 @@ TEST(Smoke, OverchargeOnCommit) {
     EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &name));
     EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &date));
 
-	const auto now = fpta_value_datetime(fptu_now_coarse());
+    const auto now = fpta_value_datetime(fptu_now_coarse());
     fptu_clear(tuple);
     EXPECT_EQ(FPTA_OK,
               fpta_upsert_column(tuple, &primary_key, fpta_value_uint(pk)));

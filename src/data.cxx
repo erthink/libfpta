@@ -473,7 +473,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     return rc;
 
   fptu_ro present_row;
-  int rows_with_same_key;
+  size_t rows_with_same_key;
   rc = mdbx_get_ex(txn->mdbx_txn, handle, &pk_key.mdbx, &present_row.sys,
                    &rows_with_same_key);
   if (rc != MDBX_SUCCESS) {
