@@ -3164,11 +3164,11 @@ TEST(Smoke, OverchargeOnCommit) {
     EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &name));
     EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table_id, &date));
 
+	const auto now = fpta_value_datetime(fptu_now_coarse());
     fptu_clear(tuple);
     EXPECT_EQ(FPTA_OK,
               fpta_upsert_column(tuple, &primary_key, fpta_value_uint(pk)));
-    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date,
-                                          fpta_value_datetime(NOW_FINE())));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date, now));
     EXPECT_EQ(
         FPTA_OK,
         fpta_upsert_column(
@@ -3176,8 +3176,7 @@ TEST(Smoke, OverchargeOnCommit) {
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &host,
                                           fpta_value_cstr("administrator")));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(pk)));
-    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &last_changed,
-                                          fpta_value_datetime(NOW_FINE())));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &last_changed, now));
 
     err = fpta_probe_and_upsert_row(txn, &table_id, fptu_take(tuple));
     EXPECT_EQ(FPTA_OK, err);
@@ -3186,7 +3185,7 @@ TEST(Smoke, OverchargeOnCommit) {
       // отменяем если была ошибка
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
     else {
-      // коммитим если и ожидаем ошибку здесь
+      // коммитим и ожидаем ошибку переполнения здесь
       err = fpta_transaction_end(txn, false);
       if (err != FPTA_OK)
         ASSERT_EQ(FPTA_DB_FULL, err);
