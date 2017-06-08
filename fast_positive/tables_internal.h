@@ -64,7 +64,6 @@ static __inline int32_t mrand48(void) { return mrand64(); }
 #include <algorithm>
 #include <cfloat> // for float limits
 #include <cmath>  // for fabs()
-#include <functional>
 
 #ifdef _MSC_VER
 #pragma warning(pop)

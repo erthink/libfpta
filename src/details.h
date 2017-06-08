@@ -21,6 +21,9 @@
 #include "fast_positive/tables_internal.h"
 #include "osal.h"
 
+#include <atomic>
+#include <functional>
+
 struct fpta_db {
   fpta_db(const fpta_db &) = delete;
   fpta_rwl_t schema_rwlock;
@@ -29,7 +32,7 @@ struct fpta_db {
   bool alterable_schema;
   char unused_gap[3];
 
-  fpta_mutex_t dbi_mutex;
+  fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
   MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
