@@ -362,6 +362,38 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
    * Однако, могут быть ошибки отката транзакции, что потенциально является
    * более серьезной проблемой. */
 
+  /* Чистим кеш dbi-хендлов покалеченных таблиц */
+  bool dbi_locked = false;
+  fpta_db *db = txn->db;
+  for (size_t i = 0; i < fpta_dbi_cache_size; ++i) {
+    const MDBX_dbi dbi = db->dbi_handles[i];
+    const fpta_shove_t shove = db->dbi_shoves[i];
+    if (shove && dbi) {
+      unsigned tbl_flags, tbl_state;
+      int err = mdbx_dbi_flags_ex(txn->mdbx_txn, dbi, &tbl_flags, &tbl_state);
+      if (err != MDBX_SUCCESS ||
+          (tbl_state & (MDBX_TBL_NEW | MDBX_TBL_STALE)) != 0) {
+
+        if (!dbi_locked && txn->level < fpta_schema) {
+          int err = fpta_mutex_lock(&db->dbi_mutex);
+          if (unlikely(err != 0))
+            return err;
+          dbi_locked = true;
+        }
+
+        if (shove == db->dbi_shoves[i] && dbi == db->dbi_handles[i]) {
+          db->dbi_shoves[i] = 0;
+          db->dbi_handles[i] = 0;
+        }
+      }
+    }
+  }
+  if (dbi_locked) {
+    int err = fpta_mutex_unlock(&db->dbi_mutex);
+    assert(err == 0);
+    (void)err;
+  }
+
   int rc = mdbx_txn_abort(txn->mdbx_txn);
   if (unlikely(
           rc != MDBX_SUCCESS &&
