@@ -3207,6 +3207,252 @@ TEST(Smoke, OverchargeOnCommit) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, AsyncSchemaChange) {
+  /* Smoke-проверка поведения при асинхронном изменении схемы.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей и некоторым кол-вом колонок.
+   *
+   *  2. Вставляем данные из контекста "коррелятора" для проверки
+   *     что с таблицей все хорошо.
+   *
+   *  3. Параллельно открываем базу в контексте "командера" и изменяем
+   *     схему таблицы.
+   *
+   *  4. Еще раз вставляем данные из контекста "коррелятора".
+   */
+
+  // создаем исходную базу
+  {
+    // чистим
+    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
+    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+
+    fpta_db *db = nullptr;
+    EXPECT_EQ(FPTA_OK,
+              fpta_db_open(testdb_name, fpta_async, 0644, 1024, true, &db));
+    ASSERT_NE(db, (fpta_db *)nullptr);
+
+    // описываем простейшую таблицу с одним PK (int64) и колонками
+    // (_last_changed, fp64, int64, string, datetime)
+    fpta_column_set def1;
+    fpta_column_set_init(&def1);
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("host", fptu_cstr,
+                                   fpta_primary_unique_ordered_obverse_nullable,
+                                   &def1));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "_last_changed", fptu_datetime,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def1));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "_id", fptu_int64,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def1));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("user", fptu_cstr,
+                                            fpta_noindex_nullable, &def1));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def1));
+
+    // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+
+    EXPECT_EQ(FPTA_OK, fpta_table_create(
+                           txn, "Success_bruteforce_on_host_table", &def1));
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    txn = nullptr;
+
+    // закрываем базу
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  }
+
+  // открываем базу в "корреляторе"
+  fpta_db *db_correlator = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1024, false,
+                                  &db_correlator));
+
+  fpta_txn *txn_correlator = nullptr;
+  fptu_rw *tuple = fptu_alloc(4, 1000);
+  fpta_name table_id_, host, last, id, user;
+
+  // выполняем пробное обновление в кореляторе
+  {
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_table_init(&table_id_, "Success_bruteforce_on_host_table"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &host, "host"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &last, "_last_changed"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &id, "_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &user, "user"));
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &host));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &last));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &id));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &user));
+
+    EXPECT_EQ(
+        FPTA_OK,
+        fpta_upsert_column(
+            tuple, &host, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &last, fpta_value_datetime(fptu_now_fine())));
+    uint64_t seq = 0;
+    EXPECT_EQ(FPTA_OK,
+              fpta_table_sequence(txn_correlator, &table_id_, &seq, 1));
+
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_sint(seq)));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
+                                          fpta_value_cstr("Администратор")));
+
+    fpta_value value = fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru");
+    fptu_ro record;
+    EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn_correlator, &host, &value, &record));
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn_correlator, &table_id_,
+                                                 fptu_take(tuple)));
+
+    fptu_clear(tuple);
+
+#if 0 /* лишние телодвижения */
+    free(tuple);
+
+    fpta_name_destroy(&table_id_);
+    fpta_name_destroy(&host);
+    fpta_name_destroy(&last);
+    fpta_name_destroy(&id);
+    fpta_name_destroy(&user);
+#endif
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+    txn_correlator = nullptr;
+  }
+
+  // изменяем схему в "коммандоре"
+  {
+    // открываем базу в "командоре"
+    fpta_db *db_commander = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1024, true,
+                                    &db_commander));
+
+    fpta_txn *txn_commander = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema,
+                                              &txn_commander));
+    ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+
+    // удаляем существующую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander,
+                                       "Success_bruteforce_on_host_table"));
+
+#if 0 /* лишние телодвижения */
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+  txn_commander = nullptr;
+
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_commander));
+  db_commander = nullptr;
+
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1024, true,
+                                  &db_commander));
+  EXPECT_EQ(FPTA_OK,
+            fpta_transaction_begin(db_commander, fpta_schema, &txn_commander));
+  ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+#endif
+
+    // описываем новую структуру таблицы
+    fpta_column_set def1;
+    fpta_column_set_init(&def1);
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("host", fptu_cstr,
+                                   fpta_primary_unique_ordered_obverse_nullable,
+                                   &def1));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "_id", fptu_int64,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def1));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "_last_changed", fptu_datetime,
+                  fpta_secondary_withdups_ordered_obverse_nullable, &def1));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("user", fptu_cstr,
+                                            fpta_noindex_nullable, &def1));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def1));
+
+    // создаем новую таблицу
+    EXPECT_EQ(FPTA_OK,
+              fpta_table_create(txn_commander,
+                                "Success_bruteforce_on_host_table", &def1));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+    EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_commander));
+  }
+
+  // выполняем контрольное обновление данных после изменения схемы
+  {
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+#if 0 /* лишние телодвижения */
+    fpta_name table_id_, host, last, id, user;
+    EXPECT_EQ(FPTA_OK,
+              fpta_table_init(&table_id_, "Success_bruteforce_on_host_table"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &host, "host"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &last, "_last_changed"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &id, "_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &user, "user"));
+
+    fptu_rw *tuple = fptu_alloc(4, 1000);
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &table_id_));
+#endif
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &host));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &last));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &id));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &table_id_, &user));
+
+    EXPECT_EQ(
+        FPTA_OK,
+        fpta_upsert_column(
+            tuple, &host, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &last, fpta_value_datetime(fptu_now_fine())));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_sint(0)));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
+                                          fpta_value_cstr("Администратор")));
+
+    fpta_value value = fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru");
+    fptu_ro record;
+    EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn_correlator, &host, &value, &record));
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn_correlator, &table_id_,
+                                                 fptu_take(tuple)));
+
+    fptu_clear(tuple);
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+  }
+
+  free(tuple);
+  fpta_name_destroy(&host);
+  fpta_name_destroy(&last);
+  fpta_name_destroy(&id);
+  fpta_name_destroy(&user);
+  fpta_name_destroy(&table_id_);
+
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_correlator));
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
