@@ -3230,7 +3230,7 @@ TEST(Smoke, AsyncSchemaChange) {
 
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_OK,
-              fpta_db_open(testdb_name, fpta_async, 0644, 1024, true, &db));
+              fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
     ASSERT_NE(db, (fpta_db *)nullptr);
 
     // описываем простейшую таблицу с одним PK (int64) и колонками
@@ -3272,7 +3272,7 @@ TEST(Smoke, AsyncSchemaChange) {
 
   // открываем базу в "корреляторе"
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1024, false,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, false,
                                   &db_correlator));
 
   fpta_txn *txn_correlator = nullptr;
@@ -3340,7 +3340,7 @@ TEST(Smoke, AsyncSchemaChange) {
   {
     // открываем базу в "командоре"
     fpta_db *db_commander = nullptr;
-    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1024, true,
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
                                     &db_commander));
 
     fpta_txn *txn_commander = nullptr;
@@ -3359,7 +3359,7 @@ TEST(Smoke, AsyncSchemaChange) {
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_commander));
   db_commander = nullptr;
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1024, true,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
                                   &db_commander));
   EXPECT_EQ(FPTA_OK,
             fpta_transaction_begin(db_commander, fpta_schema, &txn_commander));
