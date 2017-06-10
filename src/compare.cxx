@@ -198,7 +198,7 @@ static __hot fptu_lge fptu_cmp_tuples_slowpath(const fptu_field *const l_begin,
 // буфер на стеке под сортированные теги полей
 #ifdef _MSC_VER /* FIXME: mustdie */
   uint16_t *const buffer =
-      (uint16_t *)_alloca(sizeof(uint16_t) * (l_size + r_size));
+      (uint16_t *)_malloca(sizeof(uint16_t) * (l_size + r_size));
 #else
   uint16_t buffer[l_size + r_size];
 #endif

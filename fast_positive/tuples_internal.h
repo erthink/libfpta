@@ -86,6 +86,7 @@
 
 #include <limits.h>
 #include <string.h>
+#include <malloc.h>
 
 #if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
 	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
