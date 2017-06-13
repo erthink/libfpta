@@ -43,7 +43,7 @@ int fpta_cursor_close(fpta_cursor *cursor) {
 }
 
 int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
-                     fpta_value range_to, const fpta_filter *filter,
+                     fpta_value range_to, fpta_filter *filter,
                      fpta_cursor_options op, fpta_cursor **pcursor) {
   if (unlikely(pcursor == nullptr))
     return FPTA_EINVAL;
@@ -90,6 +90,10 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
 
   if (unlikely(!fpta_filter_validate(filter)))
     return FPTA_EINVAL;
+
+  rc = fpta_name_refresh_filter(txn, column_id->column.table, filter);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   MDBX_dbi tbl_handle, idx_handle;
   rc = fpta_open_column(txn, column_id, tbl_handle, idx_handle);

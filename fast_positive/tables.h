@@ -1532,7 +1532,7 @@ typedef struct FPTA_API fpta_filter {
     /* параметры для вызова функтора/предиката для одной колонки. */
     struct {
       /* идентификатор колонки */
-      const fpta_name *column_id;
+      fpta_name *column_id;
       /* Функция-предикат, получает указатель на найденное поле, либо nullptr
        * если такового не найдено нет, а также параметр arg.
        * Функция должна вернуть true, если значение колонки/поля
@@ -1557,7 +1557,7 @@ typedef struct FPTA_API fpta_filter {
     /* параметры для условия больше/меньше/равно/не-равно. */
     struct {
       /* идентификатор колонки */
-      const fpta_name *left_id;
+      fpta_name *left_id;
       /* значение для сравнения */
       fpta_value right_value;
     } node_cmp;
@@ -1605,9 +1605,11 @@ typedef enum fpta_cursor_options {
  * упорядоченным. Таблица-источник, в которой производится поиск, задается
  * неявно через колонку.
  *
- * Передаваемый через column_id экземпляр fpta_name перед первым
- * использованием должен быть инициализированы посредством fpta_column_init().
- * Предварительный вызов fpta_name_refresh() не обязателен.
+ * Передаваемый через column_id экземпляр fpta_name, как и все экземпляры
+ * column_id внутри фильтра, перед первым использованием должны быть
+ * инициализированы посредством fpta_column_init(). Но предварительный
+ * вызов fpta_name_refresh() не требуется, обновление будет выполнено
+ * автоматически.
  *
  * Аргументы range_from и range_to задают диапазон выборки по значению
  * ключевой колонки. При необходимости могут быть заданы значения
@@ -1631,7 +1633,7 @@ typedef enum fpta_cursor_options {
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
                               fpta_value range_from, fpta_value range_to,
-                              const fpta_filter *filter, fpta_cursor_options op,
+                              fpta_filter *filter, fpta_cursor_options op,
                               fpta_cursor **cursor);
 FPTA_API int fpta_cursor_close(fpta_cursor *cursor);
 
