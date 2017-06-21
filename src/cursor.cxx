@@ -1024,3 +1024,72 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
   return FPTA_SUCCESS;
 }
+
+//----------------------------------------------------------------------------
+
+FPTA_API int
+fpta_apply_visitor(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
+                   fpta_value range_to, fpta_filter *filter,
+                   fpta_cursor_options op, size_t skip, size_t limit,
+                   fpta_value *page_top, fpta_value *page_bottom, size_t *count,
+                   int (*visitor)(const fptu_ro *row, void *context, void *arg),
+                   void *visitor_context, void *visitor_arg) {
+
+  if (unlikely(limit < 1 || !visitor))
+    return FPTA_EINVAL;
+
+  fpta_cursor *cursor = nullptr /* TODO: заменить на объект на стеке */;
+  int rc =
+      fpta_cursor_open(txn, column_id, range_from, range_to, filter,
+                       (fpta_cursor_options)(op & ~fpta_dont_fetch), &cursor);
+
+  for (; skip > 0 && likely(rc == FPTA_SUCCESS); --skip)
+    rc = fpta_cursor_move(cursor, fpta_next);
+
+  if (page_top) {
+    if (rc == FPTA_SUCCESS) {
+      int err =
+          fpta_index_key2value(cursor->index.shove, cursor->current, *page_top);
+      assert(err == FPTA_SUCCESS);
+      if (unlikely(err != FPTA_SUCCESS))
+        rc = err;
+    } else {
+      *page_top = (rc == FPTA_NODATA) ? fpta_value_begin() : fpta_value_null();
+    }
+  }
+
+  size_t n;
+  for (n = 0; likely(rc == FPTA_SUCCESS) && n < limit; n++) {
+    fptu_ro row;
+    rc = fpta_cursor_get(cursor, &row);
+    if (unlikely(rc != FPTA_SUCCESS))
+      break;
+    rc = visitor(&row, visitor_context, visitor_arg);
+    if (unlikely(rc != FPTA_SUCCESS))
+      break;
+    rc = fpta_cursor_move(cursor, fpta_next);
+  }
+
+  if (count)
+    *count = n;
+
+  if (page_bottom) {
+    if (cursor && cursor->is_filled()) {
+      int err = fpta_index_key2value(cursor->index.shove, cursor->current,
+                                     *page_bottom);
+      assert(err == FPTA_SUCCESS);
+      if (unlikely(err != FPTA_SUCCESS))
+        rc = err;
+    } else {
+      *page_bottom = (rc == FPTA_NODATA) ? fpta_value_end() : fpta_value_null();
+    }
+  }
+
+  if (cursor) {
+    int err = fpta_cursor_close(cursor);
+    assert(err == FPTA_SUCCESS);
+    if (unlikely(err != FPTA_SUCCESS))
+      rc = err;
+  }
+  return rc;
+}
