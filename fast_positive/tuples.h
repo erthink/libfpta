@@ -302,6 +302,7 @@ typedef enum fptu_type {
                   (INT32_C(1) << fptu_uint64), // match uint16/uint32/uint64
   fptu_any_fp = fptu_filter | (INT32_C(1) << fptu_fp32) |
                 (INT32_C(1) << fptu_fp64), // match fp32/fp64
+  fptu_any_number = fptu_any_int | fptu_any_uint | fptu_any_fp,
 
   // aliases
   fptu_16 = fptu_uint16,
