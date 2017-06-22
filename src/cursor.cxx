@@ -1027,13 +1027,13 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
 //----------------------------------------------------------------------------
 
-FPTA_API int
-fpta_apply_visitor(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
-                   fpta_value range_to, fpta_filter *filter,
-                   fpta_cursor_options op, size_t skip, size_t limit,
-                   fpta_value *page_top, fpta_value *page_bottom, size_t *count,
-                   int (*visitor)(const fptu_ro *row, void *context, void *arg),
-                   void *visitor_context, void *visitor_arg) {
+FPTA_API
+int fpta_apply_visitor(
+    fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
+    fpta_value range_to, fpta_filter *filter, fpta_cursor_options op,
+    size_t skip, size_t limit, fpta_value *page_top, fpta_value *page_bottom,
+    size_t *count, int (*visitor)(const fptu_ro *row, void *context, void *arg),
+    void *visitor_context, void *visitor_arg) {
 
   if (unlikely(limit < 1 || !visitor))
     return FPTA_EINVAL;

@@ -1690,13 +1690,13 @@ FPTA_API int fpta_cursor_close(fpta_cursor *cursor);
  * Нулевое значение (FPTA_SUCCESS) возвращается только если цикл обработки
  * успешно завершился из-за достижения ограничения задаваемого параметром
  * limit и в выборке еще оставались необработанные строки. */
-FPTA_API int
-fpta_apply_visitor(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
-                   fpta_value range_to, fpta_filter *filter,
-                   fpta_cursor_options op, size_t skip, size_t limit,
-                   fpta_value *page_top, fpta_value *page_bottom, size_t *count,
-                   int (*visitor)(const fptu_ro *row, void *context, void *arg),
-                   void *visitor_context, void *visitor_arg);
+FPTA_API
+int fpta_apply_visitor(
+    fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
+    fpta_value range_to, fpta_filter *filter, fpta_cursor_options op,
+    size_t skip, size_t limit, fpta_value *page_top, fpta_value *page_bottom,
+    size_t *count, int (*visitor)(const fptu_ro *row, void *context, void *arg),
+    void *visitor_context, void *visitor_arg);
 
 /* Проверяет наличие за курсором данных.
  *
