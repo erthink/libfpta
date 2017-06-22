@@ -3453,6 +3453,141 @@ TEST(Smoke, AsyncSchemaChange) {
 
 //----------------------------------------------------------------------------
 
+TEST(Smoke, FilterAndRange) {
+  /* Smoke-проверка перемещения курсора с заданием диапазона и фильтра
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей и достаточным набором колонок.
+   *
+   *  2. Вставляем одну строку.
+   *
+   *  3. Открываем курсов и перемещаем его к первой подходящей записи.
+   *     Проверяем для сортировки по-возрастанию и по-убыванию.
+   *
+   *  4. Освобождаем ресурсы.
+   */
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // начинаем транзакцию с добавлениями
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // описываем структуру таблицы и создаем её
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("int_column", fptu_int64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "datetime_column", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_int64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "bugged", &def));
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+  // готовим идентификаторы для манипуляций с данными
+  fpta_name table, col_num, col_date, col_str;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "bugged"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_num, "int_column"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_date, "datetime_column"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_str, "_id"));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_num));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_date));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_str));
+
+  // выделяем кортеж и вставляем строку
+  fptu_rw *pt = fptu_alloc(3, 8 + 8 + 8);
+  ASSERT_NE(nullptr, pt);
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+
+  fptu_time datetime;
+  datetime.fixedpoint = 1492170771;
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(16)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824664381050880)));
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+  fptu_ro row = fptu_take_noshrink(pt);
+  ASSERT_STREQ(nullptr, fptu_check_ro(row));
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // завершаем транзакцию вставки
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // начинаем транзакцию чтения
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // создаём фильтр
+  fpta_filter my_filter;
+  my_filter.type = fpta_node_gt;
+
+  my_filter.node_cmp.left_id = &col_num;
+  my_filter.node_cmp.right_value = fpta_value_sint(15);
+
+  fptu_time datetime2;
+  datetime2.fixedpoint = 1492170700;
+
+  // открываем курсор с диапазоном и фильтром, и сортировкой по-убыванию
+  fpta_cursor *cursor;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_date, fpta_value_datetime(datetime2),
+                             fpta_value_end(), &my_filter,
+                             fpta_descending_dont_fetch, &cursor));
+  // перемещаем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
+  // закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+
+  // открываем курсор с диапазоном и фильтром, и сортировкой по-возрастанию
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_date, fpta_value_datetime(datetime2),
+                             fpta_value_end(), &my_filter,
+                             fpta_ascending_dont_fetch, &cursor));
+  // перемещаем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
+  // закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+
+  // завершаем транзакцию с чтением
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // освобождаем ресурсы
+
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_num);
+  fpta_name_destroy(&col_date);
+  fpta_name_destroy(&col_str);
+  free(pt);
+  pt = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
