@@ -17,6 +17,7 @@ add_library(fpta
   data.cxx
   secondary.cxx
   misc.cxx
+  inplace.cxx
   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
   )
 

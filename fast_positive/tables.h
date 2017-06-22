@@ -449,7 +449,7 @@ typedef enum fpta_value_type {
  *
  * В том числе для передачи ключей (проиндексированных полей)
  * и значений для сравнения в условия больше/меньше/равно/не-равно. */
-typedef struct FPTA_API fpta_value {
+typedef struct fpta_value {
   fpta_value_type type;
   unsigned binary_length;
   union {
@@ -477,9 +477,24 @@ typedef struct FPTA_API fpta_value {
     const char *str;
   };
 #ifdef __cplusplus
-/* TODO: constructors from basic types (на самом деле через отдельный
- * дочерний класс, так как Clang капризничает и не позволяет возвращать из
- * C-linkage функции тип, у которого есть конструкторы C++). */
+  /* TODO: constructors from basic types (на самом деле через отдельный
+   * дочерний класс, так как Clang капризничает и не позволяет возвращать из
+   * C-linkage функции тип, у которого есть конструкторы C++). */
+
+  bool is_negative() const {
+    if (type == fpta_signed_int)
+      return sint < 0;
+    else if (type == fpta_float_point)
+      return fp < 0;
+    else {
+      assert(type == fpta_unsigned_int);
+      return false;
+    }
+  }
+
+  inline fpta_value negative() const;
+  fpta_value operator-() const { return negative(); }
+
 #endif
 } fpta_value;
 
@@ -1115,7 +1130,7 @@ inline constexpr fpta_index_type nullable(const fpta_index_type index) {
 typedef uint64_t fpta_shove_t;
 
 /* Набор колонок для создания таблицы */
-typedef struct FPTA_API fpta_column_set {
+typedef struct fpta_column_set {
   /* Счетчик заполненных описателей. */
   unsigned count;
   /* Упакованное внутреннее описание колонок. */
@@ -1251,7 +1266,7 @@ FPTA_API int fpta_table_drop(fpta_txn *txn, const char *table_name);
 struct fpta_table_schema;
 
 /* Операционный идентификатор таблицы или колонки. */
-typedef struct FPTA_API fpta_name {
+typedef struct fpta_name {
   uint64_t version; /* версия схемы для кэширования. */
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
@@ -1516,7 +1531,7 @@ typedef enum fpta_filter_bits {
  *
  * Текущую реализацию можно считать базовым вариантом для быстрого старта,
  * который в последствии может быть доработан. */
-typedef struct FPTA_API fpta_filter {
+typedef struct fpta_filter {
   fpta_filter_bits type;
 
   union {
@@ -2210,6 +2225,41 @@ FPTA_API int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
                              fpta_value *value);
 
+typedef enum fpta_inplace {
+  fpta_saturated_add /* target = min(target + argument, MAX_TYPE_VALUE) */,
+  fpta_saturated_sub /* target = max(target - argument, MIN_TYPE_VALUE) */,
+  fpta_saturated_mul /* target = min(target * argument, MAX_TYPE_VALUE) */,
+  fpta_saturated_div /* target = max(target / argument, MIN_TYPE_VALUE) */,
+  fpta_min /* target = min(target, argument) */,
+  fpta_max /* target = max(target, argument) */,
+  fpta_bes /* Basic Exponential Smoothing, при этом коэффицент сглаживания
+            * определяется третим (дополнительным) аргументом.
+            * https://en.wikipedia.org/wiki/Exponential_smoothing */,
+} fpta_inplace;
+
+/* Обновляет значение колонки выполняет бинарную операцию c аргументом
+ * и текущим значением колонки (поля кортежа).
+ *
+ * Аргумент column_id идентифицирует целевую колонку и должен быть
+ * предварительно подготовлен посредством fpta_name_refresh().
+ * Внутри функции column_id не обновляется.
+ *
+ * Требуемая операция задается аргументом op, а второй операнд параметром value.
+
+ * ВАЖНО: Для операции fpta_bes (Basic Exponential Smoothing) необходимо
+ * передать дополнительный параметр, который задает коэффициент сглаживания.
+ * Этот дополнительные параметр может быть передан в двух вариантах:
+ *  - В формате плавающей точки, в диаппазане (0..1), исключая крайние точки.
+ *    При этом непосредственно задается значение коэффициент сглаживания.
+ *  - В виде отрицательного int64_t значения в диапазоне (-24..0),
+ *    также исключая крайние точки. При этом коэффициет сглаживания вычисляется
+ *    как "2 в степени N", где N - переданное значение.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
+                                 const fpta_inplace op, const fpta_value value,
+                                 ...);
+
 //----------------------------------------------------------------------------
 /* Некоторые внутренние служебные функции.
  * Доступны для специальных случаев, в том числе для тестов. */
@@ -2281,6 +2331,17 @@ inline string to_string(const fpta_name &id) { return to_string(&id); }
 inline string to_string(const fpta_filter &filter) {
   return to_string(&filter);
 }
+}
+
+inline fpta_value fpta_value::negative() const {
+  if (type == fpta_signed_int)
+    return fpta_value_sint(-sint);
+  else if (type == fpta_float_point)
+    return fpta_value_float(-fp);
+  else {
+    assert(false);
+    return fpta_value_null();
+  }
 }
 
 inline fpta_value fpta_value_str(const std::string &str) {
