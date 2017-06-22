@@ -317,7 +317,7 @@ __extern_C void __assert_fail(const char *assertion, const char *filename,
 #endif
     ;
 
-static __inline unsigned fptu_get_col(unsigned packed) {
+static __inline unsigned fptu_get_colnum(unsigned packed) {
   return (unsigned)(((uint16_t)packed) >> fptu_co_shift);
 }
 
@@ -333,30 +333,12 @@ static __inline unsigned fptu_pack_coltype(unsigned column, int type) {
 
 static __inline bool fptu_ct_match(const fptu_field *pf, unsigned column,
                                    int type_or_filter) {
-  if (fptu_get_col(pf->ct) != column)
+  if (fptu_get_colnum(pf->ct) != column)
     return false;
   if (type_or_filter & fptu_filter)
     return (type_or_filter & (1 << fptu_get_type(pf->ct))) ? true : false;
   return type_or_filter == fptu_get_type(pf->ct);
 }
-
-typedef union fptu_payload {
-  uint32_t u32;
-  int32_t i32;
-  uint64_t u64;
-  int64_t i64;
-  fptu_time dt;
-  float fp32;
-  double fp64;
-  char cstr[4];
-  uint8_t fixbin[8];
-  uint32_t fixbin_by32[2];
-  uint64_t fixbin_by64[1];
-  struct {
-    fptu_varlen varlen;
-    uint32_t data[1];
-  } other;
-} fptu_payload;
 
 static __inline size_t bytes2units(size_t bytes) {
   return (bytes + fptu_unit_size - 1) >> fptu_unit_shift;
@@ -365,16 +347,6 @@ static __inline size_t bytes2units(size_t bytes) {
 static __inline size_t units2bytes(size_t units) {
   return units << fptu_unit_shift;
 }
-
-static __inline fptu_payload *fptu_field_payload(fptu_field *pf) {
-  return (fptu_payload *)&pf->body[pf->offset];
-}
-
-#ifdef __cplusplus
-static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
-  return (const fptu_payload *)&pf->body[pf->offset];
-}
-#endif /* __cplusplus */
 
 static __inline bool ct_is_fixedsize(unsigned ct) {
   return fptu_get_type(ct) < fptu_cstr;

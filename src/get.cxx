@@ -35,7 +35,7 @@ int fptu_field_column(const fptu_field *pf) {
   if (unlikely(pf == nullptr || ct_is_dead(pf->ct)))
     return -1;
 
-  return (int)fptu_get_col(pf->ct);
+  return (int)fptu_get_colnum(pf->ct);
 }
 
 //----------------------------------------------------------------------------

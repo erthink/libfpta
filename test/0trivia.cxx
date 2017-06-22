@@ -146,19 +146,19 @@ TEST(Trivia, ColType) {
   ct = fptu_pack_coltype(0, fptu_null);
   ASSERT_EQ(0u, ct);
   ASSERT_GT(fptu_limit, ct);
-  EXPECT_EQ(0u, fptu_get_col(ct));
+  EXPECT_EQ(0u, fptu_get_colnum(ct));
   EXPECT_EQ(fptu_null, fptu_get_type(ct));
 
   ct = fptu_pack_coltype(42, fptu_int64);
   ASSERT_NE(0u, ct);
   ASSERT_GT(fptu_limit, ct);
-  EXPECT_EQ(42u, fptu_get_col(ct));
+  EXPECT_EQ(42u, fptu_get_colnum(ct));
   EXPECT_EQ(fptu_int64, fptu_get_type(ct));
 
   ct = fptu_pack_coltype(fptu_max_cols, fptu_cstr | fptu_farray);
   ASSERT_NE(0u, ct);
   ASSERT_GT(fptu_limit, ct);
-  EXPECT_EQ(fptu_max_cols, fptu_get_col(ct));
+  EXPECT_EQ(fptu_max_cols, fptu_get_colnum(ct));
   EXPECT_EQ(fptu_cstr | fptu_farray, fptu_get_type(ct));
 }
 

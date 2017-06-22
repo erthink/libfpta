@@ -133,6 +133,10 @@ typedef union FPTU_API fptu_varlen {
   uint32_t flat;
 } fptu_varlen;
 
+#ifdef __cplusplus
+enum fptu_type : int32_t;
+#endif
+
 /* Поле кортежа.
  *
  * Фактически это дескриптор поля, в котором записаны: тип данных,
@@ -147,7 +151,11 @@ typedef union FPTU_API fptu_field {
   uint32_t body[1]; /* в body[0] расположен дескриптор/заголовок,
                      * а начиная с body[offset] данные. */
 #ifdef __cplusplus
-  uint16_t get_payload_uint16() const { return offset; }
+  static inline unsigned colnum(unsigned packed_ct);
+  static inline fptu_type type(unsigned packed_ct);
+  inline unsigned colnum() const;
+  inline fptu_type type() const;
+  inline uint16_t get_payload_uint16() const;
 #endif
 } fptu_field;
 
@@ -262,7 +270,11 @@ enum fptu_bits {
  * Следует обратить внимание, что fptu_farray является флагом,
  * а значения начиная с fptu_filter используются как маски для
  * поиска/фильтрации полей (и видимо будут выделены в отдельный enum). */
-typedef enum fptu_type {
+typedef enum fptu_type
+#ifdef __cplusplus
+    : int32_t
+#endif
+{
   // fixed length, without ex-data (descriptor only)
   fptu_null = 0,
   fptu_uint16 = 1,
@@ -934,6 +946,46 @@ extern FPTU_API const struct fptu_build_info fptu_build;
 //----------------------------------------------------------------------------
 /* Сервисные функции и классы для C++ (будет пополнятся). */
 
+unsigned fptu_field::colnum(unsigned packed_ct) {
+  return (unsigned)(((uint16_t)packed_ct) >> fptu_co_shift);
+}
+fptu_type fptu_field::type(unsigned packed_ct) {
+  return (fptu_type)(packed_ct & fptu_ty_mask);
+}
+unsigned fptu_field::colnum() const { return colnum(this->ct); }
+fptu_type fptu_field::type() const { return type(this->ct); }
+
+uint16_t fptu_field::get_payload_uint16() const {
+  assert(type() == fptu_uint16);
+  return offset;
+}
+
+typedef union fptu_payload {
+  uint32_t u32;
+  int32_t i32;
+  uint64_t u64;
+  int64_t i64;
+  fptu_time dt;
+  float fp32;
+  double fp64;
+  char cstr[4];
+  uint8_t fixbin[8];
+  uint32_t fixbin_by32[2];
+  uint64_t fixbin_by64[1];
+  struct {
+    fptu_varlen varlen;
+    uint32_t data[1];
+  } other;
+} fptu_payload;
+
+static __inline fptu_payload *fptu_field_payload(fptu_field *pf) {
+  return (fptu_payload *)&pf->body[pf->offset];
+}
+
+static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
+  return (const fptu_payload *)&pf->body[pf->offset];
+}
+
 namespace fptu {
 FPTU_API std::string format(const char *fmt, ...)
 #ifdef __GNUC__
@@ -957,6 +1009,176 @@ inline const fptu_field *end(const fptu_ro *ro) { return fptu_end_ro(*ro); }
 inline const fptu_field *end(const fptu_rw &rw) { return fptu_end_rw(&rw); }
 
 inline const fptu_field *end(const fptu_rw *rw) { return fptu_end_rw(rw); }
+
+template <fptu_type field_type, typename RESULT_TYPE>
+static RESULT_TYPE get_number(const fptu_field *field) {
+  assert(field != nullptr);
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  assert(field->ct);
+  switch (field_type) {
+  default:
+    assert(false);
+    return 0;
+  case fptu_uint16:
+    return field->get_payload_uint16();
+  case fptu_uint32:
+    return fptu_field_payload(field)->u32;
+  case fptu_uint64:
+    return fptu_field_payload(field)->u64;
+  case fptu_int32:
+    return fptu_field_payload(field)->i32;
+  case fptu_int64:
+    return fptu_field_payload(field)->i64;
+  case fptu_fp32:
+    return fptu_field_payload(field)->fp32;
+  case fptu_fp64:
+    return fptu_field_payload(field)->fp64;
+  }
+}
+
+static inline int64_t cast_wide(int8_t value) { return value; }
+static inline int64_t cast_wide(int16_t value) { return value; }
+static inline int64_t cast_wide(int32_t value) { return value; }
+static inline int64_t cast_wide(int64_t value) { return value; }
+static inline uint64_t cast_wide(uint8_t value) { return value; }
+static inline uint64_t cast_wide(uint16_t value) { return value; }
+static inline uint64_t cast_wide(uint32_t value) { return value; }
+static inline uint64_t cast_wide(uint64_t value) { return value; }
+static inline long double cast_wide(float value) { return value; }
+static inline long double cast_wide(double value) { return value; }
+
+template <typename VALUE_TYPE, typename RANGE_BEGIN_TYPE,
+          typename RANGE_END_TYPE>
+inline bool is_within(VALUE_TYPE value, RANGE_BEGIN_TYPE begin,
+                      RANGE_END_TYPE end) {
+  return is_within(cast_wide(value), cast_wide(begin), cast_wide(end));
+}
+
+template <>
+inline bool is_within<int64_t, int64_t, int64_t>(int64_t value, int64_t begin,
+                                                 int64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
+inline bool is_within<uint64_t, uint64_t, uint64_t>(uint64_t value,
+                                                    uint64_t begin,
+                                                    uint64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
+inline bool is_within<uint64_t, int64_t, int64_t>(uint64_t value, int64_t begin,
+                                                  int64_t end) {
+  assert(begin < end);
+  if (end < 0 || value > (uint64_t)end)
+    return false;
+  if (begin > 0 && value < (uint64_t)begin)
+    return false;
+  return true;
+}
+
+template <>
+inline bool is_within<int64_t, uint64_t, uint64_t>(int64_t value,
+                                                   uint64_t begin,
+                                                   uint64_t end) {
+  assert(begin < end);
+  if (value < 0)
+    return false;
+  return is_within((uint64_t)value, begin, end);
+}
+
+template <>
+inline bool is_within<long double, int64_t, int64_t>(long double value,
+                                                     int64_t begin,
+                                                     int64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
+inline bool is_within<long double, uint64_t, uint64_t>(long double value,
+                                                       uint64_t begin,
+                                                       uint64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <fptu_type field_type, typename VALUE_TYPE>
+static void set_number(fptu_field *field, const VALUE_TYPE &value) {
+  assert(field != nullptr);
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  switch (field_type) {
+  default:
+    assert(false);
+    break;
+  case fptu_uint16:
+    assert(is_within(value, 0, INT16_MAX));
+    field->get_payload_uint16() = value;
+    break;
+  case fptu_uint32:
+    assert(is_within(value, 0u, UINT32_MAX));
+    fptu_field_payload(field)->u32 = value;
+    break;
+  case fptu_uint64:
+    assert(is_within(value, 0u, UINT64_MAX));
+    fptu_field_payload(field)->u64 = value;
+    break;
+  case fptu_int32:
+    assert(is_within(value, INT32_MIN, INT32_MAX));
+    fptu_field_payload(field)->i32 = value;
+    break;
+  case fptu_int64:
+    assert(is_within(value, INT64_MIN, INT64_MAX));
+    fptu_field_payload(field)->i64 = value;
+    break;
+  case fptu_fp32:
+    assert(value >= FLT_MIN && value <= FLT_MAX);
+    fptu_field_payload(field)->fp32 = value;
+    break;
+  case fptu_fp64:
+    assert(value >= DBL_MIN && value <= DBL_MAX);
+    fptu_field_payload(field)->fp64 = value;
+    break;
+  }
+}
+
+template <fptu_type field_type, typename VALUE_TYPE>
+static int upsert_number(fptu_rw *pt, unsigned colnum,
+                         const VALUE_TYPE &value) {
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  switch (field_type) {
+  default:
+    assert(false);
+    return 0;
+  case fptu_uint16:
+    assert(is_within(value, 0, INT16_MAX));
+    return fptu_upsert_uint16(pt, colnum, value);
+  case fptu_uint32:
+    assert(is_within(value, 0u, UINT32_MAX));
+    return fptu_upsert_uint32(pt, colnum, value);
+  case fptu_uint64:
+    assert(is_within(value, 0u, UINT64_MAX));
+    return fptu_upsert_uint64(pt, colnum, value);
+  case fptu_int32:
+    assert(is_within(value, INT32_MIN, INT32_MAX));
+    return fptu_upsert_int32(pt, colnum, value);
+  case fptu_int64:
+    assert(is_within(value, INT64_MIN, INT64_MAX));
+    return fptu_upsert_int64(pt, colnum, value);
+  case fptu_fp32:
+    assert(value >= FLT_MIN && value <= FLT_MAX);
+    return fptu_upsert_fp32(pt, colnum, value);
+  case fptu_fp64:
+    assert(value >= DBL_MIN && value <= DBL_MAX);
+    return fptu_upsert_fp64(pt, colnum, value);
+  }
+}
 
 } /* namespace fptu */
 
