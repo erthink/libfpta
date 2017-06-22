@@ -161,7 +161,8 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
   assert(mdbx_seek_key != &cursor->current);
   int rc;
   fptu_ro mdbx_data;
-  mdbx_data.sys.iov_base = nullptr /* avoid MSVC warning */;
+  mdbx_data.sys.iov_base = nullptr;
+  mdbx_data.sys.iov_len = 0;
 
   if (likely(mdbx_seek_key == NULL)) {
     assert(mdbx_seek_data == NULL);
@@ -170,8 +171,8 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
   } else {
     /* Помещаем целевой ключ и данные (адреса и размеры)
      * в cursor->current и mdbx_data, это требуется для того чтобы:
-     *   - после возврата из mdbx_cursor_get() в cursor->current и mdbx_data
-     *     уже был указатели на ключ и данные в БД, без необходимости
+     *   - после возврата из mdbx_cursor_get() в cursor->current и в mdbx_data
+     *     уже были указатели на ключ и данные в БД, без необходимости
      *     еще одного вызова mdbx_cursor_get(MDBX_GET_CURRENT).
      *   - если передать непосредственно mdbx_seek_key и mdbx_seek_data,
      *     то исходные значения будут потеряны (перезаписаны), что создаст
@@ -186,10 +187,10 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
          * не попадал под критерий is_poor() */
         mdbx_seek_key->iov_base ? mdbx_seek_key->iov_base : &NIL;
 
-    if (!mdbx_seek_data)
-      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current, nullptr,
-                           mdbx_seek_op);
-    else {
+    if (!mdbx_seek_data) {
+      rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
+                           &mdbx_data.sys, mdbx_seek_op);
+    } else {
       mdbx_data.sys = *mdbx_seek_data;
       rc = mdbx_cursor_get(cursor->mdbx_cursor, &cursor->current,
                            &mdbx_data.sys, mdbx_seek_op);
@@ -307,6 +308,8 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
 
     if (fpta_index_is_secondary(cursor->index.shove)) {
       MDBX_val pk_key = mdbx_data.sys;
+      mdbx_data.sys.iov_base = nullptr;
+      mdbx_data.sys.iov_len = 0;
       rc = mdbx_get(cursor->txn->mdbx_txn, cursor->tbl_handle, &pk_key,
                     &mdbx_data.sys);
       if (unlikely(rc != MDBX_SUCCESS))
