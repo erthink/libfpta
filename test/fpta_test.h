@@ -35,12 +35,14 @@
 
 #pragma warning(push, 1)
 #pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
+                                   unwind semantics are not enabled.           \
+                                   Specify /EHsc */
 #pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+                                   handling mode specified; termination on     \
+                                   exception is not guaranteed.                \
+                                   Specify /EHsc */
+#pragma warning(disable : 4738) /* storing 32-bit float result in memory,      \
+                                   possible loss of performance */
 #endif                          /* _MSC_VER (warnings) */
 
 #include <gtest/gtest.h>
