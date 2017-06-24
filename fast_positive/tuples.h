@@ -1045,8 +1045,8 @@ static inline uint64_t cast_wide(uint8_t value) { return value; }
 static inline uint64_t cast_wide(uint16_t value) { return value; }
 static inline uint64_t cast_wide(uint32_t value) { return value; }
 static inline uint64_t cast_wide(uint64_t value) { return value; }
-static inline long double cast_wide(float value) { return value; }
-static inline long double cast_wide(double value) { return value; }
+static inline double cast_wide(float value) { return value; }
+static inline double cast_wide(double value) { return value; }
 
 template <typename VALUE_TYPE, typename RANGE_BEGIN_TYPE,
           typename RANGE_END_TYPE>
@@ -1092,17 +1092,15 @@ inline bool is_within<int64_t, uint64_t, uint64_t>(int64_t value,
 }
 
 template <>
-inline bool is_within<long double, int64_t, int64_t>(long double value,
-                                                     int64_t begin,
-                                                     int64_t end) {
+inline bool is_within<double, int64_t, int64_t>(double value, int64_t begin,
+                                                int64_t end) {
   assert(begin < end);
   return value >= begin && value <= end;
 }
 
 template <>
-inline bool is_within<long double, uint64_t, uint64_t>(long double value,
-                                                       uint64_t begin,
-                                                       uint64_t end) {
+inline bool is_within<double, uint64_t, uint64_t>(double value, uint64_t begin,
+                                                  uint64_t end) {
   assert(begin < end);
   return value >= begin && value <= end;
 }
