@@ -481,15 +481,19 @@ typedef struct fpta_value {
    * дочерний класс, так как Clang капризничает и не позволяет возвращать из
    * C-linkage функции тип, у которого есть конструкторы C++). */
 
+  bool is_number() const {
+    return type == fpta_signed_int || type == fpta_float_point ||
+           type == fpta_unsigned_int;
+  }
+
   bool is_negative() const {
+    assert(is_number());
     if (type == fpta_signed_int)
       return sint < 0;
     else if (type == fpta_float_point)
       return fp < 0;
-    else {
-      assert(type == fpta_unsigned_int);
+    else
       return false;
-    }
   }
 
   inline fpta_value negative() const;
@@ -659,6 +663,9 @@ static __inline int fpta_value_destroy(fpta_value *value) {
  *         без знаковых и фиксированных бинарных типов.
  *       - для без знаковых и фиксированных бинарных и reverse-индексе
  *         NIL больше не-NIL (так как на самом деле внутри "все единицы").
+ *
+ * ВАЖНО: Обратите внимание на наличие функции fpta_confine_number(),
+ *        см описание ниже.
  *
  * Внутренние механизмы:
  *  - designated empty нужны только для индексирования NIL-значений,
@@ -2204,6 +2211,12 @@ FPTA_API int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
 
 /* Конвертирует поле кортежа в "контейнер" fpta_value. */
 FPTA_API fpta_value fpta_field2value(const fptu_field *pf);
+
+/* При необходимости конвертирует тип и подгоняет числовое значение
+ * под возможности колонки, в том числе с учетом её индекса и nullable.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id);
 
 /* Обновляет или добавляет в кортеж значение колонки.
  *

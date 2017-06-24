@@ -122,6 +122,10 @@ template <> struct numeric_traits<fptu_uint16> {
     return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT16_OBVERSE
                                         : FPTA_DENIL_UINT16_REVERSE;
   }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_uint(value);
+  }
 };
 
 template <> struct numeric_traits<fptu_uint32> {
@@ -131,6 +135,10 @@ template <> struct numeric_traits<fptu_uint32> {
     assert(fpta_index_is_nullable(index));
     return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT32_OBVERSE
                                         : FPTA_DENIL_UINT32_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_uint(value);
   }
 };
 
@@ -142,6 +150,10 @@ template <> struct numeric_traits<fptu_uint64> {
     return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT64_OBVERSE
                                         : FPTA_DENIL_UINT64_REVERSE;
   }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_uint(value);
+  }
 };
 
 template <> struct numeric_traits<fptu_int32> {
@@ -151,6 +163,10 @@ template <> struct numeric_traits<fptu_int32> {
     assert(fpta_index_is_nullable(index));
     (void)index;
     return FPTA_DENIL_SINT32;
+  }
+  static fpta_value_type value_type() { return fpta_signed_int; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_sint(value);
   }
 };
 
@@ -162,6 +178,10 @@ template <> struct numeric_traits<fptu_int64> {
     (void)index;
     return FPTA_DENIL_SINT64;
   }
+  static fpta_value_type value_type() { return fpta_signed_int; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_sint(value);
+  }
 };
 
 template <> struct numeric_traits<fptu_fp32> {
@@ -172,6 +192,10 @@ template <> struct numeric_traits<fptu_fp32> {
     (void)index;
     return FPTA_DENIL_FP32;
   }
+  static fpta_value_type value_type() { return fpta_float_point; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_float(value);
+  }
 };
 
 template <> struct numeric_traits<fptu_fp64> {
@@ -181,6 +205,10 @@ template <> struct numeric_traits<fptu_fp64> {
     assert(fpta_index_is_nullable(index));
     (void)index;
     return FPTA_DENIL_FP64;
+  }
+  static fpta_value_type value_type() { return fpta_float_point; }
+  static fpta_value make_value(const native value) {
+    return fpta_value_float(value);
   }
 };
 
@@ -203,8 +231,12 @@ template <fptu_type type> struct saturated {
     return (upper != traits::denil(index)) ? upper : upper - 1;
   }
 
-  static native confine(const fpta_index_type index, const fpta_value &value) {
-    return confine_value(value, bottom(index), top(index));
+  static int confine(const fpta_index_type index, fpta_value &value) {
+    assert(value.is_number());
+    const native lower = bottom(index);
+    const native upper = top(index);
+    value = traits::make_value(confine_value<native>(value, lower, upper));
+    return FPTA_SUCCESS;
   }
 
   static bool min(const fpta_index_type index, fptu_field *field,
@@ -318,6 +350,58 @@ template <fptu_type type> struct saturated {
     return fptu::upsert_number<type, native>(row, colnum, result);
   }
 };
+
+FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
+  if (unlikely(!value || !fpta_id_validate(column_id, fpta_column)))
+    return FPTA_EINVAL;
+
+  const fptu_type coltype = fpta_shove2type(column_id->shove);
+  const fpta_index_type index = fpta_name_colindex(column_id);
+  if (unlikely((fptu_any_number & (INT32_C(1) << coltype)) == 0))
+    return FPTA_ETYPE;
+
+  switch (value->type) {
+  case fpta_null:
+    if (fpta_index_is_nullable(index))
+      return FPTA_SUCCESS;
+  // no break here
+  default:
+    return FPTA_EVALUE;
+  case fpta_float_point:
+    if (unlikely(std::isnan(value->fp))) {
+      if ((fptu_any_fp & (INT32_C(1) << coltype)) == 0 ||
+          FPTA_PROHIBIT_UPSERT_NAN)
+        return FPTA_EVALUE;
+      value->fp = std::nan("");
+      return FPTA_SUCCESS;
+    }
+    if (coltype == fptu_fp64)
+      return FPTA_SUCCESS;
+  case fpta_signed_int:
+  case fpta_unsigned_int:
+    break;
+  }
+
+  switch (coltype) {
+  default:
+    assert(false);
+    return FPTA_EOOPS;
+  case fptu_uint16:
+    return saturated<fptu_uint16>::confine(index, *value);
+  case fptu_uint32:
+    return saturated<fptu_uint32>::confine(index, *value);
+  case fptu_uint64:
+    return saturated<fptu_uint64>::confine(index, *value);
+  case fptu_int32:
+    return saturated<fptu_int32>::confine(index, *value);
+  case fptu_int64:
+    return saturated<fptu_int64>::confine(index, *value);
+  case fptu_fp32:
+    return saturated<fptu_fp32>::confine(index, *value);
+  case fptu_fp64:
+    return saturated<fptu_fp64>::confine(index, *value);
+  }
+}
 
 FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
