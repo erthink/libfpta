@@ -44,13 +44,16 @@ uint64_t confine_value<uint64_t>(const fpta_value &value, const uint64_t begin,
       return end;
     return value.uint;
   case fpta_float_point:
-    if (value.fp < 0)
+    if (value.fp < 0 || value.fp < (double)begin)
       return begin;
-    if (value.fp < begin)
-      return begin;
-    if (value.fp > end)
+    if (value.fp > (double)end)
       return end;
-    return (uint64_t)value.fp;
+    const uint64_t integer = uint64_t(value.fp);
+    if (integer < begin)
+      return begin;
+    if (integer > end)
+      return end;
+    return integer;
   }
 }
 
@@ -61,7 +64,7 @@ int64_t confine_value<int64_t>(const fpta_value &value, const int64_t begin,
   switch (value.type) {
   default:
     assert(false);
-    return begin;
+    return 0;
   case fpta_unsigned_int:
     if (value.uint > (uint64_t)INT64_MAX)
       return end;
@@ -73,11 +76,16 @@ int64_t confine_value<int64_t>(const fpta_value &value, const int64_t begin,
       return end;
     return value.sint;
   case fpta_float_point:
-    if (value.fp < begin)
+    if (value.fp < (double)begin)
       return begin;
-    if (value.fp > end)
+    if (value.fp > (double)end)
       return end;
-    return (int64_t)value.fp;
+    const int64_t integer = int64_t(value.fp);
+    if (integer < begin)
+      return begin;
+    if (integer > end)
+      return end;
+    return integer;
   }
 }
 
@@ -85,27 +93,28 @@ template <>
 double confine_value<double>(const fpta_value &value, const double begin,
                              const double end) {
   assert(begin < end);
+  (void)begin;
+  (void)end;
+  static_assert(std::numeric_limits<float>::has_infinity,
+                "expects the float type has infinity with saturation");
+  assert(std::isinf(float(FLT_MAX + FLT_MAX)) && 0 < float(FLT_MAX + FLT_MAX) &&
+         std::isinf(float(0 - FLT_MAX - FLT_MAX)) &&
+         0 > float(0 - FLT_MAX - FLT_MAX));
+  static_assert(std::numeric_limits<double>::has_infinity,
+                "expects the double type has infinity with saturation");
+  assert(std::isinf(double(DBL_MAX + DBL_MAX)) &&
+         0 < double(DBL_MAX + DBL_MAX) &&
+         std::isinf(double(0 - DBL_MAX - DBL_MAX)) &&
+         0 > double(0 - DBL_MAX - DBL_MAX));
   switch (value.type) {
   default:
     assert(false);
-    return begin;
+    return 0;
   case fpta_unsigned_int:
-    if (value.uint < begin)
-      return begin;
-    if (value.uint > end)
-      return end;
     return value.uint;
   case fpta_signed_int:
-    if (value.sint < begin)
-      return begin;
-    if (value.sint > end)
-      return end;
     return value.sint;
   case fpta_float_point:
-    if (value.fp < begin)
-      return begin;
-    if (value.fp > end)
-      return end;
     return value.fp;
   }
 }
@@ -116,6 +125,7 @@ template <fptu_type type> struct numeric_traits;
 
 template <> struct numeric_traits<fptu_uint16> {
   typedef uint16_t native;
+  enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -130,6 +140,7 @@ template <> struct numeric_traits<fptu_uint16> {
 
 template <> struct numeric_traits<fptu_uint32> {
   typedef uint32_t native;
+  enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -144,6 +155,7 @@ template <> struct numeric_traits<fptu_uint32> {
 
 template <> struct numeric_traits<fptu_uint64> {
   typedef uint64_t native;
+  enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -158,6 +170,7 @@ template <> struct numeric_traits<fptu_uint64> {
 
 template <> struct numeric_traits<fptu_int32> {
   typedef int32_t native;
+  enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -172,6 +185,7 @@ template <> struct numeric_traits<fptu_int32> {
 
 template <> struct numeric_traits<fptu_int64> {
   typedef int64_t native;
+  enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -186,6 +200,7 @@ template <> struct numeric_traits<fptu_int64> {
 
 template <> struct numeric_traits<fptu_fp32> {
   typedef float native;
+  enum { has_native_saturation = true };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -200,6 +215,7 @@ template <> struct numeric_traits<fptu_fp32> {
 
 template <> struct numeric_traits<fptu_fp64> {
   typedef double native;
+  enum { has_native_saturation = true };
   typedef std::numeric_limits<native> native_limits;
   static native denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
@@ -233,14 +249,14 @@ template <fptu_type type> struct saturated {
 
   static int confine(const fpta_index_type index, fpta_value &value) {
     assert(value.is_number());
-    const native lower = bottom(index);
-    const native upper = top(index);
-    value = traits::make_value(confine_value<native>(value, lower, upper));
+    value = traits::make_value(
+        confine_value<native>(value, bottom(index), top(index)));
     return FPTA_SUCCESS;
   }
 
   static bool min(const fpta_index_type index, fptu_field *field,
                   const fpta_value &value, native &result) {
+    assert(value.is_number());
     const native ones = confine_value(value, bottom(index), top(index));
     if (unlikely(!field)) {
       result = ones;
@@ -257,6 +273,7 @@ template <fptu_type type> struct saturated {
 
   static bool max(const fpta_index_type index, fptu_field *field,
                   const fpta_value &value, native &result) {
+    assert(value.is_number());
     const native ones = confine_value(value, bottom(index), top(index));
     if (unlikely(!field)) {
       result = ones;
@@ -273,6 +290,7 @@ template <fptu_type type> struct saturated {
 
   static bool add(const fpta_index_type index, fptu_field *field,
                   const fpta_value &value, native &result) {
+    assert(value.is_number());
     if (value.is_negative())
       return sub(index, field, -value, result);
 
@@ -287,15 +305,23 @@ template <fptu_type type> struct saturated {
     }
 
     const native present = fptu::get_number<type, native>(field);
-    if (addend == 0 || upper == present)
+    if (addend == 0)
       return false;
 
-    result = (upper - present > addend) ? present + addend : upper;
-    return true;
+    if (traits::has_native_saturation) {
+      result = present + addend;
+      return result != present;
+    } else {
+      if (present >= upper)
+        return false;
+      result = (upper - present > addend) ? present + addend : upper;
+      return true;
+    }
   }
 
   static bool sub(const fpta_index_type index, fptu_field *field,
                   const fpta_value &value, native &result) {
+    assert(value.is_number());
     if (value.is_negative())
       return add(index, field, -value, result);
 
@@ -305,16 +331,25 @@ template <fptu_type type> struct saturated {
     if (unlikely(!field)) {
       if (subtrahend == 0 && lower > 0)
         return false /* не допускаем появления не-нулевого значения при вычитании нуля из пустоты */;
-      result = (0 - lower > subtrahend) ? 0 - subtrahend : lower;
+      result = (traits::has_native_saturation || 0 - lower > subtrahend)
+                   ? 0 - subtrahend
+                   : lower;
       return true;
     }
 
     const native present = fptu::get_number<type, native>(field);
-    if (subtrahend == 0 || lower == present)
+    if (subtrahend == 0)
       return false;
 
-    result = (present - lower > subtrahend) ? present - subtrahend : lower;
-    return true;
+    if (traits::has_native_saturation) {
+      result = present - subtrahend;
+      return result != present;
+    } else {
+      if (present <= lower)
+        return false;
+      result = (present - lower > subtrahend) ? present - subtrahend : lower;
+      return true;
+    }
   }
 
   static int inplace(const fpta_inplace op, const fpta_index_type index,
@@ -322,6 +357,7 @@ template <fptu_type type> struct saturated {
                      const unsigned colnum) {
     native result;
     fptu_field *field = fptu_lookup(row, colnum, type);
+    assert(value.is_number());
 
     switch (op) {
     default:
