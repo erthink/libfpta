@@ -44,9 +44,9 @@ uint64_t confine_value<uint64_t>(const fpta_value &value, const uint64_t begin,
       return end;
     return value.uint;
   case fpta_float_point:
-    if (value.fp < 0 || value.fp < (double)begin)
+    if (value.fp < 0 || value.fp < (double_t)begin)
       return begin;
-    if (value.fp > (double)end)
+    if (value.fp > (double_t)end)
       return end;
     const uint64_t integer = uint64_t(value.fp);
     if (integer < begin)
@@ -76,9 +76,9 @@ int64_t confine_value<int64_t>(const fpta_value &value, const int64_t begin,
       return end;
     return value.sint;
   case fpta_float_point:
-    if (value.fp < (double)begin)
+    if (value.fp < (double_t)begin)
       return begin;
-    if (value.fp > (double)end)
+    if (value.fp > (double_t)end)
       return end;
     const int64_t integer = int64_t(value.fp);
     if (integer < begin)
@@ -90,8 +90,8 @@ int64_t confine_value<int64_t>(const fpta_value &value, const int64_t begin,
 }
 
 template <>
-double confine_value<double>(const fpta_value &value, const double begin,
-                             const double end) {
+double_t confine_value<double_t>(const fpta_value &value, const double_t begin,
+                                 const double_t end) {
   assert(begin < end);
   (void)begin;
   (void)end;
@@ -125,105 +125,112 @@ template <fptu_type type> struct numeric_traits;
 
 template <> struct numeric_traits<fptu_uint16> {
   typedef uint16_t native;
+  typedef uint_fast16_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT16_OBVERSE
                                         : FPTA_DENIL_UINT16_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_uint(value);
   }
 };
 
 template <> struct numeric_traits<fptu_uint32> {
   typedef uint32_t native;
+  typedef uint_fast32_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT32_OBVERSE
                                         : FPTA_DENIL_UINT32_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_uint(value);
   }
 };
 
 template <> struct numeric_traits<fptu_uint64> {
   typedef uint64_t native;
+  typedef uint_fast64_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT64_OBVERSE
                                         : FPTA_DENIL_UINT64_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_uint(value);
   }
 };
 
 template <> struct numeric_traits<fptu_int32> {
   typedef int32_t native;
+  typedef int_fast32_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     (void)index;
     return FPTA_DENIL_SINT32;
   }
   static fpta_value_type value_type() { return fpta_signed_int; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_sint(value);
   }
 };
 
 template <> struct numeric_traits<fptu_int64> {
   typedef int64_t native;
+  typedef int_fast64_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     (void)index;
     return FPTA_DENIL_SINT64;
   }
   static fpta_value_type value_type() { return fpta_signed_int; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_sint(value);
   }
 };
 
 template <> struct numeric_traits<fptu_fp32> {
   typedef float native;
+  typedef float_t fast;
   enum { has_native_saturation = true };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     (void)index;
     return FPTA_DENIL_FP32;
   }
   static fpta_value_type value_type() { return fpta_float_point; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_float(value);
   }
 };
 
 template <> struct numeric_traits<fptu_fp64> {
   typedef double native;
+  typedef double_t fast;
   enum { has_native_saturation = true };
   typedef std::numeric_limits<native> native_limits;
-  static native denil(const fpta_index_type index) {
+  static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
     (void)index;
     return FPTA_DENIL_FP64;
   }
   static fpta_value_type value_type() { return fpta_float_point; }
-  static fpta_value make_value(const native value) {
+  static fpta_value make_value(const fast value) {
     return fpta_value_float(value);
   }
 };
@@ -231,17 +238,18 @@ template <> struct numeric_traits<fptu_fp64> {
 template <fptu_type type> struct saturated {
   typedef numeric_traits<type> traits;
   typedef typename traits::native native;
+  typedef typename traits::fast fast;
   typedef typename traits::native_limits native_limits;
 
-  static native bottom(const fpta_index_type index) {
+  static fast bottom(const fpta_index_type index) {
     if (!fpta_index_is_nullable(index) || !native_limits::is_integer)
       return native_limits::lowest();
-    const native lower = native_limits::min();
+    const fast lower = native_limits::min();
     return (lower != traits::denil(index)) ? lower : lower + 1;
   }
 
-  static native top(const fpta_index_type index) {
-    const native upper = native_limits::max();
+  static fast top(const fpta_index_type index) {
+    const fast upper = native_limits::max();
     if (!fpta_index_is_nullable(index) || !native_limits::is_integer)
       return upper;
     return (upper != traits::denil(index)) ? upper : upper - 1;
@@ -250,20 +258,20 @@ template <fptu_type type> struct saturated {
   static int confine(const fpta_index_type index, fpta_value &value) {
     assert(value.is_number());
     value = traits::make_value(
-        confine_value<native>(value, bottom(index), top(index)));
+        confine_value<fast>(value, bottom(index), top(index)));
     return FPTA_SUCCESS;
   }
 
   static bool min(const fpta_index_type index, fptu_field *field,
-                  const fpta_value &value, native &result) {
+                  const fpta_value &value, fast &result) {
     assert(value.is_number());
-    const native ones = confine_value(value, bottom(index), top(index));
+    const fast ones = confine_value(value, bottom(index), top(index));
     if (unlikely(!field)) {
       result = ones;
       return true;
     }
 
-    const native present = fptu::get_number<type, native>(field);
+    const fast present = fptu::get_number<type, fast>(field);
     if (ones < present) {
       result = ones;
       return true;
@@ -272,15 +280,15 @@ template <fptu_type type> struct saturated {
   }
 
   static bool max(const fpta_index_type index, fptu_field *field,
-                  const fpta_value &value, native &result) {
+                  const fpta_value &value, fast &result) {
     assert(value.is_number());
-    const native ones = confine_value(value, bottom(index), top(index));
+    const fast ones = confine_value(value, bottom(index), top(index));
     if (unlikely(!field)) {
       result = ones;
       return true;
     }
 
-    const native present = fptu::get_number<type, native>(field);
+    const fast present = fptu::get_number<type, fast>(field);
     if (ones > present) {
       result = ones;
       return true;
@@ -289,12 +297,12 @@ template <fptu_type type> struct saturated {
   }
 
   static bool add(const fpta_index_type index, fptu_field *field,
-                  const fpta_value &value, native &result) {
+                  const fpta_value &value, fast &result) {
     assert(value.is_number() && !value.is_negative());
 
-    const native lower = bottom(index);
-    const native upper = top(index);
-    const native addend = confine_value(value, (native)0, upper);
+    const fast lower = bottom(index);
+    const fast upper = top(index);
+    const fast addend = confine_value(value, (fast)0, upper);
     if (unlikely(!field)) {
       if (addend == 0 && lower > 0)
         return false /* не допускаем появления не-нулевого значения при добавлении нуля к пустоте */;
@@ -302,7 +310,7 @@ template <fptu_type type> struct saturated {
       return true;
     }
 
-    const native present = fptu::get_number<type, native>(field);
+    const fast present = fptu::get_number<type, fast>(field);
     if (addend == 0)
       return false;
 
@@ -318,12 +326,12 @@ template <fptu_type type> struct saturated {
   }
 
   static bool sub(const fpta_index_type index, fptu_field *field,
-                  const fpta_value &value, native &result) {
+                  const fpta_value &value, fast &result) {
     assert(value.is_number() && !value.is_negative());
 
-    const native lower = bottom(index);
-    const native upper = top(index);
-    const native subtrahend = confine_value(value, (native)0, upper);
+    const fast lower = bottom(index);
+    const fast upper = top(index);
+    const fast subtrahend = confine_value(value, (fast)0, upper);
     if (unlikely(!field)) {
       if (subtrahend == 0 && lower > 0)
         return false /* не допускаем появления не-нулевого значения при вычитании нуля из пустоты */;
@@ -333,7 +341,7 @@ template <fptu_type type> struct saturated {
       return true;
     }
 
-    const native present = fptu::get_number<type, native>(field);
+    const fast present = fptu::get_number<type, fast>(field);
     if (subtrahend == 0)
       return false;
 
@@ -350,7 +358,7 @@ template <fptu_type type> struct saturated {
 
   static int inplace(const fpta_inplace op, const fpta_index_type index,
                      fpta_value value, fptu_rw *row, const unsigned colnum) {
-    native result;
+    fast result;
     fptu_field *field = fptu_lookup(row, colnum, type);
     assert(value.is_number());
 
@@ -388,7 +396,7 @@ template <fptu_type type> struct saturated {
     case fpta_bes:
       return FPTA_ENOIMP /* TODO */;
     }
-    return fptu::upsert_number<type, native>(row, colnum, result);
+    return fptu::upsert_number<type, fast>(row, colnum, result);
   }
 };
 

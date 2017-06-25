@@ -774,9 +774,9 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const unsigned denil = fpta_index_is_obverse(index)
-                                 ? FPTA_DENIL_UINT16_OBVERSE
-                                 : FPTA_DENIL_UINT16_REVERSE;
+      const uint_fast16_t denil = fpta_index_is_obverse(index)
+                                      ? FPTA_DENIL_UINT16_OBVERSE
+                                      : FPTA_DENIL_UINT16_REVERSE;
       if (unlikely(*(uint32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -792,9 +792,9 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint32_t denil = fpta_index_is_obverse(index)
-                                 ? FPTA_DENIL_UINT32_OBVERSE
-                                 : FPTA_DENIL_UINT32_REVERSE;
+      const uint_fast32_t denil = fpta_index_is_obverse(index)
+                                      ? FPTA_DENIL_UINT32_OBVERSE
+                                      : FPTA_DENIL_UINT32_REVERSE;
       if (unlikely(*(uint32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -808,7 +808,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(int32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const int32_t denil = FPTA_DENIL_SINT32;
+      const int_fast32_t denil = FPTA_DENIL_SINT32;
       if (unlikely(*(int32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -822,7 +822,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint32_t denil = FPTA_DENIL_FP32_BIN;
+      const uint_fast32_t denil = FPTA_DENIL_FP32_BIN;
       if (unlikely(*(uint32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -836,7 +836,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint64_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint64_t denil = FPTA_DENIL_FP64_BIN;
+      const uint_fast64_t denil = FPTA_DENIL_FP64_BIN;
       if (unlikely(*(uint64_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -850,9 +850,9 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint64_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint64_t denil = fpta_index_is_obverse(index)
-                                 ? FPTA_DENIL_UINT64_OBVERSE
-                                 : FPTA_DENIL_UINT64_REVERSE;
+      const uint_fast64_t denil = fpta_index_is_obverse(index)
+                                      ? FPTA_DENIL_UINT64_OBVERSE
+                                      : FPTA_DENIL_UINT64_REVERSE;
       if (unlikely(*(uint64_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -867,7 +867,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
       goto return_corrupted;
     value.sint = *(int64_t *)mdbx.iov_base;
     if (fpta_index_is_nullable(index)) {
-      const int64_t denil = FPTA_DENIL_SINT64;
+      const int_fast64_t denil = FPTA_DENIL_SINT64;
       if (unlikely(value.sint == denil))
         goto return_null;
     }
@@ -881,7 +881,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
       goto return_corrupted;
     value.datetime.fixedpoint = *(uint64_t *)mdbx.iov_base;
     if (fpta_index_is_nullable(index)) {
-      const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
+      const uint_fast64_t denil = FPTA_DENIL_DATETIME_BIN;
       if (unlikely(value.datetime.fixedpoint == denil))
         goto return_null;
     }
