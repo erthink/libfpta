@@ -40,42 +40,42 @@ int fptu_field_column(const fptu_field *pf) {
 
 //----------------------------------------------------------------------------
 
-uint16_t fptu_field_uint16(const fptu_field *pf) {
+uint_fast16_t fptu_field_uint16(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_uint16))
     return FPTU_DENIL_UINT16;
 
   return pf->offset;
 }
 
-int32_t fptu_field_int32(const fptu_field *pf) {
+int_fast32_t fptu_field_int32(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_int32))
     return FPTU_DENIL_INT32;
 
   return fptu_field_payload(pf)->i32;
 }
 
-uint32_t fptu_field_uint32(const fptu_field *pf) {
+uint_fast32_t fptu_field_uint32(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_uint32))
     return FPTU_DENIL_UINT32;
 
   return fptu_field_payload(pf)->u32;
 }
 
-int64_t fptu_field_int64(const fptu_field *pf) {
+int_fast64_t fptu_field_int64(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_int64))
     return FPTU_DENIL_INT64;
 
   return fptu_field_payload(pf)->i64;
 }
 
-uint64_t fptu_field_uint64(const fptu_field *pf) {
+uint_fast64_t fptu_field_uint64(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_uint64))
     return FPTU_DENIL_UINT64;
 
   return fptu_field_payload(pf)->u64;
 }
 
-double fptu_field_fp64(const fptu_field *pf) {
+double_t fptu_field_fp64(const fptu_field *pf) {
   if (unlikely(fptu_field_type(pf) != fptu_fp64))
     return FPTU_DENIL_FP64;
 
@@ -207,42 +207,42 @@ fptu_ro fptu_field_nested(const fptu_field *pf) {
 
 //----------------------------------------------------------------------------
 
-uint16_t fptu_get_uint16(fptu_ro ro, unsigned column, int *error) {
+uint_fast16_t fptu_get_uint16(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_uint16);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
   return fptu_field_uint16(pf);
 }
 
-int32_t fptu_get_int32(fptu_ro ro, unsigned column, int *error) {
+int_fast32_t fptu_get_int32(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_int32);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
   return fptu_field_int32(pf);
 }
 
-uint32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error) {
+uint_fast32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_uint32);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
   return fptu_field_uint32(pf);
 }
 
-int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error) {
+int_fast64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_int64);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
   return fptu_field_int64(pf);
 }
 
-uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error) {
+uint_fast64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_uint64);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
   return fptu_field_uint64(pf);
 }
 
-double fptu_get_fp64(fptu_ro ro, unsigned column, int *error) {
+double_t fptu_get_fp64(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_fp64);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
@@ -258,7 +258,7 @@ float_t fptu_get_fp32(fptu_ro ro, unsigned column, int *error) {
 
 //----------------------------------------------------------------------------
 
-int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error) {
+int_fast64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_any_int);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
@@ -277,7 +277,7 @@ int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error) {
   return FPTU_DENIL_INT64;
 }
 
-uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error) {
+uint_fast64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_any_uint);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;
@@ -298,7 +298,7 @@ uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error) {
   return FPTU_DENIL_UINT64;
 }
 
-double fptu_get_fp(fptu_ro ro, unsigned column, int *error) {
+double_t fptu_get_fp(fptu_ro ro, unsigned column, int *error) {
   const fptu_field *pf = fptu_lookup_ro(ro, column, fptu_any_fp);
   if (error)
     *error = pf ? FPTU_SUCCESS : FPTU_ENOFIELD;

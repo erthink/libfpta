@@ -317,18 +317,18 @@ __extern_C void __assert_fail(const char *assertion, const char *filename,
 #endif
     ;
 
-static __inline unsigned fptu_get_colnum(unsigned packed) {
+static __inline unsigned fptu_get_colnum(uint_fast16_t packed) {
   return (unsigned)(((uint16_t)packed) >> fptu_co_shift);
 }
 
-static __inline fptu_type fptu_get_type(unsigned packed) {
+static __inline fptu_type fptu_get_type(uint_fast16_t packed) {
   return (fptu_type)(packed & fptu_ty_mask);
 }
 
-static __inline unsigned fptu_pack_coltype(unsigned column, int type) {
+static __inline uint_fast16_t fptu_pack_coltype(unsigned column, int type) {
   assert(type <= fptu_ty_mask);
   assert(column <= fptu_max_cols);
-  return (unsigned)type + (column << fptu_co_shift);
+  return (uint_fast16_t)type + (column << fptu_co_shift);
 }
 
 static __inline bool fptu_ct_match(const fptu_field *pf, unsigned column,
@@ -348,16 +348,16 @@ static __inline size_t units2bytes(size_t units) {
   return units << fptu_unit_shift;
 }
 
-static __inline bool ct_is_fixedsize(unsigned ct) {
+static __inline bool ct_is_fixedsize(uint_fast16_t ct) {
   return fptu_get_type(ct) < fptu_cstr;
 }
 
-static __inline bool ct_is_dead(unsigned ct) {
+static __inline bool ct_is_dead(uint_fast16_t ct) {
   return ct >= (fptu_co_dead << fptu_co_shift);
 }
 
-static __inline size_t ct_elem_size(unsigned ct) {
-  unsigned type = fptu_get_type(ct);
+static __inline size_t ct_elem_size(uint_fast16_t ct) {
+  uint_fast16_t type = fptu_get_type(ct);
   if (likely(ct_is_fixedsize(type)))
     return fptu_internal_map_t2b[type];
 
@@ -366,7 +366,7 @@ static __inline size_t ct_elem_size(unsigned ct) {
   return fptu_unit_size;
 }
 
-static __inline bool ct_match_fixedsize(unsigned ct, unsigned units) {
+static __inline bool ct_match_fixedsize(uint_fast16_t ct, size_t units) {
   return ct_is_fixedsize(ct) &&
          units == fptu_internal_map_t2u[fptu_get_type(ct)];
 }
@@ -381,7 +381,7 @@ static __inline const void *fptu_detent(const fptu_rw *rw) {
   return &rw->units[rw->end];
 }
 
-fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct);
+fptu_field *fptu_lookup_ct(fptu_rw *pt, uint_fast16_t ct);
 
 template <typename type>
 static __inline fptu_lge fptu_cmp2lge(type left, type right) {

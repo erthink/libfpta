@@ -194,8 +194,8 @@ __cold string to_string(const fptu_error error) {
 
 template <typename native>
 static inline std::string
-array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
-                 const char *comma_fmt) {
+array2str_native(uint_fast16_t ct, const fptu_payload *payload,
+                 const char *name, const char *comma_fmt) {
   std::string result =
       fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(ct), name,
                    payload->other.varlen.array_length,
@@ -208,7 +208,8 @@ array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
   return result + "}";
 }
 
-static std::string array2str_fixbin(uint16_t ct, const fptu_payload *payload,
+static std::string array2str_fixbin(uint_fast16_t ct,
+                                    const fptu_payload *payload,
                                     const char *name, unsigned itemsize) {
   std::string result =
       fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(ct), name,
@@ -306,7 +307,7 @@ __cold string to_string(const fptu_field &field) {
                         units2bytes(payload->other.varlen.brutto));
 
   case fptu_uint16 | fptu_farray:
-    return array2str_native<int16_t>(field.ct, payload, "uint16", ",%u");
+    return array2str_native<uint16_t>(field.ct, payload, "uint16", ",%u");
   case fptu_int32 | fptu_farray:
     return array2str_native<int32_t>(field.ct, payload, "int32", ",%" PRId32);
   case fptu_uint32 | fptu_farray:

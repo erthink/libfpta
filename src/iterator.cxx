@@ -28,7 +28,7 @@ __hot const fptu_field *fptu_first(const fptu_field *begin,
         return pf;
     }
   } else {
-    unsigned ct = fptu_pack_coltype(column, type_or_filter);
+    uint_fast16_t ct = fptu_pack_coltype(column, type_or_filter);
     for (const fptu_field *pf = begin; pf < end; ++pf) {
       if (pf->ct == ct)
         return pf;

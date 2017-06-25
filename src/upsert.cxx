@@ -28,7 +28,8 @@ static __hot fptu_field *fptu_find_dead(fptu_rw *pt, size_t units) {
   return nullptr;
 }
 
-static __hot fptu_field *fptu_append(fptu_rw *pt, unsigned ct, size_t units) {
+static __hot fptu_field *fptu_append(fptu_rw *pt, uint_fast16_t ct,
+                                     size_t units) {
   fptu_field *pf = fptu_find_dead(pt, units);
   if (pf) {
     pf->ct = (uint16_t)ct;
@@ -56,7 +57,8 @@ static __hot fptu_field *fptu_append(fptu_rw *pt, unsigned ct, size_t units) {
   return pf;
 }
 
-static __hot fptu_field *fptu_emplace(fptu_rw *pt, unsigned ct, size_t units) {
+static __hot fptu_field *fptu_emplace(fptu_rw *pt, uint_fast16_t ct,
+                                      size_t units) {
   fptu_field *pf = fptu_lookup_ct(pt, ct);
   if (pf) {
     size_t avail = fptu_field_units(pf);
@@ -104,7 +106,7 @@ struct fptu_takeover_result {
 #pragma warning(pop)
 #endif
 
-static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, unsigned ct,
+static __hot fptu_takeover_result fptu_takeover(fptu_rw *pt, uint_fast16_t ct,
                                                 size_t units) {
   fptu_takeover_result result;
 
@@ -149,7 +151,7 @@ int fptu_upsert_null(fptu_rw *pt, unsigned col) {
   return FPTU_SUCCESS;
 }
 
-int fptu_upsert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
+int fptu_upsert_uint16(fptu_rw *pt, unsigned col, uint_fast16_t value) {
   assert(value <= UINT16_MAX);
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
@@ -164,7 +166,7 @@ int fptu_upsert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
 
 //----------------------------------------------------------------------------
 
-static int fptu_upsert_32(fptu_rw *pt, unsigned ct, uint32_t value) {
+static int fptu_upsert_32(fptu_rw *pt, uint_fast16_t ct, uint_fast32_t value) {
   assert(ct_match_fixedsize(ct, 1));
   assert(!ct_is_dead(ct));
 
@@ -176,14 +178,14 @@ static int fptu_upsert_32(fptu_rw *pt, unsigned ct, uint32_t value) {
   return FPTU_SUCCESS;
 }
 
-int fptu_upsert_int32(fptu_rw *pt, unsigned col, int32_t value) {
+int fptu_upsert_int32(fptu_rw *pt, unsigned col, int_fast32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_int32),
                         (uint32_t)value);
 }
 
-int fptu_upsert_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
+int fptu_upsert_uint32(fptu_rw *pt, unsigned col, uint_fast32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_uint32), value);
@@ -191,7 +193,7 @@ int fptu_upsert_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
 
 //----------------------------------------------------------------------------
 
-static int fptu_upsert_64(fptu_rw *pt, unsigned ct, uint64_t value) {
+static int fptu_upsert_64(fptu_rw *pt, uint_fast16_t ct, uint_fast64_t value) {
   assert(ct_match_fixedsize(ct, 2));
   assert(!ct_is_dead(ct));
 
@@ -203,14 +205,14 @@ static int fptu_upsert_64(fptu_rw *pt, unsigned ct, uint64_t value) {
   return FPTU_SUCCESS;
 }
 
-int fptu_upsert_int64(fptu_rw *pt, unsigned col, int64_t value) {
+int fptu_upsert_int64(fptu_rw *pt, unsigned col, int_fast64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_int64),
-                        (uint64_t)value);
+                        (uint_fast64_t)value);
 }
 
-int fptu_upsert_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
+int fptu_upsert_uint64(fptu_rw *pt, unsigned col, uint_fast64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_upsert_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
@@ -238,7 +240,7 @@ int fptu_upsert_fp32(fptu_rw *pt, unsigned col, float_t value) {
   return fptu_upsert_32(pt, fptu_pack_coltype(col, fptu_fp32), v.u32);
 }
 
-int fptu_upsert_fp64(fptu_rw *pt, unsigned col, double value) {
+int fptu_upsert_fp64(fptu_rw *pt, unsigned col, double_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -378,20 +380,24 @@ int fptu_upsert_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
 
 //----------------------------------------------------------------------------
 
-// int fptu_upsert_array_int32(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_upsert_array_int32(fptu_rw* pt, uint_fast16_t ct, size_t
+// array_length,
 // const int32_t* array_data);
-// int fptu_upsert_array_uint32(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_upsert_array_uint32(fptu_rw* pt, uint_fast16_t ct, size_t
+// array_length,
 // const uint32_t* array_data);
-// int fptu_upsert_array_int64(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_upsert_array_int64(fptu_rw* pt, uint_fast16_t ct, size_t
+// array_length,
 // const int64_t* array_data);
-// int fptu_upsert_array_uint64(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_upsert_array_uint64(fptu_rw* pt, uint_fast16_t ct, size_t
+// array_length,
 // const uint64_t* array_data);
-// int fptu_upsert_array_str(fptu_rw* pt, unsigned ct, size_t array_length,
+// int fptu_upsert_array_str(fptu_rw* pt, uint_fast16_t ct, size_t array_length,
 // const char* array_data[]);
 
 //============================================================================
 
-int fptu_update_uint16(fptu_rw *pt, unsigned col, unsigned value) {
+int fptu_update_uint16(fptu_rw *pt, unsigned col, uint_fast16_t value) {
   assert(value <= UINT16_MAX);
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
@@ -407,7 +413,7 @@ int fptu_update_uint16(fptu_rw *pt, unsigned col, unsigned value) {
 
 //----------------------------------------------------------------------------
 
-static int fptu_update_32(fptu_rw *pt, unsigned ct, uint32_t value) {
+static int fptu_update_32(fptu_rw *pt, uint_fast16_t ct, uint_fast32_t value) {
   assert(ct_match_fixedsize(ct, 1));
   assert(!ct_is_dead(ct));
 
@@ -419,14 +425,14 @@ static int fptu_update_32(fptu_rw *pt, unsigned ct, uint32_t value) {
   return result.error;
 }
 
-int fptu_update_int32(fptu_rw *pt, unsigned col, int32_t value) {
+int fptu_update_int32(fptu_rw *pt, unsigned col, int_fast32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_update_32(pt, fptu_pack_coltype(col, fptu_int32),
                         (uint32_t)value);
 }
 
-int fptu_update_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
+int fptu_update_uint32(fptu_rw *pt, unsigned col, uint_fast32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_update_32(pt, fptu_pack_coltype(col, fptu_uint32), value);
@@ -434,7 +440,7 @@ int fptu_update_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
 
 //----------------------------------------------------------------------------
 
-static int fptu_update_64(fptu_rw *pt, unsigned ct, uint64_t value) {
+static int fptu_update_64(fptu_rw *pt, uint_fast16_t ct, uint_fast64_t value) {
   assert(ct_match_fixedsize(ct, 2));
   assert(!ct_is_dead(ct));
 
@@ -446,14 +452,14 @@ static int fptu_update_64(fptu_rw *pt, unsigned ct, uint64_t value) {
   return result.error;
 }
 
-int fptu_update_int64(fptu_rw *pt, unsigned col, int64_t value) {
+int fptu_update_int64(fptu_rw *pt, unsigned col, int_fast64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_update_64(pt, fptu_pack_coltype(col, fptu_int64),
                         (uint64_t)value);
 }
 
-int fptu_update_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
+int fptu_update_uint64(fptu_rw *pt, unsigned col, uint_fast64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_update_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
@@ -481,7 +487,7 @@ int fptu_update_fp32(fptu_rw *pt, unsigned col, float_t value) {
   return fptu_update_32(pt, fptu_pack_coltype(col, fptu_fp32), v.u32);
 }
 
-int fptu_update_fp64(fptu_rw *pt, unsigned col, double value) {
+int fptu_update_fp64(fptu_rw *pt, unsigned col, double_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 
@@ -625,7 +631,7 @@ int fptu_update_nested(fptu_rw *pt, unsigned col, fptu_ro ro) {
 
 //============================================================================
 
-int fptu_insert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
+int fptu_insert_uint16(fptu_rw *pt, unsigned col, uint_fast16_t value) {
   assert(value <= UINT16_MAX);
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
@@ -640,7 +646,7 @@ int fptu_insert_uint16(fptu_rw *pt, unsigned col, unsigned value) {
 
 //----------------------------------------------------------------------------
 
-static int fptu_insert_32(fptu_rw *pt, unsigned ct, uint32_t v) {
+static int fptu_insert_32(fptu_rw *pt, uint_fast16_t ct, uint_fast32_t v) {
   assert(ct_match_fixedsize(ct, 1));
   assert(!ct_is_dead(ct));
 
@@ -652,14 +658,14 @@ static int fptu_insert_32(fptu_rw *pt, unsigned ct, uint32_t v) {
   return FPTU_SUCCESS;
 }
 
-int fptu_insert_int32(fptu_rw *pt, unsigned col, int32_t value) {
+int fptu_insert_int32(fptu_rw *pt, unsigned col, int_fast32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_int32),
                         (uint32_t)value);
 }
 
-int fptu_insert_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
+int fptu_insert_uint32(fptu_rw *pt, unsigned col, uint_fast32_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_uint32), value);
@@ -667,7 +673,7 @@ int fptu_insert_uint32(fptu_rw *pt, unsigned col, uint32_t value) {
 
 //----------------------------------------------------------------------------
 
-static int fptu_insert_64(fptu_rw *pt, unsigned ct, uint64_t v) {
+static int fptu_insert_64(fptu_rw *pt, uint_fast16_t ct, uint_fast64_t v) {
   assert(ct_match_fixedsize(ct, 2));
   assert(!ct_is_dead(ct));
 
@@ -679,14 +685,14 @@ static int fptu_insert_64(fptu_rw *pt, unsigned ct, uint64_t v) {
   return FPTU_SUCCESS;
 }
 
-int fptu_insert_int64(fptu_rw *pt, unsigned col, int64_t value) {
+int fptu_insert_int64(fptu_rw *pt, unsigned col, int_fast64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_int64),
                         (uint64_t)value);
 }
 
-int fptu_insert_uint64(fptu_rw *pt, unsigned col, uint64_t value) {
+int fptu_insert_uint64(fptu_rw *pt, unsigned col, uint_fast64_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
   return fptu_insert_64(pt, fptu_pack_coltype(col, fptu_uint64), value);
@@ -714,7 +720,7 @@ int fptu_insert_fp32(fptu_rw *pt, unsigned col, float_t value) {
   return fptu_insert_32(pt, fptu_pack_coltype(col, fptu_fp32), v.u32);
 }
 
-int fptu_insert_fp64(fptu_rw *pt, unsigned col, double value) {
+int fptu_insert_fp64(fptu_rw *pt, unsigned col, double_t value) {
   if (unlikely(col > fptu_max_cols))
     return FPTU_EINVAL;
 

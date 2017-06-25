@@ -142,7 +142,7 @@ TEST(Trivia, Apriory) {
 }
 
 TEST(Trivia, ColType) {
-  unsigned ct;
+  uint_fast16_t ct;
   ct = fptu_pack_coltype(0, fptu_null);
   ASSERT_EQ(0u, ct);
   ASSERT_GT(fptu_limit, ct);
