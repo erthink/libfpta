@@ -482,18 +482,15 @@ typedef struct fpta_value {
    * C-linkage функции тип, у которого есть конструкторы C++). */
 
   bool is_number() const {
-    return type == fpta_signed_int || type == fpta_float_point ||
-           type == fpta_unsigned_int;
+    const int number_mask = (1 << fpta_unsigned_int) | (1 << fpta_signed_int) |
+                            (1 << fpta_float_point);
+    return (number_mask & (1 << type)) != 0;
   }
 
   bool is_negative() const {
     assert(is_number());
-    if (type == fpta_signed_int)
-      return sint < 0;
-    else if (type == fpta_float_point)
-      return fp < 0;
-    else
-      return false;
+    const int signed_mask = (1 << fpta_signed_int) | (1 << fpta_float_point);
+    return sint < 0 && (signed_mask & (1 << type));
   }
 
   inline fpta_value negative() const;
