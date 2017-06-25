@@ -290,9 +290,7 @@ template <fptu_type type> struct saturated {
 
   static bool add(const fpta_index_type index, fptu_field *field,
                   const fpta_value &value, native &result) {
-    assert(value.is_number());
-    if (value.is_negative())
-      return sub(index, field, -value, result);
+    assert(value.is_number() && !value.is_negative());
 
     const native lower = bottom(index);
     const native upper = top(index);
@@ -321,9 +319,7 @@ template <fptu_type type> struct saturated {
 
   static bool sub(const fpta_index_type index, fptu_field *field,
                   const fpta_value &value, native &result) {
-    assert(value.is_number());
-    if (value.is_negative())
-      return add(index, field, -value, result);
+    assert(value.is_number() && !value.is_negative());
 
     const native lower = bottom(index);
     const native upper = top(index);
@@ -353,8 +349,7 @@ template <fptu_type type> struct saturated {
   }
 
   static int inplace(const fpta_inplace op, const fpta_index_type index,
-                     const fpta_value &value, fptu_rw *row,
-                     const unsigned colnum) {
+                     fpta_value value, fptu_rw *row, const unsigned colnum) {
     native result;
     fptu_field *field = fptu_lookup(row, colnum, type);
     assert(value.is_number());
@@ -363,10 +358,20 @@ template <fptu_type type> struct saturated {
     default:
       return FPTA_EINVAL;
     case fpta_saturated_add:
+      if (value.is_negative()) {
+        value = -value;
+        goto subtraction;
+      }
+    addition:
       if (!add(index, field, value, result))
         return FPTA_SUCCESS;
       break;
     case fpta_saturated_sub:
+      if (value.is_negative()) {
+        value = -value;
+        goto addition;
+      }
+    subtraction:
       if (!sub(index, field, value, result))
         return FPTA_SUCCESS;
       break;
