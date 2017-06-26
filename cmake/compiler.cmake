@@ -297,11 +297,9 @@ macro(setup_compile_flags)
     endif()
 
     add_compile_flags("C;CXX" "-fprofile-arcs" "-ftest-coverage")
-    set(EXE_LINKER_FLAGS "${EXE_LINKER_FLAGS} -fprofile-arcs")
-    set(EXE_LINKER_FLAGS "${EXE_LINKER_FLAGS} -ftest-coverage")
-    set(SHARED_LINKER_FLAGS "${SHARED_LINKER_FLAGS} -fprofile-arcs")
-    set(SHARED_LINKER_FLAGS "${SHARED_LINKER_FLAGS} -ftest-coverage")
-
+    set(EXE_LINKER_FLAGS "${EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
+    set(SHARED_LINKER_FLAGS "${SHARED_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
+    set(MODULE_LINKER_FLAGS "${MODULE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
     # add_library(gcov SHARED IMPORTED)
   endif()
 
