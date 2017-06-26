@@ -23,6 +23,13 @@
 #error "API version mismatch!"
 #endif
 
+#if defined(_MSC_VER) && defined(FPTU_BUILD_TAGRET)
+#pragma message("Configuration-depended FPTU_BUILD_TAGRET: " FPTU_BUILD_TAGRET)
+#endif
+#if defined(_MSC_VER) && defined(FPTU_COMPILE_FLAGS)
+#pragma message("Configuration-depended FPTU_COMPILE_FLAGS: " FPTU_COMPILE_FLAGS)
+#endif
+
 const struct fptu_version_info fptu_version = {
   @FPTU_VERSION_MAJOR@, @FPTU_VERSION_MINOR@, @FPTU_VERSION_RELEASE@, @FPTU_VERSION_REVISION@,
   {
@@ -35,8 +42,8 @@ const struct fptu_version_info fptu_version = {
 
 const struct fptu_build_info fptu_build = {
   "@FPTU_BUILD_TIMESTAMP@",
-  "@FPTU_BUILD_TAGRET@",
-  "@FPTU_BUILD_OPTIONS@",
+  @FPTU_BUILD_TAGRET@,
+  "@FPTU_CMAKE_OPTIONS@",
   "@FPTU_BUILD_COMPILER@",
-  "@FPTU_BUILD_FLAGS@"
+  @FPTU_COMPILE_FLAGS@
 };

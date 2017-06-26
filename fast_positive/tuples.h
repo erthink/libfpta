@@ -947,9 +947,9 @@ typedef struct fptu_version_info {
 typedef struct fptu_build_info {
   const char *datetime;
   const char *target;
-  const char *options;
+  const char *cmake_options;
   const char *compiler;
-  const char *flags;
+  const char *compile_flags;
 } fptu_build_info;
 
 extern FPTU_API const struct fptu_version_info fptu_version;
