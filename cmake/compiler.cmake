@@ -141,6 +141,74 @@ check_cxx_source_compiles("int main(void) {
 set(CMAKE_REQUIRED_FLAGS "")
 
 #
+# Check for LTO support by GCC
+if(CMAKE_COMPILER_IS_GNUCC)
+  unset(gcc_collect)
+  unset(gcc_lto_wrapper)
+
+  if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -v
+      OUTPUT_VARIABLE gcc_info_v ERROR_VARIABLE gcc_info_v)
+
+    string(REGEX MATCH "^(.+\nCOLLECT_GCC=)([^ \n]+)(\n.+)$" gcc_collect_valid ${gcc_info_v})
+    if(gcc_collect_valid)
+      string(REGEX REPLACE "^(.+\nCOLLECT_GCC=)([^ \n]+)(\n.+)$" "\\2" gcc_collect ${gcc_info_v})
+    endif()
+
+    string(REGEX MATCH "^(.+\nCOLLECT_LTO_WRAPPER=)([^ \n]+/lto-wrapper)(\n.+)$" gcc_lto_wrapper_valid ${gcc_info_v})
+    if(gcc_lto_wrapper_valid)
+      string(REGEX REPLACE "^(.+\nCOLLECT_LTO_WRAPPER=)([^ \n]+/lto-wrapper)(\n.+)$" "\\2" gcc_lto_wrapper ${gcc_info_v})
+    endif()
+
+    set(gcc_suffix "")
+    if(gcc_collect_valid AND gcc_collect)
+      string(REGEX MATCH "^(.*cc)(-.+)$" gcc_suffix_valid ${gcc_collect})
+      if(gcc_suffix_valid)
+        string(REGEX MATCH "^(.*cc)(-.+)$" "\\2" gcc_suffix ${gcc_collect})
+      endif()
+    endif()
+
+    get_filename_component(gcc_dir ${CMAKE_C_COMPILER} DIRECTORY)
+    if(NOT CMAKE_GCC_AR)
+      find_program(CMAKE_GCC_AR NAMES gcc${gcc_suffix}-ar)
+      if(NOT CMAKE_GCC_AR AND NOT gcc_dir STREQUAL "/usr/bin")
+        find_program(CMAKE_GCC_AR NAMES gcc-ar PATHS ${gcc_dir} NO_DEFAULT_PATH)
+      endif()
+    endif()
+    if(NOT CMAKE_GCC_NM)
+      find_program(CMAKE_GCC_NM NAMES gcc${gcc_suffix}-nm)
+      if(NOT CMAKE_GCC_NM AND NOT gcc_dir STREQUAL "/usr/bin")
+        find_program(CMAKE_GCC_NM NAMES gcc-nm PATHS ${gcc_dir} NO_DEFAULT_PATH)
+      endif()
+    endif()
+    if(NOT CMAKE_GCC_RANLIB)
+      find_program(CMAKE_GCC_RANLIB NAMES gcc${gcc_suffix}-ranlib)
+      if(NOT CMAKE_GCC_RANLIB AND NOT gcc_dir STREQUAL "/usr/bin")
+        find_program(CMAKE_GCC_RANLIB NAMES gcc-ranlib PATHS ${gcc_dir} NO_DEFAULT_PATH)
+      endif()
+    endif()
+
+    unset(gcc_dir)
+    unset(gcc_suffix_valid)
+    unset(gcc_suffix)
+    unset(gcc_lto_wrapper_valid)
+    unset(gcc_collect_valid)
+    unset(gcc_collect)
+    unset(gcc_info_v)
+  endif()
+
+  if(CMAKE_GCC_AR AND CMAKE_GCC_NM AND CMAKE_GCC_RANLIB AND gcc_lto_wrapper)
+    set(GCC_LTO_CFLAGS "-flto -fno-fat-lto-objects -fuse-linker-plugin")
+    set(GCC_LTO_AVAILABLE TRUE)
+    message(STATUS "Link-Time Optimization by GCC is available")
+  else()
+    set(GCC_LTO_AVAILABLE FALSE)
+    message(STATUS "Link-Time Optimization by GCC is NOT available")
+  endif()
+  unset(gcc_lto_wrapper)
+endif()
+
+#
 # Perform build type specific configuration.
 option(ENABLE_BACKTRACE "Enable output of fiber backtrace information in 'show
   fiber' administrative command. Only works on x86 architectures, if compiled
@@ -217,6 +285,23 @@ macro(setup_compile_flags)
   set(SHARED_LINKER_FLAGS ${INITIAL_CMAKE_SHARED_LINKER_FLAGS})
   set(STATIC_LINKER_FLAGS ${INITIAL_CMAKE_STATIC_LINKER_FLAGS})
   set(MODULE_LINKER_FLAGS ${INITIAL_CMAKE_MODULE_LINKER_FLAGS})
+
+  if (CMAKE_COMPILER_IS_GNUCC AND GCC_LTO_ENABLED)
+    add_compile_flags("C;CXX" ${GCC_LTO_CFLAGS})
+    set(EXE_LINKER_FLAGS "${EXE_LINKER_FLAGS} ${GCC_LTO_CFLAGS} -fverbose-asm -fwhole-program")
+    set(SHARED_LINKER_FLAGS "${SHARED_LINKER_FLAGS} ${GCC_LTO_CFLAGS} -fverbose-asm")
+    set(MODULE_LINKER_FLAGS "${MODULE_LINKER_FLAGS} ${GCC_LTO_CFLAGS} -fverbose-asm")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
+      # Pass the same optimization flags to the linker
+      set(compile_flags "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPERCASE}}")
+      set(EXE_LINKER_FLAGS "${EXE_LINKER_FLAGS} ${compile_flags}")
+      set(SHARED_LINKER_FLAGS "${SHARED_LINKER_FLAGS} ${compile_flags}")
+      set(MODULE_LINKER_FLAGS "${MODULE_LINKER_FLAGS} ${compile_flags}")
+      unset(compile_flags)
+    else()
+      add_compile_flags("CXX" "-flto-odr-type-merging")
+    endif()
+  endif()
 
   if(CC_HAS_FNO_COMMON)
     add_compile_flags("C;CXX" "-fno-common")
