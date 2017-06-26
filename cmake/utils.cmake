@@ -1,9 +1,9 @@
 macro(add_compile_flags langs)
   foreach(_lang ${langs})
-    string (REPLACE ";" " " _flags "${ARGN}")
-    set ("${_lang}_FLAGS" "${${_lang}_FLAGS} ${_flags}")
-    unset (${_lang})
-    unset (${_flags})
+    string(REPLACE ";" " " _flags "${ARGN}")
+    set("${_lang}_FLAGS" "${${_lang}_FLAGS} ${_flags}")
+    unset(${_lang})
+    unset(${_flags})
   endforeach()
 endmacro(add_compile_flags)
 
@@ -11,7 +11,7 @@ macro(set_source_files_compile_flags)
   foreach(file ${ARGN})
     get_filename_component(_file_ext ${file} EXT)
     set(_lang "")
-    if ("${_file_ext}" STREQUAL ".m")
+    if("${_file_ext}" STREQUAL ".m")
       set(_lang OBJC)
       # CMake believes that Objective C is a flavor of C++, not C,
       # and uses g++ compiler for .m files.
@@ -21,9 +21,9 @@ macro(set_source_files_compile_flags)
       set(_lang OBJCXX)
     endif()
 
-    if (_lang)
+    if(_lang)
       get_source_file_property(_flags ${file} COMPILE_FLAGS)
-      if ("${_flags}" STREQUAL "NOTFOUND")
+      if("${_flags}" STREQUAL "NOTFOUND")
         set(_flags "${CMAKE_${_lang}_FLAGS}")
       else()
         set(_flags "${_flags} ${CMAKE_${_lang}_FLAGS}")
@@ -45,28 +45,28 @@ macro(fetch_version name version_file)
   set(${name}_GIT_COMMIT "")
   set(${name}_GIT_REVISION 0)
   set(${name}_GIT_VERSION "")
-  if (GIT)
-    execute_process (COMMAND ${GIT} describe --tags --long --dirty=-dirty
+  if(GIT)
+    execute_process(COMMAND ${GIT} describe --tags --long --dirty=-dirty
       OUTPUT_VARIABLE ${name}_GIT_DESCRIBE
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-    execute_process (COMMAND ${GIT} show --no-patch --format=%cI HEAD
+    execute_process(COMMAND ${GIT} show --no-patch --format=%cI HEAD
       OUTPUT_VARIABLE ${name}_GIT_TIMESTAMP
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-    execute_process (COMMAND ${GIT} show --no-patch --format=%T HEAD
+    execute_process(COMMAND ${GIT} show --no-patch --format=%T HEAD
       OUTPUT_VARIABLE ${name}_GIT_TREE
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-    execute_process (COMMAND ${GIT} show --no-patch --format=%H HEAD
+    execute_process(COMMAND ${GIT} show --no-patch --format=%H HEAD
       OUTPUT_VARIABLE ${name}_GIT_COMMIT
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-    execute_process (COMMAND ${GIT} rev-list --count --no-merges HEAD
+    execute_process(COMMAND ${GIT} rev-list --count --no-merges HEAD
       OUTPUT_VARIABLE ${name}_GIT_REVISION
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -85,19 +85,19 @@ macro(fetch_version name version_file)
     endif()
   endif()
 
-  if (NOT ${name}_GIT_VERSION OR NOT ${name}_GIT_TIMESTAMP OR NOT ${name}_GIT_REVISION)
-    message (WARNING "Unable to retrive ${name} version from git.")
+  if(NOT ${name}_GIT_VERSION OR NOT ${name}_GIT_TIMESTAMP OR NOT ${name}_GIT_REVISION)
+    message(WARNING "Unable to retrive ${name} version from git.")
     set(${name}_GIT_VERSION "0;0;0;0")
     set(${name}_GIT_TIMESTAMP "")
     set(${name}_GIT_REVISION 0)
 
     # Try to get version from VERSION file
-    if (EXISTS "${version_file}")
-      file (STRINGS "${version_file}" ${name}_VERSION)
+    if(EXISTS "${version_file}")
+      file(STRINGS "${version_file}" ${name}_VERSION)
     endif()
 
-    if (NOT ${name}_VERSION)
-      message (WARNING "Unable to retrive ${name} version from \"${version_file}\" file.")
+    if(NOT ${name}_VERSION)
+      message(WARNING "Unable to retrive ${name} version from \"${version_file}\" file.")
       set(${name}_VERSION_LIST ${${name}_GIT_VERSION})
       string(REPLACE ";" "." ${name}_VERSION "${${name}_GIT_VERSION}")
     else()
@@ -110,10 +110,10 @@ macro(fetch_version name version_file)
     string(REPLACE ";" "." ${name}_VERSION "${${name}_GIT_VERSION}")
   endif()
 
-  LIST(GET ${name}_VERSION_LIST 0 "${name}_VERSION_MAJOR")
-  LIST(GET ${name}_VERSION_LIST 1 "${name}_VERSION_MINOR")
-  LIST(GET ${name}_VERSION_LIST 2 "${name}_VERSION_RELEASE")
-  LIST(GET ${name}_VERSION_LIST 3 "${name}_VERSION_REVISION")
+  list(GET ${name}_VERSION_LIST 0 "${name}_VERSION_MAJOR")
+  list(GET ${name}_VERSION_LIST 1 "${name}_VERSION_MINOR")
+  list(GET ${name}_VERSION_LIST 2 "${name}_VERSION_RELEASE")
+  list(GET ${name}_VERSION_LIST 3 "${name}_VERSION_REVISION")
 
   set(${name}_VERSION_MAJOR ${${name}_VERSION_MAJOR} PARENT_SCOPE)
   set(${name}_VERSION_MINOR ${${name}_VERSION_MINOR} PARENT_SCOPE)

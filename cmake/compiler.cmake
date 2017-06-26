@@ -1,7 +1,7 @@
 #
 # Check if the same compile family is used for both C and CXX
 #
-if (NOT (CMAKE_C_COMPILER_ID STREQUAL CMAKE_CXX_COMPILER_ID))
+if(NOT (CMAKE_C_COMPILER_ID STREQUAL CMAKE_CXX_COMPILER_ID))
   message(WARNING "CMAKE_C_COMPILER_ID (${CMAKE_C_COMPILER_ID}) is different "
     "from CMAKE_CXX_COMPILER_ID (${CMAKE_CXX_COMPILER_ID})."
     "The final binary may be unusable.")
@@ -10,10 +10,20 @@ endif()
 # We support building with Clang and gcc. First check
 # what we're using for build.
 #
-if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_COMPILER_IS_CLANG  ON)
   set(CMAKE_COMPILER_IS_GNUCC  OFF)
   set(CMAKE_COMPILER_IS_GNUCXX OFF)
+endif()
+
+# cmake 2.8.9 and earlier doesn't support CMAKE_CXX_COMPILER_VERSION
+if(NOT CMAKE_CXX_COMPILER_VERSION AND (CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCXX))
+  execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion
+    OUTPUT_VARIABLE CMAKE_CXX_COMPILER_VERSION)
+endif()
+if(NOT CMAKE_C_COMPILER_VERSION AND (CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUC))
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+    OUTPUT_VARIABLE CMAKE_C_COMPILER_VERSION)
 endif()
 
 #
@@ -22,13 +32,8 @@ endif()
 # demand for C++ compiler is support of C++11 lambdas, added
 # only in version 4.5 https://gcc.gnu.org/projects/cxx0x.html
 #
-if (CMAKE_COMPILER_IS_GNUCC)
-  # cmake 2.8.9 and earlier doesn't support CMAKE_CXX_COMPILER_VERSION
-  if (NOT CMAKE_CXX_COMPILER_VERSION)
-    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
-      OUTPUT_VARIABLE CMAKE_CXX_COMPILER_VERSION)
-  endif()
-  if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
+if(CMAKE_COMPILER_IS_GNUCC)
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
     message(FATAL_ERROR "
       Your GCC version is ${CMAKE_CXX_COMPILER_VERSION}, please update
       ")
@@ -88,7 +93,7 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
 endif()
 if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
     (NOT HAVE_STD_CXX11 AND NOT HAVE_STD_GNUXX0X))
-  message (FATAL_ERROR
+  message(FATAL_ERROR
     "${CMAKE_C_COMPILER} should support -std=c11 or -std=c99. "
     "${CMAKE_CXX_COMPILER} should support -std=c++11 or -std=gnu++0x. "
     "Please consider upgrade to gcc 4.5+ or clang 3.2+.")
@@ -143,34 +148,34 @@ option(ENABLE_BACKTRACE "Enable output of fiber backtrace information in 'show
   is output with resolved function (symbol) names. Otherwise only frame
   addresses are printed." ${CMAKE_COMPILER_IS_GNUCC})
 
-set (HAVE_BFD False)
-if (ENABLE_BACKTRACE)
-  if (NOT ${CMAKE_COMPILER_IS_GNUCC})
+set(HAVE_BFD False)
+if(ENABLE_BACKTRACE)
+  if(NOT CMAKE_COMPILER_IS_GNUCC)
     # We only know this option to work with gcc
-    message (FATAL_ERROR "ENABLE_BACKTRACE option is set but the system
+    message(FATAL_ERROR "ENABLE_BACKTRACE option is set but the system
       is not x86 based (${CMAKE_SYSTEM_PROCESSOR}) or the compiler
       is not GNU GCC (${CMAKE_C_COMPILER}).")
   endif()
   # Use GNU bfd if present.
   find_library(BFD_LIBRARY NAMES libbfd.a)
   if(BFD_LIBRARY)
-    check_library_exists (${BFD_LIBRARY} bfd_init ""  HAVE_BFD_LIB)
+    check_library_exists(${BFD_LIBRARY} bfd_init "" HAVE_BFD_LIB)
   endif()
   find_library(IBERTY_LIBRARY NAMES libiberty.a)
   if(IBERTY_LIBRARY)
-    check_library_exists (${IBERTY_LIBRARY} cplus_demangle ""  HAVE_IBERTY_LIB)
+    check_library_exists(${IBERTY_LIBRARY} cplus_demangle "" HAVE_IBERTY_LIB)
   endif()
   set(CMAKE_REQUIRED_DEFINITIONS -DPACKAGE=${PACKAGE} -DPACKAGE_VERSION=${PACKAGE_VERSION})
   check_include_files(bfd.h HAVE_BFD_H)
   set(CMAKE_REQUIRED_DEFINITIONS)
   find_package(ZLIB)
-  if (HAVE_BFD_LIB AND HAVE_BFD_H AND HAVE_IBERTY_LIB AND ZLIB_FOUND)
-    set (HAVE_BFD ON)
-    set (BFD_LIBRARIES ${BFD_LIBRARY} ${IBERTY_LIBRARY} ${ZLIB_LIBRARIES})
+  if(HAVE_BFD_LIB AND HAVE_BFD_H AND HAVE_IBERTY_LIB AND ZLIB_FOUND)
+    set(HAVE_BFD ON)
+    set(BFD_LIBRARIES ${BFD_LIBRARY} ${IBERTY_LIBRARY} ${ZLIB_LIBRARIES})
     find_package_message(BFD_LIBRARIES "Found libbfd and dependencies"
       ${BFD_LIBRARIES})
-    if (TARGET_OS_FREEBSD AND NOT TARGET_OS_DEBIAN_FREEBSD)
-      set (BFD_LIBRARIES ${BFD_LIBRARIES} iconv)
+    if(TARGET_OS_FREEBSD AND NOT TARGET_OS_DEBIAN_FREEBSD)
+      set(BFD_LIBRARIES ${BFD_LIBRARIES} iconv)
     endif()
   endif()
 endif()
@@ -198,15 +203,15 @@ macro(setup_compile_flags)
   set(CXX_FLAGS "")
   set(C_FLAGS "")
 
-  if (CC_HAS_FNO_COMMON)
+  if(CC_HAS_FNO_COMMON)
     add_compile_flags("C;CXX" "-fno-common")
   endif()
 
-  if (CC_HAS_GGDB)
+  if(CC_HAS_GGDB)
     add_compile_flags("C;CXX" "-ggdb")
   endif()
 
-  if (CC_HAS_WNO_UNKNOWN_PRAGMAS AND NOT HAVE_OPENMP)
+  if(CC_HAS_WNO_UNKNOWN_PRAGMAS AND NOT HAVE_OPENMP)
     add_compile_flags("C;CXX" -Wno-unknown-pragmas)
   endif()
 
@@ -214,17 +219,17 @@ macro(setup_compile_flags)
   # on frame pointer when getting a backtrace, and it must
   # be used consistently across all object files.
   # The same reasoning applies to -fno-stack-protector switch.
-  if (ENABLE_BACKTRACE)
-    if (CC_HAS_FNO_OMIT_FRAME_POINTER)
+  if(ENABLE_BACKTRACE)
+    if(CC_HAS_FNO_OMIT_FRAME_POINTER)
       add_compile_flags("C;CXX" "-fno-omit-frame-pointer")
     endif()
-    if (CC_HAS_FNO_STACK_PROTECTOR)
+    if(CC_HAS_FNO_STACK_PROTECTOR)
       add_compile_flags("C;CXX" "-fno-stack-protector")
     endif()
   endif()
 
   # Set standard
-  if (HAVE_STD_C11)
+  if(HAVE_STD_C11)
     add_compile_flags("C" "-std=c11")
   elseif(HAVE_STD_GNU99)
     add_compile_flags("C" "-std=gnu99")
@@ -232,21 +237,21 @@ macro(setup_compile_flags)
     add_compile_flags("C" "-std=c99")
   endif()
 
-  if (HAVE_STD_CXX11 AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"))
+  if(HAVE_STD_CXX11 AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"))
     add_compile_flags("CXX" "-std=c++11")
   elseif(HAVE_STD_GNUXX0X)
     add_compile_flags("CXX" "-std=gnu++0x")
     add_definitions("-Doverride=")
   endif()
 
-  if (CC_HAS_WALL)
+  if(CC_HAS_WALL)
     add_compile_flags("C;CXX" "-Wall")
   endif()
-  if (CC_HAS_WEXTRA)
+  if(CC_HAS_WEXTRA)
     add_compile_flags("C;CXX" "-Wextra")
   endif()
 
-  if (CMAKE_COMPILER_IS_GNUCXX)
+  if(CMAKE_COMPILER_IS_GNUCXX)
     # G++ bug. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=31488
     add_compile_flags("CXX"
       "-Wno-invalid-offsetof"
@@ -260,18 +265,18 @@ macro(setup_compile_flags)
 
   # Only add -Werror if it's a debug build, done by developers.
   # Release builds should not cause extra trouble.
-  if (CC_HAS_WERROR AND (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(CC_HAS_WERROR AND (CMAKE_BUILD_TYPE STREQUAL "Debug")
       AND HAVE_STD_C11 AND HAVE_STD_CXX11)
     add_compile_flags("C;CXX" "-Werror")
   endif()
 
-  if (HAVE_OPENMP)
+  if(HAVE_OPENMP)
     add_compile_flags("C;CXX" "-fopenmp")
   endif()
 
-  if (ENABLE_GCOV)
-    if (NOT HAVE_GCOV)
-      message (FATAL_ERROR
+  if(ENABLE_GCOV)
+    if(NOT HAVE_GCOV)
+      message(FATAL_ERROR
         "ENABLE_GCOV option requested but gcov library is not found")
     endif()
 
@@ -284,7 +289,7 @@ macro(setup_compile_flags)
     # add_library(gcov SHARED IMPORTED)
   endif()
 
-  if (ENABLE_GPROF)
+  if(ENABLE_GPROF)
     add_compile_flags("C;CXX" "-pg")
   endif()
 
@@ -295,7 +300,7 @@ macro(setup_compile_flags)
   unset(C_FLAGS)
 endmacro(setup_compile_flags)
 
-if (CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCC)
+if(CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCC)
   set(HAVE_BUILTIN_CTZ 1)
   set(HAVE_BUILTIN_CTZLL 1)
   set(HAVE_BUILTIN_CLZ 1)
@@ -317,12 +322,12 @@ else()
     "${CMAKE_COMPILER_IS_CLANG}:${CMAKE_COMPILER_IS_GNUCC}")
 endif()
 
-if (NOT HAVE_BUILTIN_CTZ OR NOT HAVE_BUILTIN_CTZLL)
+if(NOT HAVE_BUILTIN_CTZ OR NOT HAVE_BUILTIN_CTZLL)
   # Check if -D_GNU_SOURCE has been defined and add this flag to
   # CMAKE_REQUIRED_DEFINITIONS in order to get check_prototype_definition work
   get_property(var DIRECTORY PROPERTY COMPILE_DEFINITIONS)
   list(FIND var "_GNU_SOURCE" var)
-  if (NOT var EQUAL -1)
+  if(NOT var EQUAL -1)
     set(CMAKE_REQUIRED_FLAGS "-Wno-error")
     set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
     check_c_source_compiles("#include <string.h>\n#include <strings.h>\nint main(void) { return ffsl(0L); }"

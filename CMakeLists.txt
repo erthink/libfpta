@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.2)
-if (NOT CMAKE_VERSION VERSION_LESS 3.1.0)
+if(NOT CMAKE_VERSION VERSION_LESS 3.1.0)
   cmake_policy(SET CMP0054 NEW)
 endif()
 
@@ -96,7 +96,7 @@ CHECK_INCLUDE_FILES(ieee754.h HAVE_IEEE754_H)
 
 #
 # Enable 'make tags' target.
-if (CTAGS)
+if(CTAGS)
   add_custom_target(tags COMMAND ${CTAGS} -R -f tags
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_custom_target(ctags DEPENDS tags)
@@ -104,7 +104,7 @@ endif(CTAGS)
 
 #
 # Enable 'make reformat' target.
-if (CLANG_FORMAT)
+if(CLANG_FORMAT)
   add_custom_target(reformat
     VERBATIM
     COMMAND git ls-files | grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\$ | xargs clang-format -i --style=file
