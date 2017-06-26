@@ -221,6 +221,77 @@ if(MSVC)
 endif()
 
 #
+# Check for LTO support by CLANG
+if(CMAKE_COMPILER_IS_CLANG)
+  if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.5)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -print-search-dirs
+      OUTPUT_VARIABLE clang_search_dirs)
+
+    unset(clang_bindir)
+    unset(clang_libdir)
+    string(REGEX MATCH "^(.*programs: =)([^:]*:)*([^:]+/llvm[-.0-9]+/bin[^:]*)(:[^:]*)*(\n.+)$" clang_bindir_valid ${clang_search_dirs})
+    if(clang_bindir_valid)
+      string(REGEX REPLACE "^(.*programs: =)([^:]*:)*([^:]+/llvm[-.0-9]+/bin[^:]*)(:[^:]*)*(\n.+)$" "\\3" clang_bindir ${clang_search_dirs})
+      get_filename_component(clang_libdir "${clang_bindir}/../lib" REALPATH)
+      if(clang_libdir)
+        message(STATUS "Found CLANG/LLVM directories: ${clang_bindir}, ${clang_libdir}")
+      endif()
+    endif()
+
+    if(NOT (clang_bindir AND clang_libdir))
+      message(STATUS "Could NOT find CLANG/LLVM directories (bin and/or lib).")
+    endif()
+
+    if(NOT CMAKE_CLANG_LD AND clang_bindir)
+      find_program(CMAKE_CLANG_LD NAMES llvm-link link llvm-ld ld PATHS ${clang_bindir} NO_DEFAULT_PATH)
+    endif()
+    if(NOT CMAKE_CLANG_AR AND clang_bindir)
+      find_program(CMAKE_CLANG_AR NAMES llvm-ar ar PATHS ${clang_bindir} NO_DEFAULT_PATH)
+    endif()
+    if(NOT CMAKE_CLANG_NM AND clang_bindir)
+      find_program(CMAKE_CLANG_NM NAMES llvm-nm nm PATHS ${clang_bindir} NO_DEFAULT_PATH)
+    endif()
+    if(NOT CMAKE_CLANG_RANLIB AND clang_bindir)
+      find_program(CMAKE_CLANG_RANLIB NAMES llvm-ranlib ranlib PATHS ${clang_bindir} NO_DEFAULT_PATH)
+    endif()
+
+    set(clang_lto_plugin_name "LLVMgold${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    if(NOT CMAKE_LD_GOLD AND clang_bindir)
+      find_program(CMAKE_LD_GOLD NAMES ld.gold PATHS)
+    endif()
+    if(NOT CLANG_LTO_PLUGIN AND clang_libdir)
+      find_file(CLANG_LTO_PLUGIN ${clang_lto_plugin_name} PATH ${clang_libdir} NO_DEFAULT_PATH)
+    endif()
+    if(CLANG_LTO_PLUGIN)
+      message(STATUS "Found CLANG/LLVM's plugin for LTO: ${CLANG_LTO_PLUGIN}")
+    else()
+      message(STATUS "Could NOT find CLANG/LLVM's plugin (${clang_lto_plugin_name}) for LTO.")
+    endif()
+
+    if(CMAKE_CLANG_LD AND CMAKE_CLANG_AR AND CMAKE_CLANG_NM AND CMAKE_CLANG_RANLIB)
+      message(STATUS "Found CLANG/LLVM's binutils for LTO: ${CMAKE_CLANG_AR}, ${CMAKE_CLANG_RANLIB}")
+    else()
+      message(STATUS "Could NOT find CLANG/LLVM's binutils (ar, ranlib, nm) for LTO.")
+    endif()
+
+    unset(clang_lto_plugin_name)
+    unset(clang_libdir)
+    unset(clang_bindir_valid)
+    unset(clang_bindir)
+    unset(clang_search_dirs)
+  endif()
+
+  if((CLANG_LTO_PLUGIN AND CMAKE_LD_GOLD) AND
+      (CMAKE_CLANG_LD AND CMAKE_CLANG_AR AND CMAKE_CLANG_NM AND CMAKE_CLANG_RANLIB))
+    set(CLANG_LTO_AVAILABLE TRUE)
+    message(STATUS "Link-Time Optimization by CLANG/LLVM is available")
+  else()
+    set(CLANG_LTO_AVAILABLE FALSE)
+    message(STATUS "Link-Time Optimization by CLANG/LLVM is NOT available")
+  endif()
+endif()
+
+#
 # Perform build type specific configuration.
 option(ENABLE_BACKTRACE "Enable output of fiber backtrace information in 'show
   fiber' administrative command. Only works on x86 architectures, if compiled
@@ -335,6 +406,13 @@ macro(setup_compile_flags)
     unset(altered_flags)
     unset(lang)
     unset(config)
+  endif()
+
+  if (CMAKE_COMPILER_IS_CLANG AND CLANG_LTO_ENABLED)
+    add_compile_flags("C;CXX" "-flto")
+    set(EXE_LINKER_FLAGS "${EXE_LINKER_FLAGS} -flto -fverbose-asm -fwhole-program")
+    set(SHARED_LINKER_FLAGS "${SHARED_LINKER_FLAGS} -flto -fverbose-asm")
+    set(MODULE_LINKER_FLAGS "${MODULE_LINKER_FLAGS} -flto -fverbose-asm")
   endif()
 
   if(CC_HAS_FNO_COMMON)
