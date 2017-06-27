@@ -1,5 +1,7 @@
 - [x] intergation with GoogleTest (pull, build);
 - [x] CI by AppVeyor;
+- [x] use fast-int types and double_t;
+- [x] Link-Time Optimization;
 - [ ] interface for external scheme;
 - [ ] serialization to JSON (optional with schema);
 - [ ] de-serialization from JSON (with schema);
