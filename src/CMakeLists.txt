@@ -48,7 +48,7 @@ endif()
 
 # get definitions as a string of "-Dxyz=124 ..."
 get_target_property(FPTU_DEFINITIONS fptu COMPILE_DEFINITIONS)
-if (NOT FPTU_DEFINITIONS)
+if(NOT FPTU_DEFINITIONS)
   set(FPTU_DEFINITIONS "")
 endif()
 list(REMOVE_DUPLICATES FPTU_DEFINITIONS)
@@ -58,7 +58,7 @@ string(STRIP FPTU_DEFINITIONS "${FPTU_DEFINITIONS}")
 
 # get target compile options as a list
 get_target_property(fptu_compile_options fptu COMPILE_OPTIONS)
-if (NOT fptu_compile_options)
+if(NOT fptu_compile_options)
   set(fptu_compile_options "")
 endif()
 # append cmake's common cxx flags and defines
