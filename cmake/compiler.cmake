@@ -462,11 +462,10 @@ macro(setup_compile_flags)
     add_compile_flags("C;CXX" "-Wextra")
   endif()
 
-  if(CMAKE_COMPILER_IS_GNUCXX)
+  if(CMAKE_COMPILER_IS_GNUCXX
+      AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
     # G++ bug. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=31488
-    add_compile_flags("CXX"
-      "-Wno-invalid-offsetof"
-      )
+    add_compile_flags("CXX" "-Wno-invalid-offsetof")
   endif()
 
   add_definitions("-D__STDC_FORMAT_MACROS=1")
