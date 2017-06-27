@@ -6,11 +6,11 @@ add_library(t1ha STATIC
   t1ha/src/t1ha1.c
   )
 
-if (CC_HAS_ARCH_NATIVE)
+if(CC_HAS_ARCH_NATIVE)
   target_compile_options(t1ha PRIVATE "-march=native")
 endif()
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   set(LIBMDBX_OSAL windows)
 else()
   set(LIBMDBX_OSAL posix)
@@ -31,8 +31,8 @@ if(UNIX AND NOT APPLE)
   target_link_libraries(mdbx rt)
 endif()
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  message (WARNING "Now skiping MDBX-tools for Windows (TODO)")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  message(WARNING "Now skiping MDBX-tools for Windows (TODO)")
 else()
 
   add_executable(mdbx_chk libmdbx/src/tools/mdbx_chk.c)

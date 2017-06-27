@@ -1,28 +1,28 @@
 cmake_minimum_required(VERSION 2.8.2)
-if (NOT CMAKE_VERSION VERSION_LESS 3.1.0)
+if(NOT CMAKE_VERSION VERSION_LESS 3.1.0)
   cmake_policy(SET CMP0054 NEW)
 endif()
 
 project(libfpta C CXX)
 
 if(NOT "$ENV{TEAMCITY_PROCESS_FLOW_ID}" STREQUAL "")
-    set(CI TEAMCITY)
-    message(STATUS "TeamCity CI")
+  set(CI TEAMCITY)
+  message(STATUS "TeamCity CI")
 elseif(NOT "$ENV{TRAVIS}" STREQUAL "")
-    set(CI TRAVIS)
-    message(STATUS "Travis CI")
+  set(CI TRAVIS)
+  message(STATUS "Travis CI")
 elseif(NOT "$ENV{CIRCLECI}" STREQUAL "")
-    set(CI CIRCLE)
-    message(STATUS "Circle CI")
+  set(CI CIRCLE)
+  message(STATUS "Circle CI")
 elseif(NOT "$ENV{APPVEYOR}" STREQUAL "")
-    set(CI APPVEYOR)
-    message(STATUS "AppVeyor CI")
+  set(CI APPVEYOR)
+  message(STATUS "AppVeyor CI")
 elseif(NOT "$ENV{CI}" STREQUAL "")
-    set(CI "$ENV{CI}")
-    message(STATUS "Other CI (${CI})")
+  set(CI "$ENV{CI}")
+  message(STATUS "Other CI (${CI})")
 else()
-    message(STATUS "Assume No any CI environment")
-    unset(CI)
+  message(STATUS "Assume No any CI environment")
+  unset(CI)
 endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -117,7 +117,7 @@ CHECK_INCLUDE_FILES(ieee754.h HAVE_IEEE754_H)
 
 #
 # Enable 'make tags' target.
-if (CTAGS)
+if(CTAGS)
   add_custom_target(tags COMMAND ${CTAGS} -R -f tags
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_custom_target(ctags DEPENDS tags)
@@ -125,7 +125,7 @@ endif(CTAGS)
 
 #
 # Enable 'make reformat' target.
-if (CLANG_FORMAT)
+if(CLANG_FORMAT)
   add_custom_target(reformat
     VERBATIM
     COMMAND git ls-files | grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\$ | xargs clang-format -i --style=file

@@ -21,7 +21,7 @@ add_library(fpta
   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
   )
 
-if (CC_HAS_VISIBILITY)
+if(CC_HAS_VISIBILITY)
   target_compile_options(fpta PRIVATE "-fvisibility=hidden")
 endif()
 
