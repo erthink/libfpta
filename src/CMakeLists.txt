@@ -32,6 +32,9 @@ endif()
 
 if(CC_HAS_VISIBILITY)
   target_compile_options(fpta PRIVATE "-fvisibility=hidden")
+  if(GCC_LTO_ENABLED OR CLANG_LTO_ENABLED)
+    set_target_properties(fpta PROPERTIES LINK_FLAGS "-fvisibility=hidden")
+  endif()
 endif()
 
 if(NOT LIBFPTA_STATIC)
