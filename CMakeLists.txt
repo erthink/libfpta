@@ -41,6 +41,14 @@ include(CheckFunctionExists)
 include(FindPackageMessage)
 include(CheckStructHasMember)
 
+if(NOT CMAKE_VERSION VERSION_LESS 3.9.0)
+  cmake_policy(SET CMP0069 NEW)
+  include(CheckIPOSupport)
+  check_ipo_support(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE)
+else()
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE FALSE)
+endif()
+
 #
 # Set default build type to Debug. This is to ease a developer's
 # life. Release binaries are built by BuildBot automatically anyway.
@@ -67,6 +75,21 @@ include(cmake/os.cmake)
 include(cmake/profile.cmake)
 include(cmake/compiler.cmake)
 # include(cmake/atomic.cmake)
+
+if(CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE)
+  option(INTERPROCEDURAL_OPTIMIZATION "Enable interprocedural/LTO optimization." ON)
+else()
+  option(INTERPROCEDURAL_OPTIMIZATION "Enable interprocedural/LTO optimization." OFF)
+endif()
+
+if(INTERPROCEDURAL_OPTIMIZATION)
+  if(CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE)
+    message(STATUS "FPTA indulge Interprocedural Optimization by CMake")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+  else()
+    message(WARNING "Unable to engage interprocedural/LTO optimization.")
+  endif()
+endif()
 
 find_program(VALGRIND valgrind)
 if(VALGRIND)
