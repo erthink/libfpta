@@ -262,7 +262,7 @@ template <fptu_type type> struct saturated {
     return FPTA_SUCCESS;
   }
 
-  static bool min(const fpta_index_type index, fptu_field *field,
+  static bool min(const fpta_index_type index, const fptu_field *field,
                   const fpta_value &value, fast &result) {
     assert(value.is_number());
     const fast ones = confine_value(value, bottom(index), top(index));
@@ -279,7 +279,7 @@ template <fptu_type type> struct saturated {
     return false;
   }
 
-  static bool max(const fpta_index_type index, fptu_field *field,
+  static bool max(const fpta_index_type index, const fptu_field *field,
                   const fpta_value &value, fast &result) {
     assert(value.is_number());
     const fast ones = confine_value(value, bottom(index), top(index));
@@ -296,7 +296,7 @@ template <fptu_type type> struct saturated {
     return false;
   }
 
-  static bool add(const fpta_index_type index, fptu_field *field,
+  static bool add(const fpta_index_type index, const fptu_field *field,
                   const fpta_value &value, fast &result) {
     assert(value.is_number() && !value.is_negative());
 
@@ -325,7 +325,7 @@ template <fptu_type type> struct saturated {
     }
   }
 
-  static bool sub(const fpta_index_type index, fptu_field *field,
+  static bool sub(const fpta_index_type index, const fptu_field *field,
                   const fpta_value &value, fast &result) {
     assert(value.is_number() && !value.is_negative());
 
@@ -357,9 +357,7 @@ template <fptu_type type> struct saturated {
   }
 
   static int inplace(const fpta_inplace op, const fpta_index_type index,
-                     fpta_value value, fptu_rw *row, const unsigned colnum) {
-    fast result;
-    fptu_field *field = fptu_lookup(row, colnum, type);
+                     const fptu_field *field, fpta_value value, fast &result) {
     assert(value.is_number());
 
     switch (op) {
@@ -396,7 +394,22 @@ template <fptu_type type> struct saturated {
     case fpta_bes:
       return FPTA_ENOIMP /* TODO */;
     }
-    return fptu::upsert_number<type, fast>(row, colnum, result);
+    return FPTA_SUCCESS;
+  }
+
+  static int inplace(const fpta_inplace op, const fpta_index_type index,
+                     fptu_field *field, fpta_value value, fptu_rw *row,
+                     const unsigned colnum) {
+    fast result;
+    int rc = inplace(op, index, field, value, result);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+
+    if (unlikely(field == nullptr))
+      return fptu::upsert_number<type>(row, colnum, result);
+
+    fptu::set_number<type>(field, result);
+    return rc;
   }
 };
 
@@ -487,23 +500,27 @@ FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
   }
 
   const fpta_index_type index = fpta_name_colindex(column_id);
+  fptu_field *field = fptu_lookup(row, colnum, coltype);
   switch (coltype) {
   default:
     assert(false);
     return FPTA_EOOPS;
   case fptu_uint16:
-    return saturated<fptu_uint16>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_uint16>::inplace(op, index, field, value, row,
+                                           colnum);
   case fptu_uint32:
-    return saturated<fptu_uint32>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_uint32>::inplace(op, index, field, value, row,
+                                           colnum);
   case fptu_uint64:
-    return saturated<fptu_uint64>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_uint64>::inplace(op, index, field, value, row,
+                                           colnum);
   case fptu_int32:
-    return saturated<fptu_int32>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_int32>::inplace(op, index, field, value, row, colnum);
   case fptu_int64:
-    return saturated<fptu_int64>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_int64>::inplace(op, index, field, value, row, colnum);
   case fptu_fp32:
-    return saturated<fptu_fp32>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_fp32>::inplace(op, index, field, value, row, colnum);
   case fptu_fp64:
-    return saturated<fptu_fp64>::inplace(op, index, value, row, colnum);
+    return saturated<fptu_fp64>::inplace(op, index, field, value, row, colnum);
   }
 }
