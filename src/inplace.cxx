@@ -462,12 +462,13 @@ FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
     return FPTA_EINVAL;
 
+  const unsigned colnum = (unsigned)column_id->column.num;
+  if (colnum > fpta_max_cols)
+    return FPTA_EINVAL;
+
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   if (unlikely((fptu_any_number & (INT32_C(1) << coltype)) == 0))
     return FPTA_ETYPE;
-
-  assert(column_id->column.num <= fptu_max_cols);
-  const unsigned colnum = (unsigned)column_id->column.num;
 
   switch (value.type) {
   default:

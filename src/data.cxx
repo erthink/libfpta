@@ -209,9 +209,12 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
                     fpta_value *value) {
   if (unlikely(column_id == nullptr || value == nullptr))
     return FPTA_EINVAL;
+  const unsigned colnum = (unsigned)column_id->column.num;
+  if (colnum > fpta_max_cols)
+    return FPTA_EINVAL;
 
-  const fptu_field *field = fptu_lookup_ro(row, (unsigned)column_id->column.num,
-                                           fpta_name_coltype(column_id));
+  const fptu_field *field =
+      fptu_lookup_ro(row, colnum, fpta_name_coltype(column_id));
   *value = fpta_field2value_ex(field, fpta_name_colindex(column_id));
   return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
@@ -221,9 +224,11 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   if (unlikely(!pt || !fpta_id_validate(column_id, fpta_column)))
     return FPTA_EINVAL;
 
-  const fptu_type coltype = fpta_shove2type(column_id->shove);
-  assert(column_id->column.num <= fptu_max_cols);
   const unsigned colnum = (unsigned)column_id->column.num;
+  if (colnum > fpta_max_cols)
+    return FPTA_EINVAL;
+
+  const fptu_type coltype = fpta_shove2type(column_id->shove);
   const fpta_index_type index = fpta_name_colindex(column_id);
 
   if (unlikely(value.type == fpta_null))

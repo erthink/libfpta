@@ -1366,11 +1366,13 @@ FPTA_API int fpta_name_reset(fpta_name *name_id);
 
 /* Возвращает тип данных колонки из дескриптора имени */
 static __inline fptu_type fpta_name_coltype(const fpta_name *column_id) {
+  assert(column_id->column.num >= 0);
   return (fptu_type)(column_id->shove & fpta_column_typeid_mask);
 }
 
 /* Возвращает тип индекса колонки из дескриптора имени */
 static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
+  assert(column_id->column.num >= 0);
   return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
 }
 
