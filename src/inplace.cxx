@@ -372,7 +372,7 @@ template <fptu_type type> struct saturated {
       }
     addition:
       if (!add(index, field, value, result))
-        return FPTA_SUCCESS;
+        return FPTA_NODATA;
       break;
     case fpta_saturated_sub:
       if (value.is_negative()) {
@@ -381,15 +381,15 @@ template <fptu_type type> struct saturated {
       }
     subtraction:
       if (!sub(index, field, value, result))
-        return FPTA_SUCCESS;
+        return FPTA_NODATA;
       break;
     case fpta_min:
       if (!min(index, field, value, result))
-        return FPTA_SUCCESS;
+        return FPTA_NODATA;
       break;
     case fpta_max:
       if (!max(index, field, value, result))
-        return FPTA_SUCCESS;
+        return FPTA_NODATA;
       break;
     case fpta_saturated_mul:
     case fpta_saturated_div:
@@ -399,6 +399,8 @@ template <fptu_type type> struct saturated {
     return fptu::upsert_number<type, fast>(row, colnum, result);
   }
 };
+
+//----------------------------------------------------------------------------
 
 FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
   if (unlikely(!value || !fpta_id_validate(column_id, fpta_column)))
@@ -462,7 +464,7 @@ FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   if (unlikely((fptu_any_number & (INT32_C(1) << coltype)) == 0))
-    return FPTA_EINVAL;
+    return FPTA_ETYPE;
 
   assert(column_id->column.num <= fptu_max_cols);
   const unsigned colnum = (unsigned)column_id->column.num;
@@ -477,7 +479,7 @@ FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
       return FPTA_EVALUE;
   // no break here
   case fpta_null:
-    return FPTA_SUCCESS /* silently ignore null-arg as no-op */;
+    return FPTA_NODATA /* silently ignore null-arg as no-op */;
   case fpta_signed_int:
   case fpta_unsigned_int:
     break;
