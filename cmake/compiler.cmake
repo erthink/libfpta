@@ -35,8 +35,7 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
     message(FATAL_ERROR "
-      Your GCC version is ${CMAKE_CXX_COMPILER_VERSION}, please update
-      ")
+      Your GCC version is ${CMAKE_CXX_COMPILER_VERSION}, please update")
   endif()
 endif()
 
