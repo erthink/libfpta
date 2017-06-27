@@ -50,7 +50,7 @@ endif()
 
 # get definitions as a string of "-Dxyz=124 ..."
 get_target_property(FPTA_DEFINITIONS fpta COMPILE_DEFINITIONS)
-if (NOT FPTA_DEFINITIONS)
+if(NOT FPTA_DEFINITIONS)
   set(FPTA_DEFINITIONS "")
 endif()
 list(REMOVE_DUPLICATES FPTA_DEFINITIONS)
@@ -60,7 +60,7 @@ string(STRIP FPTA_DEFINITIONS "${FPTA_DEFINITIONS}")
 
 # get target compile options as a list
 get_target_property(fpta_compile_options fpta COMPILE_OPTIONS)
-if (NOT fpta_compile_options)
+if(NOT fpta_compile_options)
   set(fpta_compile_options "")
 endif()
 # append cmake's common cxx flags and defines

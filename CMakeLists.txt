@@ -217,7 +217,7 @@ include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PRO
 add_subdirectory(submodules)
 add_subdirectory(src)
 
-if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
   message(WARNING "MSVC compiler is too old (${MSVC_VERSION}) for building tests, disable ones")
 else()
   add_subdirectory(test)
