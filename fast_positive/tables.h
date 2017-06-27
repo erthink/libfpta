@@ -609,6 +609,21 @@ static __inline int fpta_value_destroy(fpta_value *value) {
 }
 
 //----------------------------------------------------------------------------
+/* In-place numeric operations with saturation */
+
+typedef enum fpta_inplace {
+  fpta_saturated_add /* target = min(target + argument, MAX_TYPE_VALUE) */,
+  fpta_saturated_sub /* target = max(target - argument, MIN_TYPE_VALUE) */,
+  fpta_saturated_mul /* target = min(target * argument, MAX_TYPE_VALUE) */,
+  fpta_saturated_div /* target = max(target / argument, MIN_TYPE_VALUE) */,
+  fpta_min /* target = min(target, argument) */,
+  fpta_max /* target = max(target, argument) */,
+  fpta_bes /* Basic Exponential Smoothing, при этом коэффициент сглаживания
+            * определяется дополнительным (третьим) аргументом.
+            * https://en.wikipedia.org/wiki/Exponential_smoothing */,
+} fpta_inplace;
+
+//----------------------------------------------------------------------------
 /* Designated empty, aka Denoted NILs */
 
 /* Предназначение и использование.
@@ -2235,34 +2250,21 @@ FPTA_API int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
 FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
                              fpta_value *value);
 
-typedef enum fpta_inplace {
-  fpta_saturated_add /* target = min(target + argument, MAX_TYPE_VALUE) */,
-  fpta_saturated_sub /* target = max(target - argument, MIN_TYPE_VALUE) */,
-  fpta_saturated_mul /* target = min(target * argument, MAX_TYPE_VALUE) */,
-  fpta_saturated_div /* target = max(target / argument, MIN_TYPE_VALUE) */,
-  fpta_min /* target = min(target, argument) */,
-  fpta_max /* target = max(target, argument) */,
-  fpta_bes /* Basic Exponential Smoothing, при этом коэффицент сглаживания
-            * определяется третим (дополнительным) аргументом.
-            * https://en.wikipedia.org/wiki/Exponential_smoothing */,
-} fpta_inplace;
-
-/* Обновляет значение колонки выполняет бинарную операцию c аргументом
- * и текущим значением колонки (поля кортежа).
+/* Обновляет значение колонки в переданном кортеже-строке, выполняя бинарную
+ * операцию c аргументом и текущим значением колонки (поля кортежа).
  *
  * Аргумент column_id идентифицирует целевую колонку и должен быть
  * предварительно подготовлен посредством fpta_name_refresh().
  * Внутри функции column_id не обновляется.
  *
  * Требуемая операция задается аргументом op, а второй операнд параметром value.
-
  * ВАЖНО: Для операции fpta_bes (Basic Exponential Smoothing) необходимо
  * передать дополнительный параметр, который задает коэффициент сглаживания.
  * Этот дополнительные параметр может быть передан в двух вариантах:
- *  - В формате плавающей точки, в диаппазане (0..1), исключая крайние точки.
+ *  - В формате плавающей точки, в диапазоне (0..1), исключая крайние точки.
  *    При этом непосредственно задается значение коэффициент сглаживания.
  *  - В виде отрицательного int64_t значения в диапазоне (-24..0),
- *    также исключая крайние точки. При этом коэффициет сглаживания вычисляется
+ *    также исключая крайние точки. При этом коэффициент сглаживания вычисляется
  *    как "2 в степени N", где N - переданное значение.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
