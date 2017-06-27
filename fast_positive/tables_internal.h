@@ -53,12 +53,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-__extern_C int32_t mrand64(void);
+__extern_C int_fast32_t mrand64(void);
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #else
-static __inline int32_t mrand48(void) { return mrand64(); }
+static __inline int_fast32_t mrand48(void) { return mrand64(); }
 #endif
 
 #include <algorithm>
