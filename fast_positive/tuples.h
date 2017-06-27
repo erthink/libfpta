@@ -1135,31 +1135,31 @@ static void set_number(fptu_field *field, const VALUE_TYPE &value) {
     break;
   case fptu_uint16:
     assert(is_within(value, 0, INT16_MAX));
-    field->get_payload_uint16() = value;
+    field->offset = (uint16_t)value;
     break;
   case fptu_uint32:
     assert(is_within(value, 0u, UINT32_MAX));
-    fptu_field_payload(field)->u32 = value;
+    fptu_field_payload(field)->u32 = (uint32_t)value;
     break;
   case fptu_uint64:
     assert(is_within(value, 0u, UINT64_MAX));
-    fptu_field_payload(field)->u64 = value;
+    fptu_field_payload(field)->u64 = (uint64_t)value;
     break;
   case fptu_int32:
     assert(is_within(value, INT32_MIN, INT32_MAX));
-    fptu_field_payload(field)->i32 = value;
+    fptu_field_payload(field)->i32 = (int32_t)value;
     break;
   case fptu_int64:
     assert(is_within(value, INT64_MIN, INT64_MAX));
-    fptu_field_payload(field)->i64 = value;
+    fptu_field_payload(field)->i64 = (int64_t)value;
     break;
   case fptu_fp32:
     assert(value >= FLT_MIN && value <= FLT_MAX);
-    fptu_field_payload(field)->fp32 = value;
+    fptu_field_payload(field)->fp32 = (float)value;
     break;
   case fptu_fp64:
     assert(value >= DBL_MIN && value <= DBL_MAX);
-    fptu_field_payload(field)->fp64 = value;
+    fptu_field_payload(field)->fp64 = (double)value;
     break;
   }
 }
