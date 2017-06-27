@@ -120,7 +120,7 @@ enum fptu_error {
 };
 
 /* Внутренний тип для хранения размера полей переменной длины. */
-typedef union FPTU_API fptu_varlen {
+typedef union fptu_varlen {
   struct __packed {
     uint16_t brutto; /* брутто-размер в 4-байтовых юнитах,
                       * всегда больше или равен 1. */
@@ -160,7 +160,7 @@ typedef union FPTU_API fptu_field {
 } fptu_field;
 
 /* Внутренний тип соответствующий 32-битной ячейке с данными. */
-typedef union FPTU_API fptu_unit {
+typedef union fptu_unit {
   fptu_field field;
   fptu_varlen varlen;
   uint32_t data;
@@ -173,7 +173,7 @@ typedef union FPTU_API fptu_unit {
  * iovec выбран для совместимости с функциями readv(), writev() и т.п.
  * Другими словами, это просто "оболочка", а сами данные кортежа должны быть
  * где-то размещены. */
-typedef union FPTU_API fptu_ro {
+typedef union fptu_ro {
   struct {
     const fptu_unit *units;
     size_t total_bytes;
@@ -185,7 +185,7 @@ typedef union FPTU_API fptu_ro {
  * Является плоским буфером, в начале которого расположены служебные поля.
  *
  * Инициализируется функциями fptu_init(), fptu_alloc() и fptu_fetch(). */
-typedef struct FPTU_API fptu_rw {
+typedef struct fptu_rw {
   unsigned head;  /* Индекс дозаписи дескрипторов, растет к началу буфера,
                      указывает на первый занятый элемент. */
   unsigned tail;  /* Индекс для дозаписи данных, растет к концу буфера,
