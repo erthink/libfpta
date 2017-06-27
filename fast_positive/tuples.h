@@ -549,6 +549,8 @@ FPTU_API fptu_rw *fptu_fetch(fptu_ro ro, void *buffer_space,
 FPTU_API size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
                                                unsigned more_payload,
                                                const char **error);
+FPTU_API size_t fptu_get_buffer_size(fptu_ro ro, unsigned more_items,
+                                     unsigned more_payload);
 
 /* Производит дефрагментацию модифицируемой формы кортежа.
  * Возвращает true если была произведена дефрагментация, что можно
