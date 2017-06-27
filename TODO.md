@@ -59,7 +59,8 @@
 - [ ] fpta: юнит-тесты схемы для nullable колонок.
 - [ ] fpta: юнит-тесты индексов для nullable колонок.
 - [ ] fpta: юнит-тесты обновлений для nullable колонок.
-- [ ] fpta: юнит-тесты inplace-saturated: min, max, add, sub
+- [ ] fpta: юнит-тесты inplace-saturated: min, max, add, sub.
+- [ ] fpta: юнит-тесты для cursor_inplace().
 
 Качество
 ========

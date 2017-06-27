@@ -524,3 +524,143 @@ FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
     return saturated<fptu_fp64>::inplace(op, index, field, value, row, colnum);
   }
 }
+
+//----------------------------------------------------------------------------
+
+FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
+                                 const fpta_inplace op, const fpta_value value,
+                                 ...) {
+  if (unlikely(op < fpta_saturated_add || op > fpta_bes))
+    return FPTA_EINVAL;
+
+  int rc = fpta_cursor_validate(cursor, fpta_write);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  rc = fpta_name_refresh_couple(cursor->txn, cursor->table_id, column_id);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  if (unlikely(cursor->index.column_order == (unsigned)column_id->column.num))
+    return FPTA_EINVAL;
+
+  const fptu_type coltype = fpta_shove2type(column_id->shove);
+  if (unlikely((fptu_any_number & (INT32_C(1) << coltype)) == 0))
+    return FPTA_ETYPE;
+
+  switch (value.type) {
+  default:
+    return FPTA_ETYPE;
+  case fpta_float_point:
+    if (likely(!std::isnan(value.fp)))
+      break;
+    if (FPTA_PROHIBIT_UPSERT_NAN)
+      return FPTA_EVALUE;
+  // no break here
+  case fpta_null:
+    return FPTA_NODATA /* silently ignore null-arg as no-op */;
+  case fpta_signed_int:
+  case fpta_unsigned_int:
+    break;
+  }
+
+  fptu_ro source_row;
+  rc = fpta_cursor_get(cursor, &source_row);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  union {
+    numeric_traits<fptu_uint16>::fast uint16;
+    numeric_traits<fptu_uint32>::fast uint32;
+    numeric_traits<fptu_uint64>::fast uint64;
+    numeric_traits<fptu_int32>::fast int32;
+    numeric_traits<fptu_int64>::fast int64;
+    numeric_traits<fptu_fp32>::fast fp32;
+    numeric_traits<fptu_fp64>::fast fp64;
+  } result;
+
+  const unsigned colnum = (unsigned)column_id->column.num;
+  const fpta_index_type index = fpta_name_colindex(column_id);
+  const fptu_field *field = fptu_lookup_ro(source_row, colnum, coltype);
+
+  switch (coltype) {
+  default:
+    assert(false);
+    return FPTA_EOOPS;
+  case fptu_uint16:
+    rc =
+        saturated<fptu_uint16>::inplace(op, index, field, value, result.uint16);
+    break;
+  case fptu_uint32:
+    rc =
+        saturated<fptu_uint32>::inplace(op, index, field, value, result.uint32);
+    break;
+  case fptu_uint64:
+    rc =
+        saturated<fptu_uint64>::inplace(op, index, field, value, result.uint64);
+    break;
+  case fptu_int32:
+    rc = saturated<fptu_int32>::inplace(op, index, field, value, result.int32);
+    break;
+  case fptu_int64:
+    rc = saturated<fptu_int64>::inplace(op, index, field, value, result.int64);
+    break;
+  case fptu_fp32:
+    rc = saturated<fptu_fp32>::inplace(op, index, field, value, result.fp32);
+    break;
+  case fptu_fp64:
+    rc = saturated<fptu_fp64>::inplace(op, index, field, value, result.fp64);
+    break;
+  }
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  const size_t buffer_size =
+      fptu_get_buffer_size(source_row, field ? 0 : 1, field ? 0 : 8);
+  void *const buffer = alloca(buffer_size);
+  fptu_rw *changeable_row =
+      fptu_fetch(source_row, buffer, buffer_size, field ? 0 : 1);
+  if (unlikely(changeable_row == nullptr))
+    return FPTA_EOOPS;
+
+  switch (coltype) {
+  default:
+    assert(false);
+    return FPTA_EOOPS;
+  case fptu_uint16:
+    rc =
+        fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.uint16);
+    break;
+  case fptu_uint32:
+    rc =
+        fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.uint32);
+    break;
+  case fptu_uint64:
+    rc =
+        fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.uint64);
+    break;
+  case fptu_int32:
+    rc = fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.int32);
+    break;
+  case fptu_int64:
+    rc = fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.int64);
+    break;
+  case fptu_fp32:
+    rc = fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.fp32);
+    break;
+  case fptu_fp64:
+    rc = fptu::upsert_number<fptu_uint16>(changeable_row, colnum, result.fp64);
+    break;
+  }
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  const fptu_ro modified_row = fptu_take(changeable_row);
+  if (fpta_is_indexed(index) && fpta_index_is_unique(index)) {
+    rc = fpta_cursor_validate_update(cursor, modified_row);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  return fpta_cursor_update(cursor, modified_row);
+}

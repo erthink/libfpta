@@ -23,14 +23,6 @@
  * с тем чтобы отличать от nullptr */
 static char NIL;
 
-static int fpta_cursor_validate(const fpta_cursor *cursor,
-                                fpta_level min_level) {
-  if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr))
-    return FPTA_EINVAL;
-
-  return fpta_txn_validate(cursor->txn, min_level);
-}
-
 int fpta_cursor_close(fpta_cursor *cursor) {
   int rc = fpta_cursor_validate(cursor, fpta_read);
 
