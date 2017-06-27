@@ -2335,9 +2335,9 @@ typedef struct fpta_version_info {
 typedef struct fpta_build_info {
   const char *datetime;
   const char *target;
-  const char *options;
+  const char *cmake_options;
   const char *compiler;
-  const char *flags;
+  const char *compile_flags;
 } fpta_build_info;
 
 extern FPTA_API const struct fpta_version_info fpta_version;
