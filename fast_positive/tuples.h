@@ -1199,25 +1199,25 @@ static int upsert_number(fptu_rw *pt, unsigned colnum,
     return 0;
   case fptu_uint16:
     assert(is_within(value, 0, INT16_MAX));
-    return fptu_upsert_uint16(pt, colnum, value);
+    return fptu_upsert_uint16(pt, colnum, (uint_fast16_t)value);
   case fptu_uint32:
     assert(is_within(value, 0u, UINT32_MAX));
-    return fptu_upsert_uint32(pt, colnum, value);
+    return fptu_upsert_uint32(pt, colnum, (uint_fast32_t)value);
   case fptu_uint64:
     assert(is_within(value, 0u, UINT64_MAX));
-    return fptu_upsert_uint64(pt, colnum, value);
+    return fptu_upsert_uint64(pt, colnum, (uint_fast64_t)value);
   case fptu_int32:
     assert(is_within(value, INT32_MIN, INT32_MAX));
-    return fptu_upsert_int32(pt, colnum, value);
+    return fptu_upsert_int32(pt, colnum, (int_fast32_t)value);
   case fptu_int64:
     assert(is_within(value, INT64_MIN, INT64_MAX));
-    return fptu_upsert_int64(pt, colnum, value);
+    return fptu_upsert_int64(pt, colnum, (uint_fast64_t)value);
   case fptu_fp32:
     assert(value >= FLT_MIN && value <= FLT_MAX);
-    return fptu_upsert_fp32(pt, colnum, value);
+    return fptu_upsert_fp32(pt, colnum, (float_t)value);
   case fptu_fp64:
     assert(value >= DBL_MIN && value <= DBL_MAX);
-    return fptu_upsert_fp64(pt, colnum, value);
+    return fptu_upsert_fp64(pt, colnum, (double_t)value);
   }
 }
 
