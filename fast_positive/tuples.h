@@ -88,6 +88,7 @@ struct iovec {
 #endif
 
 #ifdef __cplusplus
+#include <limits> // for numeric_limits<>
 #include <string> // for std::string
 
 extern "C" {
@@ -1027,33 +1028,6 @@ inline const fptu_field *end(const fptu_rw &rw) { return fptu_end_rw(&rw); }
 
 inline const fptu_field *end(const fptu_rw *rw) { return fptu_end_rw(rw); }
 
-template <fptu_type field_type, typename RESULT_TYPE>
-static RESULT_TYPE get_number(const fptu_field *field) {
-  assert(field != nullptr);
-  static_assert(fptu_any_number & (INT32_C(1) << field_type),
-                "field_type must be numerical");
-  assert(field->ct);
-  switch (field_type) {
-  default:
-    assert(false);
-    return 0;
-  case fptu_uint16:
-    return field->get_payload_uint16();
-  case fptu_uint32:
-    return fptu_field_payload(field)->u32;
-  case fptu_uint64:
-    return fptu_field_payload(field)->u64;
-  case fptu_int32:
-    return fptu_field_payload(field)->i32;
-  case fptu_int64:
-    return fptu_field_payload(field)->i64;
-  case fptu_fp32:
-    return fptu_field_payload(field)->fp32;
-  case fptu_fp64:
-    return fptu_field_payload(field)->fp64;
-  }
-}
-
 static inline int64_t cast_wide(int8_t value) { return value; }
 static inline int64_t cast_wide(int16_t value) { return value; }
 static inline int64_t cast_wide(int32_t value) { return value; }
@@ -1124,6 +1098,54 @@ inline bool is_within<double_t, uint64_t, uint64_t>(double_t value,
                                                     uint64_t end) {
   assert(begin < end);
   return value >= begin && value <= end;
+}
+
+template <fptu_type field_type, typename RESULT_TYPE>
+static RESULT_TYPE get_number(const fptu_field *field) {
+  assert(field != nullptr);
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  assert(field->ct);
+  switch (field_type) {
+  default:
+    assert(false);
+    return 0;
+  case fptu_uint16:
+    assert(is_within(field->get_payload_uint16(),
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)field->get_payload_uint16();
+  case fptu_uint32:
+    assert(is_within(fptu_field_payload(field)->u32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->u32;
+  case fptu_uint64:
+    assert(is_within(fptu_field_payload(field)->u64,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->u64;
+  case fptu_int32:
+    assert(is_within(fptu_field_payload(field)->i32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->i32;
+  case fptu_int64:
+    assert(is_within(fptu_field_payload(field)->i64,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->i64;
+  case fptu_fp32:
+    assert(is_within(fptu_field_payload(field)->fp32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->fp32;
+  case fptu_fp64:
+    assert(is_within(fptu_field_payload(field)->fp32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->fp64;
+  }
 }
 
 template <fptu_type field_type, typename VALUE_TYPE>
