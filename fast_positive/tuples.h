@@ -53,22 +53,20 @@
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
 #pragma warning(disable : 4711) /* function 'xyz' selected for                 \
                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum          \
-                                   'xyz' is not explicitly handled by a case   \
-                                   label */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum 'xyz' is \
+                                   not explicitly handled by a case label */
 #pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
-#pragma warning(disable : 4127) /* conditional expression is constant          \
-                                   */
+#pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+#pragma warning(disable : 4548) /* expression before comma has no effect;      \
+                                   expected expression with side - effect */
+#pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
+                                   semantics are not enabled. Specify /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception handling  \
+                                   mode specified; termination on exception    \
+                                   is not guaranteed. Specify /EHsc */
 #endif                          /* _MSC_VER (warnings) */
 
 #include <errno.h>  // for error codes

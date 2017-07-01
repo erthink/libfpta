@@ -62,31 +62,26 @@
 #pragma warning(disable : 4350) /* behavior change: 'std::_Wrap_alloc... */
 #endif
 
-#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function  \
+#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
                                    has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
-#pragma warning(disable : 4711) /* function 'xyz' selected for          \
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum   \
-                                   'xyz' is not explicitly handled by a case   \
-                                   label */
-#pragma warning(disable : 4201) /* nonstandard extension used :         \
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum 'xyz' is \
+                                   not explicitly handled by a case label */
+#pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
 #pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but      \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception    \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+#pragma warning(disable : 4548) /* expression before comma has no effect;      \
+                                   expected expression with side - effect */
+#pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
+                                   semantics are not enabled. Specify /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception handling  \
+                                   mode specified; termination on exception    \
+                                   is not guaranteed. Specify /EHsc */
 #endif                          /* _MSC_VER (warnings) */
-
-#include <limits.h>
-#include <malloc.h>
-#include <string.h>
 
 #if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
 	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
@@ -102,6 +97,17 @@
 	 * In such case please don't rise up an issues related ONLY to old glibc. */
 #	error "libfptu required at least glibc version 2.12 or later."
 #endif
+
+#include <limits.h>
+#include <malloc.h>
+#include <string.h>
+
+#include <cinttypes> // for PRId64, PRIu64
+#include <cmath>     // for exp2()
+#include <cstdarg>   // for va_list
+#include <cstdio>    // for _vscprintf()
+#include <cstdlib>   // for snprintf()
+#include <ctime>     // for gmtime()
 
 #ifdef HAVE_VALGRIND_MEMCHECK_H
         /* Get debugging help from Valgrind */

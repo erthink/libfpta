@@ -161,8 +161,6 @@ FPTU_API size_t fptu_get_buffer_size(fptu_ro ro, unsigned more_items,
 
 //----------------------------------------------------------------------------
 
-#include <stdlib.h>
-
 // TODO: split out
 fptu_rw *fptu_alloc(size_t items_limit, size_t data_bytes) {
   if (unlikely(items_limit > fptu_max_fields ||
