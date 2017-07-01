@@ -81,8 +81,13 @@ if(NOT GTEST_FOUND)
       ${CMAKE_BINARY_DIR}/googletest-build)
 
     if(CC_HAS_WERROR)
-      target_compile_options(gtest PRIVATE "-Wno-error")
-      target_compile_options(gtest_main PRIVATE "-Wno-error")
+      if(MSVC)
+        target_compile_options(gtest PRIVATE "/WX-")
+        target_compile_options(gtest_main PRIVATE "/WX-")
+      else()
+        target_compile_options(gtest PRIVATE "-Wno-error")
+        target_compile_options(gtest_main PRIVATE "-Wno-error")
+      endif()
     endif()
 
     # The gtest/gtest_main targets carry header search path
