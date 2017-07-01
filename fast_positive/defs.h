@@ -21,6 +21,10 @@
 /* *INDENT-OFF* */
 /* clang-format off */
 
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#endif
+
 #if defined(__KERNEL__) || !defined(__cplusplus) || __cplusplus < 201103L
 #	include <stddef.h>
 #	include <stdint.h>
@@ -29,6 +33,10 @@
 #	include <cstddef>
 #	include <cstdint>
 #	include <cassert>
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
 
 #ifndef __GNUC_PREREQ
