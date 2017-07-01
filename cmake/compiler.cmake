@@ -469,7 +469,15 @@ macro(setup_compile_flags)
     add_definitions("-Doverride=")
   endif()
 
-  if(CC_HAS_WALL)
+  if(MSVC)
+    if(MSVC_VERSION EQUAL 1910)
+      # LY: avoid /Wall for Visual Studio 2017, otherwise due a bug we could lost the control
+      #     and get a lot of junk warnings from compiler's and SDK headers.
+      add_compile_flags("C;CXX" "/W4")
+    else()
+      add_compile_flags("C;CXX" "/Wall")
+    endif()
+  elseif(CC_HAS_WALL)
     add_compile_flags("C;CXX" "-Wall")
   endif()
   if(CC_HAS_WEXTRA)
