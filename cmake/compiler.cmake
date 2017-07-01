@@ -98,46 +98,50 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
     "Please consider upgrade to gcc 4.5+ or clang 3.2+.")
 endif()
 
-#
-# GCC started to warn for unused result starting from 4.2, and
-# this is when it introduced -Wno-unused-result
-# GCC can also be built on top of llvm runtime (on mac).
-#
-check_c_compiler_flag("-Wno-unused-const-variable" CC_HAS_WNO_UNUSED_CONST_VARIABLE)
-check_c_compiler_flag("-Wno-unused-result" CC_HAS_WNO_UNUSED_RESULT)
-check_c_compiler_flag("-Wno-unused-value" CC_HAS_WNO_UNUSED_VALUE)
-check_c_compiler_flag("-Wno-unused-function" CC_HAS_WNO_UNUSED_FUNCTION)
-check_c_compiler_flag("-fno-strict-aliasing" CC_HAS_FNO_STRICT_ALIASING)
-check_c_compiler_flag("-Wno-comment" CC_HAS_WNO_COMMENT)
-check_c_compiler_flag("-Wno-parentheses" CC_HAS_WNO_PARENTHESES)
-check_c_compiler_flag("-Wno-parentheses-equality" CC_HAS_WNO_PARENTHESES_EQUALITY)
-check_c_compiler_flag("-Wno-undefined-inline" CC_HAS_WNO_UNDEFINED_INLINE)
-check_c_compiler_flag("-Wno-dangling-else" CC_HAS_WNO_DANGLING_ELSE)
-check_c_compiler_flag("-Wno-tautological-compare" CC_HAS_WNO_TAUTOLOGICAL_COMPARE)
-check_c_compiler_flag("-Wno-misleading-indentation" CC_HAS_WNO_MISLEADING_INDENTATION)
+if(MSVC)
+  check_c_compiler_flag("/WX" CC_HAS_WERROR)
+else()
+  #
+  # GCC started to warn for unused result starting from 4.2, and
+  # this is when it introduced -Wno-unused-result
+  # GCC can also be built on top of llvm runtime (on mac).
+  #
+  check_c_compiler_flag("-Wno-unused-const-variable" CC_HAS_WNO_UNUSED_CONST_VARIABLE)
+  check_c_compiler_flag("-Wno-unused-result" CC_HAS_WNO_UNUSED_RESULT)
+  check_c_compiler_flag("-Wno-unused-value" CC_HAS_WNO_UNUSED_VALUE)
+  check_c_compiler_flag("-Wno-unused-function" CC_HAS_WNO_UNUSED_FUNCTION)
+  check_c_compiler_flag("-fno-strict-aliasing" CC_HAS_FNO_STRICT_ALIASING)
+  check_c_compiler_flag("-Wno-comment" CC_HAS_WNO_COMMENT)
+  check_c_compiler_flag("-Wno-parentheses" CC_HAS_WNO_PARENTHESES)
+  check_c_compiler_flag("-Wno-parentheses-equality" CC_HAS_WNO_PARENTHESES_EQUALITY)
+  check_c_compiler_flag("-Wno-undefined-inline" CC_HAS_WNO_UNDEFINED_INLINE)
+  check_c_compiler_flag("-Wno-dangling-else" CC_HAS_WNO_DANGLING_ELSE)
+  check_c_compiler_flag("-Wno-tautological-compare" CC_HAS_WNO_TAUTOLOGICAL_COMPARE)
+  check_c_compiler_flag("-Wno-misleading-indentation" CC_HAS_WNO_MISLEADING_INDENTATION)
 
-check_c_compiler_flag("-Wno-unknown-pragmas" CC_HAS_WNO_UNKNOWN_PRAGMAS)
-check_c_compiler_flag("-Wall" CC_HAS_WALL)
-check_c_compiler_flag("-Wextra" CC_HAS_WEXTRA)
-check_c_compiler_flag("-Werror" CC_HAS_WERROR)
-check_c_compiler_flag("-fexceptions" CC_HAS_FEXCEPTIONS)
-check_c_compiler_flag("-funwind-tables" CC_HAS_FUNWIND_TABLES)
-check_c_compiler_flag("-fno-omit-frame-pointer" CC_HAS_FNO_OMIT_FRAME_POINTER)
-check_c_compiler_flag("-fno-stack-protector" CC_HAS_FNO_STACK_PROTECTOR)
-check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
-check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
-check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
-check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
-check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
+  check_c_compiler_flag("-Wno-unknown-pragmas" CC_HAS_WNO_UNKNOWN_PRAGMAS)
+  check_c_compiler_flag("-Wextra" CC_HAS_WEXTRA)
+  check_c_compiler_flag("-Werror" CC_HAS_WERROR)
+  check_c_compiler_flag("-fexceptions" CC_HAS_FEXCEPTIONS)
+  check_c_compiler_flag("-funwind-tables" CC_HAS_FUNWIND_TABLES)
+  check_c_compiler_flag("-fno-omit-frame-pointer" CC_HAS_FNO_OMIT_FRAME_POINTER)
+  check_c_compiler_flag("-fno-stack-protector" CC_HAS_FNO_STACK_PROTECTOR)
+  check_c_compiler_flag("-fno-common" CC_HAS_FNO_COMMON)
+  check_c_compiler_flag("-Wno-strict-aliasing" CC_HAS_WNO_STRICT_ALIASING)
+  check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
+  check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
+  check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
+  check_c_compiler_flag("-Wall" CC_HAS_WALL)
 
-#
-# Check for an omp support
-set(CMAKE_REQUIRED_FLAGS "-fopenmp -Werror")
-check_cxx_source_compiles("int main(void) {
-  #pragma omp parallel
-  return 0;
-  }" HAVE_OPENMP)
-set(CMAKE_REQUIRED_FLAGS "")
+  #
+  # Check for an omp support
+  set(CMAKE_REQUIRED_FLAGS "-fopenmp -Werror")
+  check_cxx_source_compiles("int main(void) {
+    #pragma omp parallel
+    return 0;
+    }" HAVE_OPENMP)
+  set(CMAKE_REQUIRED_FLAGS "")
+endif()
 
 #
 # Check for LTO support by GCC
