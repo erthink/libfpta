@@ -32,6 +32,11 @@
                                    Specify /EHsc */
 #pragma warning(disable : 4738) /* storing 32-bit float result in memory,      \
                                    possible loss of performance */
+#if _MSC_VER < 1900
+/* LY: workaround for dead code:
+       microsoft visual studio 12.0\vc\include\xtree(1826) */
+#pragma warning(disable : 4702) /* unreachable code */
+#endif
 #endif                          /* _MSC_VER (warnings) */
 
 #include <gtest/gtest.h>
