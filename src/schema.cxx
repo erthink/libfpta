@@ -756,7 +756,7 @@ static int fpta_name_init(fpta_name *id, const char *name,
   case fpta_column:
     id->shove = fpta_column_shove(fpta_shove_name(name, fpta_column), fptu_null,
                                   fpta_index_none);
-    id->column.num = -1;
+    id->column.num = ~0u;
     id->column.table = id;
     assert(fpta_id_validate(id, fpta_column));
     break;
@@ -829,7 +829,7 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
     return FPTA_EINVAL;
   column_id->column.table = const_cast<fpta_name *>(table_id);
   column_id->shove = schema->columns[column];
-  column_id->column.num = (int)column;
+  column_id->column.num = column;
   column_id->version = table_id->version;
   // column_id->mdbx_dbi = 0; /* done by memset() */
 
@@ -936,19 +936,19 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     return FPTA_SCHEMA_CHANGED;
 
   if (column_id->version != table_id->version) {
-    column_id->column.num = -1;
+    column_id->column.num = ~0u;
     column_id->handle_cache_hint = ~0u;
     for (size_t i = 0; i < schema->count; ++i) {
       if (fpta_shove_eq(column_id->shove, schema->columns[i])) {
         column_id->shove = schema->columns[i];
-        column_id->column.num = (int)i;
+        column_id->column.num = i;
         break;
       }
     }
     column_id->version = table_id->version;
   }
 
-  if (unlikely(column_id->column.num < 0))
+  if (unlikely(column_id->column.num > fpta_max_cols))
     return FPTA_ENOENT;
   return FPTA_SUCCESS;
 }
