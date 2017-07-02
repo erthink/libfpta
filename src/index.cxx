@@ -774,9 +774,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint_fast16_t denil = fpta_index_is_obverse(index)
-                                      ? FPTA_DENIL_UINT16_OBVERSE
-                                      : FPTA_DENIL_UINT16_REVERSE;
+      const uint_fast16_t denil = numeric_traits<fptu_uint16>::denil(index);
       if (unlikely(*(uint32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -792,9 +790,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint_fast32_t denil = fpta_index_is_obverse(index)
-                                      ? FPTA_DENIL_UINT32_OBVERSE
-                                      : FPTA_DENIL_UINT32_REVERSE;
+      const uint_fast32_t denil = numeric_traits<fptu_uint32>::denil(index);
       if (unlikely(*(uint32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -808,7 +804,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(int32_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const int_fast32_t denil = FPTA_DENIL_SINT32;
+      const int_fast32_t denil = numeric_traits<fptu_int32>::denil(index);
       if (unlikely(*(int32_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -850,9 +846,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     if (unlikely(mdbx.iov_len != sizeof(uint64_t)))
       goto return_corrupted;
     if (fpta_index_is_nullable(index)) {
-      const uint_fast64_t denil = fpta_index_is_obverse(index)
-                                      ? FPTA_DENIL_UINT64_OBVERSE
-                                      : FPTA_DENIL_UINT64_REVERSE;
+      const uint_fast64_t denil = numeric_traits<fptu_uint64>::denil(index);
       if (unlikely(*(uint64_t *)mdbx.iov_base == denil))
         goto return_null;
     }
@@ -867,7 +861,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
       goto return_corrupted;
     value.sint = *(int64_t *)mdbx.iov_base;
     if (fpta_index_is_nullable(index)) {
-      const int_fast64_t denil = FPTA_DENIL_SINT64;
+      const int_fast64_t denil = numeric_traits<fptu_int64>::denil(index);
       if (unlikely(value.sint == denil))
         goto return_null;
     }

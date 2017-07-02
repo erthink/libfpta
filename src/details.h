@@ -100,3 +100,119 @@ static __inline int fpta_cursor_validate(const fpta_cursor *cursor,
 
   return fpta_txn_validate(cursor->txn, min_level);
 }
+
+//----------------------------------------------------------------------------
+
+template <fptu_type type> struct numeric_traits;
+
+template <> struct numeric_traits<fptu_uint16> {
+  typedef uint16_t native;
+  typedef uint_fast16_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT16_OBVERSE
+                                        : FPTA_DENIL_UINT16_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_uint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_uint32> {
+  typedef uint32_t native;
+  typedef uint_fast32_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT32_OBVERSE
+                                        : FPTA_DENIL_UINT32_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_uint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_uint64> {
+  typedef uint64_t native;
+  typedef uint_fast64_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT64_OBVERSE
+                                        : FPTA_DENIL_UINT64_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_uint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_int32> {
+  typedef int32_t native;
+  typedef int_fast32_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_SINT32;
+  }
+  static fpta_value_type value_type() { return fpta_signed_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_sint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_int64> {
+  typedef int64_t native;
+  typedef int_fast64_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_SINT64;
+  }
+  static fpta_value_type value_type() { return fpta_signed_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_sint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_fp32> {
+  typedef float native;
+  typedef float_t fast;
+  enum { has_native_saturation = true };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_FP32;
+  }
+  static fpta_value_type value_type() { return fpta_float_point; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_float(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_fp64> {
+  typedef double native;
+  typedef double_t fast;
+  enum { has_native_saturation = true };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_FP64;
+  }
+  static fpta_value_type value_type() { return fpta_float_point; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_float(value);
+  }
+};

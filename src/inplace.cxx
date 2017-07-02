@@ -22,7 +22,8 @@
 template <typename TYPE>
 static TYPE confine_value(const fpta_value &value, const TYPE begin,
                           const TYPE end) {
-  return confine_value(value, fptu::cast_wide(begin), fptu::cast_wide(end));
+  return (TYPE)confine_value(value, fptu::cast_wide(begin),
+                             fptu::cast_wide(end));
 }
 
 template <>
@@ -89,6 +90,12 @@ int64_t confine_value<int64_t>(const fpta_value &value, const int64_t begin,
   }
 }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4056) /* overflow in floating-point                  \
+                                 * constant arithmetic */
+#endif
+
 template <>
 double_t confine_value<double_t>(const fpta_value &value, const double_t begin,
                                  const double_t end) {
@@ -111,129 +118,19 @@ double_t confine_value<double_t>(const fpta_value &value, const double_t begin,
     assert(false);
     return 0;
   case fpta_unsigned_int:
-    return value.uint;
+    return (double_t)value.uint;
   case fpta_signed_int:
-    return value.sint;
+    return (double_t)value.sint;
   case fpta_float_point:
     return value.fp;
   }
 }
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 //----------------------------------------------------------------------------
-
-template <fptu_type type> struct numeric_traits;
-
-template <> struct numeric_traits<fptu_uint16> {
-  typedef uint16_t native;
-  typedef uint_fast16_t fast;
-  enum { has_native_saturation = false };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT16_OBVERSE
-                                        : FPTA_DENIL_UINT16_REVERSE;
-  }
-  static fpta_value_type value_type() { return fpta_unsigned_int; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_uint(value);
-  }
-};
-
-template <> struct numeric_traits<fptu_uint32> {
-  typedef uint32_t native;
-  typedef uint_fast32_t fast;
-  enum { has_native_saturation = false };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT32_OBVERSE
-                                        : FPTA_DENIL_UINT32_REVERSE;
-  }
-  static fpta_value_type value_type() { return fpta_unsigned_int; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_uint(value);
-  }
-};
-
-template <> struct numeric_traits<fptu_uint64> {
-  typedef uint64_t native;
-  typedef uint_fast64_t fast;
-  enum { has_native_saturation = false };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT64_OBVERSE
-                                        : FPTA_DENIL_UINT64_REVERSE;
-  }
-  static fpta_value_type value_type() { return fpta_unsigned_int; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_uint(value);
-  }
-};
-
-template <> struct numeric_traits<fptu_int32> {
-  typedef int32_t native;
-  typedef int_fast32_t fast;
-  enum { has_native_saturation = false };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
-    return FPTA_DENIL_SINT32;
-  }
-  static fpta_value_type value_type() { return fpta_signed_int; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_sint(value);
-  }
-};
-
-template <> struct numeric_traits<fptu_int64> {
-  typedef int64_t native;
-  typedef int_fast64_t fast;
-  enum { has_native_saturation = false };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
-    return FPTA_DENIL_SINT64;
-  }
-  static fpta_value_type value_type() { return fpta_signed_int; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_sint(value);
-  }
-};
-
-template <> struct numeric_traits<fptu_fp32> {
-  typedef float native;
-  typedef float_t fast;
-  enum { has_native_saturation = true };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
-    return FPTA_DENIL_FP32;
-  }
-  static fpta_value_type value_type() { return fpta_float_point; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_float(value);
-  }
-};
-
-template <> struct numeric_traits<fptu_fp64> {
-  typedef double native;
-  typedef double_t fast;
-  enum { has_native_saturation = true };
-  typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
-    return FPTA_DENIL_FP64;
-  }
-  static fpta_value_type value_type() { return fpta_float_point; }
-  static fpta_value make_value(const fast value) {
-    return fpta_value_float(value);
-  }
-};
 
 template <fptu_type type> struct saturated {
   typedef numeric_traits<type> traits;
