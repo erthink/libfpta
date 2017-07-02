@@ -19,6 +19,10 @@
 
 #pragma once
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "fast_positive/tuples_internal.h"
 
 #ifdef _MSC_VER
@@ -37,7 +41,7 @@
        microsoft visual studio 12.0\vc\include\xtree(1826) */
 #pragma warning(disable : 4702) /* unreachable code */
 #endif
-#endif                          /* _MSC_VER (warnings) */
+#endif /* _MSC_VER (warnings) */
 
 #include <gtest/gtest.h>
 
