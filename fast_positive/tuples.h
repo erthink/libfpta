@@ -1209,7 +1209,7 @@ static int upsert_number(fptu_rw *pt, unsigned colnum,
     return fptu_upsert_int32(pt, colnum, (int_fast32_t)value);
   case fptu_int64:
     assert(is_within(value, INT64_MIN, INT64_MAX));
-    return fptu_upsert_int64(pt, colnum, (uint_fast64_t)value);
+    return fptu_upsert_int64(pt, colnum, (int_fast64_t)value);
   case fptu_fp32:
     assert(value >= FLT_MIN && value <= FLT_MAX);
     return fptu_upsert_fp32(pt, colnum, (float_t)value);
