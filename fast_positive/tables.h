@@ -525,7 +525,7 @@ static __inline fpta_value fpta_value_datetime(fptu_time datetime) {
 }
 
 /* Конструктор value с плавающей точкой. */
-static __inline fpta_value fpta_value_float(double value) {
+static __inline fpta_value fpta_value_float(double_t value) {
   fpta_value r;
   r.type = fpta_float_point;
   r.binary_length = ~0u;
@@ -1181,7 +1181,7 @@ static __inline void fpta_column_set_init(fpta_column_set *column_set) {
  * В случае успеха возвращает ноль, иначе код ошибки. */
 static __inline int fpta_column_set_destroy(fpta_column_set *column_set) {
   if (column_set != nullptr && column_set->count != FPTA_DEADBEEF) {
-    column_set->count = FPTA_DEADBEEF;
+    column_set->count = (unsigned)FPTA_DEADBEEF;
     column_set->shoves[0] = 0;
     return FPTA_SUCCESS;
   }
@@ -1434,10 +1434,10 @@ FPTA_API int fpta_table_clear(fpta_txn *txn, fpta_name *table_id,
 typedef struct fpta_table_stat {
   uint64_t row_count /* количество строк */;
   uint64_t total_bytes /* занимаемое место */;
-  uint32_t btree_depth /* высота b-tree */;
-  uint32_t branch_pages /* количество не-листьевых страниц (со ссылками)*/;
-  uint32_t leaf_pages /* количество листьевых страниц (с данными) */;
-  uint32_t large_pages /* количество больших (вынужденно склеенных)
+  size_t btree_depth /* высота b-tree */;
+  size_t branch_pages /* количество не-листьевых страниц (со ссылками)*/;
+  size_t leaf_pages /* количество листьевых страниц (с данными) */;
+  size_t large_pages /* количество больших (вынужденно склеенных)
                           страниц для хранения длинных записей */;
 } fpta_table_stat;
 

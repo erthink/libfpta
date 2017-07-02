@@ -195,6 +195,10 @@ struct fpta_cursor {
   bool is_after_last() const { return false; }
 #endif
 
+  const fpta_filter *filter;
+  fpta_txn *txn;
+  fpta_db *db;
+
   fpta_name *table_id;
   struct {
     unsigned shove;
@@ -205,10 +209,6 @@ struct fpta_cursor {
 
   fpta_key range_from_key;
   fpta_key range_to_key;
-
-  const fpta_filter *filter;
-  fpta_txn *txn;
-  fpta_db *db;
 };
 
 //----------------------------------------------------------------------------

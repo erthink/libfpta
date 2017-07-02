@@ -26,13 +26,14 @@
 
 struct fpta_db {
   fpta_db(const fpta_db &) = delete;
-  fpta_rwl_t schema_rwlock;
   MDBX_env *mdbx_env;
-  MDBX_dbi schema_dbi;
   bool alterable_schema;
   char unused_gap[3];
 
   fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
+  MDBX_dbi schema_dbi;
+  fpta_rwl_t schema_rwlock;
+  unsigned reserved_gap;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
   MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
@@ -112,8 +113,8 @@ template <> struct numeric_traits<fptu_uint16> {
   typedef std::numeric_limits<native> native_limits;
   static fast denil(const fpta_index_type index) {
     assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT16_OBVERSE
-                                        : FPTA_DENIL_UINT16_REVERSE;
+    return fpta_index_is_obverse(index) ? (fast)FPTA_DENIL_UINT16_OBVERSE
+                                        : (fast)FPTA_DENIL_UINT16_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
   static fpta_value make_value(const fast value) {

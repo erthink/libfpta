@@ -747,7 +747,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
     return cursor->unladed_state();
 
   if (!fpta_table_has_secondary(cursor->table_id)) {
-    int rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
+    rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
     if (unlikely(rc != FPTA_SUCCESS)) {
       cursor->set_poor();
       return rc;

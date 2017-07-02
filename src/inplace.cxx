@@ -513,10 +513,10 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
     return rc;
 
   const size_t buffer_size =
-      fptu_get_buffer_size(source_row, field ? 0 : 1, field ? 0 : 8);
+      fptu_get_buffer_size(source_row, field ? 0u : 1u, field ? 0u : 8u);
   void *const buffer = alloca(buffer_size);
   fptu_rw *changeable_row =
-      fptu_fetch(source_row, buffer, buffer_size, field ? 0 : 1);
+      fptu_fetch(source_row, buffer, buffer_size, field ? 0u : 1u);
   if (unlikely(changeable_row == nullptr))
     return FPTA_EOOPS;
 

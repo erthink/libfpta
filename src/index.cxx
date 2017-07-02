@@ -961,9 +961,9 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
         }
         assert(type >= fptu_96 && type <= fptu_256);
 
-        const uint8_t fillbyte = fpta_index_is_obverse(shove)
-                                     ? FPTA_DENIL_FIXBIN_OBVERSE
-                                     : FPTA_DENIL_FIXBIN_REVERSE;
+        const int fillbyte = fpta_index_is_obverse(shove)
+                                 ? FPTA_DENIL_FIXBIN_OBVERSE
+                                 : FPTA_DENIL_FIXBIN_REVERSE;
         key.mdbx.iov_base = &key.place;
         switch (type) {
         case fptu_96:
@@ -997,8 +997,9 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
       return FPTA_SUCCESS;
 
     case fptu_uint16:
-      key.place.u32 = fpta_index_is_obverse(shove) ? FPTA_DENIL_UINT16_OBVERSE
-                                                   : FPTA_DENIL_UINT16_REVERSE;
+      key.place.u32 = fpta_index_is_obverse(shove)
+                          ? (unsigned)FPTA_DENIL_UINT16_OBVERSE
+                          : (unsigned)FPTA_DENIL_UINT16_REVERSE;
       key.mdbx.iov_len = sizeof(key.place.u32);
       key.mdbx.iov_base = &key.place.u32;
       return FPTA_SUCCESS;
@@ -1042,8 +1043,10 @@ __hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
       return FPTA_SUCCESS;
     }
 
+#ifndef _MSC_VER
     assert(false && "unreachable point");
     __unreachable();
+#endif
   }
 
   const fptu_payload *payload = fptu_field_payload(field);

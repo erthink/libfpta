@@ -38,9 +38,9 @@ int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
   if (unlikely(stat)) {
     stat->row_count = mdbx_stat.ms_entries;
     stat->btree_depth = mdbx_stat.ms_depth;
-    stat->leaf_pages = mdbx_stat.ms_leaf_pages;
-    stat->branch_pages = mdbx_stat.ms_branch_pages;
-    stat->large_pages = mdbx_stat.ms_overflow_pages;
+    stat->leaf_pages = (size_t)mdbx_stat.ms_leaf_pages;
+    stat->branch_pages = (size_t)mdbx_stat.ms_branch_pages;
+    stat->large_pages = (size_t)mdbx_stat.ms_overflow_pages;
     stat->total_bytes = (mdbx_stat.ms_leaf_pages + mdbx_stat.ms_branch_pages +
                          mdbx_stat.ms_overflow_pages) *
                         (size_t)mdbx_stat.ms_psize;
@@ -48,10 +48,10 @@ int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
 
   if (likely(row_count)) {
     if (unlikely(mdbx_stat.ms_entries > SIZE_MAX)) {
-      *row_count = FPTA_DEADBEEF;
+      *row_count = (size_t)FPTA_DEADBEEF;
       return FPTA_EVALUE;
     }
-    *row_count = mdbx_stat.ms_entries;
+    *row_count = (size_t)mdbx_stat.ms_entries;
   }
 
   return FPTA_SUCCESS;
