@@ -112,9 +112,9 @@ TEST(Value2Key, uint16) {
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_uint16> probe;
-  for (auto i = 0; i < 42; i++) {
-    probe(fpta_value_uint(UINT16_MAX - i), 100 - i);
-    probe(fpta_value_uint(i), i);
+  for (int i = 0; i < 42; i++) {
+    probe(fpta_value_uint((unsigned)(UINT16_MAX - i)), 100 - i);
+    probe(fpta_value_uint((unsigned)i), i);
   }
   probe.check(42 * 2);
 }
@@ -178,9 +178,9 @@ TEST(Value2Key, uint32) {
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_uint32> probe;
-  for (auto i = 0; i < 42; i++) {
-    probe(fpta_value_uint(UINT32_MAX - i), 100 - i);
-    probe(fpta_value_uint(i), i);
+  for (int i = 0; i < 42; i++) {
+    probe(fpta_value_uint((unsigned)(UINT32_MAX - i)), 100 - i);
+    probe(fpta_value_uint((unsigned)i), i);
   }
   probe.check(42 * 2);
 }
@@ -238,9 +238,9 @@ TEST(Value2Key, uint64) {
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_uint64> probe;
-  for (auto i = 0; i < 42; i++) {
-    probe(fpta_value_uint(UINT64_MAX - i), 100 - i);
-    probe(fpta_value_uint(i), i);
+  for (int i = 0; i < 42; i++) {
+    probe(fpta_value_uint((unsigned)(UINT64_MAX - i)), 100 - i);
+    probe(fpta_value_uint((unsigned)i), i);
   }
   probe.check(42 * 2);
 }
@@ -413,8 +413,10 @@ TEST(Value2Key, fp64) {
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(HUGE_VAL), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_float((double_t)INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_float((double_t)INT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(flt_pos_over), key));
@@ -433,8 +435,10 @@ TEST(Value2Key, fp64) {
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(HUGE_VAL), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_float((double_t)INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_float((double_t)INT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(flt_pos_over), key));
@@ -477,8 +481,8 @@ TEST(Value2Key, fp64) {
   probe(fpta_value_float(42), ++i);
   probe(fpta_value_float(INT16_MAX), ++i);
   probe(fpta_value_float(INT32_MAX), ++i);
-  probe(fpta_value_float(INT64_MAX), ++i);
-  probe(fpta_value_float(UINT64_MAX), ++i);
+  probe(fpta_value_float((double_t)INT64_MAX), ++i);
+  probe(fpta_value_float((double_t)UINT64_MAX), ++i);
   probe(fpta_value_float(flt_pos_below), ++i);
   probe(fpta_value_float(FLT_MAX), ++i);
   probe(fpta_value_float(flt_pos_over), ++i);
@@ -522,8 +526,10 @@ TEST(Value2Key, fp32) {
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(HUGE_VAL), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_float((double_t)INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(ordered, fpta_value_float((double_t)INT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT16_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(INT16_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(ordered, fpta_value_float(FLT_MIN), key));
@@ -556,8 +562,10 @@ TEST(Value2Key, fp32) {
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(42), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(HUGE_VAL), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(-HUGE_VAL), key));
-  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MIN), key));
-  EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(INT64_MAX), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_float((double_t)INT64_MIN), key));
+  EXPECT_EQ(FPTA_OK,
+            value2key(unordered, fpta_value_float((double_t)INT64_MAX), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MIN), key));
   EXPECT_EQ(FPTA_OK, value2key(unordered, fpta_value_float(FLT_MAX), key));
   EXPECT_EQ(FPTA_EVALUE,
@@ -621,8 +629,8 @@ TEST(Value2Key, fp32) {
 #if !FPTA_PROHIBIT_LOSS_PRECISION
   probe(fpta_value_float(INT32_MAX), ++i);
 #endif
-  probe(fpta_value_float(INT64_MAX), ++i);
-  probe(fpta_value_float(UINT64_MAX), ++i);
+  probe(fpta_value_float((double_t)INT64_MAX), ++i);
+  probe(fpta_value_float((double_t)UINT64_MAX), ++i);
   probe(fpta_value_float(flt_pos_below), ++i);
   probe(fpta_value_float(FLT_MAX), ++i);
   probe(fpta_value_float(HUGE_VAL), ++i);
@@ -679,11 +687,11 @@ TEST(Value2Key, datetime) {
 
   // проверяем через компараторы индексов
   probe_triplet<fptu_datetime> probe;
-  for (auto i = 0; i < 42; i++) {
+  for (int i = 0; i < 42; i++) {
     fptu_time datetime;
-    datetime.fixedpoint = UINT64_MAX - i;
+    datetime.fixedpoint = UINT64_MAX - (unsigned)i;
     probe(fpta_value_datetime(datetime), 100 - i);
-    datetime.fixedpoint = i;
+    datetime.fixedpoint = (unsigned)i;
     probe(fpta_value_datetime(datetime), i);
   }
   probe.check(42 * 2);
@@ -838,8 +846,8 @@ TYPED_TEST(Value2Key_AllString, basic) {
   uint8_t obverse[keybuf_len], reverse[keybuf_len];
 #endif
   for (size_t i = 0; i < keybuf_len; ++i) {
-    obverse[i] = i + 1 + (is_string ? ' ' : 0);
-    reverse[i] = keybuf_len - i + (is_string ? ' ' : 0);
+    obverse[i] = (uint8_t)(i + 1 + (is_string ? ' ' : 0));
+    reverse[i] = (uint8_t)(keybuf_len - i + (is_string ? ' ' : 0));
   }
   ASSERT_TRUE(memcmp(zeros, obverse, keybuf_len) < 0);
   ASSERT_TRUE(memcmp(ones, obverse, keybuf_len) > 0);
@@ -960,14 +968,14 @@ TYPED_TEST(Value2Key_AllString, normal_keys) {
    */
   constexpr fptu_type type = TypeParam::type;
   constexpr bool is_string = (type == fptu_cstr);
-  static const size_t keylen_min =
-      ct_is_fixedsize(type) ? ct_elem_size(type) : 1;
-  static const size_t keylen_max =
-      ct_is_fixedsize(type) ? ct_elem_size(type) : (size_t)fpta_max_keylen;
+  static const int keylen_min =
+      ct_is_fixedsize(type) ? (int)ct_elem_size(type) : 1;
+  static const int keylen_max =
+      ct_is_fixedsize(type) ? (int)ct_elem_size(type) : fpta_max_keylen;
   SCOPED_TRACE("type " + std::to_string(type));
 
 #ifdef _MSC_VER /* FIXME: mustdie */
-  uint8_t *const keybuf = (uint8_t *)_alloca(keylen_max);
+  uint8_t *const keybuf = (uint8_t *)_alloca((unsigned)keylen_max);
 #else
   uint8_t keybuf[keylen_max];
 #endif
@@ -976,16 +984,17 @@ TYPED_TEST(Value2Key_AllString, normal_keys) {
   if (!ct_is_fixedsize(type))
     probe(fpta_value_binstr<type>(nullptr, 0), -1);
 
-  for (unsigned order_lopart = 0; order_lopart < 111;) {
+  for (int order_lopart = 0; order_lopart < 111;) {
     for (auto keylen = keylen_min; keylen <= keylen_max; ++keylen) {
-      unsigned order_hipart = 0;
+      int order_hipart = 0;
       do {
-        unsigned order = order_lopart + order_hipart;
-        bool key_is_too_short = string_keygen<is_string>(keylen, order, keybuf);
+        int order = order_lopart + order_hipart;
+        bool key_is_too_short =
+            string_keygen<is_string>((unsigned)keylen, (unsigned)order, keybuf);
         if (key_is_too_short)
           break;
 
-        probe(fpta_value_binstr<type>(keybuf, keylen), order);
+        probe(fpta_value_binstr<type>(keybuf, (unsigned)keylen), order);
         order_hipart += order_hipart / 3 + 12345;
       } while (order_hipart < INT_MAX / 2);
       ++order_lopart;
@@ -1042,9 +1051,9 @@ TYPED_TEST(Value2Key_VariableString, long_keys) {
    *  верность результата соответствующих индексных компараторов для
    *  разно-упорядоченных строк разного размера, в том числе длинных.
    */
-  const size_t keylen_min = fpta_max_keylen / 2;
-  const size_t keylen_max = fpta_max_keylen * 42;
-  const size_t keylen_step = 11;
+  const int keylen_min = fpta_max_keylen / 2;
+  const int keylen_max = fpta_max_keylen * 42;
+  const int keylen_step = 11;
 
   constexpr fptu_type type = TypeParam::type;
   constexpr bool is_string = (type == fptu_cstr);
@@ -1059,15 +1068,16 @@ TYPED_TEST(Value2Key_VariableString, long_keys) {
   probe(fpta_value_binstr<type>(nullptr, 0), -1);
   probe(fpta_value_binstr<type>(ones, keylen_max), INT_MAX);
 
-  unsigned order_lopart = 0;
+  int order_lopart = 0;
   for (auto keylen = keylen_min; keylen <= keylen_max; keylen += keylen_step) {
     ++order_lopart;
-    for (unsigned order_hipart = 0; order_hipart < INT_MAX / 2;) {
+    for (int order_hipart = 0; order_hipart < INT_MAX / 2;) {
       order_hipart += order_hipart / 3 + 1234567;
-      unsigned order = order_lopart + order_hipart + keylen;
-      bool key_is_too_short = string_keygen<is_string>(keylen, order, keybuf);
+      int order = order_lopart + order_hipart + keylen;
+      bool key_is_too_short =
+          string_keygen<is_string>((unsigned)keylen, (unsigned)order, keybuf);
       ASSERT_FALSE(key_is_too_short);
-      probe(fpta_value_binstr<type>(keybuf, keylen), order);
+      probe(fpta_value_binstr<type>(keybuf, (unsigned)keylen), order);
     }
   }
   probe.check();

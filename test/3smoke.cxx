@@ -532,10 +532,10 @@ TEST(SmokeIndex, Secondary) {
 #include <string>
 #include <vector>
 
-static unsigned mapdup_order2key(unsigned order, unsigned NNN) {
-  unsigned quart = NNN / 4;
-  unsigned offset = 0;
-  unsigned shift = 0;
+static int mapdup_order2key(int order, int NNN) {
+  int quart = NNN / 4;
+  int offset = 0;
+  int shift = 0;
 
   while (order >= quart) {
     offset += quart >> shift++;
@@ -544,11 +544,11 @@ static unsigned mapdup_order2key(unsigned order, unsigned NNN) {
   return (order >> shift) + offset;
 }
 
-unsigned mapdup_order2count(unsigned order, unsigned NNN) {
-  unsigned value = mapdup_order2key(order, NNN);
+int mapdup_order2count(int order, int NNN) {
+  int value = mapdup_order2key(order, NNN);
 
-  unsigned count = 1;
-  for (unsigned n = order; n < NNN; ++n)
+  int count = 1;
+  for (int n = order; n < NNN; ++n)
     if (n != order && value == mapdup_order2key(n, NNN))
       count++;
 
@@ -556,11 +556,11 @@ unsigned mapdup_order2count(unsigned order, unsigned NNN) {
 }
 
 TEST(Smoke, mapdup_order2key) {
-  std::map<unsigned, unsigned> checker;
+  std::map<int, int> checker;
 
-  const unsigned NNN = 32;
-  for (unsigned order = 0; order < 32; ++order) {
-    unsigned dup = mapdup_order2key(order, NNN);
+  const int NNN = 32;
+  for (int order = 0; order < 32; ++order) {
+    int dup = mapdup_order2key(order, NNN);
     checker[dup] += 1;
   }
   EXPECT_EQ(1u, checker[0]);
@@ -625,7 +625,7 @@ public:
   std::set<crud_item *, crud_item::less_pk> checker_pk_uint;
   std::set<crud_item *, crud_item::less_str> checker_str;
   std::set<crud_item *, crud_item::less_real> checker_real;
-  unsigned ndeleted;
+  int ndeleted;
 
   void Check(fpta_cursor *cursor) {
     int move_result = fpta_cursor_move(cursor, fpta_first);
@@ -788,24 +788,24 @@ public:
     }
   }
 
-  static unsigned mesh_order4uint(unsigned n, unsigned NNN) {
-    return (37 * n) % NNN;
+  static unsigned mesh_order4uint(int n, int NNN) {
+    return (37 * (unsigned)n) % NNN;
   }
 
-  static unsigned mesh_order4str(unsigned n, unsigned NNN) {
-    return (67 * n + 17) % NNN;
+  static int mesh_order4str(int n, int NNN) {
+    return (int)((67 * (unsigned)n + 17) % NNN);
   }
 
-  static unsigned mesh_order4real(unsigned n, unsigned NNN) {
-    return (97 * n + 43) % NNN;
+  static int mesh_order4real(int n, int NNN) {
+    return (int)((97 * (unsigned)n + 43) % NNN);
   }
 
-  static unsigned mesh_order4update(unsigned n, unsigned NNN) {
-    return (11 * n + 23) % NNN;
+  static unsigned mesh_order4update(int n, int NNN) {
+    return (11 * (unsigned)n + 23) % NNN;
   }
 
-  static unsigned mesh_order4delete(unsigned n, unsigned NNN) {
-    return (5 * n + 13) % NNN;
+  static unsigned mesh_order4delete(int n, int NNN) {
+    return (5 * (unsigned)n + 13) % NNN;
   }
 };
 
@@ -873,14 +873,14 @@ TEST_F(SmokeCRUD, none) {
   ASSERT_NE(nullptr, row);
   ASSERT_STREQ(nullptr, fptu_check(row));
 
-  constexpr unsigned NNN = 42;
+  constexpr int NNN = 42;
   /* создаем достаточно кол-во строк для последующих проверок */ {
     SCOPED_TRACE("fill");
-    for (unsigned i = 0; i < NNN; ++i) {
+    for (int i = 0; i < NNN; ++i) {
       /* перемешиваем, так чтобы у полей был независимый порядок */
       unsigned pk_uint_value = mesh_order4uint(i, NNN);
-      unsigned order_se_str = mesh_order4str(i, NNN);
-      unsigned order_se_real = mesh_order4real(i, NNN);
+      int order_se_str = mesh_order4str(i, NNN);
+      int order_se_real = mesh_order4real(i, NNN);
       double se_real_value = mapdup_order2key(order_se_real, NNN) / (double)NNN;
 
       SCOPED_TRACE(
@@ -975,7 +975,7 @@ TEST_F(SmokeCRUD, none) {
    * нелинейном порядке), поэтому из container их можно брать просто
    * последовательно. Однако, для параметризируемой стохастичности теста
    * порядок будет еще раз перемешан посредством mesh_order4update(). */
-  unsigned nn = 0;
+  int nn = 0;
 
   // начинаем транзакцию для проверочных обновлений
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
@@ -987,7 +987,7 @@ TEST_F(SmokeCRUD, none) {
   /* обновляем строки без курсора и без изменения PK */ {
     SCOPED_TRACE("update.without-cursor");
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1037,7 +1037,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1102,7 +1102,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1112,7 +1112,7 @@ TEST_F(SmokeCRUD, none) {
                    ", time " + std::to_string(item->time));
 
       // считаем сколько должно быть повторов
-      unsigned expected_dups = 0;
+      int expected_dups = 0;
       for (auto const &scan : container)
         if (item->se_real == scan->se_real)
           expected_dups++;
@@ -1187,7 +1187,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1264,7 +1264,7 @@ TEST_F(SmokeCRUD, none) {
     SCOPED_TRACE("delete.without-cursor");
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -1324,7 +1324,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -1373,7 +1373,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -1449,7 +1449,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -2114,7 +2114,7 @@ TEST(SmoceCrud, OneRowOneColumn) {
             fpta_cursor_open(txn, &col_pk, fpta_value_begin(), fpta_value_end(),
                              nullptr, fpta_unsorted_dont_fetch, &cursor));
 
-  size_t count = 0xBADBADBAD;
+  size_t count = size_t(UINT64_C(0xBADBADBAD) & SIZE_MAX);
   ASSERT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
   ASSERT_EQ(1u, count);
   ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
@@ -2491,8 +2491,9 @@ public:
     if (stepover >= 0) {
       // формируем не пустую строку, со скользящим NIL
       if (stepover != 0)
-        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
-                                              fpta_value_uint(stepover)));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
+                                     fpta_value_uint((unsigned)stepover)));
       if (stepover != 1)
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c1_date,
                                               fpta_value_datetime(NOW_FINE())));
@@ -2504,11 +2505,13 @@ public:
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c3_int64,
                                               fpta_value_sint(-stepover)));
       if (stepover != 4)
-        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
-                                              fpta_value_uint(stepover)));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
+                                     fpta_value_uint((unsigned)stepover)));
       if (stepover != 5)
-        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
-                                              fpta_value_uint(stepover + 42)));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
+                                     fpta_value_uint((unsigned)stepover + 42)));
       if (stepover != 6) {
         uint8_t sha1[160 / 8];
         memset(sha1, stepover + 1, sizeof(sha1));
@@ -2935,8 +2938,10 @@ TEST(Smoke, Kamerades) {
    *  3. Через хэндл "коммандера" получаем сведения о таблице.
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
   fpta_db *correlator_db = nullptr;
   fpta_db *commander_db = nullptr;
 
@@ -3070,8 +3075,10 @@ TEST(Smoke, Kamerades) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
   }
 }
 
@@ -3090,8 +3097,10 @@ TEST(Smoke, OverchargeOnCommit) {
    *     транзакции (при добавлении записи в garbage-таблицу  внутри libmdbx).
    */
 
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базу
   fpta_db *db = nullptr;
@@ -3225,8 +3234,10 @@ TEST(Smoke, AsyncSchemaChange) {
   // создаем исходную базу
   {
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_OK,
@@ -3310,7 +3321,8 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK,
               fpta_table_sequence(txn_correlator, &table_id_, &seq, 1));
 
-    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_sint(seq)));
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &id, fpta_value_sint((int64_t)seq)));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
                                           fpta_value_cstr("Администратор")));
 

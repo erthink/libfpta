@@ -29,10 +29,10 @@
  * так как для не-уникальных вторичных индексов нам требуются дубликаты,
  * что требует больше уникальных значений для первичного ключа.
  */
-#if FPTA_INDEX_UT_LONG
-static constexpr unsigned NNN = 32749; // около 1-2 минуты в /dev/shm/
+#ifdef FPTA_INDEX_UT_LONG
+static constexpr int NNN = 32749; // около 1-2 минуты в /dev/shm/
 #else
-static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
+static constexpr int NNN = 509; // менее секунды в /dev/shm/
 #endif
 
 static const char testdb_name[] = TEST_DB_DIR "ut_index_secondary.fpta";
@@ -74,7 +74,7 @@ public:
 
     coupled_keygen pg(pk_index, pk_type, se_index, se_type);
     n = 0;
-    for (unsigned order = 0; order < NNN; ++order) {
+    for (int order = 0; order < NNN; ++order) {
       SCOPED_TRACE("order " + std::to_string(order));
 
       // теперь формируем кортеж
@@ -441,7 +441,7 @@ TEST_P(IndexSecondary, basic) {
     SCOPED_TRACE("key: " + std::to_string(key.type) + ", length " +
                  std::to_string(key.binary_length));
 
-    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     if (fpta_index_is_ordered(se_index))
       ASSERT_EQ(order, tuple_order);
@@ -451,7 +451,8 @@ TEST_P(IndexSecondary, basic) {
     auto checksum = order_checksum(tuple_order, se_type, se_index).uint;
     ASSERT_EQ(checksum, tuple_checksum);
 
-    auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+    auto tuple_dup_id =
+        (unsigned)fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
