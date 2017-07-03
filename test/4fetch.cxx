@@ -388,8 +388,8 @@ TEST(Fetch, DeNils) {
   EXPECT_EQ(UINT32_MAX /*FPTU_DENIL_UINT32*/, fptu_field_uint32(nullptr));
   EXPECT_EQ(INT64_MIN /*FPTU_DENIL_INT64*/, fptu_field_int64(nullptr));
   EXPECT_EQ(UINT64_MAX /*FPTU_DENIL_UINT64*/, fptu_field_uint64(nullptr));
-  EXPECT_TRUE(isnan(/*FPTU_DENIL_FP32*/ fptu_field_fp32(nullptr)));
-  EXPECT_TRUE(isnan(/*FPTU_DENIL_FP64*/ fptu_field_fp64(nullptr)));
+  EXPECT_TRUE(std::isnan(/*FPTU_DENIL_FP32*/ fptu_field_fp32(nullptr)));
+  EXPECT_TRUE(std::isnan(/*FPTU_DENIL_FP64*/ fptu_field_fp64(nullptr)));
   EXPECT_EQ(0u /*FPTU_DENIL_TIME*/, fptu_field_datetime(nullptr).fixedpoint);
   EXPECT_EQ(nullptr /*FPTU_DENIL_CSTR*/, fptu_field_cstr(nullptr));
 
