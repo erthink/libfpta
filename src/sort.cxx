@@ -101,9 +101,8 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
   /* вполне вероятно, что резерный бит всегда нулевой, также возможно что
    * нет массивов, тогда размер карты можно сократить в 4 раза. */
   const unsigned blank =
-      (have & fptu_fr_mask)
-          ? 0u
-          : (unsigned)fptu_ct_reserve_bits + ((have & fptu_farray) ? 0u : 1u);
+      (have & fptu_fr_mask) ? 0u : (unsigned)fptu_ct_reserve_bits +
+                                       ((have & fptu_farray) ? 0u : 1u);
   const unsigned lo_part = (1 << (fptu_typeid_bits + fptu_ct_reserve_bits)) - 1;
   const unsigned hi_part = lo_part ^ UINT16_MAX;
   assert((lo_part >> blank) >= (have & lo_part));
@@ -116,7 +115,7 @@ static __noinline uint16_t *fptu_tags_slowpath(uint16_t *const first,
 
   const size_t n_words = (top + word_bits - 1) / word_bits;
 #ifdef _MSC_VER /* FIXME: mustdie */
-  size_t *const bm = (size_t *)_alloca(sizeof(size_t) * n_words);
+  size_t *const bm = (size_t *)_malloca(sizeof(size_t) * n_words);
 #else
   size_t bm[n_words];
 #endif

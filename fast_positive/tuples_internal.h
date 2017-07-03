@@ -62,31 +62,26 @@
 #pragma warning(disable : 4350) /* behavior change: 'std::_Wrap_alloc... */
 #endif
 
-#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function  \
+#pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
                                    has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
-#pragma warning(disable : 4711) /* function 'xyz' selected for          \
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum   \
-                                   'xyz' is not explicitly handled by a case   \
-                                   label */
-#pragma warning(disable : 4201) /* nonstandard extension used :         \
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum 'xyz' is \
+                                   not explicitly handled by a case label */
+#pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
-#pragma warning(disable : 4127) /* conditional expression is constant   \
-                                   */
+#pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but      \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception    \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+#pragma warning(disable : 4548) /* expression before comma has no effect;      \
+                                   expected expression with side - effect */
+#pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
+                                   semantics are not enabled. Specify /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception handling  \
+                                   mode specified; termination on exception    \
+                                   is not guaranteed. Specify /EHsc */
 #endif                          /* _MSC_VER (warnings) */
-
-#include <limits.h>
-#include <string.h>
 
 #if defined(__GNUC__) && !__GNUC_PREREQ(4,2)
 	/* Actualy libfptu was not tested with compilers older than GCC from RHEL6.
@@ -102,6 +97,17 @@
 	 * In such case please don't rise up an issues related ONLY to old glibc. */
 #	error "libfptu required at least glibc version 2.12 or later."
 #endif
+
+#include <limits.h>
+#include <malloc.h>
+#include <string.h>
+
+#include <cinttypes> // for PRId64, PRIu64
+#include <cmath>     // for exp2()
+#include <cstdarg>   // for va_list
+#include <cstdio>    // for _vscprintf()
+#include <cstdlib>   // for snprintf()
+#include <ctime>     // for gmtime()
 
 #ifdef HAVE_VALGRIND_MEMCHECK_H
         /* Get debugging help from Valgrind */
@@ -317,46 +323,28 @@ __extern_C void __assert_fail(const char *assertion, const char *filename,
 #endif
     ;
 
-static __inline unsigned fptu_get_col(unsigned packed) {
+static __inline unsigned fptu_get_colnum(uint_fast16_t packed) {
   return (unsigned)(((uint16_t)packed) >> fptu_co_shift);
 }
 
-static __inline fptu_type fptu_get_type(unsigned packed) {
+static __inline fptu_type fptu_get_type(uint_fast16_t packed) {
   return (fptu_type)(packed & fptu_ty_mask);
 }
 
-static __inline unsigned fptu_pack_coltype(unsigned column, int type) {
+static __inline uint_fast16_t fptu_pack_coltype(unsigned column, int type) {
   assert(type <= fptu_ty_mask);
   assert(column <= fptu_max_cols);
-  return (unsigned)type + (column << fptu_co_shift);
+  return (uint_fast16_t)type + (column << fptu_co_shift);
 }
 
 static __inline bool fptu_ct_match(const fptu_field *pf, unsigned column,
                                    int type_or_filter) {
-  if (fptu_get_col(pf->ct) != column)
+  if (fptu_get_colnum(pf->ct) != column)
     return false;
   if (type_or_filter & fptu_filter)
     return (type_or_filter & (1 << fptu_get_type(pf->ct))) ? true : false;
   return type_or_filter == fptu_get_type(pf->ct);
 }
-
-typedef union fptu_payload {
-  uint32_t u32;
-  int32_t i32;
-  uint64_t u64;
-  int64_t i64;
-  fptu_time dt;
-  float fp32;
-  double fp64;
-  char cstr[4];
-  uint8_t fixbin[8];
-  uint32_t fixbin_by32[2];
-  uint64_t fixbin_by64[1];
-  struct {
-    fptu_varlen varlen;
-    uint32_t data[1];
-  } other;
-} fptu_payload;
 
 static __inline size_t bytes2units(size_t bytes) {
   return (bytes + fptu_unit_size - 1) >> fptu_unit_shift;
@@ -366,26 +354,16 @@ static __inline size_t units2bytes(size_t units) {
   return units << fptu_unit_shift;
 }
 
-static __inline fptu_payload *fptu_field_payload(fptu_field *pf) {
-  return (fptu_payload *)&pf->body[pf->offset];
-}
-
-#ifdef __cplusplus
-static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
-  return (const fptu_payload *)&pf->body[pf->offset];
-}
-#endif /* __cplusplus */
-
-static __inline bool ct_is_fixedsize(unsigned ct) {
+static __inline bool ct_is_fixedsize(uint_fast16_t ct) {
   return fptu_get_type(ct) < fptu_cstr;
 }
 
-static __inline bool ct_is_dead(unsigned ct) {
+static __inline bool ct_is_dead(uint_fast16_t ct) {
   return ct >= (fptu_co_dead << fptu_co_shift);
 }
 
-static __inline size_t ct_elem_size(unsigned ct) {
-  unsigned type = fptu_get_type(ct);
+static __inline size_t ct_elem_size(uint_fast16_t ct) {
+  uint_fast16_t type = fptu_get_type(ct);
   if (likely(ct_is_fixedsize(type)))
     return fptu_internal_map_t2b[type];
 
@@ -394,7 +372,7 @@ static __inline size_t ct_elem_size(unsigned ct) {
   return fptu_unit_size;
 }
 
-static __inline bool ct_match_fixedsize(unsigned ct, unsigned units) {
+static __inline bool ct_match_fixedsize(uint_fast16_t ct, size_t units) {
   return ct_is_fixedsize(ct) &&
          units == fptu_internal_map_t2u[fptu_get_type(ct)];
 }
@@ -409,7 +387,7 @@ static __inline const void *fptu_detent(const fptu_rw *rw) {
   return &rw->units[rw->end];
 }
 
-fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct);
+fptu_field *fptu_lookup_ct(fptu_rw *pt, uint_fast16_t ct);
 
 template <typename type>
 static __inline fptu_lge fptu_cmp2lge(type left, type right) {

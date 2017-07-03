@@ -18,11 +18,24 @@
  */
 
 #include "fptu_test.h"
-
 #include "shuffle6.hpp"
+
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#if _MSC_VER < 1900
+/* LY: workaround for dead code:
+       microsoft visual studio 12.0\vc\include\xtree(1826) */
+#pragma warning(disable : 4702) /* unreachable code */
+#endif
+#endif /* _MSC_VER */
+
 #include <algorithm>
 #include <set>
 #include <string>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 TEST(Compare, FetchTags) {
   char space[fptu_buffer_enought];

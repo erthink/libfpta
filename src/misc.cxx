@@ -23,27 +23,7 @@
 #pragma warning(disable : 4996) /* 'getenv' : This function or variable may be \
                        unsafe. Consider using _dupenv_s instead. To disable    \
                        deprecation, use _CRT_SECURE_NO_WARNINGS. */
-
-#pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                   unwind semantics are not enabled. Specify   \
-                                   /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                   handling mode specified; termination on     \
-                                   exception is not guaranteed. Specify /EHsc  \
-                                   */
 #endif                          /* _MSC_VER (warnings) */
-
-#include <cinttypes> // for PRId64, PRIu64
-#include <cmath>     // for exp2()
-#include <cstdarg>   // for va_list
-#include <cstdio>    // for _vscprintf()
-#include <cstdlib>   // for snprintf()
-#include <ctime>     // for gmtime()
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 bool fptu_is_under_valgrind(void) {
 #ifdef RUNNING_ON_VALGRIND
@@ -72,6 +52,7 @@ __cold std::string format(const char *fmt, ...) {
   std::string result;
   result.reserve((size_t)needed + 1);
   result.resize((size_t)needed, '\0');
+  assert((int)result.capacity() > needed);
   int actual = vsnprintf((char *)result.data(), result.capacity(), fmt, ones);
   assert(actual == needed);
   (void)actual;
@@ -82,7 +63,7 @@ __cold std::string format(const char *fmt, ...) {
 __cold std::string hexadecimal(const void *data, size_t bytes) {
   std::string result;
   if (bytes > 0) {
-    result.reserve(bytes * 2);
+    result.reserve(bytes * 2 + 1);
     const uint8_t *ptr = (const uint8_t *)data;
     const uint8_t *const end = ptr + bytes;
     do {
@@ -102,7 +83,7 @@ __cold std::string hexadecimal(const void *data, size_t bytes) {
 __cold const char *fptu_type_name(const fptu_type type) {
   switch ((int /* hush 'not in enumerated' */)type) {
   default: {
-    static __thread char buf[16];
+    static __thread char buf[32];
     snprintf(buf, sizeof(buf), "invalid(fptu_type)%i", (int)type);
     return buf;
   }
@@ -193,10 +174,10 @@ __cold string to_string(const fptu_error error) {
 
 template <typename native>
 static inline std::string
-array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
-                 const char *comma_fmt) {
+array2str_native(uint_fast16_t ct, const fptu_payload *payload,
+                 const char *name, const char *comma_fmt) {
   std::string result =
-      fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(ct), name,
+      fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(ct), name,
                    payload->other.varlen.array_length,
                    units2bytes(payload->other.varlen.brutto));
 
@@ -207,10 +188,11 @@ array2str_native(uint16_t ct, const fptu_payload *payload, const char *name,
   return result + "}";
 }
 
-static std::string array2str_fixbin(uint16_t ct, const fptu_payload *payload,
+static std::string array2str_fixbin(uint_fast16_t ct,
+                                    const fptu_payload *payload,
                                     const char *name, unsigned itemsize) {
   std::string result =
-      fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(ct), name,
+      fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(ct), name,
                    payload->other.varlen.array_length,
                    units2bytes(payload->other.varlen.brutto));
 
@@ -231,62 +213,62 @@ __cold string to_string(const fptu_field &field) {
   switch ((int /* hush 'not in enumerated' */)type) {
   default:
   case fptu_null:
-    return fptu::format("{%u.%s}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s}", fptu_get_colnum(field.ct),
                         fptu_type_name(type));
   case fptu_uint16:
-    return fptu::format("{%u.%s=%u}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%u}", fptu_get_colnum(field.ct),
                         fptu_type_name(type),
                         (unsigned)field.get_payload_uint16());
   case fptu_int32:
-    return fptu::format("{%u.%s=%" PRId32 "}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%" PRId32 "}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->i32);
   case fptu_uint32:
-    return fptu::format("{%u.%s=%" PRIu32 "}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%" PRIu32 "}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->u32);
   case fptu_fp32:
-    return fptu::format("{%u.%s=%g}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%g}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->fp32);
   case fptu_int64:
-    return fptu::format("{%u.%s=%" PRId64 "}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%" PRId64 "}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->i64);
   case fptu_uint64:
-    return fptu::format("{%u.%s=%" PRIu64 "}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%" PRIu64 "}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->u64);
   case fptu_fp64:
-    return fptu::format("{%u.%s=%.12g}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%.12g}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->fp64);
 
   case fptu_datetime:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            to_string(payload->dt) + '}';
 
   case fptu_96:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            fptu::hexadecimal(payload->fixbin, 96 / 8) + '}';
 
   case fptu_128:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            fptu::hexadecimal(payload->fixbin, 128 / 8) + '}';
 
   case fptu_160:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            fptu::hexadecimal(payload->fixbin, 160 / 8) + '}';
 
   case fptu_256:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            fptu::hexadecimal(payload->fixbin, 256 / 8) + '}';
 
   case fptu_cstr:
-    return fptu::format("{%u.%s=%s}", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=%s}", fptu_get_colnum(field.ct),
                         fptu_type_name(type), payload->cstr);
 
   case fptu_opaque:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            fptu::hexadecimal(payload->other.data,
                              payload->other.varlen.opaque_bytes) +
@@ -294,18 +276,18 @@ __cold string to_string(const fptu_field &field) {
     break;
 
   case fptu_nested:
-    return fptu::format("{%u.%s=", fptu_get_col(field.ct),
+    return fptu::format("{%u.%s=", fptu_get_colnum(field.ct),
                         fptu_type_name(type)) +
            std::to_string(fptu_field_nested(&field)) + "}";
 
   case fptu_null | fptu_farray:
     return fptu::format("{%u.invalid-null[%u(%" PRIuPTR ")]}",
-                        fptu_get_col(field.ct),
+                        fptu_get_colnum(field.ct),
                         payload->other.varlen.array_length,
                         units2bytes(payload->other.varlen.brutto));
 
   case fptu_uint16 | fptu_farray:
-    return array2str_native<int16_t>(field.ct, payload, "uint16", ",%u");
+    return array2str_native<uint16_t>(field.ct, payload, "uint16", ",%u");
   case fptu_int32 | fptu_farray:
     return array2str_native<int32_t>(field.ct, payload, "int32", ",%" PRId32);
   case fptu_uint32 | fptu_farray:
@@ -321,7 +303,7 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_datetime | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(field.ct),
                      "datetime", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
@@ -345,7 +327,7 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_cstr | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(field.ct),
                      "cstr", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
@@ -359,7 +341,7 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_opaque | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(field.ct),
                      "opaque", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
@@ -375,7 +357,7 @@ __cold string to_string(const fptu_field &field) {
 
   case fptu_nested | fptu_farray: {
     std::string result =
-        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_col(field.ct),
+        fptu::format("{%u.%s[%u(%" PRIuPTR ")]=", fptu_get_colnum(field.ct),
                      "nested", payload->other.varlen.array_length,
                      units2bytes(payload->other.varlen.brutto));
 
@@ -479,7 +461,12 @@ __cold string to_string(const fptu_time &time) {
   snprintf(datetime, sizeof(datetime), "%04d-%02d-%02d_%02d:%02d:%02d",
            utc_tm.tm_year + 1900, utc_tm.tm_mon + 1, utc_tm.tm_mday,
            utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec);
-  return string(datetime) + (fractional + /* skip leading */ 1);
+
+  string result;
+  result.reserve(31);
+  result = datetime;
+  result.append(fractional + /* skip leading digit before the dot */ 1);
+  return result;
 }
 
 /* #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__) */

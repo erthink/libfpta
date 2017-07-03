@@ -8,8 +8,8 @@ by [Positive Technologies](https://www.ptsecurity.ru).
 [![Build status](https://ci.appveyor.com/api/projects/status/8617mtix9paivmkx/branch/master?svg=true)](https://ci.appveyor.com/project/leo-yuriev/libfptu/branch/master)
 [![CircleCI](https://circleci.com/gh/leo-yuriev/libfptu/tree/master.svg?style=svg)](https://circleci.com/gh/leo-yuriev/libfptu/tree/master)
 
-English version by Google [is here](https://translate.googleusercontent.com/translate_c?act=url&ie=UTF8&sl=ru&tl=en&u=https://github.com/leo-yuriev/libfptu/tree/master).
-
+English version [by Google](https://translate.googleusercontent.com/translate_c?act=url&ie=UTF8&sl=ru&tl=en&u=https://github.com/leo-yuriev/libfptu/tree/master)
+and [by Yandex](https://translate.yandex.ru/translate?url=https%3A%2F%2Fgithub.com%2Fleo-yuriev%2Flibfptu%2Ftree%2Fmaster&lang=ru-en).
 
 ## Кратко
 

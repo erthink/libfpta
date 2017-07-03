@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.2)
-if (NOT CMAKE_VERSION VERSION_LESS 3.1.0)
+if(NOT CMAKE_VERSION VERSION_LESS 3.1.0)
   cmake_policy(SET CMP0054 NEW)
 endif()
 
@@ -21,21 +21,29 @@ include(CheckFunctionExists)
 include(FindPackageMessage)
 include(CheckStructHasMember)
 
+if(NOT CMAKE_VERSION VERSION_LESS 3.9.0)
+  cmake_policy(SET CMP0069 NEW)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE)
+else()
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE FALSE)
+endif()
+
 #
-# Set default build type to Debug. This is to ease a developer's
-# life. Release binaries are built by BuildBot automatically anyway.
-#
+# Set default build type to Release. This is to ease a User's life.
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING
-    "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+    "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
     FORCE)
 endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
+
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." OFF)
+  set(BUILD_SHARED_LIBS_DEFAULT OFF)
 else()
-  option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
+  set(BUILD_SHARED_LIBS_DEFAULT ON)
 endif()
+option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
 
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
@@ -46,6 +54,47 @@ include(cmake/arch.cmake)
 include(cmake/os.cmake)
 include(cmake/profile.cmake)
 include(cmake/compiler.cmake)
+
+if(CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE_UPPERCASE STREQUAL "DEBUG")
+  set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT ON)
+else()
+  set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT OFF)
+endif()
+
+if(CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE
+    OR GCC_LTO_AVAILABLE OR MSVC_LTO_AVAILABLE OR CLANG_LTO_AVAILABLE)
+  option(INTERPROCEDURAL_OPTIMIZATION "Enable interprocedural/LTO optimization." ${INTERPROCEDURAL_OPTIMIZATION_DEFAULT})
+endif()
+
+if(INTERPROCEDURAL_OPTIMIZATION)
+  if(CMAKE_INTERPROCEDURAL_OPTIMIZATION_AVAILABLE)
+    message(STATUS "FPTU indulge Interprocedural Optimization by CMake")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+  elseif(GCC_LTO_AVAILABLE)
+    message(STATUS "FPTU indulge Link-Time Optimization by GCC")
+    set(CMAKE_AR ${CMAKE_GCC_AR} CACHE PATH "Path to ar program with LTO-plugin" FORCE)
+    set(CMAKE_NM ${CMAKE_GCC_NM} CACHE PATH "Path to nm program with LTO-plugin" FORCE)
+    set(CMAKE_RANLIB ${CMAKE_GCC_RANLIB} CACHE PATH "Path to ranlib program with LTO-plugin" FORCE)
+    set(GCC_LTO_ENABLED TRUE)
+  elseif(MSVC_LTO_AVAILABLE)
+    set(MSVC_LTO_ENABLED TRUE)
+    message(STATUS "FPTU indulge Link-Time Optimization by MSVC")
+  elseif(CLANG_LTO_AVAILABLE)
+    set(CLANG_LTO_ENABLED TRUE)
+    if(CMAKE_CLANG_AR)
+      set(CMAKE_AR ${CMAKE_CLANG_AR} CACHE PATH "Path to ar program with LTO-plugin" FORCE)
+    endif()
+    if(CMAKE_CLANG_RANLIB)
+      set(CMAKE_RANLIB ${CMAKE_CLANG_RANLIB} CACHE PATH "Path to ranlib program with LTO-plugin" FORCE)
+    endif()
+    if(CMAKE_CLANG_NM)
+      set(CMAKE_NM ${CMAKE_CLANG_NM} CACHE PATH "Path to nm program with LTO-plugin" FORCE)
+    endif()
+    message(STATUS "FPTU engage Link-Time Optimization by CLANG")
+  else()
+    message(WARNING "Unable to engage interprocedural/LTO optimization.")
+  endif()
+endif()
 
 find_program(VALGRIND valgrind)
 if(VALGRIND)
@@ -96,7 +145,7 @@ CHECK_INCLUDE_FILES(ieee754.h HAVE_IEEE754_H)
 
 #
 # Enable 'make tags' target.
-if (CTAGS)
+if(CTAGS)
   add_custom_target(tags COMMAND ${CTAGS} -R -f tags
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_custom_target(ctags DEPENDS tags)
@@ -104,7 +153,7 @@ endif(CTAGS)
 
 #
 # Enable 'make reformat' target.
-if (CLANG_FORMAT)
+if(CLANG_FORMAT)
   add_custom_target(reformat
     VERBATIM
     COMMAND git ls-files | grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\$ | xargs clang-format -i --style=file
