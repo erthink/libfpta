@@ -24,19 +24,27 @@
 #include <atomic>
 #include <functional>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4820) /* bytes padding added after data member       \
+                                   for aligment */
+#endif                          /* _MSC_VER (warnings) */
+
 struct fpta_db {
   fpta_db(const fpta_db &) = delete;
   MDBX_env *mdbx_env;
   bool alterable_schema;
-  char unused_gap[3];
-
-  fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
   MDBX_dbi schema_dbi;
   fpta_rwl_t schema_rwlock;
-  unsigned reserved_gap;
+
+  fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
   MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 bool fpta_filter_validate(const fpta_filter *filter);
 int fpta_name_refresh_filter(fpta_txn *txn, fpta_name *table_id,

@@ -58,6 +58,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
       if (FPTA_CLEAN_DENIL && unlikely(field->get_payload_uint16() == denil))
         break;
       assert(field->get_payload_uint16() != denil);
+      (void)denil;
     }
     result.type = fpta_unsigned_int;
     result.uint = field->get_payload_uint16();
@@ -69,6 +70,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
       if (FPTA_CLEAN_DENIL && unlikely(payload->i32 == denil))
         break;
       assert(payload->i32 != denil);
+      (void)denil;
     }
     result.type = fpta_signed_int;
     result.sint = payload->i32;
@@ -80,6 +82,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
       if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
         break;
       assert(payload->u32 != denil);
+      (void)denil;
     }
     result.type = fpta_unsigned_int;
     result.uint = payload->u32;
@@ -92,6 +95,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
         break;
       assert(fpta_fp32_denil.__i == FPTA_DENIL_FP32_BIN);
       assert(binary_ne(payload->fp32, fpta_fp32_denil.__f));
+      (void)denil;
     }
     result.type = fpta_float_point;
     result.fp = payload->fp32;
@@ -103,6 +107,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
       if (FPTA_CLEAN_DENIL && unlikely(payload->i64 == denil))
         break;
       assert(payload->i64 != denil);
+      (void)denil;
     }
     result.type = fpta_signed_int;
     result.sint = payload->i64;
@@ -114,6 +119,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
       assert(payload->u64 != denil);
+      (void)denil;
     }
     result.type = fpta_unsigned_int;
     result.uint = payload->u64;
@@ -126,6 +132,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
         break;
       assert(fpta_fp64_denil.__i == FPTA_DENIL_FP64_BIN);
       assert(binary_ne(payload->fp64, fpta_fp64_denil.__d));
+      (void)denil;
     }
     result.type = fpta_float_point;
     result.fp = payload->fp64;
@@ -137,6 +144,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
       assert(payload->u64 != denil);
+      (void)denil;
     }
     result.type = fpta_datetime;
     result.datetime.fixedpoint = payload->u64;

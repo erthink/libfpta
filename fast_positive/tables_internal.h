@@ -154,6 +154,12 @@ struct fpta_key {
   } place;
 };
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4820) /* bytes padding added after data member       \
+                                   for aligment */
+#endif                          /* _MSC_VER (warnings) */
+
 struct fpta_cursor {
   fpta_cursor(const fpta_cursor &) = delete;
   MDBX_cursor *mdbx_cursor;
@@ -210,6 +216,10 @@ struct fpta_cursor {
   fpta_key range_from_key;
   fpta_key range_to_key;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 //----------------------------------------------------------------------------
 
