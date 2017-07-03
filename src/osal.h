@@ -138,7 +138,7 @@ static int __inline fpta_rwl_exclusivelock(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
     return ERROR_INVALID_PARAMETER;
   AcquireSRWLockExclusive(&rwl->srwl);
-  __srwl_set_state(rwl, GetCurrentThreadId());
+  __srwl_set_state(rwl, (ptrdiff_t)GetCurrentThreadId());
   return ERROR_SUCCESS;
 }
 

@@ -43,15 +43,15 @@ public:
   std::string pk_col_name;
   std::string se_col_name;
   fpta_name table, col_pk, col_se, col_order, col_dup_id, col_t1ha;
-  unsigned n_records;
+  int n_records;
   std::unordered_map<int, int> reorder;
 
-  void CheckPosition(int linear, int dup_id, unsigned expected_n_dups = 0,
+  void CheckPosition(int linear, int dup_id, int expected_n_dups = 0,
                      bool check_dup_id = true) {
     if (linear < 0) {
       /* для удобства и выразительности теста linear = -1 здесь
        * означает последнюю запись, -2 = предпоследнюю и т.д. */
-      linear += reorder.size();
+      linear += (int)reorder.size();
     }
 
     if (dup_id < 0) {
@@ -97,11 +97,11 @@ public:
      *
      * Соответственно ниже для descending-курсора выполняется "переворот"
      * контрольного номера дубликата. */
-    const auto expected_dup_id = fpta_index_is_unique(se_index)
-                                     ? 42
-                                     : fpta_cursor_is_descending(ordering)
-                                           ? NDUP - (dup_id + 1)
-                                           : dup_id;
+    const int expected_dup_id = fpta_index_is_unique(se_index)
+                                    ? 42
+                                    : fpta_cursor_is_descending(ordering)
+                                          ? NDUP - (dup_id + 1)
+                                          : dup_id;
 
     SCOPED_TRACE("logical-order " + std::to_string(expected_order) + " [" +
                  std::to_string(0) + "..." + std::to_string(NNN) +
@@ -120,11 +120,12 @@ public:
     SCOPED_TRACE("key: " + std::to_string(key.type) + ", length " +
                  std::to_string(key.binary_length));
 
-    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     ASSERT_EQ(expected_order, tuple_order);
 
-    auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+    auto tuple_dup_id =
+        (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     if ((check_dup_id && fpta_index_is_ordered(pk_index)) ||
         fpta_index_is_unique(se_index))
@@ -153,8 +154,8 @@ public:
     any_keygen keygen_primary(pk_type, pk_index);
     any_keygen keygen_secondary(se_type, se_index);
     n_records = 0;
-    for (unsigned linear = 0; linear < NNN; ++linear) {
-      unsigned order = (239 + linear * 42929) % NNN;
+    for (int linear = 0; linear < NNN; ++linear) {
+      int order = (239 + linear * 42929) % NNN;
       SCOPED_TRACE("order " + std::to_string(order));
 
       // теперь формируем кортеж
@@ -187,10 +188,10 @@ public:
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
         ++n_records;
       } else {
-        for (unsigned dup_id = 0; dup_id < NDUP; ++dup_id) {
+        for (int dup_id = 0; dup_id < NDUP; ++dup_id) {
           // обновляем dup_id и вставляем дубликат
           ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_dup_id,
-                                                fpta_value_uint(dup_id)));
+                                                fpta_value_sint(dup_id)));
           // обеспечиваем уникальный PK, но с возрастанием dup_id
           fpta_value value_pk =
               keygen_primary.make(order * NDUP + dup_id, NNN * NDUP);
@@ -376,9 +377,11 @@ public:
       ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
 
       int error;
-      auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+      auto tuple_order =
+          (int)fptu_get_sint(tuple, col_order.column.num, &error);
       ASSERT_EQ(FPTU_OK, error);
-      auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+      auto tuple_dup_id =
+          (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
       ASSERT_EQ(FPTU_OK, error);
       auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
       ASSERT_EQ(FPTU_OK, error);
@@ -892,7 +895,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
          * В случает неупорядоченного первичного индекса порядок дубликатов
          * не определен, и не проверяется (см. выше CheckPosition()).
          */
-        unsigned const expected_dup_number = NDUP - expected_dups;
+        int const expected_dup_number = NDUP - expected_dups;
         SCOPED_TRACE("multi-val: n-dups " + std::to_string(expected_dups) +
                      ", here-dup " + std::to_string(expected_dup_number));
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
@@ -940,7 +943,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
     for (size_t i = present.size(); i > present.size() / 2;) {
       const auto linear = present.at(--i);
       const auto order = reorder.at(linear);
-      unsigned expected_dups = dups_countdown.at(linear);
+      int expected_dups = dups_countdown.at(linear);
       SCOPED_TRACE("delete: linear " + std::to_string(linear) + ", order " +
                    std::to_string(order) + ", dups left " +
                    std::to_string(expected_dups));
@@ -955,7 +958,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       expected_dups = --dups_countdown.at(linear);
       if (expected_dups == 0) {
-        present.erase(present.begin() + i);
+        present.erase(present.begin() + (int)i);
         dups_countdown.erase(linear);
       }
 
@@ -1074,7 +1077,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
   ASSERT_LT(5u, n_records);
 
   any_keygen keygen(se_type, se_index);
-  const unsigned expected_dups = fpta_index_is_unique(se_index) ? 1 : NDUP;
+  const int expected_dups = fpta_index_is_unique(se_index) ? 1 : NDUP;
 
   // закрываем читающий курсор и транзакцию
   ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
@@ -1095,7 +1098,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
   cursor_guard.reset(cursor);
 
   // обновляем половину строк
-  for (unsigned order = 0; order < NNN; ++order) {
+  for (int order = 0; order < NNN; ++order) {
     SCOPED_TRACE("order " + std::to_string(order));
     fpta_value value_se = keygen.make(order, NNN);
 
@@ -1107,11 +1110,12 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
     ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
 
     int error;
-    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     ASSERT_EQ(order, tuple_order);
 
-    auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+    auto tuple_dup_id =
+        (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
 
     auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
@@ -1185,12 +1189,12 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
   cursor_guard.reset(cursor);
 
   // проверяем обновления
-  for (unsigned order = 0; order < NNN; ++order) {
+  for (int order = 0; order < NNN; ++order) {
     SCOPED_TRACE("order " + std::to_string(order));
     const fpta_value value_se = keygen.make(order, NNN);
     fptu_ro tuple;
     int error;
-    uint64_t tuple_dup_id;
+    int tuple_dup_id;
 
     ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &value_se, nullptr));
     ASSERT_EQ(FPTA_OK, fpta_cursor_eof(cursor_guard.get()));
@@ -1203,7 +1207,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
       ASSERT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));
       ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
 
-      tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+      tuple_dup_id = (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
       ASSERT_EQ(FPTU_OK, error);
 
       auto checksum = order_checksum(fpta_index_is_unique(se_index)
@@ -1223,7 +1227,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
         break;
     }
 
-    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     int expected_order = order;
     if (tuple_dup_id == 4242)

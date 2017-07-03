@@ -56,26 +56,24 @@
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
-                                    has been removed */
+                                   has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
 #pragma warning(disable : 4711) /* function 'xyz' selected for                 \
-                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum          \
-                                    'xyz' is not explicitly handled by a case  \
-                                    label */
+                                   automatic inline expansion */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum 'xyz' is \
+                                   not explicitly handled by a case label */
 #pragma warning(disable : 4201) /* nonstandard extension used :                \
-                                    nameless struct / union */
-#pragma warning(disable : 4127) /* conditional expression is constant          \
-                                    */
+                                   nameless struct / union */
+#pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+#pragma warning(disable : 4548) /* expression before comma has no effect;      \
+                                   expected expression with side - effect */
+#pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
+                                   semantics are not enabled. Specify /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception handling  \
+                                   mode specified; termination on exception    \
+                                   is not guaranteed. Specify /EHsc */
 #endif                          /* _MSC_VER (warnings) */
 
 #include <assert.h> // for assert()
@@ -174,8 +172,8 @@ typedef unsigned mode_t;
 #ifndef FPTA_ENABLE_RETURN_INTO_RANGE
 /* Опция определяет, поддерживать ли для курсора возврат в диапазон строк
  * после его исчерпания при итерировании. Например, позволить ли возврат
- * к последней строке посредством move(prev), после того как
- * move(next) вернул NODATA, так как курсор уже был на последней строке. */
+ * к последней строке посредством move(prev), после того как move(next)
+ * вернул FPTA_NODATA, так как курсор уже был на последней строке. */
 #define FPTA_ENABLE_RETURN_INTO_RANGE 1
 #endif /*FPTA_ENABLE_RETURN_INTO_RANGE */
 
@@ -449,7 +447,7 @@ typedef enum fpta_value_type {
  *
  * В том числе для передачи ключей (проиндексированных полей)
  * и значений для сравнения в условия больше/меньше/равно/не-равно. */
-typedef struct FPTA_API fpta_value {
+typedef struct fpta_value {
   fpta_value_type type;
   unsigned binary_length;
   union {
@@ -477,9 +475,25 @@ typedef struct FPTA_API fpta_value {
     const char *str;
   };
 #ifdef __cplusplus
-/* TODO: constructors from basic types (на самом деле через отдельный
- * дочерний класс, так как Clang капризничает и не позволяет возвращать из
- * C-linkage функции тип, у которого есть конструкторы C++). */
+  /* TODO: constructors from basic types (на самом деле через отдельный
+   * дочерний класс, так как Clang капризничает и не позволяет возвращать из
+   * C-linkage функции тип, у которого есть конструкторы C++). */
+
+  bool is_number() const {
+    const int number_mask = (1 << fpta_unsigned_int) | (1 << fpta_signed_int) |
+                            (1 << fpta_float_point);
+    return (number_mask & (1 << type)) != 0;
+  }
+
+  bool is_negative() const {
+    assert(is_number());
+    const int signed_mask = (1 << fpta_signed_int) | (1 << fpta_float_point);
+    return sint < 0 && (signed_mask & (1 << type));
+  }
+
+  inline fpta_value negative() const;
+  fpta_value operator-() const { return negative(); }
+
 #endif
 } fpta_value;
 
@@ -511,7 +525,7 @@ static __inline fpta_value fpta_value_datetime(fptu_time datetime) {
 }
 
 /* Конструктор value с плавающей точкой. */
-static __inline fpta_value fpta_value_float(double value) {
+static __inline fpta_value fpta_value_float(double_t value) {
   fpta_value r;
   r.type = fpta_float_point;
   r.binary_length = ~0u;
@@ -593,6 +607,21 @@ static __inline int fpta_value_destroy(fpta_value *value) {
 }
 
 //----------------------------------------------------------------------------
+/* In-place numeric operations with saturation */
+
+typedef enum fpta_inplace {
+  fpta_saturated_add /* target = min(target + argument, MAX_TYPE_VALUE) */,
+  fpta_saturated_sub /* target = max(target - argument, MIN_TYPE_VALUE) */,
+  fpta_saturated_mul /* target = min(target * argument, MAX_TYPE_VALUE) */,
+  fpta_saturated_div /* target = max(target / argument, MIN_TYPE_VALUE) */,
+  fpta_min /* target = min(target, argument) */,
+  fpta_max /* target = max(target, argument) */,
+  fpta_bes /* Basic Exponential Smoothing, при этом коэффициент сглаживания
+            * определяется дополнительным (третьим) аргументом.
+            * https://en.wikipedia.org/wiki/Exponential_smoothing */,
+} fpta_inplace;
+
+//----------------------------------------------------------------------------
 /* Designated empty, aka Denoted NILs */
 
 /* Предназначение и использование.
@@ -644,6 +673,9 @@ static __inline int fpta_value_destroy(fpta_value *value) {
  *         без знаковых и фиксированных бинарных типов.
  *       - для без знаковых и фиксированных бинарных и reverse-индексе
  *         NIL больше не-NIL (так как на самом деле внутри "все единицы").
+ *
+ * ВАЖНО: Обратите внимание на наличие функции fpta_confine_number(),
+ *        см описание ниже.
  *
  * Внутренние механизмы:
  *  - designated empty нужны только для индексирования NIL-значений,
@@ -1115,7 +1147,7 @@ inline constexpr fpta_index_type nullable(const fpta_index_type index) {
 typedef uint64_t fpta_shove_t;
 
 /* Набор колонок для создания таблицы */
-typedef struct FPTA_API fpta_column_set {
+typedef struct fpta_column_set {
   /* Счетчик заполненных описателей. */
   unsigned count;
   /* Упакованное внутреннее описание колонок. */
@@ -1149,7 +1181,7 @@ static __inline void fpta_column_set_init(fpta_column_set *column_set) {
  * В случае успеха возвращает ноль, иначе код ошибки. */
 static __inline int fpta_column_set_destroy(fpta_column_set *column_set) {
   if (column_set != nullptr && column_set->count != FPTA_DEADBEEF) {
-    column_set->count = FPTA_DEADBEEF;
+    column_set->count = (unsigned)FPTA_DEADBEEF;
     column_set->shoves[0] = 0;
     return FPTA_SUCCESS;
   }
@@ -1251,7 +1283,7 @@ FPTA_API int fpta_table_drop(fpta_txn *txn, const char *table_name);
 struct fpta_table_schema;
 
 /* Операционный идентификатор таблицы или колонки. */
-typedef struct FPTA_API fpta_name {
+typedef struct fpta_name {
   uint64_t version; /* версия схемы для кэширования. */
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
@@ -1264,7 +1296,7 @@ typedef struct FPTA_API fpta_name {
     /* для колонки */
     struct {
       struct fpta_name *table; /* операционный идентификатор таблицы */
-      int num; /* номер поля в кортеже. */
+      unsigned num; /* номер поля в кортеже. */
     } column;
   };
   unsigned handle_cache_hint; /* подсказка для кэша дескрипторов */
@@ -1332,11 +1364,13 @@ FPTA_API int fpta_name_reset(fpta_name *name_id);
 
 /* Возвращает тип данных колонки из дескриптора имени */
 static __inline fptu_type fpta_name_coltype(const fpta_name *column_id) {
+  assert(column_id->column.num <= fpta_max_cols);
   return (fptu_type)(column_id->shove & fpta_column_typeid_mask);
 }
 
 /* Возвращает тип индекса колонки из дескриптора имени */
 static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
+  assert(column_id->column.num <= fpta_max_cols);
   return (fpta_index_type)(column_id->shove & fpta_column_index_mask);
 }
 
@@ -1400,10 +1434,10 @@ FPTA_API int fpta_table_clear(fpta_txn *txn, fpta_name *table_id,
 typedef struct fpta_table_stat {
   uint64_t row_count /* количество строк */;
   uint64_t total_bytes /* занимаемое место */;
-  uint32_t btree_depth /* высота b-tree */;
-  uint32_t branch_pages /* количество не-листьевых страниц (со ссылками)*/;
-  uint32_t leaf_pages /* количество листьевых страниц (с данными) */;
-  uint32_t large_pages /* количество больших (вынужденно склеенных)
+  size_t btree_depth /* высота b-tree */;
+  size_t branch_pages /* количество не-листьевых страниц (со ссылками)*/;
+  size_t leaf_pages /* количество листьевых страниц (с данными) */;
+  size_t large_pages /* количество больших (вынужденно склеенных)
                           страниц для хранения длинных записей */;
 } fpta_table_stat;
 
@@ -1516,7 +1550,7 @@ typedef enum fpta_filter_bits {
  *
  * Текущую реализацию можно считать базовым вариантом для быстрого старта,
  * который в последствии может быть доработан. */
-typedef struct FPTA_API fpta_filter {
+typedef struct fpta_filter {
   fpta_filter_bits type;
 
   union {
@@ -1532,7 +1566,7 @@ typedef struct FPTA_API fpta_filter {
     /* параметры для вызова функтора/предиката для одной колонки. */
     struct {
       /* идентификатор колонки */
-      const fpta_name *column_id;
+      fpta_name *column_id;
       /* Функция-предикат, получает указатель на найденное поле, либо nullptr
        * если такового не найдено нет, а также параметр arg.
        * Функция должна вернуть true, если значение колонки/поля
@@ -1557,7 +1591,7 @@ typedef struct FPTA_API fpta_filter {
     /* параметры для условия больше/меньше/равно/не-равно. */
     struct {
       /* идентификатор колонки */
-      const fpta_name *left_id;
+      fpta_name *left_id;
       /* значение для сравнения */
       fpta_value right_value;
     } node_cmp;
@@ -1605,9 +1639,11 @@ typedef enum fpta_cursor_options {
  * упорядоченным. Таблица-источник, в которой производится поиск, задается
  * неявно через колонку.
  *
- * Передаваемый через column_id экземпляр fpta_name перед первым
- * использованием должен быть инициализированы посредством fpta_column_init().
- * Предварительный вызов fpta_name_refresh() не обязателен.
+ * Передаваемый через column_id экземпляр fpta_name, как и все экземпляры
+ * column_id внутри фильтра, перед первым использованием должны быть
+ * инициализированы посредством fpta_column_init(). Но предварительный
+ * вызов fpta_name_refresh() не требуется, обновление будет выполнено
+ * автоматически.
  *
  * Аргументы range_from и range_to задают диапазон выборки по значению
  * ключевой колонки. При необходимости могут быть заданы значения
@@ -1631,9 +1667,70 @@ typedef enum fpta_cursor_options {
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id,
                               fpta_value range_from, fpta_value range_to,
-                              const fpta_filter *filter, fpta_cursor_options op,
+                              fpta_filter *filter, fpta_cursor_options op,
                               fpta_cursor **cursor);
 FPTA_API int fpta_cursor_close(fpta_cursor *cursor);
+
+/* Реализует применение паттерна "visitor" к выборке из таблицы.
+ *
+ * Используя параметры txn, column_id, range_from, range_to, filter и op
+ * открывает внутренний курсор. При этом смысл и назначение всех параметров
+ * совпадает с функцией fpta_cursor_open(). За исключением флага fpta_dont_fetch
+ * в значении опций op, который теряет смысл и поэтому игнорируется.
+ *
+ * После открытия курсора, строки попадающие в условие выборки последовательно
+ * передаются функтору, задаваемому параметром visitor. При этом параметр skip
+ * задает количество строк пропускаемых в начале, а параметр limit ограничивает
+ * количество последующих итераций вызова функтора. При необходимости функтор
+ * может дополнительно прервать цикл обработки вернув ненулевое, т.е. отличное
+ * от FPTA_SUCCESS, значение. В таком случае, цикл обработки будет прерван, а
+ * значение полученное от функтора будет возвращено в качестве результата
+ * работы всей функции.
+ *
+ * Параметры visitor_context и visitor_arg являются дополнительными аргументами
+ * при вызове функтора и передаются "как есть".
+ *
+ * Параметры page_top, page_top и count являются выходными и опциональны. При
+ * ненулевом значении этих указателей в них будут возвращены соответствующие
+ * значения:
+ *  1) В count будет сохранено количество основных итераций, иначе говоря
+ *     количество строк, которые были переданы на обработку функтору.
+ *  2) В page_top значение сортирующей колонки для организации постраничного
+ *     "пролистывания" таблицы к началу, а именно:
+ *        - fpta_value_null, если при открытии курсора была ошибка.
+ *        - fpta_value_begin, если строк в выборке было меньше параметра skip,
+ *          в том числе если выборка данных пуста.
+ *        - ИНАЧЕ, значение сортирующей колонки из первой строки переданной
+ *          функтору, с тем чтобы при формировании предыдущей "страницы"
+ *          использовать полученное значение как range_to.
+ *  3) В page_bottom значение сортирующей колонки для организации постраничного
+ *     "пролистывания" к концу, а именно:
+ *        - fpta_value_null, если при открытии курсора была ошибка.
+ *        - fpta_value_end, если строк в выборке было меньше суммы параметров
+ *          skip и limit, в том числе если выборка данных пуста.
+ *        - ИНАЧЕ, значение сортирующей колонки из строки после последней
+ *          переданной функтору, с тем чтобы при формировании следующей
+ *          "страницы" использовать полученное значение как range_from.
+ *          Стоит отметить, что если последняя переданная функтору строка
+ *          также была последней в выборке, то в page_bottom также будет
+ *          возвращено fpta_value_end.
+ *
+ * Нулевые значения параметров visitor или limit считаются недопустимыми.
+ *
+ * При возникновении ошибки возвращается её код. Либо FPTA_NODATA, если
+ * в процессе итерирования будет достигнут конец данных. Либо ненулевой
+ * результат полученый от функтора, если функтор прервал таким образом цикл
+ * обработки.
+ * Нулевое значение (FPTA_SUCCESS) возвращается только если цикл обработки
+ * успешно завершился из-за достижения ограничения задаваемого параметром
+ * limit и в выборке еще оставались необработанные строки. */
+FPTA_API
+int fpta_apply_visitor(
+    fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
+    fpta_value range_to, fpta_filter *filter, fpta_cursor_options op,
+    size_t skip, size_t limit, fpta_value *page_top, fpta_value *page_bottom,
+    size_t *count, int (*visitor)(const fptu_ro *row, void *context, void *arg),
+    void *visitor_context, void *visitor_arg);
 
 /* Проверяет наличие за курсором данных.
  *
@@ -1839,6 +1936,32 @@ static __inline int fpta_cursor_probe_and_update(fpta_cursor *cursor,
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_cursor_delete(fpta_cursor *cursor);
+
+/* Обновляет значение колонки в текущей позиции курсора, выполняя бинарную
+ * операцию c аргументом и текущим значением.
+ *
+ * Аргумент column_id идентифицирует целевую колонку, но не может совпадать
+ * с ключевой колонкой курсора.
+ * Обновление строки в текущей позиции курсора выполняется с предварительной
+ * проверкой ограничений, если таковые связаны с обновляемой колонкой.
+ *
+ * Требуемая операция задается аргументом op, а второй операнд параметром value.
+ * ВАЖНО: Для операции fpta_bes (Basic Exponential Smoothing) необходимо
+ * передать дополнительный параметр, который задает коэффициент сглаживания.
+ * Этот дополнительные параметр может быть передан в двух вариантах:
+ *  - В формате плавающей точки, в диапазоне (0..1), исключая крайние точки.
+ *    При этом непосредственно задается значение коэффициент сглаживания.
+ *  - В виде отрицательного int64_t значения в диапазоне (-24..0),
+ *    также исключая крайние точки. При этом коэффициент сглаживания вычисляется
+ *    как "2 в степени N", где N - переданное значение.
+ *
+ * Возвращаемое значение:
+ *  - FPTA_SUCCESS (ноль) если значение колонки было успешно обновлено.
+ *  - FPTA_NODATA (-1) если значение не изменилось и не было ошибок.
+ *  - Иначе код ошибки. */
+FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
+                                 const fpta_inplace op, const fpta_value value,
+                                 ...);
 
 //----------------------------------------------------------------------------
 /* Манипуляция данными без курсоров. */
@@ -2127,6 +2250,12 @@ FPTA_API int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value);
 /* Конвертирует поле кортежа в "контейнер" fpta_value. */
 FPTA_API fpta_value fpta_field2value(const fptu_field *pf);
 
+/* При необходимости конвертирует тип и подгоняет числовое значение
+ * под возможности колонки, в том числе с учетом её индекса и nullable.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id);
+
 /* Обновляет или добавляет в кортеж значение колонки.
  *
  * Аргумент column_id идентифицирует колонку и должен быть
@@ -2146,6 +2275,31 @@ FPTA_API int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
  * В случае успеха возвращает ноль, иначе код ошибки. */
 FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
                              fpta_value *value);
+
+/* Обновляет значение колонки в переданном кортеже-строке, выполняя бинарную
+ * операцию c аргументом и текущим значением колонки (поля кортежа).
+ *
+ * Аргумент column_id идентифицирует целевую колонку и должен быть
+ * предварительно подготовлен посредством fpta_name_refresh().
+ * Внутри функции column_id не обновляется.
+ *
+ * Требуемая операция задается аргументом op, а второй операнд параметром value.
+ * ВАЖНО: Для операции fpta_bes (Basic Exponential Smoothing) необходимо
+ * передать дополнительный параметр, который задает коэффициент сглаживания.
+ * Этот дополнительные параметр может быть передан в двух вариантах:
+ *  - В формате плавающей точки, в диапазоне (0..1), исключая крайние точки.
+ *    При этом непосредственно задается значение коэффициент сглаживания.
+ *  - В виде отрицательного int64_t значения в диапазоне (-24..0),
+ *    также исключая крайние точки. При этом коэффициент сглаживания вычисляется
+ *    как "2 в степени N", где N - переданное значение.
+ *
+ * Возвращаемое значение:
+ *  - FPTA_SUCCESS (ноль) если значение колонки было успешно обновлено.
+ *  - FPTA_NODATA (-1) если значение не изменилось и не было ошибок.
+ *  - Иначе код ошибки. */
+FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
+                                 const fpta_inplace op, const fpta_value value,
+                                 ...);
 
 //----------------------------------------------------------------------------
 /* Некоторые внутренние служебные функции.
@@ -2179,9 +2333,9 @@ typedef struct fpta_version_info {
 typedef struct fpta_build_info {
   const char *datetime;
   const char *target;
-  const char *options;
+  const char *cmake_options;
   const char *compiler;
-  const char *flags;
+  const char *compile_flags;
 } fpta_build_info;
 
 extern FPTA_API const struct fpta_version_info fpta_version;
@@ -2218,6 +2372,17 @@ inline string to_string(const fpta_name &id) { return to_string(&id); }
 inline string to_string(const fpta_filter &filter) {
   return to_string(&filter);
 }
+}
+
+inline fpta_value fpta_value::negative() const {
+  if (type == fpta_signed_int)
+    return fpta_value_sint(-sint);
+  else if (type == fpta_float_point)
+    return fpta_value_float(-fp);
+  else {
+    assert(false);
+    return fpta_value_null();
+  }
 }
 
 inline fpta_value fpta_value_str(const std::string &str) {

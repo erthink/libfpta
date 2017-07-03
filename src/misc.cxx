@@ -508,10 +508,10 @@ __cold string to_string(const fpta_cursor *cursor) {
 }
 }
 
-int32_t mrand64(void) {
-  static uint64_t state;
+int_fast32_t mrand64(void) {
+  static uint_fast64_t state;
   state = state * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
-  return (int32_t)(state >> 32);
+  return (int_fast32_t)(state >> 32);
 }
 
 void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {

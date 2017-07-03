@@ -342,3 +342,45 @@ tail_recursion:
     return true;
   }
 }
+
+//----------------------------------------------------------------------------
+
+int fpta_name_refresh_filter(fpta_txn *txn, fpta_name *table_id,
+                             fpta_filter *filter) {
+tail_recursion:
+  int rc = FPTA_SUCCESS;
+  if (filter) {
+    switch (filter->type) {
+    default:
+      break;
+
+    case fpta_node_fncol:
+      rc =
+          fpta_name_refresh_couple(txn, table_id, filter->node_fncol.column_id);
+      break;
+
+    case fpta_node_not:
+      filter = filter->node_not;
+      goto tail_recursion;
+
+    case fpta_node_or:
+    case fpta_node_and:
+      rc = fpta_name_refresh_filter(txn, table_id, filter->node_and.a);
+      if (unlikely(rc != FPTA_SUCCESS))
+        break;
+      filter = filter->node_and.b;
+      goto tail_recursion;
+
+    case fpta_node_lt:
+    case fpta_node_gt:
+    case fpta_node_le:
+    case fpta_node_ge:
+    case fpta_node_eq:
+    case fpta_node_ne:
+      rc = fpta_name_refresh_couple(txn, table_id, filter->node_cmp.left_id);
+      break;
+    }
+  }
+
+  return rc;
+}

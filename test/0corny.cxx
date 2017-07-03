@@ -141,10 +141,10 @@ TEST(Corny, DeNIL_NaNs) {
 #endif /* FPTA_QSNAN_FP32x64_MAS */
 
   // преобразование DENIL с усечением.
-  fp32.__f = fpta_fp64_denil.__d;
+  fp32.__f = (float)fpta_fp64_denil.__d;
   EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
   EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
-  fp32.__f = FPTA_DENIL_FP64;
+  fp32.__f = (float)FPTA_DENIL_FP64;
   EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i);
   EXPECT_TRUE(binary_eq(fpta_fp32_denil, fp32));
 
@@ -160,7 +160,7 @@ TEST(Corny, DeNIL_NaNs) {
   EXPECT_FALSE(binary_eq(fpta_fp64_denil, fp64));
 
   // преобразование QSNAN с усечением.
-  fp32.__f = fpta_fp32x64_qsnan.__d;
+  fp32.__f = (float)fpta_fp32x64_qsnan.__d;
   EXPECT_NE(fpta_fp32_denil.__i, fp32.__i);
   EXPECT_EQ(fpta_fp32_denil.__i, fp32.__i + 1);
   EXPECT_FALSE(binary_eq(fpta_fp32_denil, fp32));

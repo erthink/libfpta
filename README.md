@@ -1,5 +1,5 @@
 libfpta
-============================================
+==============================================
 Fast Positive Tables, aka "Позитивные Таблицы"
 by [Positive Technologies](https://www.ptsecurity.ru).
 
@@ -15,6 +15,7 @@ to 1000K simple SQL-like requests per second on each CPU core.
 *The Future will Positive. Всё будет хорошо.*
 [![Build Status](https://travis-ci.org/leo-yuriev/libfpta.svg?branch=master)](https://travis-ci.org/leo-yuriev/libfpta)
 [![Build status](https://ci.appveyor.com/api/projects/status/wiixsody1o9474g9/branch/master?svg=true)](https://ci.appveyor.com/project/leo-yuriev/libfpta/branch/master)
+[![CircleCI](https://circleci.com/gh/leo-yuriev/libfpta/tree/master.svg?style=svg)](https://circleci.com/gh/leo-yuriev/libfpta/tree/master)
 
 English version [by Google](https://translate.googleusercontent.com/translate_c?act=url&ie=UTF8&sl=ru&tl=en&u=https://github.com/leo-yuriev/libfpta/tree/master)
 and [by Yandex](https://translate.yandex.ru/translate?url=https%3A%2F%2Fgithub.com%2Fleo-yuriev%2Flibfpta%2Ftree%2Fmaster&lang=ru-en).

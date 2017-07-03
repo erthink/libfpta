@@ -30,10 +30,10 @@
  * проявления каких-либо ошибок растет в лучшем случае как Log(NNN),
  * а скорее даже как SquareRoot(Log(NNN)).
  */
-#if FPTA_INDEX_UT_LONG
-static constexpr unsigned NNN = 65521; // около 1-2 минуты в /dev/shm/
+#ifdef FPTA_INDEX_UT_LONG
+static constexpr int NNN = 65521; // около 1-2 минуты в /dev/shm/
 #else
-static constexpr unsigned NNN = 509; // менее секунды в /dev/shm/
+static constexpr int NNN = 509; // менее секунды в /dev/shm/
 #endif
 
 static const char testdb_name[] = TEST_DB_DIR "ut_index_primary.fpta";
@@ -182,7 +182,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
   any_keygen keygen(type, index);
   unsigned n = 0;
-  for (unsigned order = 0; order < NNN; ++order) {
+  for (int order = 0; order < NNN; ++order) {
     SCOPED_TRACE("order " + std::to_string(order));
     fpta_value value_pk = keygen.make(order, NNN);
     if (value_pk.type == fpta_end)
@@ -331,7 +331,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     SCOPED_TRACE("key: " + std::to_string(key.type) + ", length " +
                  std::to_string(key.binary_length));
 
-    auto tuple_order = fptu_get_sint(tuple, col_order.column.num, &error);
+    auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     if (fpta_index_is_ordered(index))
       ASSERT_EQ(order, tuple_order);
@@ -341,7 +341,8 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     auto checksum = order_checksum(tuple_order, type, index).uint;
     ASSERT_EQ(checksum, tuple_checksum);
 
-    auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
+    auto tuple_dup_id =
+        (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));

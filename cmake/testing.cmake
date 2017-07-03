@@ -80,15 +80,20 @@ if(NOT GTEST_FOUND)
     add_subdirectory(${gtest_root}
       ${CMAKE_BINARY_DIR}/googletest-build)
 
-    if (CC_HAS_WERROR)
-      target_compile_options(gtest PRIVATE "-Wno-error")
-      target_compile_options(gtest_main PRIVATE "-Wno-error")
+    if(CC_HAS_WERROR)
+      if(MSVC)
+        target_compile_options(gtest PRIVATE "/WX-")
+        target_compile_options(gtest_main PRIVATE "/WX-")
+      else()
+        target_compile_options(gtest PRIVATE "-Wno-error")
+        target_compile_options(gtest_main PRIVATE "-Wno-error")
+      endif()
     endif()
 
     # The gtest/gtest_main targets carry header search path
     # dependencies automatically when using CMake 2.8.11 or
     # later. Otherwise we have to add them here ourselves.
-    if (CMAKE_VERSION VERSION_LESS 2.8.11)
+    if(CMAKE_VERSION VERSION_LESS 2.8.11)
       set(GTEST_INCLUDE_DIR "${gtest_SOURCE_DIR}/include")
     else()
       set(GTEST_INCLUDE_DIR "")
