@@ -1,0 +1,33 @@
+image: Visual Studio 2015
+
+environment:
+  matrix:
+#  - Toolset: v141
+  - Toolset: v140
+  - Toolset: v120
+  - Toolset: v110
+  - Toolset: v100
+
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Release
+  - Debug
+
+build:
+  verbosity: minimal
+  project: mdbx.sln
+
+test_script:
+- ps: |
+    if (($env:PLATFORM -eq "x86") -and (Test-Path "C:\projects\libmdbx\Win32\$env:CONFIGURATION\test.exe" -PathType Leaf)) {
+      $test = "C:\projects\libmdbx\Win32\$env:CONFIGURATION\test.exe"
+    } else {
+      $test = "C:\projects\libmdbx\$env:PLATFORM\$env:CONFIGURATION\test.exe"
+    }
+    & "$test" --pathname=tmp.db --dont-cleanup-after basic | Tee-Object -file test.log | Select-Object -last 42
+
+on_failure:
+  - ps: Push-AppveyorArtifact test.log
