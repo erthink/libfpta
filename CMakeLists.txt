@@ -213,8 +213,8 @@ else()
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h)
-include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/submodules/libfptu" "${PROJECT_SOURCE_DIR}/submodules")
-add_subdirectory(submodules)
+include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/externals/libfptu" "${PROJECT_SOURCE_DIR}/externals")
+add_subdirectory(externals)
 add_subdirectory(src)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
