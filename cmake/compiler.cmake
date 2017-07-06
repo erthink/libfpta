@@ -510,6 +510,10 @@ macro(setup_compile_flags)
     add_compile_flags("C;CXX" "-fopenmp")
   endif()
 
+  if (ENABLE_ASAN)
+    add_compile_flags("C;CXX" -fsanitize=address)
+  endif()
+
   if(ENABLE_GCOV)
     if(NOT HAVE_GCOV)
       message(FATAL_ERROR
