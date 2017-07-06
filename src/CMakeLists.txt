@@ -30,7 +30,7 @@ endif()
 
 if(CC_HAS_VISIBILITY)
   target_compile_options(fptu PRIVATE "-fvisibility=hidden")
-  if(GCC_LTO_ENABLED OR CLANG_LTO_ENABLED)
+  if(LTO_ENABLED OR LTO_ENABLED)
     set_target_properties(fptu PROPERTIES LINK_FLAGS "-fvisibility=hidden")
   endif()
 endif()
