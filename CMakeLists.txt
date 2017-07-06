@@ -198,6 +198,23 @@ setup_compile_flags()
 
 find_package(Threads REQUIRED)
 
+option(FPTA_ALLOW_DOT4NAMES
+  "Allow the dot character for table and column names." OFF)
+option(FPTA_PROHIBIT_UPSERT_NAN
+  "Disallow storing of NaN values in a floating-point columns" ON)
+option(FPTA_PROHIBIT_UPSERT_DENIL
+  "Disallow storing of 'Designated NIL' values in a numeric columns." ON)
+option(FPTA_CLEAN_DENIL
+  "Explicit checking for a values that reserved for 'Designated NIL' in the numeric columns and convert ones to the NIL." OFF)
+option(FPTA_PROHIBIT_NEARBY4UNORDERED
+  "Disallow non-exact cursors positioning for an unordered indexes." ON)
+option(FPTA_PROHIBIT_LOSS_PRECISION
+  "Disallow storing numeric values into a 32-bit floating-point columns with losing precision" OFF)
+option(FPTA_ENABLE_RETURN_INTO_RANGE
+  "Allow returning cursor into a data set, after it was been moved out to an invalid position." ON)
+option(FPTA_ENABLE_ABORT_ON_PANIC
+  "Force abort of application process in case of unrecoverable error" ON)
+
 CMAKE_DEPENDENT_OPTION(T1HA_USE_FAST_ONESHOT_READ
   "Enable oneshot memory reading for little bit faster hasing" ON
   "ENABLE_VALGRIND; ENABLE_ASAN" OFF)
