@@ -541,3 +541,25 @@ void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {
     }
   }
 }
+
+//----------------------------------------------------------------------------
+
+#ifdef __SANITIZE_ADDRESS__
+extern "C" FPTA_API __attribute__((weak)) const char *__asan_default_options() {
+  return "symbolize=1:allow_addr2line=1:"
+#ifdef _DEBUG
+         "debug=1:"
+#endif /* _DEBUG */
+         "report_globals=1:"
+         "replace_str=1:replace_intrin=1:"
+         "malloc_context_size=9:"
+         "detect_leaks=1:"
+         "check_printf=1:"
+         "detect_deadlocks=1:"
+         "check_initialization_order=1:"
+         "detect_stack_use_after_return=1:"
+         "intercept_tls_get_addr=1:"
+         "decorate_proc_maps=1:"
+         "abort_on_error=1";
+}
+#endif /* __SANITIZE_ADDRESS__ */
