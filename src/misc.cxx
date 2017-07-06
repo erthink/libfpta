@@ -556,7 +556,9 @@ extern "C" FPTA_API __attribute__((weak)) const char *__asan_default_options() {
          "detect_leaks=1:"
          "check_printf=1:"
          "detect_deadlocks=1:"
+#ifndef LTO_ENABLED
          "check_initialization_order=1:"
+#endif
          "detect_stack_use_after_return=1:"
          "intercept_tls_get_addr=1:"
          "decorate_proc_maps=1:"
