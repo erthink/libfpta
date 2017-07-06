@@ -58,13 +58,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  set(BUILD_SHARED_LIBS_DEFAULT OFF)
-else()
-  set(BUILD_SHARED_LIBS_DEFAULT ON)
-endif()
-option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
-
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
 
@@ -203,6 +196,13 @@ setup_compile_flags()
 #######################################################################
 
 find_package(Threads REQUIRED)
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  set(BUILD_SHARED_LIBS_DEFAULT OFF)
+else()
+  set(BUILD_SHARED_LIBS_DEFAULT ON)
+endif()
+option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
 
 if(BUILD_SHARED_LIBS)
   set(LIBFPTA_STATIC FALSE)
