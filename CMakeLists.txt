@@ -40,6 +40,7 @@ include(TestBigEndian)
 include(CheckFunctionExists)
 include(FindPackageMessage)
 include(CheckStructHasMember)
+include(CMakeDependentOption)
 
 if(NOT CMAKE_VERSION VERSION_LESS 3.9.0)
   cmake_policy(SET CMP0069 NEW)
@@ -196,6 +197,10 @@ setup_compile_flags()
 #######################################################################
 
 find_package(Threads REQUIRED)
+
+CMAKE_DEPENDENT_OPTION(T1HA_USE_FAST_ONESHOT_READ
+  "Enable oneshot memory reading for little bit faster hasing" ON
+  "ENABLE_VALGRIND; ENABLE_ASAN" OFF)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   set(BUILD_SHARED_LIBS_DEFAULT OFF)
