@@ -786,14 +786,15 @@ TYPED_TEST(Value2Key_AllString, basic) {
       ct_is_fixedsize(type) ? ct_elem_size(type) : 1;
   static const size_t keylen_max =
       ct_is_fixedsize(type) ? ct_elem_size(type) : (size_t)fpta_max_keylen;
+  const size_t keybuf_len = keylen_max + keylen_min;
 
 #ifdef _MSC_VER /* FIXME: mustdie */
-  uint8_t *const zeros = (uint8_t *)_alloca(keylen_max);
-  uint8_t *const ones = (uint8_t *)_alloca(keylen_max);
-  memset(zeros, is_string ? ' ' : 0, keylen_max);
-  memset(ones, ~0u, keylen_max);
+  uint8_t *const zeros = (uint8_t *)_alloca(keybuf_len);
+  uint8_t *const ones = (uint8_t *)_alloca(keybuf_len);
+  memset(zeros, is_string ? ' ' : 0, keybuf_len);
+  memset(ones, ~0u, keybuf_len);
 #else
-  char zeros[keylen_max], ones[keylen_max];
+  char zeros[keybuf_len], ones[keybuf_len];
   memset(zeros, is_string ? ' ' : 0, sizeof(zeros));
   memset(ones, ~0u, sizeof(ones));
 #endif
@@ -838,7 +839,6 @@ TYPED_TEST(Value2Key_AllString, basic) {
   }
 
   fpta_value value_left, value_right;
-  const size_t keybuf_len = keylen_max + keylen_min;
 #ifdef _MSC_VER /* FIXME: mustdie */
   uint8_t *const obverse = (uint8_t *)_alloca(keybuf_len);
   uint8_t *const reverse = (uint8_t *)_alloca(keybuf_len);
