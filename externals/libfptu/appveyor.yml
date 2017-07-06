@@ -1,6 +1,8 @@
 version: 0.0.4.{build}
 
 environment:
+  GTEST_SHUFFLE: 1
+  GTEST_RUNTIME_LIMIT: 142
   matrix:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_GENERATOR: Visual Studio 15 2017
@@ -23,6 +25,12 @@ platform:
 artifacts:
   - path: '_build/Testing/Temporary/*'
     name: test_results
+
+install:
+- git submodule update --init --recursive
+- git fetch --tags --prune
+- git submodule foreach --recursive git fetch --tags --prune
+- cmake --version
 
 before_build:
 - ps: |
