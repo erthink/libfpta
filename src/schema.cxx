@@ -521,6 +521,7 @@ static int fpta_column_def_validate(const fpta_shove_t *def, size_t count) {
         return FPTA_EINVAL;
       if (++index_count > fpta_max_indexes)
         return FPTA_TOOMANY;
+    // fall through
     case fpta_index_none:
     case fpta_noindex_nullable:
       if (i == 0)
