@@ -1,7 +1,10 @@
 language: cpp
-sudo: false
+sudo: required
 dist: trusty
-cache: bundler
+
+env:
+  global:
+    - secure: "rX82CxWJ5AauFnCyEYAvR7IW33A1wHZaGepTea/qsBt6HDe092XD8j7HjM3Dokksaklpm0wGa8aFsPLDjy9QSOROL+7spjXUBIJGjZtSiQwl9jRa7IPpKte9SU5pTVavu1gmCmjVkM6h1E3UV5ick8atDS0hTx062R7aNILcqYLLJOw6MnP9d1ldfVKaRV1HtfBqbVgzivp312ubITeyGG9FTxec2JeBwZNSLtv/8IpZSADBeEAlYEXlFN3DoARsNDw/hnO0zoffk2Za7BaIyXT2jMrx0Izq3e1s0hMvLmP/l6Io9R2UJKJFNr+YQEsbPmCi0m780uHfP7qwUqo9GTiscmypqRmhke1E6DqPvnPgJ8I13XEbVDrOua+8U5fqdQPOwt1UJ5B6ZfKxYBl1Zj1jSGM7iSAueKbVWSeSaWrcswO0PRdt7GiLg9IH13UeNzGuzjfv3Yk5Y2Crm+rafLo9eJd5SmBBb2d8r2iXddcJyNuvnCtr2Qzn7p5OAuyuAp8fKOWkldHqrMzaW5TcdWoqIDzpaM/12mtojBeGt7QltPKpUTdnCnExcf80mi1H8zHg3p91YxaFmTXmqti0B7aFG+X+sSKX/jpUgfzXUJAlc+qavl7AAoAY5UN+6aSWs4aeIPnSfq0t8y9Yc3kCuwVEvmFb5L1z3QFNSVdsEgQ="
 
 addons:
   apt:
@@ -10,6 +13,14 @@ addons:
     packages:
       - cmake
       - libgtest-dev
+  coverity_scan:
+    project:
+      name: "leo-yuriev/libfptu"
+      description: "Build submitted via Travis CI"
+    notification_email: leo@yuriev.ru
+    build_command_prepend: "git fetch --tags --prune && git submodule foreach --recursive git fetch --tags --prune && cmake ."
+    build_command: make
+    branch_pattern: coverity_scan
 
 compiler:
   - gcc
@@ -18,4 +29,15 @@ compiler:
 os:
   - linux
 
-script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi
+before_install: >
+  if [ "${COVERITY_SCAN_BRANCH}" = 1 ]; then
+    echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  fi
+
+script: >
+  if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+    git fetch --tags --prune &&
+    git submodule foreach --recursive git fetch --tags --prune &&
+    cmake --version &&
+    cmake . && make all && make test;
+  fi
