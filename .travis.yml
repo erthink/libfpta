@@ -1,7 +1,12 @@
 language: cpp
-sudo: false
+sudo: required
 dist: trusty
-cache: bundler
+
+env:
+  global:
+    - GTEST_SHUFFLE=1
+    - GTEST_RUNTIME_LIMIT=142
+    - secure: "VB9Ni1X3t4Ey08EdFKjwX74n66OedisIl5NgRZpcchcqW3wyU1w1wCE2lsYAGx26NwKh77CbFArmofLi6QpJarWnLpelwUnhNT02eggXFOCmMQSdrRNifScROBJJScCn8sFfPueJTw1MifGOHaruoqMrfjHWeuFZtaZV5Xku4cYOPNMgvQSxV5FradnjbfdzS0hmZQgh8XO7Mj6+nhDU0GTLENjajBZ6BAGBezpiR8FZ0PQjVkAEYn66qusUXSdFXVxi8lEqIC4ehLDwxtmImgtN05hpMETiR1mlO9AR3tZuLe0bk1u+gFabzbrPHHoSAb45yDI5k+C69hsmA5ntwkLOkE/ZWXqvqeA82yaAXdICq9E5knXpNJEiwAug+EC5SaY1nhi7/WdbrN9RlLh0kNdC4GvMQlw5pP2F64nDU2Dxq6meDLdXZ9NHVnU95QvGS2XpGJzZ69Y1cTe4cRGyCsQU3EIFspjL+e1ZnY3QOLpkg9W2Ni2h8lVFItUoBLgpAs+jNLwxCN+UY/QkvWTLK8CFrr7ym/SFMnQ3z/vS6YuPPKk4F2+EQxwomMY08MOjqXZzWeJQbfYdWGPhIYc9o35nUxLxfZ7aZDO55avRRZCk+gZRwddCxZjJigdeGlJCf26GI28E8oEHmjP07wfrJFSVfup4PdImKi7zIQPzg3c="
 
 addons:
   apt:
@@ -10,6 +15,14 @@ addons:
     packages:
       - cmake
       - libgtest-dev
+  coverity_scan:
+    project:
+      name: "leo-yuriev/libfpta"
+      description: "Build submitted via Travis CI"
+    notification_email: leo@yuriev.ru
+    build_command_prepend: "git fetch --tags --prune && git submodule foreach --recursive git fetch --tags --prune && cmake ."
+    build_command: make
+    branch_pattern: coverity_scan
 
 compiler:
   - gcc
@@ -18,13 +31,15 @@ compiler:
 os:
   - linux
 
-env:
-  global:
-    - GTEST_SHUFFLE=1
-    - GTEST_RUNTIME_LIMIT=142
+before_install: >
+  if [ "${COVERITY_SCAN_BRANCH}" = 1 ]; then
+    echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  fi
 
-script:
-  - git fetch --tags --prune
-  - git submodule foreach --recursive git fetch --tags --prune
-  - cmake --version
-  - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi
+script: >
+  if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+    git fetch --tags --prune &&
+    git submodule foreach --recursive git fetch --tags --prune &&
+    cmake --version &&
+    cmake . && make all && make test;
+  fi

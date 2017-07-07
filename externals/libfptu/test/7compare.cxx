@@ -61,6 +61,7 @@ TEST(Compare, FetchTags) {
           switch (i) {
           default:
             ASSERT_TRUE(false);
+            break;
           case 0:
           case 1:
             EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 41, 0));
@@ -232,6 +233,7 @@ TEST(Compare, DISABLED_Shuffle)
           switch (i) {
           default:
             ASSERT_TRUE(false);
+            break;
           case 4:
             ASSERT_EQ(FPTU_OK, fptu_insert_uint32(minor, 1, 0));
             minor_pattern += " A0";
@@ -292,6 +294,7 @@ TEST(Compare, DISABLED_Shuffle)
                 switch (i) {
                 default:
                   ASSERT_TRUE(false);
+                  break;
                 case 4:
                   ASSERT_EQ(FPTU_OK, fptu_insert_uint32(major, 1, 1));
                   major_pattern += " A1";

@@ -131,6 +131,8 @@ struct fpta_key {
 #ifndef NDEBUG
     fpta_pollute(this, sizeof(fpta_key), 0);
 #endif
+    mdbx.iov_base = nullptr; /* hush coverity */
+    mdbx.iov_len = ~0u;
   }
   fpta_key(const fpta_key &) = delete;
 

@@ -174,7 +174,8 @@ TEST(Shrink, Shuffle) {
               fptu_field *fp;
               switch (i % 3) {
               default:
-                assert(false);
+                ASSERT_TRUE(false);
+                break;
               case 0:
                 fp = fptu_lookup(pt, i, fptu_uint16);
                 ASSERT_NE(nullptr, fp);

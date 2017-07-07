@@ -248,6 +248,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
         break;
       case MDBX_PREV:
         step_op = MDBX_PREV_NODUP;
+      // fall through
       case MDBX_PREV_NODUP:
         /* идти в сторону уменьшения ключа есть смысл только в случае
          * unordered (хэшированного) индекса, при этом логично пропустить
@@ -259,6 +260,7 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
         /* при движении в сторону увеличения ключа логично пропустить все
          * дубликаты, так как они заведомо не попадают в диапазон курсора */
         step_op = MDBX_NEXT_NODUP;
+      // fall through
       case MDBX_NEXT_NODUP:
         goto next;
       }
@@ -280,10 +282,12 @@ static int fpta_cursor_seek(fpta_cursor *cursor, MDBX_cursor_op mdbx_seek_op,
         /* при движении в сторону уменьшения ключа логично пропустить все
          * дубликаты, так как они заведомо не попадают в диапазон курсора */
         step_op = MDBX_PREV_NODUP;
+      // fall through
       case MDBX_PREV_NODUP:
         goto next;
       case MDBX_NEXT:
         step_op = MDBX_NEXT_NODUP;
+      // fall through
       case MDBX_NEXT_NODUP:
         /* идти в сторону увелияения ключа есть смысл только в случае
          * unordered (хэшированного) индекса, при этом логично пропустить
