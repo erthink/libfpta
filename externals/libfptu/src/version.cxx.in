@@ -1,0 +1,49 @@
+/*
+ * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
+ *
+ * This file is part of libfptu, aka "Fast Positive Tuples".
+ *
+ * libfptu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * libfptu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "fast_positive/tuples_internal.h"
+
+#if FPTU_VERSION_MAJOR != @FPTU_VERSION_MAJOR@ || FPTU_VERSION_MINOR != @FPTU_VERSION_MINOR@
+#error "API version mismatch!"
+#endif
+
+#if defined(_MSC_VER) && defined(FPTU_BUILD_TAGRET)
+#pragma message("Configuration-depended FPTU_BUILD_TAGRET: " FPTU_BUILD_TAGRET)
+#endif
+#if defined(_MSC_VER) && defined(FPTU_COMPILE_FLAGS)
+#pragma message("Configuration-depended FPTU_COMPILE_FLAGS: " FPTU_COMPILE_FLAGS)
+#endif
+
+const struct fptu_version_info fptu_version = {
+  @FPTU_VERSION_MAJOR@, @FPTU_VERSION_MINOR@, @FPTU_VERSION_RELEASE@, @FPTU_VERSION_REVISION@,
+  {
+    "@FPTU_GIT_TIMESTAMP@",
+    "@FPTU_GIT_TREE@",
+    "@FPTU_GIT_COMMIT@",
+    "@FPTU_GIT_DESCRIBE@"
+  }
+};
+
+const struct fptu_build_info fptu_build = {
+  "@FPTU_BUILD_TIMESTAMP@",
+  @FPTU_BUILD_TAGRET@,
+  "@FPTU_CMAKE_OPTIONS@",
+  "@FPTU_BUILD_COMPILER@",
+  @FPTU_COMPILE_FLAGS@
+};

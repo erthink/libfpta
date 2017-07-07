@@ -29,21 +29,20 @@
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
 #pragma warning(disable : 4711) /* function 'xyz' selected for                 \
                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum          \
-                                   'xyz' is not explicitly handled by a case   \
-                                   label */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum 'xyz' is \
+                                   not explicitly handled by a case label */
 #pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
 #pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+#pragma warning(disable : 4548) /* expression before comma has no effect;      \
+                                   expected expression with side - effect */
+#pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
+                                   semantics are not enabled. Specify /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception handling  \
+                                   mode specified; termination on exception    \
+                                   is not guaranteed. Specify /EHsc */
 #endif                          /* _MSC_VER (warnings) */
 
 #include <ctype.h>
@@ -53,17 +52,18 @@
 #include <stdlib.h>
 #include <time.h>
 
-__extern_C int32_t mrand64(void);
+__extern_C int_fast32_t mrand64(void);
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #else
-static __inline int32_t mrand48(void) { return mrand64(); }
+static __inline int_fast32_t mrand48(void) { return mrand64(); }
 #endif
 
 #include <algorithm>
 #include <cfloat> // for float limits
 #include <cmath>  // for fabs()
+#include <limits> // for numeric_limits<>
 
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -154,6 +154,12 @@ struct fpta_key {
   } place;
 };
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4820) /* bytes padding added after data member       \
+                                   for aligment */
+#endif                          /* _MSC_VER (warnings) */
+
 struct fpta_cursor {
   fpta_cursor(const fpta_cursor &) = delete;
   MDBX_cursor *mdbx_cursor;
@@ -195,6 +201,10 @@ struct fpta_cursor {
   bool is_after_last() const { return false; }
 #endif
 
+  const fpta_filter *filter;
+  fpta_txn *txn;
+  fpta_db *db;
+
   fpta_name *table_id;
   struct {
     unsigned shove;
@@ -205,11 +215,11 @@ struct fpta_cursor {
 
   fpta_key range_from_key;
   fpta_key range_to_key;
-
-  const fpta_filter *filter;
-  fpta_txn *txn;
-  fpta_db *db;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 //----------------------------------------------------------------------------
 

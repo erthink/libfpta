@@ -1,0 +1,15 @@
+language: c
+sudo: false
+dist: trusty
+
+compiler:
+  - gcc
+  - clang
+
+os:
+  - linux
+  - osx
+
+script:
+  - make all
+  - make check

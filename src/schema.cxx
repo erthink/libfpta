@@ -95,8 +95,9 @@ static void fpta_shove2str(fpta_shove_t shove, fpta_dbi_name *name) {
   assert(buf < name->cstr + sizeof(name->cstr));
 }
 
-static __inline int fpta_dbicache_peek(fpta_txn *txn, const fpta_shove_t shove,
-                                       const unsigned cache_hint) {
+static __inline MDBX_dbi fpta_dbicache_peek(fpta_txn *txn,
+                                            const fpta_shove_t shove,
+                                            const unsigned cache_hint) {
   if (likely(cache_hint < fpta_dbi_cache_size)) {
     fpta_db *db = txn->db;
     if (likely(db->dbi_shoves[cache_hint] == shove))
@@ -117,7 +118,7 @@ static __hot MDBX_dbi fpta_dbicache_lookup(fpta_db *db, fpta_shove_t shove,
   size_t i = n;
   do {
     if (db->dbi_shoves[i] == shove) {
-      *cache_hint = i;
+      *cache_hint = (unsigned)i;
       return db->dbi_handles[i];
     }
     i = (i + 1) % fpta_dbi_cache_size;
@@ -137,7 +138,7 @@ static unsigned fpta_dbicache_update(fpta_db *db, const fpta_shove_t shove,
     if (db->dbi_shoves[i] == 0) {
       db->dbi_handles[i] = dbi;
       db->dbi_shoves[i] = shove;
-      return i;
+      return (unsigned)i;
     }
     i = (i + 1) % fpta_dbi_cache_size;
   } while (i != n);
@@ -259,7 +260,7 @@ static __hot int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
   return rc;
 }
 static __inline unsigned fpta_dbi_flags(const fpta_shove_t *shoves_defs,
-                                        const unsigned n) {
+                                        const size_t n) {
   const unsigned dbi_flags =
       (n == 0)
           ? fpta_index_shove2primary_dbiflags(shoves_defs[0])
@@ -268,7 +269,7 @@ static __inline unsigned fpta_dbi_flags(const fpta_shove_t *shoves_defs,
 }
 
 static __inline fpta_shove_t fpta_data_shove(const fpta_shove_t *shoves_defs,
-                                             const unsigned n) {
+                                             const size_t n) {
   const fpta_shove_t data_shove =
       n ? shoves_defs[0]
         : fpta_column_shove(0, fptu_nested,
@@ -725,7 +726,7 @@ FPTA_API int fpta_schema_destroy(fpta_schema_info *info) {
 
   for (size_t i = 0; i < info->tables_count; i++)
     fpta_name_destroy(info->tables_names + i);
-  info->tables_count = FPTA_DEADBEEF;
+  info->tables_count = (unsigned)FPTA_DEADBEEF;
 
   return FPTA_SUCCESS;
 }
@@ -756,7 +757,7 @@ static int fpta_name_init(fpta_name *id, const char *name,
   case fpta_column:
     id->shove = fpta_column_shove(fpta_shove_name(name, fpta_column), fptu_null,
                                   fpta_index_none);
-    id->column.num = -1;
+    id->column.num = ~0u;
     id->column.table = id;
     assert(fpta_id_validate(id, fpta_column));
     break;
@@ -829,7 +830,7 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
     return FPTA_EINVAL;
   column_id->column.table = const_cast<fpta_name *>(table_id);
   column_id->shove = schema->columns[column];
-  column_id->column.num = (int)column;
+  column_id->column.num = column;
   column_id->version = table_id->version;
   // column_id->mdbx_dbi = 0; /* done by memset() */
 
@@ -936,19 +937,19 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     return FPTA_SCHEMA_CHANGED;
 
   if (column_id->version != table_id->version) {
-    column_id->column.num = -1;
+    column_id->column.num = ~0u;
     column_id->handle_cache_hint = ~0u;
     for (size_t i = 0; i < schema->count; ++i) {
       if (fpta_shove_eq(column_id->shove, schema->columns[i])) {
         column_id->shove = schema->columns[i];
-        column_id->column.num = (int)i;
+        column_id->column.num = (unsigned)i;
         break;
       }
     }
     column_id->version = table_id->version;
   }
 
-  if (unlikely(column_id->column.num < 0))
+  if (unlikely(column_id->column.num > fpta_max_cols))
     return FPTA_ENOENT;
   return FPTA_SUCCESS;
 }

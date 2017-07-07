@@ -23,6 +23,13 @@
 #error "API version mismatch!"
 #endif
 
+#if defined(_MSC_VER) && defined(FPTA_BUILD_TAGRET)
+#pragma message("Configuration-depended FPTA_BUILD_TAGRET: " FPTA_BUILD_TAGRET)
+#endif
+#if defined(_MSC_VER) && defined(FPTA_COMPILE_FLAGS)
+#pragma message("Configuration-depended FPTA_COMPILE_FLAGS: " FPTA_COMPILE_FLAGS)
+#endif
+
 const struct fpta_version_info fpta_version = {
   @FPTA_VERSION_MAJOR@, @FPTA_VERSION_MINOR@, @FPTA_VERSION_RELEASE@, @FPTA_VERSION_REVISION@,
   {
@@ -35,8 +42,8 @@ const struct fpta_version_info fpta_version = {
 
 const struct fpta_build_info fpta_build = {
   "@FPTA_BUILD_TIMESTAMP@",
-  "@FPTA_BUILD_TAGRET@",
-  "@FPTA_BUILD_OPTIONS@",
+  @FPTA_BUILD_TAGRET@,
+  "@FPTA_CMAKE_OPTIONS@",
   "@FPTA_BUILD_COMPILER@",
-  "@FPTA_BUILD_FLAGS@"
+  @FPTA_COMPILE_FLAGS@
 };

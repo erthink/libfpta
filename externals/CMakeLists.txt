@@ -6,11 +6,13 @@ add_library(t1ha STATIC
   t1ha/src/t1ha1.c
   )
 
-if (CC_HAS_ARCH_NATIVE)
+target_compile_definitions(t1ha PRIVATE T1HA_USE_FAST_ONESHOT_READ=$<BOOL:${T1HA_USE_FAST_ONESHOT_READ}>)
+
+if(CC_HAS_ARCH_NATIVE)
   target_compile_options(t1ha PRIVATE "-march=native")
 endif()
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   set(LIBMDBX_OSAL windows)
 else()
   set(LIBMDBX_OSAL posix)
@@ -24,15 +26,15 @@ add_library(mdbx STATIC
   libmdbx/src/version.c
   )
 
-target_compile_definitions(mdbx PRIVATE $<$<CONFIG:Debug>:MDBX_DEBUG=1> $<$<BOOL:${ENABLE_VALGRIND}>:ENABLE_VALGRIND>)
+target_compile_definitions(mdbx PRIVATE MDBX_DEBUG=$<CONFIG:Debug> $<$<BOOL:${ENABLE_VALGRIND}>:ENABLE_VALGRIND>)
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
 if(UNIX AND NOT APPLE)
   target_link_libraries(mdbx rt)
 endif()
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  message (WARNING "Now skiping MDBX-tools for Windows (TODO)")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  message(WARNING "Now skiping MDBX-tools for Windows (TODO)")
 else()
 
   add_executable(mdbx_chk libmdbx/src/tools/mdbx_chk.c)

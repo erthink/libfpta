@@ -1,0 +1,21 @@
+language: cpp
+sudo: false
+dist: trusty
+cache: bundler
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - cmake
+      - libgtest-dev
+
+compiler:
+  - gcc
+  - clang
+
+os:
+  - linux
+
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake . && make all && make test; fi

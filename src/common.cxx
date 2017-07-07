@@ -375,7 +375,7 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
           (tbl_state & (MDBX_TBL_NEW | MDBX_TBL_STALE)) != 0) {
 
         if (!dbi_locked && txn->level < fpta_schema) {
-          int err = fpta_mutex_lock(&db->dbi_mutex);
+          err = fpta_mutex_lock(&db->dbi_mutex);
           if (unlikely(err != 0))
             return err;
           dbi_locked = true;

@@ -24,20 +24,19 @@ static const char testdb_name[] = TEST_DB_DIR "ut_crud.fpta";
 static const char testdb_name_lck[] =
     TEST_DB_DIR "ut_crud.fpta" MDBX_LOCK_SUFFIX;
 
-class CrudSimple
-    : public ::testing::TestWithParam<
+class CrudSimple : public ::testing::TestWithParam<
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-          std::tr1::tuple<bool, unsigned, unsigned, unsigned, unsigned>>
+                       std::tr1::tuple<bool, int, int, int, int>>
 #else
-          std::tuple<bool, unsigned, unsigned, unsigned, unsigned>>
+                       std::tuple<bool, int, int, int, int>>
 #endif
 {
 public:
   bool secondary;
-  unsigned order_key;
-  unsigned order_val;
-  unsigned nitems;
-  unsigned shift;
+  int order_key;
+  int order_val;
+  int nitems;
+  int shift;
 
   scoped_db_guard db_quard;
   scoped_txn_guard txn_guard;
@@ -64,7 +63,7 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_pk, "pk_str_uniq"));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_se, "se_opaque_dups"));
-    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_val, "col_uint"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_val, "col_int"));
 
     // чистим
     if (REMOVE_FILE(testdb_name) != 0)
@@ -94,7 +93,7 @@ public:
                            secondary ? fpta_secondary_withdups_ordered_obverse
                                      : fpta_index_none,
                            &def));
-    EXPECT_EQ(FPTA_OK, fpta_column_describe("col_uint", fptu_uint64,
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("col_int", fptu_int64,
                                             fpta_index_none, &def));
     EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
@@ -191,7 +190,7 @@ TEST_P(CrudSimple, Nulls) {
   ASSERT_NE(nullptr, row);
   ASSERT_STREQ(nullptr, fptu_check(row));
   fpta_txn *txn = txn_guard.get();
-  std::unordered_map<unsigned, unsigned> checker;
+  std::unordered_map<int, int> checker;
 
   SCOPED_TRACE(std::string(secondary ? "index secondary" : "index primary") +
                ", order_key " + std::to_string(order_key) + ", order_value " +
@@ -199,8 +198,8 @@ TEST_P(CrudSimple, Nulls) {
                std::to_string(nitems) + ", shift " + std::to_string(shift));
 
   std::string changelog;
-  for (unsigned i = 0; i < nitems; ++i) {
-    const unsigned n = (i + shift) % 9;
+  for (int i = 0; i < nitems; ++i) {
+    const int n = (i + shift) % 9;
     ASSERT_EQ(FPTU_OK, fptu_clear(row));
     ASSERT_STREQ(nullptr, fptu_check(row));
 
@@ -231,7 +230,7 @@ TEST_P(CrudSimple, Nulls) {
                  std::to_string(checker[count_by]) + ")");
 
     ASSERT_EQ(FPTA_OK,
-              fpta_upsert_column(row, &col_val, fpta_value_uint(count_by)));
+              fpta_upsert_column(row, &col_val, fpta_value_sint(count_by)));
 
     if (key_case == -1)
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, empty_string));
@@ -288,12 +287,12 @@ TEST_P(CrudSimple, Nulls) {
     ASSERT_STREQ(nullptr, fptu_check_ro(tuple));
 
     int error;
-    auto count_by = fptu_get_uint(tuple, col_val.column.num, &error);
+    auto count_by = (int)fptu_get_sint(tuple, col_val.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
 
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
-    EXPECT_EQ(checker[count_by], dups);
+    EXPECT_EQ((size_t)checker[count_by], dups);
 
     error = fpta_cursor_move(cursor, fpta_next);
     if (error == FPTA_NODATA)

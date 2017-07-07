@@ -1,0 +1,16 @@
+- [x] intergation with GoogleTest (pull, build);
+- [x] CI by AppVeyor;
+- [x] use fast-int types and double_t;
+- [x] Link-Time Optimization;
+- [ ] interface for external scheme;
+- [ ] serialization to JSON (optional with schema);
+- [ ] de-serialization from JSON (with schema);
+- [ ] fput_field_xyz_cmp();
+- [ ] fptu_field_xyz_set();
+- [ ] support for headspace reservation;
+- [ ] support for arrays and nested tuples;
+- [ ] C++ bindings;
+- [ ] unit test for `limits`;
+- [ ] external scheme support and C++ binding auto-generation;
+- [ ] ? support for sorted tuples.
+- [ ] automatic grow for buffers (by one more indirection)

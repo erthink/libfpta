@@ -24,20 +24,31 @@
 #include <atomic>
 #include <functional>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4820) /* bytes padding added after data member       \
+                                   for aligment */
+#endif                          /* _MSC_VER (warnings) */
+
 struct fpta_db {
   fpta_db(const fpta_db &) = delete;
-  fpta_rwl_t schema_rwlock;
   MDBX_env *mdbx_env;
-  MDBX_dbi schema_dbi;
   bool alterable_schema;
-  char unused_gap[3];
+  MDBX_dbi schema_dbi;
+  fpta_rwl_t schema_rwlock;
 
   fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
   MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 bool fpta_filter_validate(const fpta_filter *filter);
+int fpta_name_refresh_filter(fpta_txn *txn, fpta_name *table_id,
+                             fpta_filter *filter);
 bool fpta_schema_validate(const MDBX_val def);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
@@ -90,3 +101,127 @@ static __inline bool fpta_id_validate(const fpta_name *id,
     return true;
   }
 }
+
+static __inline int fpta_cursor_validate(const fpta_cursor *cursor,
+                                         fpta_level min_level) {
+  if (unlikely(cursor == nullptr || cursor->mdbx_cursor == nullptr))
+    return FPTA_EINVAL;
+
+  return fpta_txn_validate(cursor->txn, min_level);
+}
+
+//----------------------------------------------------------------------------
+
+template <fptu_type type> struct numeric_traits;
+
+template <> struct numeric_traits<fptu_uint16> {
+  typedef uint16_t native;
+  typedef uint_fast16_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    return fpta_index_is_obverse(index) ? (fast)FPTA_DENIL_UINT16_OBVERSE
+                                        : (fast)FPTA_DENIL_UINT16_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_uint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_uint32> {
+  typedef uint32_t native;
+  typedef uint_fast32_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT32_OBVERSE
+                                        : FPTA_DENIL_UINT32_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_uint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_uint64> {
+  typedef uint64_t native;
+  typedef uint_fast64_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT64_OBVERSE
+                                        : FPTA_DENIL_UINT64_REVERSE;
+  }
+  static fpta_value_type value_type() { return fpta_unsigned_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_uint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_int32> {
+  typedef int32_t native;
+  typedef int_fast32_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_SINT32;
+  }
+  static fpta_value_type value_type() { return fpta_signed_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_sint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_int64> {
+  typedef int64_t native;
+  typedef int_fast64_t fast;
+  enum { has_native_saturation = false };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_SINT64;
+  }
+  static fpta_value_type value_type() { return fpta_signed_int; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_sint(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_fp32> {
+  typedef float native;
+  typedef float_t fast;
+  enum { has_native_saturation = true };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_FP32;
+  }
+  static fpta_value_type value_type() { return fpta_float_point; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_float(value);
+  }
+};
+
+template <> struct numeric_traits<fptu_fp64> {
+  typedef double native;
+  typedef double_t fast;
+  enum { has_native_saturation = true };
+  typedef std::numeric_limits<native> native_limits;
+  static fast denil(const fpta_index_type index) {
+    assert(fpta_index_is_nullable(index));
+    (void)index;
+    return FPTA_DENIL_FP64;
+  }
+  static fpta_value_type value_type() { return fpta_float_point; }
+  static fpta_value make_value(const fast value) {
+    return fpta_value_float(value);
+  }
+};

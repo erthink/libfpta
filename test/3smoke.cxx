@@ -532,10 +532,10 @@ TEST(SmokeIndex, Secondary) {
 #include <string>
 #include <vector>
 
-static unsigned mapdup_order2key(unsigned order, unsigned NNN) {
-  unsigned quart = NNN / 4;
-  unsigned offset = 0;
-  unsigned shift = 0;
+static int mapdup_order2key(int order, int NNN) {
+  int quart = NNN / 4;
+  int offset = 0;
+  int shift = 0;
 
   while (order >= quart) {
     offset += quart >> shift++;
@@ -544,11 +544,11 @@ static unsigned mapdup_order2key(unsigned order, unsigned NNN) {
   return (order >> shift) + offset;
 }
 
-unsigned mapdup_order2count(unsigned order, unsigned NNN) {
-  unsigned value = mapdup_order2key(order, NNN);
+int mapdup_order2count(int order, int NNN) {
+  int value = mapdup_order2key(order, NNN);
 
-  unsigned count = 1;
-  for (unsigned n = order; n < NNN; ++n)
+  int count = 1;
+  for (int n = order; n < NNN; ++n)
     if (n != order && value == mapdup_order2key(n, NNN))
       count++;
 
@@ -556,11 +556,11 @@ unsigned mapdup_order2count(unsigned order, unsigned NNN) {
 }
 
 TEST(Smoke, mapdup_order2key) {
-  std::map<unsigned, unsigned> checker;
+  std::map<int, int> checker;
 
-  const unsigned NNN = 32;
-  for (unsigned order = 0; order < 32; ++order) {
-    unsigned dup = mapdup_order2key(order, NNN);
+  const int NNN = 32;
+  for (int order = 0; order < 32; ++order) {
+    int dup = mapdup_order2key(order, NNN);
     checker[dup] += 1;
   }
   EXPECT_EQ(1u, checker[0]);
@@ -625,7 +625,7 @@ public:
   std::set<crud_item *, crud_item::less_pk> checker_pk_uint;
   std::set<crud_item *, crud_item::less_str> checker_str;
   std::set<crud_item *, crud_item::less_real> checker_real;
-  unsigned ndeleted;
+  int ndeleted;
 
   void Check(fpta_cursor *cursor) {
     int move_result = fpta_cursor_move(cursor, fpta_first);
@@ -788,24 +788,24 @@ public:
     }
   }
 
-  static unsigned mesh_order4uint(unsigned n, unsigned NNN) {
-    return (37 * n) % NNN;
+  static unsigned mesh_order4uint(int n, int NNN) {
+    return (37 * (unsigned)n) % NNN;
   }
 
-  static unsigned mesh_order4str(unsigned n, unsigned NNN) {
-    return (67 * n + 17) % NNN;
+  static int mesh_order4str(int n, int NNN) {
+    return (int)((67 * (unsigned)n + 17) % NNN);
   }
 
-  static unsigned mesh_order4real(unsigned n, unsigned NNN) {
-    return (97 * n + 43) % NNN;
+  static int mesh_order4real(int n, int NNN) {
+    return (int)((97 * (unsigned)n + 43) % NNN);
   }
 
-  static unsigned mesh_order4update(unsigned n, unsigned NNN) {
-    return (11 * n + 23) % NNN;
+  static unsigned mesh_order4update(int n, int NNN) {
+    return (11 * (unsigned)n + 23) % NNN;
   }
 
-  static unsigned mesh_order4delete(unsigned n, unsigned NNN) {
-    return (5 * n + 13) % NNN;
+  static unsigned mesh_order4delete(int n, int NNN) {
+    return (5 * (unsigned)n + 13) % NNN;
   }
 };
 
@@ -873,14 +873,14 @@ TEST_F(SmokeCRUD, none) {
   ASSERT_NE(nullptr, row);
   ASSERT_STREQ(nullptr, fptu_check(row));
 
-  constexpr unsigned NNN = 42;
+  constexpr int NNN = 42;
   /* создаем достаточно кол-во строк для последующих проверок */ {
     SCOPED_TRACE("fill");
-    for (unsigned i = 0; i < NNN; ++i) {
+    for (int i = 0; i < NNN; ++i) {
       /* перемешиваем, так чтобы у полей был независимый порядок */
       unsigned pk_uint_value = mesh_order4uint(i, NNN);
-      unsigned order_se_str = mesh_order4str(i, NNN);
-      unsigned order_se_real = mesh_order4real(i, NNN);
+      int order_se_str = mesh_order4str(i, NNN);
+      int order_se_real = mesh_order4real(i, NNN);
       double se_real_value = mapdup_order2key(order_se_real, NNN) / (double)NNN;
 
       SCOPED_TRACE(
@@ -975,7 +975,7 @@ TEST_F(SmokeCRUD, none) {
    * нелинейном порядке), поэтому из container их можно брать просто
    * последовательно. Однако, для параметризируемой стохастичности теста
    * порядок будет еще раз перемешан посредством mesh_order4update(). */
-  unsigned nn = 0;
+  int nn = 0;
 
   // начинаем транзакцию для проверочных обновлений
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_quard.get(), fpta_write, &txn));
@@ -987,7 +987,7 @@ TEST_F(SmokeCRUD, none) {
   /* обновляем строки без курсора и без изменения PK */ {
     SCOPED_TRACE("update.without-cursor");
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1037,7 +1037,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1102,7 +1102,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1112,7 +1112,7 @@ TEST_F(SmokeCRUD, none) {
                    ", time " + std::to_string(item->time));
 
       // считаем сколько должно быть повторов
-      unsigned expected_dups = 0;
+      int expected_dups = 0;
       for (auto const &scan : container)
         if (item->se_real == scan->se_real)
           expected_dups++;
@@ -1187,7 +1187,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int m = 0; m < 8; ++m) {
-      const unsigned n = mesh_order4update(nn++, NNN);
+      const auto n = mesh_order4update(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), change-mask: " +
                    std::to_string(m));
@@ -1264,7 +1264,7 @@ TEST_F(SmokeCRUD, none) {
     SCOPED_TRACE("delete.without-cursor");
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -1324,7 +1324,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -1373,7 +1373,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -1449,7 +1449,7 @@ TEST_F(SmokeCRUD, none) {
     cursor_guard.reset(cursor);
 
     for (int i = 0; i < ndel; ++i) {
-      const unsigned n = mesh_order4delete(nn++, NNN);
+      const auto n = mesh_order4delete(nn++, NNN);
       SCOPED_TRACE("item " + std::to_string(n) + " of [0.." +
                    std::to_string(NNN) + "), step #" + std::to_string(i));
       crud_item *item = container[n].get();
@@ -2114,7 +2114,7 @@ TEST(SmoceCrud, OneRowOneColumn) {
             fpta_cursor_open(txn, &col_pk, fpta_value_begin(), fpta_value_end(),
                              nullptr, fpta_unsorted_dont_fetch, &cursor));
 
-  size_t count = 0xBADBADBAD;
+  size_t count = size_t(UINT64_C(0xBADBADBAD) & SIZE_MAX);
   ASSERT_EQ(FPTA_OK, fpta_cursor_count(cursor, &count, INT_MAX));
   ASSERT_EQ(1u, count);
   ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
@@ -2491,8 +2491,9 @@ public:
     if (stepover >= 0) {
       // формируем не пустую строку, со скользящим NIL
       if (stepover != 0)
-        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
-                                              fpta_value_uint(stepover)));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
+                                     fpta_value_uint((unsigned)stepover)));
       if (stepover != 1)
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c1_date,
                                               fpta_value_datetime(NOW_FINE())));
@@ -2504,11 +2505,13 @@ public:
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c3_int64,
                                               fpta_value_sint(-stepover)));
       if (stepover != 4)
-        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
-                                              fpta_value_uint(stepover)));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
+                                     fpta_value_uint((unsigned)stepover)));
       if (stepover != 5)
-        EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
-                                              fpta_value_uint(stepover + 42)));
+        EXPECT_EQ(FPTA_OK,
+                  fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
+                                     fpta_value_uint((unsigned)stepover + 42)));
       if (stepover != 6) {
         uint8_t sha1[160 / 8];
         memset(sha1, stepover + 1, sizeof(sha1));
@@ -2935,8 +2938,10 @@ TEST(Smoke, Kamerades) {
    *  3. Через хэндл "коммандера" получаем сведения о таблице.
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
   fpta_db *correlator_db = nullptr;
   fpta_db *commander_db = nullptr;
 
@@ -3070,8 +3075,10 @@ TEST(Smoke, Kamerades) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    ASSERT_TRUE(unlink(testdb_name) == 0);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
   }
 }
 
@@ -3090,8 +3097,10 @@ TEST(Smoke, OverchargeOnCommit) {
    *     транзакции (при добавлении записи в garbage-таблицу  внутри libmdbx).
    */
 
-  ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-  ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
 
   // открываем/создаем базу
   fpta_db *db = nullptr;
@@ -3225,8 +3234,10 @@ TEST(Smoke, AsyncSchemaChange) {
   // создаем исходную базу
   {
     // чистим
-    ASSERT_TRUE(unlink(testdb_name) == 0 || errno == ENOENT);
-    ASSERT_TRUE(unlink(testdb_name_lck) == 0 || errno == ENOENT);
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
 
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_OK,
@@ -3310,7 +3321,8 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK,
               fpta_table_sequence(txn_correlator, &table_id_, &seq, 1));
 
-    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_sint(seq)));
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &id, fpta_value_sint((int64_t)seq)));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
                                           fpta_value_cstr("Администратор")));
 
@@ -3449,6 +3461,141 @@ TEST(Smoke, AsyncSchemaChange) {
   fpta_name_destroy(&table_id_);
 
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_correlator));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Smoke, FilterAndRange) {
+  /* Smoke-проверка перемещения курсора с заданием диапазона и фильтра
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей и достаточным набором колонок.
+   *
+   *  2. Вставляем одну строку.
+   *
+   *  3. Открываем курсов и перемещаем его к первой подходящей записи.
+   *     Проверяем для сортировки по-возрастанию и по-убыванию.
+   *
+   *  4. Освобождаем ресурсы.
+   */
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // создаем базу
+  fpta_db *db = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // начинаем транзакцию с добавлениями
+  fpta_txn *txn = (fpta_txn *)&txn;
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // описываем структуру таблицы и создаем её
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("int_column", fptu_int64,
+                                 fpta_primary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "datetime_column", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_int64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+  ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "bugged", &def));
+
+  // разрушаем описание таблицы
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+
+  // готовим идентификаторы для манипуляций с данными
+  fpta_name table, col_num, col_date, col_str;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "bugged"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_num, "int_column"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_date, "datetime_column"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_str, "_id"));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &col_num));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_date));
+  ASSERT_EQ(FPTA_OK, fpta_name_refresh(txn, &col_str));
+
+  // выделяем кортеж и вставляем строку
+  fptu_rw *pt = fptu_alloc(3, 8 + 8 + 8);
+  ASSERT_NE(nullptr, pt);
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+
+  fptu_time datetime;
+  datetime.fixedpoint = 1492170771;
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_num, fpta_value_sint(16)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt, &col_date, fpta_value_datetime(datetime)));
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt, &col_str,
+                                        fpta_value_sint(6408824664381050880)));
+  ASSERT_STREQ(nullptr, fptu_check(pt));
+  fptu_ro row = fptu_take_noshrink(pt);
+  ASSERT_STREQ(nullptr, fptu_check_ro(row));
+  EXPECT_EQ(FPTA_OK, fpta_put(txn, &table, row, fpta_insert));
+
+  // завершаем транзакцию вставки
+  ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // начинаем транзакцию чтения
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  // создаём фильтр
+  fpta_filter my_filter;
+  my_filter.type = fpta_node_gt;
+
+  my_filter.node_cmp.left_id = &col_num;
+  my_filter.node_cmp.right_value = fpta_value_sint(15);
+
+  fptu_time datetime2;
+  datetime2.fixedpoint = 1492170700;
+
+  // открываем курсор с диапазоном и фильтром, и сортировкой по-убыванию
+  fpta_cursor *cursor;
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_date, fpta_value_datetime(datetime2),
+                             fpta_value_end(), &my_filter,
+                             fpta_descending_dont_fetch, &cursor));
+  // перемещаем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
+  // закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+
+  // открываем курсор с диапазоном и фильтром, и сортировкой по-возрастанию
+  EXPECT_EQ(FPTA_OK,
+            fpta_cursor_open(txn, &col_date, fpta_value_datetime(datetime2),
+                             fpta_value_end(), &my_filter,
+                             fpta_ascending_dont_fetch, &cursor));
+  // перемещаем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
+  // закрываем курсор
+  EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+
+  // завершаем транзакцию с чтением
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  //--------------------------------------------------------------------------
+  // освобождаем ресурсы
+
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&col_num);
+  fpta_name_destroy(&col_date);
+  fpta_name_destroy(&col_str);
+  free(pt);
+  pt = nullptr;
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+  ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
 }
 
 //----------------------------------------------------------------------------
