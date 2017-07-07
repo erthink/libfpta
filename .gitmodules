@@ -1,9 +1,0 @@
-[submodule "submodules/libfptu"]
-	path = submodules/libfptu
-	url = https://github.com/leo-yuriev/libfptu.git
-[submodule "submodules/libmdbx"]
-	path = submodules/libmdbx
-	url = https://github.com/ReOpen/libmdbx.git
-[submodule "submodules/t1ha"]
-	path = submodules/t1ha
-	url = https://github.com/leo-yuriev/t1ha.git

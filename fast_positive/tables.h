@@ -159,7 +159,7 @@ typedef unsigned mode_t;
  * Соответственно, опция определяет, будет ли в описанных случаях выполняться
  * точное позиционирование (вместо неточного), либо же будет возвращена
  * ошибка FPTA_EINVAL. */
-#define FPTA_PROHIBIT_NEARBY4UNORDERED 0
+#define FPTA_PROHIBIT_NEARBY4UNORDERED 1
 #endif /* FPTA_PROHIBIT_NEARBY4UNORDERED */
 
 #ifndef FPTA_PROHIBIT_LOSS_PRECISION
@@ -454,7 +454,7 @@ typedef struct fpta_value {
     void *binary_data;
     int64_t sint;
     uint64_t uint;
-    double fp;
+    double_t fp;
     fptu_time datetime;
 
     /* ВАЖНО! К большому сожалению и грандиозному неудобству, строка

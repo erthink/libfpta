@@ -711,8 +711,8 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
   }
 
   if (type >= fptu_cstr) {
-    if (mdbx.iov_len > fpta_max_keylen) {
-      if (unlikely(mdbx.iov_len != fpta_shoved_keylen))
+    if (mdbx.iov_len > (unsigned)fpta_max_keylen) {
+      if (unlikely(mdbx.iov_len != (unsigned)fpta_shoved_keylen))
         goto return_corrupted;
       value.type = fpta_shoved;
       value.binary_data = mdbx.iov_base;

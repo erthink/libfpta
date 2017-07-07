@@ -6,6 +6,8 @@ add_library(t1ha STATIC
   t1ha/src/t1ha1.c
   )
 
+target_compile_definitions(t1ha PRIVATE T1HA_USE_FAST_ONESHOT_READ=$<BOOL:${T1HA_USE_FAST_ONESHOT_READ}>)
+
 if(CC_HAS_ARCH_NATIVE)
   target_compile_options(t1ha PRIVATE "-march=native")
 endif()
@@ -24,7 +26,7 @@ add_library(mdbx STATIC
   libmdbx/src/version.c
   )
 
-target_compile_definitions(mdbx PRIVATE $<$<CONFIG:Debug>:MDBX_DEBUG=1> $<$<BOOL:${ENABLE_VALGRIND}>:ENABLE_VALGRIND>)
+target_compile_definitions(mdbx PRIVATE MDBX_DEBUG=$<CONFIG:Debug> $<$<BOOL:${ENABLE_VALGRIND}>:ENABLE_VALGRIND>)
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
 if(UNIX AND NOT APPLE)
