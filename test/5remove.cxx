@@ -224,7 +224,8 @@ TEST(Remove, Shuffle) {
         int present = (create_mask & (1 << i)) ? 1 : 0;
         switch (i % 3) {
         default:
-          assert(false);
+          ASSERT_TRUE(false);
+          break;
         case 0:
           EXPECT_EQ(present, fptu_erase(pt, i, fptu_uint16));
           break;
