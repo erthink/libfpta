@@ -440,13 +440,13 @@ __cold string to_string(const fpta_filter *filter) {
     return "(" + to_string(filter->node_and.a) + " AND " +
            to_string(filter->node_and.b) + ")";
   case fpta_node_fncol:
-    fptu::format("FN_COLUMN.%p(", filter->node_fncol.predicate) +
-        to_string(filter->node_fncol.column_id) +
-        fptu::format(", arg.%p)", filter->node_fncol.arg);
+    return fptu::format("FN_COLUMN.%p(", filter->node_fncol.predicate) +
+           to_string(filter->node_fncol.column_id) +
+           fptu::format(", arg.%p)", filter->node_fncol.arg);
   case fpta_node_fnrow:
-    fptu::format("FN_ROW.%p(", filter->node_fnrow.predicate) +
-        fptu::format(", context.%p, arg.%p)", filter->node_fnrow.context,
-                     filter->node_fncol.arg);
+    return fptu::format("FN_ROW.%p(", filter->node_fnrow.predicate) +
+           fptu::format(", context.%p, arg.%p)", filter->node_fnrow.context,
+                        filter->node_fncol.arg);
   case fpta_node_lt:
   case fpta_node_gt:
   case fpta_node_le:
