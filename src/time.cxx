@@ -20,7 +20,7 @@
 #include "fast_positive/tuples_internal.h"
 
 #define NSEC_PER_SEC 1000000000u
-uint32_t fptu_time::ns2fractional(uint32_t ns) {
+uint_fast32_t fptu_time::ns2fractional(uint_fast32_t ns) {
   assert(ns < NSEC_PER_SEC);
   /* LY: здесь и далее используется "длинное деление", которое
    * для ясности кода оставлено как есть (без ручной оптимизации). Так как
@@ -29,27 +29,27 @@ uint32_t fptu_time::ns2fractional(uint32_t ns) {
   return ((uint64_t)ns << 32) / NSEC_PER_SEC;
 }
 
-uint32_t fptu_time::fractional2ns(uint32_t fractional) {
+uint_fast32_t fptu_time::fractional2ns(uint_fast32_t fractional) {
   return (fractional * (uint64_t)NSEC_PER_SEC) >> 32;
 }
 
 #define USEC_PER_SEC 1000000u
-uint32_t fptu_time::us2fractional(uint32_t us) {
+uint_fast32_t fptu_time::us2fractional(uint_fast32_t us) {
   assert(us < USEC_PER_SEC);
   return ((uint64_t)us << 32) / USEC_PER_SEC;
 }
 
-uint32_t fptu_time::fractional2us(uint32_t fractional) {
+uint_fast32_t fptu_time::fractional2us(uint_fast32_t fractional) {
   return (fractional * (uint64_t)USEC_PER_SEC) >> 32;
 }
 
 #define MSEC_PER_SEC 1000u
-uint32_t fptu_time::ms2fractional(uint32_t ms) {
+uint_fast32_t fptu_time::ms2fractional(uint_fast32_t ms) {
   assert(ms < MSEC_PER_SEC);
   return ((uint64_t)ms << 32) / MSEC_PER_SEC;
 }
 
-uint32_t fptu_time::fractional2ms(uint32_t fractional) {
+uint_fast32_t fptu_time::fractional2ms(uint_fast32_t fractional) {
   return (fractional * (uint64_t)MSEC_PER_SEC) >> 32;
 }
 
@@ -106,7 +106,7 @@ fptu_time fptu_now_fine(void) {
 static uint32_t coarse_resolution_ns;
 #elif defined(CLOCK_REALTIME_COARSE)
 static clockid_t coarse_clockid;
-static uint32_t coarse_resolution_ns;
+static uint_fast32_t coarse_resolution_ns;
 
 static void __attribute__((constructor)) fptu_clock_init(void) {
   struct timespec resolution;
@@ -149,8 +149,8 @@ fptu_time fptu_now_coarse(void) {
 }
 
 fptu_time fptu_now(int grain_ns) {
-  uint32_t mask = 0xffffFFFF;
-  uint32_t grain = (uint32_t)grain_ns;
+  uint_fast32_t mask = 0xffffFFFF;
+  uint_fast32_t grain = (uint32_t)grain_ns;
   if (grain_ns < 0) {
     if (likely(grain_ns > -32)) {
       mask <<= -grain_ns;

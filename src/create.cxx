@@ -121,6 +121,13 @@ fptu_rw *fptu_fetch(fptu_ro ro, void *space, size_t buffer_bytes,
   return pt;
 }
 
+static size_t more_buffer_size(const fptu_ro &ro, unsigned more_items,
+                               unsigned more_payload) {
+  size_t items = (size_t)ro.units[0].varlen.tuple_items & fptu_lt_mask;
+  size_t payload_bytes = ro.total_bytes - units2bytes(items + 1);
+  return fptu_space(items + more_items, payload_bytes + more_payload);
+}
+
 size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
                                       unsigned more_payload,
                                       const char **error) {
@@ -140,14 +147,19 @@ size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
     return 0;
   }
 
-  size_t items = (size_t)ro.units[0].varlen.tuple_items & fptu_lt_mask;
-  size_t payload_bytes = ro.total_bytes - units2bytes(items + 1);
-  return fptu_space(items + more_items, payload_bytes + more_payload);
+  return more_buffer_size(ro, more_items, more_payload);
+}
+
+FPTU_API size_t fptu_get_buffer_size(fptu_ro ro, unsigned more_items,
+                                     unsigned more_payload) {
+  if (more_items > fptu_max_fields)
+    more_items = fptu_max_fields;
+  if (more_payload > fptu_max_tuple_bytes)
+    more_payload = fptu_max_tuple_bytes;
+  return more_buffer_size(ro, more_items, more_payload);
 }
 
 //----------------------------------------------------------------------------
-
-#include <stdlib.h>
 
 // TODO: split out
 fptu_rw *fptu_alloc(size_t items_limit, size_t data_bytes) {

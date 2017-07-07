@@ -31,8 +31,10 @@
 #cmakedefine HAVE_nan
 #cmakedefine HAVE_IEEE754_H
 
+#cmakedefine LTO_ENABLED
 #cmakedefine ENABLE_VALGRIND
 #cmakedefine ENABLE_GPROF
 #cmakedefine ENABLE_GCOV
+#cmakedefine ENABLE_ASAN
 
 #cmakedefine01 LIBFPTU_STATIC

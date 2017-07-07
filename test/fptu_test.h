@@ -19,18 +19,29 @@
 
 #pragma once
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "fast_positive/tuples_internal.h"
 
 #ifdef _MSC_VER
 #pragma warning(push, 1)
 #pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
+                                   unwind semantics are not enabled.           \
+                                   Specify /EHsc */
 #pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
-#endif                          /* _MSC_VER (warnings) */
+                                   handling mode specified; termination on     \
+                                   exception is not guaranteed.                \
+                                   Specify /EHsc */
+#pragma warning(disable : 4738) /* storing 32-bit float result in memory,      \
+                                   possible loss of performance */
+#if _MSC_VER < 1900
+/* LY: workaround for dead code:
+       microsoft visual studio 12.0\vc\include\xtree(1826) */
+#pragma warning(disable : 4702) /* unreachable code */
+#endif
+#endif /* _MSC_VER (warnings) */
 
 #include <gtest/gtest.h>
 

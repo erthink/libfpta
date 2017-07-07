@@ -64,7 +64,7 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
         return pf;
     }
   } else {
-    unsigned ct = fptu_pack_coltype(column, type_or_filter);
+    uint_fast16_t ct = fptu_pack_coltype(column, type_or_filter);
     for (const fptu_field *pf = begin; pf < end; ++pf) {
       if (pf->ct == ct)
         return pf;
@@ -73,7 +73,7 @@ __hot const fptu_field *fptu_lookup_ro(fptu_ro ro, unsigned column,
   return nullptr;
 }
 
-__hot fptu_field *fptu_lookup_ct(fptu_rw *pt, unsigned ct) {
+__hot fptu_field *fptu_lookup_ct(fptu_rw *pt, uint_fast16_t ct) {
   const fptu_field *begin = &pt->units[pt->head].field;
   const fptu_field *pivot = &pt->units[pt->pivot].field;
   for (const fptu_field *pf = begin; pf < pivot; ++pf) {

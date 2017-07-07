@@ -53,22 +53,20 @@
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
 #pragma warning(disable : 4711) /* function 'xyz' selected for                 \
                                    automatic inline expansion */
-#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum          \
-                                   'xyz' is not explicitly handled by a case   \
-                                   label */
+#pragma warning(disable : 4061) /* enumerator 'abc' in switch of enum 'xyz' is \
+                                   not explicitly handled by a case label */
 #pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
-#pragma warning(disable : 4127) /* conditional expression is constant          \
-                                   */
+#pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
-#pragma warning(disable : 4530) /* C++ exception handler used, but             \
-                                    unwind semantics are not enabled. Specify  \
-                                    /EHsc */
-#pragma warning(disable : 4577) /* 'noexcept' used with no exception           \
-                                    handling mode specified; termination on    \
-                                    exception is not guaranteed. Specify /EHsc \
-                                    */
+#pragma warning(disable : 4548) /* expression before comma has no effect;      \
+                                   expected expression with side - effect */
+#pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
+                                   semantics are not enabled. Specify /EHsc */
+#pragma warning(disable : 4577) /* 'noexcept' used with no exception handling  \
+                                   mode specified; termination on exception    \
+                                   is not guaranteed. Specify /EHsc */
 #endif                          /* _MSC_VER (warnings) */
 
 #include <errno.h>  // for error codes
@@ -88,6 +86,7 @@ struct iovec {
 #endif
 
 #ifdef __cplusplus
+#include <limits> // for numeric_limits<>
 #include <string> // for std::string
 
 extern "C" {
@@ -120,7 +119,7 @@ enum fptu_error {
 };
 
 /* Внутренний тип для хранения размера полей переменной длины. */
-typedef union FPTU_API fptu_varlen {
+typedef union fptu_varlen {
   struct __packed {
     uint16_t brutto; /* брутто-размер в 4-байтовых юнитах,
                       * всегда больше или равен 1. */
@@ -132,6 +131,10 @@ typedef union FPTU_API fptu_varlen {
   };
   uint32_t flat;
 } fptu_varlen;
+
+#ifdef __cplusplus
+enum fptu_type : int32_t;
+#endif
 
 /* Поле кортежа.
  *
@@ -147,12 +150,16 @@ typedef union FPTU_API fptu_field {
   uint32_t body[1]; /* в body[0] расположен дескриптор/заголовок,
                      * а начиная с body[offset] данные. */
 #ifdef __cplusplus
-  uint16_t get_payload_uint16() const { return offset; }
+  static inline uint_fast16_t colnum(uint_fast16_t packed_ct);
+  static inline fptu_type type(uint_fast16_t packed_ct);
+  inline uint_fast16_t colnum() const;
+  inline fptu_type type() const;
+  inline uint_fast16_t get_payload_uint16() const;
 #endif
 } fptu_field;
 
 /* Внутренний тип соответствующий 32-битной ячейке с данными. */
-typedef union FPTU_API fptu_unit {
+typedef union fptu_unit {
   fptu_field field;
   fptu_varlen varlen;
   uint32_t data;
@@ -165,7 +172,7 @@ typedef union FPTU_API fptu_unit {
  * iovec выбран для совместимости с функциями readv(), writev() и т.п.
  * Другими словами, это просто "оболочка", а сами данные кортежа должны быть
  * где-то размещены. */
-typedef union FPTU_API fptu_ro {
+typedef union fptu_ro {
   struct {
     const fptu_unit *units;
     size_t total_bytes;
@@ -177,7 +184,7 @@ typedef union FPTU_API fptu_ro {
  * Является плоским буфером, в начале которого расположены служебные поля.
  *
  * Инициализируется функциями fptu_init(), fptu_alloc() и fptu_fetch(). */
-typedef struct FPTU_API fptu_rw {
+typedef struct fptu_rw {
   unsigned head;  /* Индекс дозаписи дескрипторов, растет к началу буфера,
                      указывает на первый занятый элемент. */
   unsigned tail;  /* Индекс для дозаписи данных, растет к концу буфера,
@@ -262,7 +269,11 @@ enum fptu_bits {
  * Следует обратить внимание, что fptu_farray является флагом,
  * а значения начиная с fptu_filter используются как маски для
  * поиска/фильтрации полей (и видимо будут выделены в отдельный enum). */
-typedef enum fptu_type {
+typedef enum fptu_type
+#ifdef __cplusplus
+    : int32_t
+#endif
+{
   // fixed length, without ex-data (descriptor only)
   fptu_null = 0,
   fptu_uint16 = 1,
@@ -302,6 +313,7 @@ typedef enum fptu_type {
                   (INT32_C(1) << fptu_uint64), // match uint16/uint32/uint64
   fptu_any_fp = fptu_filter | (INT32_C(1) << fptu_fp32) |
                 (INT32_C(1) << fptu_fp64), // match fp32/fp64
+  fptu_any_number = fptu_any_int | fptu_any_uint | fptu_any_fp,
 
   // aliases
   fptu_16 = fptu_uint16,
@@ -344,12 +356,12 @@ typedef union FPTU_API fptu_time {
   };
 
 #ifdef __cplusplus
-  static uint32_t ns2fractional(uint32_t);
-  static uint32_t fractional2ns(uint32_t);
-  static uint32_t us2fractional(uint32_t);
-  static uint32_t fractional2us(uint32_t);
-  static uint32_t ms2fractional(uint32_t);
-  static uint32_t fractional2ms(uint32_t);
+  static uint_fast32_t ns2fractional(uint_fast32_t);
+  static uint_fast32_t fractional2ns(uint_fast32_t);
+  static uint_fast32_t us2fractional(uint_fast32_t);
+  static uint_fast32_t fractional2us(uint_fast32_t);
+  static uint_fast32_t ms2fractional(uint_fast32_t);
+  static uint_fast32_t fractional2ms(uint_fast32_t);
 
 #ifdef HAVE_TIMESPEC_TV_NSEC
   /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
@@ -358,7 +370,7 @@ typedef union FPTU_API fptu_time {
    * либо от конструкторов (они и пострадали). */
   static fptu_time from_timespec(const struct timespec &ts) {
     fptu_time result = {((uint64_t)ts.tv_sec << 32) |
-                        ns2fractional((uint32_t)ts.tv_nsec)};
+                        ns2fractional((uint_fast32_t)ts.tv_nsec)};
     return result;
   }
 #endif /* HAVE_TIMESPEC_TV_NSEC */
@@ -366,7 +378,7 @@ typedef union FPTU_API fptu_time {
 #ifdef HAVE_TIMEVAL_TV_USEC
   static fptu_time from_timeval(const struct timeval &tv) {
     fptu_time result = {((uint64_t)tv.tv_sec << 32) |
-                        us2fractional((uint32_t)tv.tv_usec)};
+                        us2fractional((uint_fast32_t)tv.tv_usec)};
     return result;
   }
 #endif /* HAVE_TIMEVAL_TV_USEC */
@@ -536,6 +548,8 @@ FPTU_API fptu_rw *fptu_fetch(fptu_ro ro, void *buffer_space,
 FPTU_API size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
                                                unsigned more_payload,
                                                const char **error);
+FPTU_API size_t fptu_get_buffer_size(fptu_ro ro, unsigned more_items,
+                                     unsigned more_payload);
 
 /* Производит дефрагментацию модифицируемой формы кортежа.
  * Возвращает true если была произведена дефрагментация, что можно
@@ -586,12 +600,17 @@ FPTU_API extern const uint8_t fptu_internal_map_t2u[];
  * коллекциями следует использовать fptu_erase() и/или fput_field_set_xyz().
  */
 FPTU_API int fptu_upsert_null(fptu_rw *pt, unsigned column);
-FPTU_API int fptu_upsert_uint16(fptu_rw *pt, unsigned column, unsigned value);
-FPTU_API int fptu_upsert_int32(fptu_rw *pt, unsigned column, int32_t value);
-FPTU_API int fptu_upsert_uint32(fptu_rw *pt, unsigned column, uint32_t value);
-FPTU_API int fptu_upsert_int64(fptu_rw *pt, unsigned column, int64_t value);
-FPTU_API int fptu_upsert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
-FPTU_API int fptu_upsert_fp64(fptu_rw *pt, unsigned column, double value);
+FPTU_API int fptu_upsert_uint16(fptu_rw *pt, unsigned column,
+                                uint_fast16_t value);
+FPTU_API int fptu_upsert_int32(fptu_rw *pt, unsigned column,
+                               int_fast32_t value);
+FPTU_API int fptu_upsert_uint32(fptu_rw *pt, unsigned column,
+                                uint_fast32_t value);
+FPTU_API int fptu_upsert_int64(fptu_rw *pt, unsigned column,
+                               int_fast64_t value);
+FPTU_API int fptu_upsert_uint64(fptu_rw *pt, unsigned column,
+                                uint_fast64_t value);
+FPTU_API int fptu_upsert_fp64(fptu_rw *pt, unsigned column, double_t value);
 FPTU_API int fptu_upsert_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_upsert_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
@@ -603,12 +622,12 @@ FPTU_API int fptu_upsert_256(fptu_rw *pt, unsigned column, const void *data);
 
 FPTU_API int fptu_upsert_string(fptu_rw *pt, unsigned column, const char *text,
                                 size_t length);
-static __inline int fptu_upsert_cstr(fptu_rw *pt, unsigned col,
+static __inline int fptu_upsert_cstr(fptu_rw *pt, unsigned column,
                                      const char *value) {
   if (value == nullptr)
     value = fptu_empty_cstr;
 
-  return fptu_upsert_string(pt, col, value, strlen(value));
+  return fptu_upsert_string(pt, column, value, strlen(value));
 }
 
 FPTU_API int fptu_upsert_opaque(fptu_rw *pt, unsigned column, const void *value,
@@ -618,37 +637,42 @@ FPTU_API int fptu_upsert_opaque_iov(fptu_rw *pt, unsigned column,
 FPTU_API int fptu_upsert_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 
 // TODO
-// FPTU_API int fptu_upsert_array_uint16(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_uint16(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint16_t* array_data);
-// FPTU_API int fptu_upsert_array_int32(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_int32(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const int32_t* array_data);
-// FPTU_API int fptu_upsert_array_uint32(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_uint32(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint32_t* array_data);
-// FPTU_API int fptu_upsert_array_int64(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_int64(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const int64_t* array_data);
-// FPTU_API int fptu_upsert_array_uint64(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_uint64(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint64_t* array_data);
-// FPTU_API int fptu_upsert_array_cstr(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_cstr(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const char* array_data[]);
-// FPTU_API int fptu_upsert_array_nested(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_upsert_array_nested(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const char* array_data[]);
 
 //----------------------------------------------------------------------------
 
 // Добавление ещё одного поля, для поддержки коллекций.
-FPTU_API int fptu_insert_uint16(fptu_rw *pt, unsigned column, unsigned value);
-FPTU_API int fptu_insert_int32(fptu_rw *pt, unsigned column, int32_t value);
-FPTU_API int fptu_insert_uint32(fptu_rw *pt, unsigned column, uint32_t value);
-FPTU_API int fptu_insert_int64(fptu_rw *pt, unsigned column, int64_t value);
-FPTU_API int fptu_insert_uint64(fptu_rw *pt, unsigned column, uint64_t value);
-FPTU_API int fptu_insert_fp64(fptu_rw *pt, unsigned column, double value);
+FPTU_API int fptu_insert_uint16(fptu_rw *pt, unsigned column,
+                                uint_fast16_t value);
+FPTU_API int fptu_insert_int32(fptu_rw *pt, unsigned column,
+                               int_fast32_t value);
+FPTU_API int fptu_insert_uint32(fptu_rw *pt, unsigned column,
+                                uint_fast32_t value);
+FPTU_API int fptu_insert_int64(fptu_rw *pt, unsigned column,
+                               int_fast64_t value);
+FPTU_API int fptu_insert_uint64(fptu_rw *pt, unsigned column,
+                                uint_fast64_t value);
+FPTU_API int fptu_insert_fp64(fptu_rw *pt, unsigned column, double_t value);
 FPTU_API int fptu_insert_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_insert_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
@@ -660,12 +684,12 @@ FPTU_API int fptu_insert_256(fptu_rw *pt, unsigned column, const void *data);
 
 FPTU_API int fptu_insert_string(fptu_rw *pt, unsigned column, const char *text,
                                 size_t length);
-static __inline int fptu_insert_cstr(fptu_rw *pt, unsigned col,
+static __inline int fptu_insert_cstr(fptu_rw *pt, unsigned column,
                                      const char *value) {
   if (value == nullptr)
     value = fptu_empty_cstr;
 
-  return fptu_insert_string(pt, col, value, strlen(value));
+  return fptu_insert_string(pt, column, value, strlen(value));
 }
 
 FPTU_API int fptu_insert_opaque(fptu_rw *pt, unsigned column, const void *value,
@@ -675,34 +699,39 @@ FPTU_API int fptu_insert_opaque_iov(fptu_rw *pt, unsigned column,
 FPTU_API int fptu_insert_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 
 // TODO
-// FPTU_API int fptu_insert_array_uint16(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_insert_array_uint16(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint16_t* array_data);
-// FPTU_API int fptu_insert_array_int32(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_insert_array_int32(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const int32_t* array_data);
-// FPTU_API int fptu_insert_array_uint32(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_insert_array_uint32(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint32_t* array_data);
-// FPTU_API int fptu_insert_array_int64(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_insert_array_int64(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const int64_t* array_data);
-// FPTU_API int fptu_insert_array_uint64(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_insert_array_uint64(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint64_t* array_data);
-// FPTU_API int fptu_insert_array_str(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_insert_array_str(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const char* array_data[]);
 
 //----------------------------------------------------------------------------
 
 // Обновление существующего поля (первого найденного для коллекций).
-FPTU_API int fptu_update_uint16(fptu_rw *pt, unsigned column, unsigned value);
-FPTU_API int fptu_update_int32(fptu_rw *pt, unsigned column, int32_t value);
-FPTU_API int fptu_update_uint32(fptu_rw *pt, unsigned column, uint32_t value);
-FPTU_API int fptu_update_int64(fptu_rw *pt, unsigned column, int64_t value);
-FPTU_API int fptu_update_uint64(fptu_rw *pt, unsigned column, uint64_t value);
-FPTU_API int fptu_update_fp64(fptu_rw *pt, unsigned column, double value);
+FPTU_API int fptu_update_uint16(fptu_rw *pt, unsigned column,
+                                uint_fast16_t value);
+FPTU_API int fptu_update_int32(fptu_rw *pt, unsigned column,
+                               int_fast32_t value);
+FPTU_API int fptu_update_uint32(fptu_rw *pt, unsigned column,
+                                uint_fast32_t value);
+FPTU_API int fptu_update_int64(fptu_rw *pt, unsigned column,
+                               int_fast64_t value);
+FPTU_API int fptu_update_uint64(fptu_rw *pt, unsigned column,
+                                uint_fast64_t value);
+FPTU_API int fptu_update_fp64(fptu_rw *pt, unsigned column, double_t value);
 FPTU_API int fptu_update_fp32(fptu_rw *pt, unsigned column, float_t value);
 FPTU_API int fptu_update_datetime(fptu_rw *pt, unsigned column,
                                   const fptu_time);
@@ -714,12 +743,12 @@ FPTU_API int fptu_update_256(fptu_rw *pt, unsigned column, const void *data);
 
 FPTU_API int fptu_update_string(fptu_rw *pt, unsigned column, const char *text,
                                 size_t length);
-static __inline int fptu_update_cstr(fptu_rw *pt, unsigned col,
+static __inline int fptu_update_cstr(fptu_rw *pt, unsigned column,
                                      const char *value) {
   if (value == nullptr)
     value = fptu_empty_cstr;
 
-  return fptu_update_string(pt, col, value, strlen(value));
+  return fptu_update_string(pt, column, value, strlen(value));
 }
 
 FPTU_API int fptu_update_opaque(fptu_rw *pt, unsigned column, const void *value,
@@ -729,22 +758,22 @@ FPTU_API int fptu_update_opaque_iov(fptu_rw *pt, unsigned column,
 FPTU_API int fptu_update_nested(fptu_rw *pt, unsigned column, fptu_ro ro);
 
 // TODO
-// FPTU_API int fptu_update_array_uint16(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_update_array_uint16(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint16_t* array_data);
-// FPTU_API int fptu_update_array_int32(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_update_array_int32(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const int32_t* array_data);
-// FPTU_API int fptu_update_array_uint32(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_update_array_uint32(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint32_t* array_data);
-// FPTU_API int fptu_update_array_int64(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_update_array_int64(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const int64_t* array_data);
-// FPTU_API int fptu_update_array_uint64(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_update_array_uint64(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const uint64_t* array_data);
-// FPTU_API int fptu_update_array_cstr(fptu_rw* pt, unsigned ct, size_t
+// FPTU_API int fptu_update_array_cstr(fptu_rw* pt, uint_fast16_t ct, size_t
 // array_length,
 // const char* array_data[]);
 
@@ -804,12 +833,12 @@ FPTU_API size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
 FPTU_API fptu_type fptu_field_type(const fptu_field *pf);
 FPTU_API int fptu_field_column(const fptu_field *pf);
 
-FPTU_API uint16_t fptu_field_uint16(const fptu_field *pf);
-FPTU_API int32_t fptu_field_int32(const fptu_field *pf);
-FPTU_API uint32_t fptu_field_uint32(const fptu_field *pf);
-FPTU_API int64_t fptu_field_int64(const fptu_field *pf);
-FPTU_API uint64_t fptu_field_uint64(const fptu_field *pf);
-FPTU_API double fptu_field_fp64(const fptu_field *pf);
+FPTU_API uint_fast16_t fptu_field_uint16(const fptu_field *pf);
+FPTU_API int_fast32_t fptu_field_int32(const fptu_field *pf);
+FPTU_API uint_fast32_t fptu_field_uint32(const fptu_field *pf);
+FPTU_API int_fast64_t fptu_field_int64(const fptu_field *pf);
+FPTU_API uint_fast64_t fptu_field_uint64(const fptu_field *pf);
+FPTU_API double_t fptu_field_fp64(const fptu_field *pf);
 FPTU_API float_t fptu_field_fp32(const fptu_field *pf);
 FPTU_API fptu_time fptu_field_datetime(const fptu_field *pf);
 FPTU_API const uint8_t *fptu_field_96(const fptu_field *pf);
@@ -820,18 +849,18 @@ FPTU_API const char *fptu_field_cstr(const fptu_field *pf);
 FPTU_API struct iovec fptu_field_opaque(const fptu_field *pf);
 FPTU_API fptu_ro fptu_field_nested(const fptu_field *pf);
 
-FPTU_API uint16_t fptu_get_uint16(fptu_ro ro, unsigned column, int *error);
-FPTU_API int32_t fptu_get_int32(fptu_ro ro, unsigned column, int *error);
-FPTU_API uint32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error);
-FPTU_API int64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
-FPTU_API uint64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
-FPTU_API double fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
+FPTU_API uint_fast16_t fptu_get_uint16(fptu_ro ro, unsigned column, int *error);
+FPTU_API int_fast32_t fptu_get_int32(fptu_ro ro, unsigned column, int *error);
+FPTU_API uint_fast32_t fptu_get_uint32(fptu_ro ro, unsigned column, int *error);
+FPTU_API int_fast64_t fptu_get_int64(fptu_ro ro, unsigned column, int *error);
+FPTU_API uint_fast64_t fptu_get_uint64(fptu_ro ro, unsigned column, int *error);
+FPTU_API double_t fptu_get_fp64(fptu_ro ro, unsigned column, int *error);
 FPTU_API float_t fptu_get_fp32(fptu_ro ro, unsigned column, int *error);
 FPTU_API fptu_time fptu_get_datetime(fptu_ro ro, unsigned column, int *error);
 
-FPTU_API int64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);
-FPTU_API uint64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error);
-FPTU_API double fptu_get_fp(fptu_ro ro, unsigned column, int *error);
+FPTU_API int_fast64_t fptu_get_sint(fptu_ro ro, unsigned column, int *error);
+FPTU_API uint_fast64_t fptu_get_uint(fptu_ro ro, unsigned column, int *error);
+FPTU_API double_t fptu_get_fp(fptu_ro ro, unsigned column, int *error);
 
 FPTU_API const uint8_t *fptu_get_96(fptu_ro ro, unsigned column, int *error);
 FPTU_API const uint8_t *fptu_get_128(fptu_ro ro, unsigned column, int *error);
@@ -919,9 +948,9 @@ typedef struct fptu_version_info {
 typedef struct fptu_build_info {
   const char *datetime;
   const char *target;
-  const char *options;
+  const char *cmake_options;
   const char *compiler;
-  const char *flags;
+  const char *compile_flags;
 } fptu_build_info;
 
 extern FPTU_API const struct fptu_version_info fptu_version;
@@ -932,6 +961,46 @@ extern FPTU_API const struct fptu_build_info fptu_build;
 
 //----------------------------------------------------------------------------
 /* Сервисные функции и классы для C++ (будет пополнятся). */
+
+uint_fast16_t fptu_field::colnum(uint_fast16_t packed_ct) {
+  return (uint_fast16_t)(((uint16_t)packed_ct) >> fptu_co_shift);
+}
+fptu_type fptu_field::type(uint_fast16_t packed_ct) {
+  return (fptu_type)(packed_ct & fptu_ty_mask);
+}
+uint_fast16_t fptu_field::colnum() const { return colnum(this->ct); }
+fptu_type fptu_field::type() const { return type(this->ct); }
+
+uint_fast16_t fptu_field::get_payload_uint16() const {
+  assert(type() == fptu_uint16);
+  return offset;
+}
+
+typedef union fptu_payload {
+  uint32_t u32;
+  int32_t i32;
+  uint64_t u64;
+  int64_t i64;
+  fptu_time dt;
+  float fp32;
+  double fp64;
+  char cstr[4];
+  uint8_t fixbin[8];
+  uint32_t fixbin_by32[2];
+  uint64_t fixbin_by64[1];
+  struct {
+    fptu_varlen varlen;
+    uint32_t data[1];
+  } other;
+} fptu_payload;
+
+static __inline fptu_payload *fptu_field_payload(fptu_field *pf) {
+  return (fptu_payload *)&pf->body[pf->offset];
+}
+
+static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
+  return (const fptu_payload *)&pf->body[pf->offset];
+}
 
 namespace fptu {
 FPTU_API std::string format(const char *fmt, ...)
@@ -956,6 +1025,199 @@ inline const fptu_field *end(const fptu_ro *ro) { return fptu_end_ro(*ro); }
 inline const fptu_field *end(const fptu_rw &rw) { return fptu_end_rw(&rw); }
 
 inline const fptu_field *end(const fptu_rw *rw) { return fptu_end_rw(rw); }
+
+static inline int64_t cast_wide(int8_t value) { return value; }
+static inline int64_t cast_wide(int16_t value) { return value; }
+static inline int64_t cast_wide(int32_t value) { return value; }
+static inline int64_t cast_wide(int64_t value) { return value; }
+static inline uint64_t cast_wide(uint8_t value) { return value; }
+static inline uint64_t cast_wide(uint16_t value) { return value; }
+static inline uint64_t cast_wide(uint32_t value) { return value; }
+static inline uint64_t cast_wide(uint64_t value) { return value; }
+static inline double_t cast_wide(float value) { return value; }
+static inline double_t cast_wide(double value) { return value; }
+#if FLT_EVAL_METHOD > 1
+static inline double_t cast_wide(double_t /*long double*/) { return value; }
+#endif
+
+template <typename VALUE_TYPE, typename RANGE_BEGIN_TYPE,
+          typename RANGE_END_TYPE>
+inline bool is_within(VALUE_TYPE value, RANGE_BEGIN_TYPE begin,
+                      RANGE_END_TYPE end) {
+  return is_within(cast_wide(value), cast_wide(begin), cast_wide(end));
+}
+
+template <>
+inline bool is_within<int64_t, int64_t, int64_t>(int64_t value, int64_t begin,
+                                                 int64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
+inline bool is_within<uint64_t, uint64_t, uint64_t>(uint64_t value,
+                                                    uint64_t begin,
+                                                    uint64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
+inline bool is_within<uint64_t, int64_t, int64_t>(uint64_t value, int64_t begin,
+                                                  int64_t end) {
+  assert(begin < end);
+  if (end < 0 || value > (uint64_t)end)
+    return false;
+  if (begin > 0 && value < (uint64_t)begin)
+    return false;
+  return true;
+}
+
+template <>
+inline bool is_within<int64_t, uint64_t, uint64_t>(int64_t value,
+                                                   uint64_t begin,
+                                                   uint64_t end) {
+  assert(begin < end);
+  if (value < 0)
+    return false;
+  return is_within((uint64_t)value, begin, end);
+}
+
+template <>
+inline bool is_within<double_t, int64_t, int64_t>(double_t value, int64_t begin,
+                                                  int64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
+inline bool is_within<double_t, uint64_t, uint64_t>(double_t value,
+                                                    uint64_t begin,
+                                                    uint64_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <fptu_type field_type, typename RESULT_TYPE>
+static RESULT_TYPE get_number(const fptu_field *field) {
+  assert(field != nullptr);
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  assert(field->ct);
+  switch (field_type) {
+  default:
+    assert(false);
+    return 0;
+  case fptu_uint16:
+    assert(is_within(field->get_payload_uint16(),
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)field->get_payload_uint16();
+  case fptu_uint32:
+    assert(is_within(fptu_field_payload(field)->u32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->u32;
+  case fptu_uint64:
+    assert(is_within(fptu_field_payload(field)->u64,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->u64;
+  case fptu_int32:
+    assert(is_within(fptu_field_payload(field)->i32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->i32;
+  case fptu_int64:
+    assert(is_within(fptu_field_payload(field)->i64,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->i64;
+  case fptu_fp32:
+    assert(is_within(fptu_field_payload(field)->fp32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->fp32;
+  case fptu_fp64:
+    assert(is_within(fptu_field_payload(field)->fp32,
+                     std::numeric_limits<RESULT_TYPE>::lowest(),
+                     std::numeric_limits<RESULT_TYPE>::max()));
+    return (RESULT_TYPE)fptu_field_payload(field)->fp64;
+  }
+}
+
+template <fptu_type field_type, typename VALUE_TYPE>
+static void set_number(fptu_field *field, const VALUE_TYPE &value) {
+  assert(field != nullptr);
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  switch (field_type) {
+  default:
+    assert(false);
+    break;
+  case fptu_uint16:
+    assert(is_within(value, 0, INT16_MAX));
+    field->offset = (uint16_t)value;
+    break;
+  case fptu_uint32:
+    assert(is_within(value, 0u, UINT32_MAX));
+    fptu_field_payload(field)->u32 = (uint32_t)value;
+    break;
+  case fptu_uint64:
+    assert(is_within(value, 0u, UINT64_MAX));
+    fptu_field_payload(field)->u64 = (uint64_t)value;
+    break;
+  case fptu_int32:
+    assert(is_within(value, INT32_MIN, INT32_MAX));
+    fptu_field_payload(field)->i32 = (int32_t)value;
+    break;
+  case fptu_int64:
+    assert(is_within(value, INT64_MIN, INT64_MAX));
+    fptu_field_payload(field)->i64 = (int64_t)value;
+    break;
+  case fptu_fp32:
+    assert(value >= FLT_MIN && value <= FLT_MAX);
+    fptu_field_payload(field)->fp32 = (float)value;
+    break;
+  case fptu_fp64:
+    assert(value >= DBL_MIN && value <= DBL_MAX);
+    fptu_field_payload(field)->fp64 = (double)value;
+    break;
+  }
+}
+
+template <fptu_type field_type, typename VALUE_TYPE>
+static int upsert_number(fptu_rw *pt, unsigned colnum,
+                         const VALUE_TYPE &value) {
+  static_assert(fptu_any_number & (INT32_C(1) << field_type),
+                "field_type must be numerical");
+  switch (field_type) {
+  default:
+    assert(false);
+    return 0;
+  case fptu_uint16:
+    assert(is_within(value, 0, INT16_MAX));
+    return fptu_upsert_uint16(pt, colnum, (uint_fast16_t)value);
+  case fptu_uint32:
+    assert(is_within(value, 0u, UINT32_MAX));
+    return fptu_upsert_uint32(pt, colnum, (uint_fast32_t)value);
+  case fptu_uint64:
+    assert(is_within(value, 0u, UINT64_MAX));
+    return fptu_upsert_uint64(pt, colnum, (uint_fast64_t)value);
+  case fptu_int32:
+    assert(is_within(value, INT32_MIN, INT32_MAX));
+    return fptu_upsert_int32(pt, colnum, (int_fast32_t)value);
+  case fptu_int64:
+    assert(is_within(value, INT64_MIN, INT64_MAX));
+    return fptu_upsert_int64(pt, colnum, (int_fast64_t)value);
+  case fptu_fp32:
+    assert(value >= FLT_MIN && value <= FLT_MAX);
+    return fptu_upsert_fp32(pt, colnum, (float_t)value);
+  case fptu_fp64:
+    assert(value >= DBL_MIN && value <= DBL_MAX);
+    return fptu_upsert_fp64(pt, colnum, (double_t)value);
+  }
+}
 
 } /* namespace fptu */
 
