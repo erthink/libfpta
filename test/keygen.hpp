@@ -749,7 +749,7 @@ struct coupled_keygen {
 
   fpta_value make_primary_4dup(int order, int const N) {
     if (fpta_index_is_unique(se_index))
-      fpta_value_null();
+      return fpta_value_null();
 
     if (order % 3)
       return primary.make(order * 2 + 1, N * 2);
