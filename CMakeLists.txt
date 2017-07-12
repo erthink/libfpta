@@ -5,9 +5,6 @@ endif()
 
 project(libfptu C CXX)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-set(CMAKE_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_INCLUDE_PATH})
-
 include(CheckLibraryExists)
 include(CheckIncludeFiles)
 include(CheckCCompilerFlag)
@@ -48,12 +45,12 @@ option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DE
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
 
-include(cmake/utils.cmake)
+include(cmake.fptu/utils.cmake)
 # the order is significant: we need to know os and compiler to configure libs
-include(cmake/arch.cmake)
-include(cmake/os.cmake)
-include(cmake/profile.cmake)
-include(cmake/compiler.cmake)
+include(cmake.fptu/arch.cmake)
+include(cmake.fptu/os.cmake)
+include(cmake.fptu/profile.cmake)
+include(cmake.fptu/compiler.cmake)
 
 if(CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE_UPPERCASE STREQUAL "DEBUG")
   set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT ON)
@@ -110,7 +107,7 @@ if(VALGRIND)
     CACHE STRING "Valgrind options" FORCE)
   set(VALGRIND_COMMAND_OPTIONS "${MEMORYCHECK_COMMAND_OPTIONS}" CACHE STRING "Valgrind options" FORCE)
 endif()
-include(cmake/testing.cmake)
+include(cmake.fptu/testing.cmake)
 
 find_program(ECHO echo)
 find_program(CAT cat)
@@ -161,7 +158,7 @@ if(CLANG_FORMAT)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif(CLANG_FORMAT)
 
-include(cmake/multilib.cmake)
+include(cmake.fptu/multilib.cmake)
 
 if(NOT "${PROJECT_BINARY_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
   add_custom_target(distclean)
