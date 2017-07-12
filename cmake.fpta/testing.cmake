@@ -44,7 +44,7 @@ if(NOT GTEST_FOUND)
     message(STATUS "Found GoogleTest sources at ${gtest_root}")
   else()
     # Download and unpack GoogleTest at configure time
-    configure_file(${CMAKE_SOURCE_DIR}/cmake/googletest-download.cmake.in googletest-download/CMakeLists.txt)
+    configure_file(${CMAKE_SOURCE_DIR}/cmake.fpta/googletest-download.cmake.in googletest-download/CMakeLists.txt)
     execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)

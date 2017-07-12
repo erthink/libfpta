@@ -25,9 +25,6 @@ else()
   unset(CI)
 endif()
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-set(CMAKE_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_INCLUDE_PATH})
-
 include(CheckLibraryExists)
 include(CheckIncludeFiles)
 include(CheckCCompilerFlag)
@@ -62,13 +59,13 @@ string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
 
-include(cmake/utils.cmake)
+include(cmake.fpta/utils.cmake)
 # the order is significant: we need to know os and compiler to configure libs
-include(cmake/arch.cmake)
-include(cmake/os.cmake)
-include(cmake/profile.cmake)
-include(cmake/compiler.cmake)
-# include(cmake/atomic.cmake)
+include(cmake.fpta/arch.cmake)
+include(cmake.fpta/os.cmake)
+include(cmake.fpta/profile.cmake)
+include(cmake.fpta/compiler.cmake)
+# include(cmake.fpta/atomic.cmake)
 
 if(CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE_UPPERCASE STREQUAL "DEBUG")
   set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT ON)
@@ -125,7 +122,7 @@ if(VALGRIND)
     CACHE STRING "Valgrind options" FORCE)
   set(VALGRIND_COMMAND_OPTIONS "${MEMORYCHECK_COMMAND_OPTIONS}" CACHE STRING "Valgrind options" FORCE)
 endif()
-include(cmake/testing.cmake)
+include(cmake.fpta/testing.cmake)
 
 find_program(ECHO echo)
 find_program(CAT cat)
@@ -176,7 +173,7 @@ if(CLANG_FORMAT)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif(CLANG_FORMAT)
 
-include(cmake/multilib.cmake)
+include(cmake.fpta/multilib.cmake)
 
 if(NOT "${PROJECT_BINARY_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
   add_custom_target(distclean)
