@@ -56,6 +56,13 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  set(BUILD_SHARED_LIBS_DEFAULT OFF)
+else()
+  set(BUILD_SHARED_LIBS_DEFAULT ON)
+endif()
+option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
+
 # Define GNU standard installation directories
 # include(GNUInstallDirs)
 
@@ -216,13 +223,6 @@ option(FPTA_ENABLE_ABORT_ON_PANIC
 CMAKE_DEPENDENT_OPTION(T1HA_USE_FAST_ONESHOT_READ
   "Enable oneshot memory reading for little bit faster hasing" ON
   "NOT ENABLE_VALGRIND;NOT ENABLE_ASAN" OFF)
-
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  set(BUILD_SHARED_LIBS_DEFAULT OFF)
-else()
-  set(BUILD_SHARED_LIBS_DEFAULT ON)
-endif()
-option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
 
 if(BUILD_SHARED_LIBS)
   set(LIBFPTA_STATIC FALSE)
