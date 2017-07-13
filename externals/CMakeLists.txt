@@ -1,6 +1,8 @@
 add_subdirectory(libfptu/src)
 add_subdirectory(libfptu/test)
 
+#######################################################################
+
 add_library(t1ha STATIC
   t1ha/src/t1ha0.c
   t1ha/src/t1ha1.c
@@ -11,6 +13,15 @@ target_compile_definitions(t1ha PRIVATE T1HA_USE_FAST_ONESHOT_READ=$<BOOL:${T1HA
 if(CC_HAS_ARCH_NATIVE)
   target_compile_options(t1ha PRIVATE "-march=native")
 endif()
+
+set_target_properties(t1ha PROPERTIES
+  PROJECT_LABEL "Fast Positive Hash"
+  #VERSION
+  PUBLIC_HEADER "t1ha/t1ha.h"
+  INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
+  )
+
+#######################################################################
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   set(LIBMDBX_OSAL windows)
@@ -33,6 +44,15 @@ if(UNIX AND NOT APPLE)
   target_link_libraries(mdbx rt)
 endif()
 
+set_target_properties(mdbx PROPERTIES
+  PROJECT_LABEL "Fast Memory-Mapped key-value engine"
+  #VERSION
+  PUBLIC_HEADER "libmdbx/mdbx.h"
+  INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
+  )
+
+#######################################################################
+
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   message(WARNING "Now skiping MDBX-tools for Windows (TODO)")
 else()
@@ -51,5 +71,11 @@ else()
 
   add_executable(mdbx_load libmdbx/src/tools/mdbx_load.c)
   target_link_libraries(mdbx_load mdbx)
+
+  set_target_properties(mdbx_chk mdbx_stat mdbx_copy mdbx_dump mdbx_load PROPERTIES
+    PROJECT_LABEL "MDBX's tools"
+    #VERSION
+    INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
+    )
 
 endif()

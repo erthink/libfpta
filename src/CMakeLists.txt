@@ -4,8 +4,14 @@ fetch_version(FPTA "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
 message(STATUS "libfpta version is ${FPTA_VERSION}")
 
 add_library(fpta
+  ${CMAKE_CURRENT_BINARY_DIR}/../fast_positive/config.h
   ../fast_positive/tables.h
   ../fast_positive/tables_internal.h
+  ../externals/libfptu/fast_positive/defs.h
+  ../externals/libfptu/fast_positive/tuples.h
+  ../externals/libfptu/fast_positive/tuples_internal.h
+  ../externals/libmdbx/mdbx.h
+  ../externals/t1ha/t1ha.h
   details.h
   osal.h
   common.cxx
@@ -19,6 +25,15 @@ add_library(fpta
   misc.cxx
   inplace.cxx
   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
+  )
+
+set_target_properties(fpta PROPERTIES
+  PROJECT_LABEL "Fast Positive Tables"
+  FRAMEWORK TRUE
+  VERSION "${FPTA_VERSION_MAJOR}.${FPTA_VERSION_MINOR}.${FPTA_VERSION_RELEASE}.${FPTA_VERSION_REVISION}"
+  PUBLIC_HEADER "../fast_positive/tables.h;${CMAKE_CURRENT_BINARY_DIR}/../fast_positive/config.h"
+  PRIVATE_HEADER "../fast_positive/tables_internal.h"
+  INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
   )
 
 target_link_libraries(fpta
