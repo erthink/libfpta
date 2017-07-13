@@ -4,7 +4,7 @@ fetch_version(FPTU "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
 message(STATUS "libfptu version is ${FPTU_VERSION}")
 
 add_library(fptu
-  ${CMAKE_CURRENT_BINARY_DIR}/../fast_positive/config.h
+  ${FAST_POSITIVE_CONFIG_H}
   ../fast_positive/defs.h
   ../fast_positive/tuples.h
   ../fast_positive/tuples_internal.h
@@ -27,7 +27,7 @@ set_target_properties(fptu PROPERTIES
   PROJECT_LABEL "Fast Positive Tuples"
   FRAMEWORK TRUE
   VERSION "${FPTU_VERSION_MAJOR}.${FPTU_VERSION_MINOR}.${FPTU_VERSION_RELEASE}.${FPTU_VERSION_REVISION}"
-  PUBLIC_HEADER "../fast_positive/defs.h;../fast_positive/tuples.h;${CMAKE_CURRENT_BINARY_DIR}/../fast_positive/config.h"
+  PUBLIC_HEADER "../fast_positive/defs.h;../fast_positive/tuples.h;${FAST_POSITIVE_CONFIG_H}"
   PRIVATE_HEADER ../fast_positive/tuples_internal.h
   INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
   )
