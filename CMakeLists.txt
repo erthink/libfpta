@@ -64,7 +64,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
 
 # Define GNU standard installation directories
-# include(GNUInstallDirs)
+include(GNUInstallDirs)
 
 include(cmake.fpta/utils.cmake)
 # the order is significant: we need to know os and compiler to configure libs

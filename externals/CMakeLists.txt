@@ -51,6 +51,12 @@ set_target_properties(mdbx PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
   )
 
+install(TARGETS t1ha mdbx
+  ARCHIVE DESTINATION lib/static COMPONENT devel
+  PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  )
+
 #######################################################################
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -76,6 +82,10 @@ else()
     PROJECT_LABEL "MDBX's tools"
     #VERSION
     INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
+    )
+
+  install(TARGETS mdbx_chk mdbx_stat mdbx_copy mdbx_dump mdbx_load
+    RUNTIME DESTINATION bin COMPONENT runtime
     )
 
 endif()

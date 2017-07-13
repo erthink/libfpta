@@ -58,6 +58,13 @@ else()
   target_compile_definitions(fpta PRIVATE "-Dfpta_STATIC")
 endif()
 
+install(TARGETS fpta
+  LIBRARY DESTINATION lib COMPONENT runtime
+  ARCHIVE DESTINATION lib/static COMPONENT devel
+  PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  )
+
 ###############################################################################
 #
 # library build info (used in library version output)
