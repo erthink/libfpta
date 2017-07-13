@@ -4,6 +4,7 @@ fetch_version(FPTU "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
 message(STATUS "libfptu version is ${FPTU_VERSION}")
 
 add_library(fptu
+  ${CMAKE_CURRENT_BINARY_DIR}/../fast_positive/config.h
   ../fast_positive/defs.h
   ../fast_positive/tuples.h
   ../fast_positive/tuples_internal.h
@@ -22,6 +23,15 @@ add_library(fptu
   data.cxx
   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx)
 
+set_target_properties(fptu PROPERTIES
+  PROJECT_LABEL "Fast Positive Tuples"
+  FRAMEWORK TRUE
+  VERSION "${FPTU_VERSION_MAJOR}.${FPTU_VERSION_MINOR}.${FPTU_VERSION_RELEASE}.${FPTU_VERSION_REVISION}"
+  PUBLIC_HEADER "../fast_positive/defs.h;../fast_positive/tuples.h;${CMAKE_CURRENT_BINARY_DIR}/../fast_positive/config.h"
+  PRIVATE_HEADER ../fast_positive/tuples_internal.h
+  INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
+  )
+
 target_link_libraries(fptu ${LIB_MATH} ${CMAKE_THREAD_LIBS_INIT})
 
 if(UNIX AND NOT APPLE)
@@ -30,7 +40,7 @@ endif()
 
 if(CC_HAS_VISIBILITY)
   target_compile_options(fptu PRIVATE "-fvisibility=hidden")
-  if(LTO_ENABLED OR LTO_ENABLED)
+  if(LTO_ENABLED OR INTERPROCEDURAL_OPTIMIZATION)
     set_target_properties(fptu PROPERTIES LINK_FLAGS "-fvisibility=hidden")
   endif()
 endif()
@@ -40,6 +50,13 @@ if(NOT LIBFPTU_STATIC)
 else()
   target_compile_definitions(fptu PRIVATE "-Dfptu_STATIC")
 endif()
+
+install(TARGETS fptu
+  LIBRARY DESTINATION lib COMPONENT runtime
+  ARCHIVE DESTINATION lib/static COMPONENT devel
+  PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  )
 
 ###############################################################################
 #
