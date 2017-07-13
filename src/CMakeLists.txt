@@ -51,6 +51,13 @@ else()
   target_compile_definitions(fptu PRIVATE "-Dfptu_STATIC")
 endif()
 
+install(TARGETS fptu
+  LIBRARY DESTINATION lib COMPONENT runtime
+  ARCHIVE DESTINATION lib/static COMPONENT devel
+  PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+  )
+
 ###############################################################################
 #
 # library build info (used in library version output)
