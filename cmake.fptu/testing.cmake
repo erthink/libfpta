@@ -36,15 +36,15 @@ if(NOT GTEST_FOUND)
 
   find_path(gtest_root
     NAMES CMakeLists.txt
-    PATHS ${gtest_paths}
+    PATHS ${gtest_paths} "${CMAKE_BINARY_DIR}/googletest-src"
     PATH_SUFFIXES googletest/googletest gtest/googletest gtest
     NO_DEFAULT_PATH NO_CMAKE_PATH)
 
   if(gtest_root)
     message(STATUS "Found GoogleTest sources at ${gtest_root}")
   else()
-    # Download and unpack GoogleTest at configure time
-    configure_file(${CMAKE_SOURCE_DIR}/cmake.fptu/googletest-download.cmake.in googletest-download/CMakeLists.txt)
+    message(STATUS "Not found GoogleTest sources, downloading it...")
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake.fptu/googletest-download.cmake.in ${CMAKE_BINARY_DIR}/googletest-download/CMakeLists.txt)
     execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)
