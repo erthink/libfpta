@@ -59,33 +59,32 @@ install(TARGETS t1ha mdbx
 
 #######################################################################
 
+set(MDBX_TOOLS_COMMON libmdbx/mdbx.h)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  message(WARNING "Now skiping MDBX-tools for Windows (TODO)")
-else()
-
-  add_executable(mdbx_chk libmdbx/src/tools/mdbx_chk.c)
-  target_link_libraries(mdbx_chk mdbx)
-
-  add_executable(mdbx_stat libmdbx/src/tools/mdbx_stat.c)
-  target_link_libraries(mdbx_stat mdbx)
-
-  add_executable(mdbx_copy libmdbx/src/tools/mdbx_copy.c)
-  target_link_libraries(mdbx_copy mdbx)
-
-  add_executable(mdbx_dump libmdbx/src/tools/mdbx_dump.c)
-  target_link_libraries(mdbx_dump mdbx)
-
-  add_executable(mdbx_load libmdbx/src/tools/mdbx_load.c)
-  target_link_libraries(mdbx_load mdbx)
-
-  set_target_properties(mdbx_chk mdbx_stat mdbx_copy mdbx_dump mdbx_load PROPERTIES
-    PROJECT_LABEL "MDBX's tools"
-    #VERSION
-    INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
-    )
-
-  install(TARGETS mdbx_chk mdbx_stat mdbx_copy mdbx_dump mdbx_load
-    RUNTIME DESTINATION bin COMPONENT runtime
-    )
-
+  list(APPEND MDBX_TOOLS_COMMON libmdbx/src/tools/wingetopt.h libmdbx/src/tools/wingetopt.c)
 endif()
+
+add_executable(mdbx_chk ${MDBX_TOOLS_COMMON} libmdbx/src/tools/mdbx_chk.c)
+target_link_libraries(mdbx_chk mdbx)
+
+add_executable(mdbx_stat ${MDBX_TOOLS_COMMON} libmdbx/src/tools/mdbx_stat.c)
+target_link_libraries(mdbx_stat mdbx)
+
+add_executable(mdbx_copy ${MDBX_TOOLS_COMMON} libmdbx/src/tools/mdbx_copy.c)
+target_link_libraries(mdbx_copy mdbx)
+
+add_executable(mdbx_dump ${MDBX_TOOLS_COMMON} libmdbx/src/tools/mdbx_dump.c)
+target_link_libraries(mdbx_dump mdbx)
+
+add_executable(mdbx_load ${MDBX_TOOLS_COMMON} libmdbx/src/tools/mdbx_load.c)
+target_link_libraries(mdbx_load mdbx)
+
+set_target_properties(mdbx_chk mdbx_stat mdbx_copy mdbx_dump mdbx_load PROPERTIES
+  PROJECT_LABEL "MDBX's tools"
+  #VERSION
+  INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
+  )
+
+install(TARGETS mdbx_chk mdbx_stat mdbx_copy mdbx_dump mdbx_load
+  RUNTIME DESTINATION bin COMPONENT runtime
+  )
