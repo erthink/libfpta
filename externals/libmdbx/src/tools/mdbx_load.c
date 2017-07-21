@@ -13,32 +13,56 @@
  * top-level directory of the distribution or, alternatively, at
  * <http://www.OpenLDAP.org/license.html>. */
 
-#include "../../mdbx.h"
+#ifdef _MSC_VER
+#if _MSC_VER > 1800
+#pragma warning(disable : 4464) /* relative include path contains '..' */
+#endif
+#pragma warning(disable : 4996) /* The POSIX name is deprecated... */
+#if _MSC_VER == 1900
+/* LY: MSVC 2015 has buggy/inconsistent PRIuPTR/PRIxPTR macros and format-arg
+       checker for size_t typedef. */
+#pragma warning(disable : 4777) /* format string '%10u' requires an argument   \
+                                   of type 'unsigned int', but variadic        \
+                                   argument 1 has type 'std::size_t' */
+#endif
+#endif /* _MSC_VER (warnings) */
+
+#include "../bits.h"
 #include <ctype.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+#include "wingetopt.h"
+
+static volatile BOOL user_break;
+static BOOL WINAPI ConsoleBreakHandlerRoutine(DWORD dwCtrlType) {
+  (void)dwCtrlType;
+  user_break = true;
+  return true;
+}
+
+#else /* WINDOWS */
+
+static volatile sig_atomic_t user_break;
+static void signal_handler(int sig) {
+  (void)sig;
+  user_break = 1;
+}
+
+#endif /* !WINDOWS */
 
 #define PRINT 1
 #define NOHDR 2
 static int mode;
 
 static char *subname = NULL;
-
 static size_t lineno;
 static int version;
 
 static int dbi_flags;
-
 static char *prog;
-
 static int Eof;
 
 static MDBX_envinfo envinfo;
-
 static MDBX_val kbuf, dbuf;
 
 #define STRLENOF(s) (sizeof(s) - 1)
@@ -63,7 +87,7 @@ static void readhdr(void) {
   char *ptr;
 
   dbi_flags = 0;
-  while (fgets(dbuf.iov_base, dbuf.iov_len, stdin) != NULL) {
+  while (fgets(dbuf.iov_base, (int)dbuf.iov_len, stdin) != NULL) {
     lineno++;
     if (!strncmp(dbuf.iov_base, "db_pagesize=", STRLENOF("db_pagesize=")) ||
         !strncmp(dbuf.iov_base, "duplicates=", STRLENOF("duplicates="))) {
@@ -120,7 +144,7 @@ static void readhdr(void) {
       if (ptr)
         *ptr = '\0';
       i = sscanf((char *)dbuf.iov_base + STRLENOF("mapsize="), "%" PRIu64 "",
-                 &envinfo.me_mapsize);
+                 &envinfo.mi_mapsize);
       if (i != 1) {
         fprintf(stderr, "%s: line %" PRIiPTR ": invalid mapsize %s\n", prog,
                 lineno, (char *)dbuf.iov_base + STRLENOF("mapsize="));
@@ -133,7 +157,7 @@ static void readhdr(void) {
       if (ptr)
         *ptr = '\0';
       i = sscanf((char *)dbuf.iov_base + STRLENOF("maxreaders="), "%u",
-                 &envinfo.me_maxreaders);
+                 &envinfo.mi_maxreaders);
       if (i != 1) {
         fprintf(stderr, "%s: line %" PRIiPTR ": invalid maxreaders %s\n", prog,
                 lineno, (char *)dbuf.iov_base + STRLENOF("maxreaders="));
@@ -197,7 +221,7 @@ static int readline(MDBX_val *out, MDBX_val *buf) {
     }
     if (c != ' ') {
       lineno++;
-      if (fgets(buf->iov_base, buf->iov_len, stdin) == NULL) {
+      if (fgets(buf->iov_base, (int)buf->iov_len, stdin) == NULL) {
       badend:
         Eof = 1;
         badend();
@@ -208,7 +232,7 @@ static int readline(MDBX_val *out, MDBX_val *buf) {
       goto badend;
     }
   }
-  if (fgets(buf->iov_base, buf->iov_len, stdin) == NULL) {
+  if (fgets(buf->iov_base, (int)buf->iov_len, stdin) == NULL) {
     Eof = 1;
     return EOF;
   }
@@ -229,7 +253,7 @@ static int readline(MDBX_val *out, MDBX_val *buf) {
     }
     c1 = buf->iov_base;
     c1 += l2;
-    if (fgets((char *)c1, buf->iov_len + 1, stdin) == NULL) {
+    if (fgets((char *)c1, (int)buf->iov_len + 1, stdin) == NULL) {
       Eof = 1;
       badend();
       return EOF;
@@ -255,7 +279,7 @@ static int readline(MDBX_val *out, MDBX_val *buf) {
             badend();
             return EOF;
           }
-          *c1++ = unhex(++c2);
+          *c1++ = (char)unhex(++c2);
           c2 += 2;
         }
       } else {
@@ -276,7 +300,7 @@ static int readline(MDBX_val *out, MDBX_val *buf) {
         badend();
         return EOF;
       }
-      *c1++ = unhex(c2);
+      *c1++ = (char)unhex(c2);
       c2 += 2;
     }
   }
@@ -294,11 +318,11 @@ static void usage(void) {
 
 int main(int argc, char *argv[]) {
   int i, rc;
-  MDBX_env *env;
-  MDBX_txn *txn;
-  MDBX_cursor *mc;
+  MDBX_env *env = NULL;
+  MDBX_txn *txn = NULL;
+  MDBX_cursor *mc = NULL;
   MDBX_dbi dbi;
-  char *envname;
+  char *envname = NULL;
   int envflags = 0, putflags = 0;
 
   prog = argv[0];
@@ -347,6 +371,19 @@ int main(int argc, char *argv[]) {
   if (optind != argc - 1)
     usage();
 
+#if defined(_WIN32) || defined(_WIN64)
+  SetConsoleCtrlHandler(ConsoleBreakHandlerRoutine, true);
+#else
+#ifdef SIGPIPE
+  signal(SIGPIPE, signal_handler);
+#endif
+#ifdef SIGHUP
+  signal(SIGHUP, signal_handler);
+#endif
+  signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler);
+#endif /* !WINDOWS */
+
   dbuf.iov_len = 4096;
   dbuf.iov_base = malloc(dbuf.iov_len);
 
@@ -363,14 +400,20 @@ int main(int argc, char *argv[]) {
 
   mdbx_env_set_maxdbs(env, 2);
 
-  if (envinfo.me_maxreaders)
-    mdbx_env_set_maxreaders(env, envinfo.me_maxreaders);
+  if (envinfo.mi_maxreaders)
+    mdbx_env_set_maxreaders(env, envinfo.mi_maxreaders);
 
-  if (envinfo.me_mapsize)
-    mdbx_env_set_mapsize(env, envinfo.me_mapsize);
+  if (envinfo.mi_mapsize) {
+    if (envinfo.mi_mapsize > SIZE_MAX) {
+      fprintf(stderr, "mdbx_env_set_mapsize failed, error %d %s\n", rc,
+              mdbx_strerror(MDBX_TOO_LARGE));
+      return EXIT_FAILURE;
+    }
+    mdbx_env_set_mapsize(env, (size_t)envinfo.mi_mapsize);
+  }
 
 #ifdef MDBX_FIXEDMAP
-  if (info.me_mapaddr)
+  if (info.mi_mapaddr)
     envflags |= MDBX_FIXEDMAP;
 #endif
 
@@ -385,6 +428,11 @@ int main(int argc, char *argv[]) {
   kbuf.iov_base = malloc(kbuf.iov_len);
 
   while (!Eof) {
+    if (user_break) {
+      rc = MDBX_EINTR;
+      break;
+    }
+
     MDBX_val key, data;
     int batch = 0;
 

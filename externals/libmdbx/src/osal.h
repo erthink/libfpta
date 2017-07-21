@@ -420,8 +420,6 @@ int mdbx_pwrite(mdbx_filehandle_t fd, const void *buf, size_t count,
                 uint64_t offset);
 int mdbx_write(mdbx_filehandle_t fd, const void *buf, size_t count);
 
-int mdbx_msync(void *addr, size_t length, int async);
-
 int mdbx_thread_create(mdbx_thread_t *thread,
                        THREAD_RESULT(THREAD_CALL *start_routine)(void *),
                        void *arg);
@@ -440,19 +438,26 @@ int mdbx_openfile(const char *pathname, int flags, mode_t mode,
 int mdbx_closefile(mdbx_filehandle_t fd);
 
 typedef struct mdbx_mmap_param {
-  void *address;
+  union {
+    void *address;
+    uint8_t *dxb;
+    struct MDBX_lockinfo *lck;
+  };
+  mdbx_filehandle_t fd;
+  size_t length; /* mapping length, but NOT a size of file or DB */
+#if defined(_WIN32) || defined(_WIN64)
+  size_t current; /* mapped region size, e.g. file and DB */
+#endif
 #ifdef MDBX_OSAL_SECTION
   MDBX_OSAL_SECTION section;
 #endif
-  mdbx_filehandle_t fd;
-} mdbx_mmap_param_t;
-int mdbx_mmap(int flags, mdbx_mmap_param_t *map, size_t length, size_t limit);
-int mdbx_munmap(mdbx_mmap_param_t *map, size_t length);
-int mdbx_mlock(mdbx_mmap_param_t *map, size_t length);
-int mdbx_mresize(int flags, mdbx_mmap_param_t *map, size_t current,
-                 size_t wanna);
-int mdbx_mremap(int flags, mdbx_mmap_param_t *map, size_t old_limit,
-                size_t new_limit);
+} mdbx_mmap_t;
+
+int mdbx_mmap(int flags, mdbx_mmap_t *map, size_t must, size_t limit);
+int mdbx_munmap(mdbx_mmap_t *map);
+int mdbx_mlock(mdbx_mmap_t *map, size_t length);
+int mdbx_mresize(int flags, mdbx_mmap_t *map, size_t current, size_t wanna);
+int mdbx_msync(mdbx_mmap_t *map, size_t offset, size_t length, int async);
 
 static __inline mdbx_pid_t mdbx_getpid(void) {
 #if defined(_WIN32) || defined(_WIN64)
@@ -486,7 +491,7 @@ void mdbx_osal_jitter(bool tiny);
 int mdbx_lck_init(MDBX_env *env);
 
 int mdbx_lck_seize(MDBX_env *env);
-int mdbx_lck_downgrade(MDBX_env *env);
+int mdbx_lck_downgrade(MDBX_env *env, bool complete);
 int mdbx_lck_upgrade(MDBX_env *env);
 void mdbx_lck_destroy(MDBX_env *env);
 

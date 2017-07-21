@@ -659,14 +659,18 @@ typedef struct MDBX_pgstate {
 struct MDBX_env {
 #define MDBX_ME_SIGNATURE UINT32_C(0x9A899641)
   size_t me_signature;
-  mdbx_filehandle_t me_fd;  /*  The main data file */
-  mdbx_filehandle_t me_lfd; /*  The lock file */
-#ifdef MDBX_OSAL_SECTION
-  MDBX_OSAL_SECTION me_dxb_section;
-  MDBX_OSAL_SECTION me_lck_section;
-#endif
+  mdbx_mmap_t me_dxb_mmap; /*  The main data file */
+#define me_map me_dxb_mmap.dxb
+#define me_fd me_dxb_mmap.fd
+#define me_mapsize me_dxb_mmap.length
+  mdbx_mmap_t me_lck_mmap; /*  The lock file */
+#define me_lfd me_lck_mmap.fd
+#define me_lck me_lck_mmap.lck
+
 /* Failed to update the meta page. Probably an I/O error. */
 #define MDBX_FATAL_ERROR UINT32_C(0x80000000)
+/* Additional flag for mdbx_sync_locked() */
+#define MDBX_SHRINK_ALLOWED UINT32_C(0x40000000)
 /* Some fields are initialized. */
 #define MDBX_ENV_ACTIVE UINT32_C(0x20000000)
 /* me_txkey is set */
@@ -684,12 +688,9 @@ struct MDBX_env {
   mdbx_pid_t me_pid;           /* process ID of this env */
   mdbx_thread_key_t me_txkey;  /* thread-key for readers */
   char *me_path;               /* path to the DB files */
-  char *me_map;                /* the memory map of the data file */
-  MDBX_lockinfo *me_lck;       /* the memory map of the lock file, never NULL */
   void *me_pbuf;               /* scratch area for DUPSORT put() */
   MDBX_txn *me_txn;            /* current write transaction */
   MDBX_txn *me_txn0;           /* prealloc'd write transaction */
-  size_t me_mapsize;           /* size of the data memory map */
   MDBX_dbx *me_dbxs;           /* array of static DB info */
   uint16_t *me_dbflags;        /* array of flags from MDBX_db.md_flags */
   unsigned *me_dbiseqs;        /* array of dbi sequence numbers */
@@ -720,6 +721,7 @@ struct MDBX_env {
 #ifdef USE_VALGRIND
   int me_valgrind_handle;
 #endif
+
   struct {
     size_t lower;  /* minimal size of datafile */
     size_t upper;  /* maximal size of datafile */

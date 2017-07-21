@@ -13,14 +13,41 @@
  * top-level directory of the distribution or, alternatively, at
  * <http://www.OpenLDAP.org/license.html>. */
 
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#ifdef _MSC_VER
+#if _MSC_VER > 1800
+#pragma warning(disable : 4464) /* relative include path contains '..' */
+#endif
+#pragma warning(disable : 4996) /* The POSIX name is deprecated... */
+#if _MSC_VER == 1900
+/* LY: MSVC 2015 has buggy/inconsistent PRIuPTR/PRIxPTR macros and format-arg
+       checker for size_t typedef. */
+#pragma warning(disable : 4777) /* format string '%10u' requires an argument   \
+                                   of type 'unsigned int', but variadic        \
+                                   argument 1 has type 'std::size_t' */
+#endif
+#endif /* _MSC_VER (warnings) */
 
-#include "../../mdbx.h"
 #include "../bits.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#include "wingetopt.h"
+
+static volatile BOOL user_break;
+static BOOL WINAPI ConsoleBreakHandlerRoutine(DWORD dwCtrlType) {
+  (void)dwCtrlType;
+  user_break = true;
+  return true;
+}
+
+#else /* WINDOWS */
+
+static volatile sig_atomic_t user_break;
+static void signal_handler(int sig) {
+  (void)sig;
+  user_break = 1;
+}
+
+#endif /* !WINDOWS */
 
 static void prstat(MDBX_stat *ms) {
   printf("  Pagesize: %u\n", ms->ms_psize);
@@ -39,7 +66,7 @@ static void usage(char *prog) {
 }
 
 int main(int argc, char *argv[]) {
-  int i, rc;
+  int o, rc;
   MDBX_env *env;
   MDBX_txn *txn;
   MDBX_dbi dbi;
@@ -63,8 +90,8 @@ int main(int argc, char *argv[]) {
    * -V: print version and exit
    * (default) print stat of only the main DB
    */
-  while ((i = getopt(argc, argv, "Vaefnrs:")) != EOF) {
-    switch (i) {
+  while ((o = getopt(argc, argv, "Vaefnrs:")) != EOF) {
+    switch (o) {
     case 'V':
       printf("%s (%s, build %s)\n", mdbx_version.git.describe,
              mdbx_version.git.datetime, mdbx_build.datetime);
@@ -100,6 +127,19 @@ int main(int argc, char *argv[]) {
   if (optind != argc - 1)
     usage(prog);
 
+#if defined(_WIN32) || defined(_WIN64)
+  SetConsoleCtrlHandler(ConsoleBreakHandlerRoutine, true);
+#else
+#ifdef SIGPIPE
+  signal(SIGPIPE, signal_handler);
+#endif
+#ifdef SIGHUP
+  signal(SIGHUP, signal_handler);
+#endif
+  signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler);
+#endif /* !WINDOWS */
+
   envname = argv[optind];
   rc = mdbx_env_create(&env);
   if (rc) {
@@ -124,29 +164,29 @@ int main(int argc, char *argv[]) {
     (void)mdbx_env_info(env, &mei, sizeof(mei));
     printf("Environment Info\n");
     printf("  Pagesize: %u\n", mst.ms_psize);
-    if (mei.me_geo.lower != mei.me_geo.upper) {
+    if (mei.mi_geo.lower != mei.mi_geo.upper) {
       printf("  Dynamic datafile: %" PRIu64 "..%" PRIu64 " bytes (+%" PRIu64
              "/-%" PRIu64 "), %" PRIu64 "..%" PRIu64 " pages (+%" PRIu64
              "/-%" PRIu64 ")\n",
-             mei.me_geo.lower, mei.me_geo.upper, mei.me_geo.grow,
-             mei.me_geo.shrink, mei.me_geo.lower / mst.ms_psize,
-             mei.me_geo.upper / mst.ms_psize, mei.me_geo.grow / mst.ms_psize,
-             mei.me_geo.shrink / mst.ms_psize);
+             mei.mi_geo.lower, mei.mi_geo.upper, mei.mi_geo.grow,
+             mei.mi_geo.shrink, mei.mi_geo.lower / mst.ms_psize,
+             mei.mi_geo.upper / mst.ms_psize, mei.mi_geo.grow / mst.ms_psize,
+             mei.mi_geo.shrink / mst.ms_psize);
       printf("  Current datafile: %" PRIu64 " bytes, %" PRIu64 " pages\n",
-             mei.me_geo.current, mei.me_geo.current / mst.ms_psize);
+             mei.mi_geo.current, mei.mi_geo.current / mst.ms_psize);
     } else {
       printf("  Fixed datafile: %" PRIu64 " bytes, %" PRIu64 " pages\n",
-             mei.me_geo.current, mei.me_geo.current / mst.ms_psize);
+             mei.mi_geo.current, mei.mi_geo.current / mst.ms_psize);
     }
     printf("  Current mapsize: %" PRIu64 " bytes, %" PRIu64 " pages \n",
-           mei.me_mapsize, mei.me_mapsize / mst.ms_psize);
-    printf("  Number of pages used: %" PRIu64 "\n", mei.me_last_pgno + 1);
-    printf("  Last transaction ID: %" PRIu64 "\n", mei.me_recent_txnid);
+           mei.mi_mapsize, mei.mi_mapsize / mst.ms_psize);
+    printf("  Number of pages used: %" PRIu64 "\n", mei.mi_last_pgno + 1);
+    printf("  Last transaction ID: %" PRIu64 "\n", mei.mi_recent_txnid);
     printf("  Tail transaction ID: %" PRIu64 " (%" PRIi64 ")\n",
-           mei.me_latter_reader_txnid,
-           mei.me_latter_reader_txnid - mei.me_recent_txnid);
-    printf("  Max readers: %u\n", mei.me_maxreaders);
-    printf("  Number of readers used: %u\n", mei.me_numreaders);
+           mei.mi_latter_reader_txnid,
+           mei.mi_latter_reader_txnid - mei.mi_recent_txnid);
+    printf("  Max readers: %u\n", mei.mi_maxreaders);
+    printf("  Number of readers used: %u\n", mei.mi_numreaders);
   } else {
     /* LY: zap warnings from gcc */
     memset(&mst, 0, sizeof(mst));
@@ -195,9 +235,13 @@ int main(int argc, char *argv[]) {
     }
     prstat(&mst);
     while ((rc = mdbx_cursor_get(cursor, &key, &data, MDBX_NEXT)) == 0) {
+      if (user_break) {
+        rc = MDBX_EINTR;
+        break;
+      }
       iptr = data.iov_base;
       pages += *iptr;
-      if (envinfo && mei.me_latter_reader_txnid > *(size_t *)key.iov_base)
+      if (envinfo && mei.mi_latter_reader_txnid > *(size_t *)key.iov_base)
         reclaimable += *iptr;
       if (freinfo > 1) {
         char *bad = "";
@@ -209,7 +253,7 @@ int main(int argc, char *argv[]) {
           if (pg <= prev)
             bad = " [bad sequence]";
           prev = pg;
-          pg += span;
+          pg += (unsigned)span;
           for (; i >= span && iptr[i - span] == pg; span++, pg++)
             ;
         }
@@ -231,18 +275,18 @@ int main(int argc, char *argv[]) {
     }
     mdbx_cursor_close(cursor);
     if (envinfo) {
-      uint64_t value = mei.me_mapsize / mst.ms_psize;
+      uint64_t value = mei.mi_mapsize / mst.ms_psize;
       double percent = value / 100.0;
       printf("Page Allocation Info\n");
       printf("  Max pages: %" PRIu64 " 100%%\n", value);
 
-      value = mei.me_last_pgno + 1;
+      value = mei.mi_last_pgno + 1;
       printf("  Pages used: %" PRIu64 " %.1f%%\n", value, value / percent);
 
-      value = mei.me_mapsize / mst.ms_psize - (mei.me_last_pgno + 1);
+      value = mei.mi_mapsize / mst.ms_psize - (mei.mi_last_pgno + 1);
       printf("  Remained: %" PRIu64 " %.1f%%\n", value, value / percent);
 
-      value = mei.me_last_pgno + 1 - pages;
+      value = mei.mi_last_pgno + 1 - pages;
       printf("  Used now: %" PRIu64 " %.1f%%\n", value, value / percent);
 
       value = pages;
@@ -255,7 +299,7 @@ int main(int argc, char *argv[]) {
       printf("  Reclaimable: %" PRIu64 " %.1f%%\n", value, value / percent);
 
       value =
-          mei.me_mapsize / mst.ms_psize - (mei.me_last_pgno + 1) + reclaimable;
+          mei.mi_mapsize / mst.ms_psize - (mei.mi_last_pgno + 1) + reclaimable;
       printf("  Available: %" PRIu64 " %.1f%%\n", value, value / percent);
     } else
       printf("  Free pages: %" PRIaPGNO "\n", pages);
