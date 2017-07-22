@@ -46,8 +46,8 @@ int main(int argc, char *argv[]) {
   (void)argv;
 
   printf("// базовые лимиты и параметры:\n");
-  print_value("fptu_bits", "ширина счетчиков", fptu_bits);
-  print_value("fptu_unit_size", "размер одного юнита", fptu_unit_size);
+  print_value("fptu_bits", "ширина счетчиков в битах", fptu_bits);
+  print_value("fptu_unit_size", "размер одного юнита в байтах", fptu_unit_size);
   print_value("fptu_typeid_bits", "ширина типа в идентификаторе поля",
               fptu_typeid_bits);
   print_value("fptu_ct_reserve_bits", "резерв в идентификаторе поля",
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
   printf("// производные константы и параметры:\n");
   print_value("fptu_unit_shift", "log2(fptu_unit_size)", fptu_unit_shift);
-  print_value("fptu_limit", "базовый лимит значений", fptu_limit);
+  print_value("fptu_limit", "основной внутренний лимит", fptu_limit);
   print_value("fptu_co_bits", "ширина тега-номера поля/колонки", fptu_co_bits);
   print_mask("fptu_ty_mask",
              "маска для получения типа из идентификатора поля/колонки",
@@ -105,8 +105,8 @@ int main(int argc, char *argv[]) {
   print_value("fptu_buffer_enought",
               "буфер достаточного размера для любого кортежа",
               fptu_buffer_enought);
-  print_value("fptu_buffer_limit",
-              "предельный размер, превышение которого считается ошибкой",
+  print_value("fptu_buffer_limit", "предельный размер для резервирования, "
+                                   "превышение которого считается ошибкой",
               fptu_buffer_limit);
 
   printf("\nno Windows, no Java, no Problems ;)\n");

@@ -17,6 +17,20 @@
  * along with libfptu.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * libfptu = { Fast Positive Tuples, aka Позитивные Кортежи }
+ *
+ * The kind of lightweight linearized tuples, which are extremely handy
+ * to machining, including cases with shared memory.
+ * Please see README.md at https://github.com/leo-yuriev/libfptu
+ *
+ * The Future will Positive. Всё будет хорошо.
+ *
+ * "Позитивные Кортежи" дают легковесное линейное представление небольших
+ * JSON-подобных структур в экстремально удобной для машины форме,
+ * в том числе при размещении в разделяемой памяти.
+ */
+
 #pragma once
 
 /* *INDENT-OFF* */
