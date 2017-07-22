@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -19,18 +19,17 @@
 
 /*
  * libfpta = { Fast Positive Tables, aka Позитивные Таблицы }
- * Please see README.md
  *
- * "Позитивные таблицы" предназначены для построения высокоскоростных
- * локальных хранилищ структурированных данных в разделяемой памяти,
- * с целевой производительностью от 100К до 1000К простых SQL-подобных
- * запросов в секунду на каждом ядре процессора.
+ * Ultra fast, compact, embeddable storage engine for (semi)structured data:
+ * multiprocessing with zero-overhead, full ACID semantics with MVCC,
+ * variety of indexes, saturation, sequences and much more.
+ * Please see README.md at https://github.com/leo-yuriev/libfpta
  *
  * The Future will Positive. Всё будет хорошо.
  *
- * "Positive Tables" is designed to build high-speed local storage of
- * structured data in shared memory, with target performance from 100K
- * to 1000K simple SQL-like requests per second on each CPU core.
+ * "Позитивные таблицы" предназначены для построения высокоскоростных
+ * локальных хранилищ структурированных данных, с целевой производительностью
+ * до 1.000.000 запросов в секунду на каждое ядро процессора.
  */
 
 #pragma once

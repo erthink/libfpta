@@ -1,7 +1,7 @@
 add_subdirectory(libfptu/src)
 add_subdirectory(libfptu/test)
 
-#######################################################################
+###############################################################################
 
 add_library(t1ha STATIC
   t1ha/src/t1ha0.c
@@ -21,7 +21,7 @@ set_target_properties(t1ha PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
   )
 
-#######################################################################
+###############################################################################
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   set(LIBMDBX_OSAL windows)
@@ -57,7 +57,7 @@ install(TARGETS t1ha mdbx
   PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
   )
 
-#######################################################################
+###############################################################################
 
 set(MDBX_TOOLS_COMMON libmdbx/mdbx.h)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")

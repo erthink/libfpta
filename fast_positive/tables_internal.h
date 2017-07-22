@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -15,6 +15,21 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+ * libfpta = { Fast Positive Tables, aka Позитивные Таблицы }
+ *
+ * Ultra fast, compact, embeddable storage engine for (semi)structured data:
+ * multiprocessing with zero-overhead, full ACID semantics with MVCC,
+ * variety of indexes, saturation, sequences and much more.
+ * Please see README.md at https://github.com/leo-yuriev/libfpta
+ *
+ * The Future will Positive. Всё будет хорошо.
+ *
+ * "Позитивные таблицы" предназначены для построения высокоскоростных
+ * локальных хранилищ структурированных данных, с целевой производительностью
+ * до 1.000.000 запросов в секунду на каждое ядро процессора.
  */
 
 #pragma once
