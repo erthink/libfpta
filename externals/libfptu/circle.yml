@@ -21,6 +21,7 @@ checkout:
 
 compile:
   pre:
+    - cmake --version
     - cmake .
   override:
     - make all

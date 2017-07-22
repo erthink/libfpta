@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -20,9 +20,15 @@
 /*
  * libfptu = { Fast Positive Tuples, aka Позитивные Кортежи }
  *
+ * The kind of lightweight linearized tuples, which are extremely handy
+ * to machining, including cases with shared memory.
+ * Please see README.md at https://github.com/leo-yuriev/libfptu
+ *
  * The Future will Positive. Всё будет хорошо.
  *
- * Please see README.md
+ * "Позитивные Кортежи" дают легковесное линейное представление небольших
+ * JSON-подобных структур в экстремально удобной для машины форме,
+ * в том числе при размещении в разделяемой памяти.
  */
 
 #pragma once

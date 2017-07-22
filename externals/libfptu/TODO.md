@@ -1,4 +1,4 @@
-- [x] intergation with GoogleTest (pull, build);
+﻿- [x] intergation with GoogleTest (pull, build);
 - [x] CI by AppVeyor;
 - [x] use fast-int types and double_t;
 - [x] Link-Time Optimization;
