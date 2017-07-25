@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -232,7 +232,7 @@ template <fptu_type type> struct saturated {
     if (unlikely(!field)) {
       if (subtrahend == 0 && lower > 0)
         return false /* не допускаем появления не-нулевого значения при вычитании нуля из пустоты */;
-      result = (traits::has_native_saturation || 0 - lower > subtrahend)
+      result = (traits::has_native_saturation || subtrahend + lower < 0)
                    ? 0 - subtrahend
                    : lower;
       return true;
@@ -248,7 +248,7 @@ template <fptu_type type> struct saturated {
     } else {
       if (present <= lower)
         return false;
-      result = (present - lower > subtrahend) ? present - subtrahend : lower;
+      result = (lower + subtrahend < present) ? present - subtrahend : lower;
       return true;
     }
   }
