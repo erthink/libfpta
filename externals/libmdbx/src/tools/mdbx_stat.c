@@ -1,4 +1,4 @@
-/* mdbx_stat.c - memory-mapped database status tool */
+﻿/* mdbx_stat.c - memory-mapped database status tool */
 
 /*
  * Copyright 2015-2017 Leonid Yuriev <leo@yuriev.ru>
@@ -18,14 +18,7 @@
 #pragma warning(disable : 4464) /* relative include path contains '..' */
 #endif
 #pragma warning(disable : 4996) /* The POSIX name is deprecated... */
-#if _MSC_VER == 1900
-/* LY: MSVC 2015 has buggy/inconsistent PRIuPTR/PRIxPTR macros and format-arg
-       checker for size_t typedef. */
-#pragma warning(disable : 4777) /* format string '%10u' requires an argument   \
-                                   of type 'unsigned int', but variadic        \
-                                   argument 1 has type 'std::size_t' */
-#endif
-#endif /* _MSC_VER (warnings) */
+#endif                          /* _MSC_VER (warnings) */
 
 #include "../bits.h"
 
@@ -247,9 +240,9 @@ int main(int argc, char *argv[]) {
       if (freinfo > 1) {
         char *bad = "";
         pgno_t pg, prev;
-        ssize_t i, j, span = 0;
+        intptr_t i, j, span = 0;
         j = *iptr++;
-        for (i = j, prev = 1; --i >= 0;) {
+        for (i = j, prev = NUM_METAS - 1; --i >= 0;) {
           pg = iptr[i];
           if (pg <= prev)
             bad = " [bad sequence]";
