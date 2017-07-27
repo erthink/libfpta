@@ -2296,7 +2296,7 @@ FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
  *  - FPTA_SUCCESS (ноль) если значение колонки было успешно обновлено.
  *  - FPTA_NODATA (-1) если значение не изменилось и не было ошибок.
  *  - Иначе код ошибки. */
-FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
+FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...);
 

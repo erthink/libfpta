@@ -364,7 +364,7 @@ FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
   }
 }
 
-FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
+FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...) {
   if (unlikely(!row || !fpta_id_validate(column_id, fpta_column)))
