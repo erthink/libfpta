@@ -30,7 +30,7 @@
 #pragma message("Configuration-depended FPTU_COMPILE_FLAGS: " FPTU_COMPILE_FLAGS)
 #endif
 
-const struct fptu_version_info fptu_version = {
+/*FPTU_API*/ const fptu_version_info fptu_version = {
   @FPTU_VERSION_MAJOR@, @FPTU_VERSION_MINOR@, @FPTU_VERSION_RELEASE@, @FPTU_VERSION_REVISION@,
   {
     "@FPTU_GIT_TIMESTAMP@",
@@ -40,7 +40,7 @@ const struct fptu_version_info fptu_version = {
   }
 };
 
-const struct fptu_build_info fptu_build = {
+/*FPTU_API*/ const fptu_build_info fptu_build = {
   "@FPTU_BUILD_TIMESTAMP@",
   @FPTU_BUILD_TAGRET@,
   "@FPTU_CMAKE_OPTIONS@",

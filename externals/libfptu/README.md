@@ -318,3 +318,167 @@ fptu_max_array        = 2047    // максимальное кол-во элем
 fptu_buffer_enought = 327696    // буфер достаточного размера для любого кортежа
 fptu_buffer_limit   = 524280    // предельный размер для резервирования, превышение которого считается ошибкой
 ```
+
+--------------------------------------------------------------------------------
+
+```
+$ objdump -f -h -j .text libfptu.so
+
+libfptu.so:     file format elf64-x86-64
+architecture: i386:x86-64, flags 0x00000150:
+HAS_SYMS, DYNAMIC, D_PAGED
+start address 0x00003aa0
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+ 11 .text         00005dda  00003aa0  00003aa0  00003aa0  2**4
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+```
+
+```
+00003aa0 g    DF .text	000000a0  Base        fptu::hexadecimal[abi:cxx11](void const*, unsigned long)
+00003b40 g    DF .text	0000013f  Base        fptu::format[abi:cxx11](char const*, ...)
+0000450c g    DF .text	00000164  Base        fptu_type_name
+00004670 g    DF .text	00000070  Base        std::to_string[abi:cxx11](fptu_error)
+00004807 g    DF .text	000009d4  Base        std::to_string[abi:cxx11](fptu_field const&)
+00005355 g    DF .text	00000119  Base        std::to_string[abi:cxx11](fptu_time const&)
+0000546e g    DF .text	0000009f  Base        std::to_string[abi:cxx11](fptu_lge)
+0000550d g    DF .text	00000129  Base        std::to_string[abi:cxx11](fptu_rw const&)
+00005636 g    DF .text	000000e2  Base        std::to_string[abi:cxx11](fptu_ro const&)
+00005718 g    DF .text	00000022  Base        std::to_string[abi:cxx11](fptu_type)
+00005c94 g    DF .text	00000033  Base        fptu_take_noshrink
+00005cc7 g    DF .text	00000088  Base        fptu_lookup
+00005d4f g    DF .text	0000008d  Base        fptu_lookup_ro
+00005de0 g    DF .text	00000047  Base        fptu_is_ordered
+00005e27 g    DF .text	0000000e  Base        fptu_end_rw
+00005e35 g    DF .text	0000000d  Base        fptu_begin_rw
+00005e42 g    DF .text	0000002e  Base        fptu_end_ro
+00005e70 g    DF .text	0000002b  Base        fptu_begin_ro
+00005e9b g    DF .text	0000006a  Base        fptu_first_ex
+00005f05 g    DF .text	0000000e  Base        fptu_next_ex
+00005f13 g    DF .text	00000066  Base        fptu_first
+00005f79 g    DF .text	0000000e  Base        fptu_next
+00005f87 g    DF .text	0000004b  Base        fptu_cmp_binary
+00005fd2 g    DF .text	000004a9  Base        fptu_cmp_tuples
+00006730 g    DF .text	0000008f  Base        fptu_is_under_valgrind
+000067bf g    DF .text	0000007c  Base        fptu_insert_nested
+0000683b g    DF .text	0000008b  Base        fptu_insert_opaque
+000068c6 g    DF .text	0000000a  Base        fptu_insert_opaque_iov
+000068d0 g    DF .text	00000076  Base        fptu_insert_string
+00006946 g    DF .text	00000066  Base        fptu_insert_256
+000069ac g    DF .text	0000005c  Base        fptu_insert_160
+00006a08 g    DF .text	00000054  Base        fptu_insert_128
+00006a5c g    DF .text	00000054  Base        fptu_insert_96
+00006ab0 g    DF .text	0000004a  Base        fptu_insert_fp64
+00006afa g    DF .text	00000048  Base        fptu_insert_fp32
+00006b42 g    DF .text	00000048  Base        fptu_insert_datetime
+00006b8a g    DF .text	00000048  Base        fptu_insert_uint64
+00006bd2 g    DF .text	00000048  Base        fptu_insert_int64
+00006c1a g    DF .text	00000047  Base        fptu_insert_uint32
+00006c61 g    DF .text	00000047  Base        fptu_insert_int32
+00006ca8 g    DF .text	00000041  Base        fptu_insert_uint16
+00006ce9 g    DF .text	000000fd  Base        fptu_erase_field
+00006de6 g    DF .text	000000cc  Base        fptu_erase
+00006eb2 g    DF .text	00000078  Base        fptu_update_nested
+00006f2a g    DF .text	00000087  Base        fptu_update_opaque
+00006fb1 g    DF .text	0000000a  Base        fptu_update_opaque_iov
+00006fbb g    DF .text	00000072  Base        fptu_update_string
+0000702d g    DF .text	00000062  Base        fptu_update_256
+0000708f g    DF .text	00000058  Base        fptu_update_160
+000070e7 g    DF .text	00000050  Base        fptu_update_128
+00007137 g    DF .text	00000050  Base        fptu_update_96
+00007187 g    DF .text	00000042  Base        fptu_update_fp64
+000071c9 g    DF .text	00000040  Base        fptu_update_fp32
+00007209 g    DF .text	00000040  Base        fptu_update_datetime
+00007249 g    DF .text	00000040  Base        fptu_update_uint64
+00007289 g    DF .text	00000040  Base        fptu_update_int64
+000072c9 g    DF .text	0000003f  Base        fptu_update_uint32
+00007308 g    DF .text	0000003f  Base        fptu_update_int32
+00007347 g    DF .text	0000003d  Base        fptu_update_uint16
+00007384 g    DF .text	0000007c  Base        fptu_upsert_nested
+00007400 g    DF .text	0000009e  Base        fptu_upsert_opaque
+0000749e g    DF .text	0000000a  Base        fptu_upsert_opaque_iov
+000074a8 g    DF .text	00000076  Base        fptu_upsert_string
+0000751e g    DF .text	00000066  Base        fptu_upsert_256
+00007584 g    DF .text	0000005c  Base        fptu_upsert_160
+000075e0 g    DF .text	00000054  Base        fptu_upsert_128
+00007634 g    DF .text	00000054  Base        fptu_upsert_96
+00007688 g    DF .text	0000004a  Base        fptu_upsert_fp64
+000076d2 g    DF .text	00000048  Base        fptu_upsert_fp32
+0000771a g    DF .text	00000048  Base        fptu_upsert_datetime
+00007762 g    DF .text	00000048  Base        fptu_upsert_uint64
+000077aa g    DF .text	00000048  Base        fptu_upsert_int64
+000077f2 g    DF .text	00000047  Base        fptu_upsert_uint32
+00007839 g    DF .text	00000047  Base        fptu_upsert_int32
+00007880 g    DF .text	00000041  Base        fptu_upsert_uint16
+000078c1 g    DF .text	00000027  Base        fptu_upsert_null
+000078e8 g    DF .text	0000019a  Base        fptu_check
+00007a82 g    DF .text	00000125  Base        fptu_check_ro
+00007ba7 g    DF .text	0000000d  Base        fptu_junkspace
+00007bb4 g    DF .text	00000010  Base        fptu_space4data
+00007bc4 g    DF .text	00000016  Base        fptu_space4items
+00007bda g    DF .text	0000003d  Base        fptu_clear
+00007c17 g    DF .text	0000004f  Base        fptu_init
+00007c66 g    DF .text	0000010a  Base        fptu_fetch
+00007d70 g    DF .text	00000033  Base        fptu_space
+00007da3 g    DF .text	0000004d  Base        fptu_alloc
+00007df0 g    DF .text	00000044  Base        fptu_get_buffer_size
+00007e34 g    DF .text	000000ad  Base        fptu_check_and_get_buffer_size
+00008780 g    DF .text	00000011  Base        fptu_time::fractional2ms(unsigned long)
+000087a0 g    DF .text	00000028  Base        fptu_time::ms2fractional(unsigned long)
+000087d0 g    DF .text	00000011  Base        fptu_time::fractional2us(unsigned long)
+000087f0 g    DF .text	00000021  Base        fptu_time::us2fractional(unsigned long)
+00008820 g    DF .text	00000011  Base        fptu_time::fractional2ns(unsigned long)
+00008840 g    DF .text	00000028  Base        fptu_time::ns2fractional(unsigned long)
+00008870 g    DF .text	0000005f  Base        fptu_now_coarse
+000088d0 g    DF .text	0000005f  Base        fptu_now_fine
+00008930 g    DF .text	0000007a  Base        fptu_now
+000089b0 g    DF .text	000000bf  Base        fptu_tags
+00008a70 g    DF .text	0000008f  Base        fptu_field_count_ro_ex
+00008aff g    DF .text	00000078  Base        fptu_field_count_ex
+00008b77 g    DF .text	00000075  Base        fptu_field_count_ro
+00008bec g    DF .text	00000063  Base        fptu_field_count
+00008c4f g    DF .text	00000040  Base        fptu_cmp_fields
+00008c8f g    DF .text	00000049  Base        fptu_cmp_opaque
+00008cd8 g    DF .text	0000000a  Base        fptu_cmp_opaque_iov
+00008ce2 g    DF .text	00000066  Base        fptu_cmp_256
+00008d48 g    DF .text	00000066  Base        fptu_cmp_160
+00008dae g    DF .text	00000066  Base        fptu_cmp_128
+00008e14 g    DF .text	00000066  Base        fptu_cmp_96
+00008e7a g    DF .text	00000035  Base        fptu_get_nested
+00008eaf g    DF .text	00000035  Base        fptu_get_opaque
+00008ee4 g    DF .text	00000066  Base        fptu_get_fp
+00008f4a g    DF .text	0000006b  Base        fptu_get_uint
+00008fb5 g    DF .text	00000062  Base        fptu_get_sint
+00009017 g    DF .text	00000034  Base        fptu_get_cstr
+0000904b g    DF .text	00000034  Base        fptu_get_256
+0000907f g    DF .text	00000034  Base        fptu_get_160
+000090b3 g    DF .text	00000034  Base        fptu_get_128
+000090e7 g    DF .text	00000034  Base        fptu_get_96
+0000911b g    DF .text	00000035  Base        fptu_get_datetime
+00009150 g    DF .text	00000034  Base        fptu_get_fp32
+00009184 g    DF .text	00000034  Base        fptu_get_fp64
+000091b8 g    DF .text	00000034  Base        fptu_get_uint64
+000091ec g    DF .text	00000034  Base        fptu_get_int64
+00009220 g    DF .text	00000034  Base        fptu_get_uint32
+00009254 g    DF .text	00000034  Base        fptu_get_int32
+00009288 g    DF .text	00000034  Base        fptu_get_uint16
+000092c0 g    DF .text	00000024  Base        fptu_field_column
+000092f0 g    DF .text	00000024  Base        fptu_field_type
+00009320 g    DF .text	0000003b  Base        fptu_field_nested
+00009360 g    DF .text	0000003b  Base        fptu_field_opaque
+000093a0 g    DF .text	00000039  Base        fptu_field_256
+000093e0 g    DF .text	00000039  Base        fptu_field_160
+00009420 g    DF .text	00000039  Base        fptu_field_128
+00009460 g    DF .text	00000039  Base        fptu_field_96
+000094a0 g    DF .text	00000039  Base        fptu_field_cstr
+000094e0 g    DF .text	00000039  Base        fptu_field_datetime
+00009520 g    DF .text	0000003f  Base        fptu_field_fp32
+00009560 g    DF .text	0000003f  Base        fptu_field_fp64
+000095a0 g    DF .text	0000002f  Base        fptu_field_uint64
+000095d0 g    DF .text	00000041  Base        fptu_field_int64
+00009620 g    DF .text	0000003c  Base        fptu_field_uint32
+00009660 g    DF .text	0000002f  Base        fptu_field_int32
+00009690 g    DF .text	0000003c  Base        fptu_field_uint16
+000096d0 g    DF .text	000001aa  Base        fptu_shrink
+```
