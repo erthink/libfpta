@@ -2337,8 +2337,8 @@ typedef struct fpta_build_info {
   const char *compile_flags;
 } fpta_build_info;
 
-extern FPTA_API const struct fpta_version_info fpta_version;
-extern FPTA_API const struct fpta_build_info fpta_build;
+extern FPTA_API const fpta_version_info fpta_version;
+extern FPTA_API const fpta_build_info fpta_build;
 
 #ifdef __cplusplus
 }
