@@ -124,15 +124,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(db == nullptr))
     return FPTA_ENOMEM;
 
-  int rc = fpta_mutex_init(&db->dbi_mutex);
-  if (unlikely(rc != 0)) {
-    int err = fpta_rwl_destroy(&db->schema_rwlock);
-    assert(err == 0);
-    (void)err;
-    free(db);
-    return (fpta_error)rc;
-  }
-
+  int rc;
   db->alterable_schema = alterable_schema;
   if (db->alterable_schema) {
     rc = fpta_rwl_init(&db->schema_rwlock);
@@ -140,6 +132,15 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
       free(db);
       return (fpta_error)rc;
     }
+  }
+
+  rc = fpta_mutex_init(&db->dbi_mutex);
+  if (unlikely(rc != 0)) {
+    int err = fpta_rwl_destroy(&db->schema_rwlock);
+    assert(err == 0);
+    (void)err;
+    free(db);
+    return (fpta_error)rc;
   }
 
   rc = mdbx_env_create(&db->mdbx_env);
@@ -258,7 +259,8 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
     goto bailout;
 
   txn->db_version = mdbx_txn_id(txn->mdbx_txn);
-  assert(txn->schema_version() <= txn->db_version);
+  assert(txn->schema_version() <=
+         ((level > fpta_read) ? txn->db_version - 1 : txn->db_version));
 
   *ptxn = txn;
   return FPTA_SUCCESS;

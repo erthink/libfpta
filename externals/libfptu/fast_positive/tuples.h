@@ -959,8 +959,8 @@ typedef struct fptu_build_info {
   const char *compile_flags;
 } fptu_build_info;
 
-extern FPTU_API const struct fptu_version_info fptu_version;
-extern FPTU_API const struct fptu_build_info fptu_build;
+extern FPTU_API const fptu_version_info fptu_version;
+extern FPTU_API const fptu_build_info fptu_build;
 
 #ifdef __cplusplus
 }

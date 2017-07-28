@@ -30,7 +30,7 @@
 #pragma message("Configuration-depended FPTA_COMPILE_FLAGS: " FPTA_COMPILE_FLAGS)
 #endif
 
-const struct fpta_version_info fpta_version = {
+/*FPTA_API*/ const fpta_version_info fpta_version = {
   @FPTA_VERSION_MAJOR@, @FPTA_VERSION_MINOR@, @FPTA_VERSION_RELEASE@, @FPTA_VERSION_REVISION@,
   {
     "@FPTA_GIT_TIMESTAMP@",
@@ -40,7 +40,7 @@ const struct fpta_version_info fpta_version = {
   }
 };
 
-const struct fpta_build_info fpta_build = {
+/*FPTA_API*/ const fpta_build_info fpta_build = {
   "@FPTA_BUILD_TIMESTAMP@",
   @FPTA_BUILD_TAGRET@,
   "@FPTA_CMAKE_OPTIONS@",
