@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -45,7 +45,7 @@ TEST(Open, Trivia) {
   ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
 
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_sync, 0644, 1, false, &db));
+            fpta_db_open(testdb_name, fpta_sync, 0644, 1, true, &db));
   EXPECT_NE(nullptr, db);
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
   ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
