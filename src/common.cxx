@@ -259,7 +259,8 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
     goto bailout;
 
   txn->db_version = mdbx_txn_id(txn->mdbx_txn);
-  assert(txn->schema_version() <= txn->db_version);
+  assert(txn->schema_version() <=
+         ((level > fpta_read) ? txn->db_version - 1 : txn->db_version));
 
   *ptxn = txn;
   return FPTA_SUCCESS;
