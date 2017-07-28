@@ -30,7 +30,7 @@ else()
 endif()
 
 add_library(mdbx STATIC
-  libmdbx/mdbx.h
+  libmdbx/mdbx.h libmdbx/src/defs.h libmdbx/src/bits.h libmdbx/src/osal.h
   libmdbx/src/mdbx.c
   libmdbx/src/osal.c
   libmdbx/src/lck-${LIBMDBX_OSAL}.c
@@ -59,7 +59,7 @@ install(TARGETS t1ha mdbx
 
 ###############################################################################
 
-set(MDBX_TOOLS_COMMON libmdbx/mdbx.h)
+set(MDBX_TOOLS_COMMON libmdbx/mdbx.h libmdbx/src/defs.h libmdbx/src/bits.h libmdbx/src/osal.h)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   list(APPEND MDBX_TOOLS_COMMON libmdbx/src/tools/wingetopt.h libmdbx/src/tools/wingetopt.c)
 endif()
