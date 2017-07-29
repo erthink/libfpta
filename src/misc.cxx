@@ -366,16 +366,18 @@ __cold string to_string(const fpta_put_options op) {
   }
 }
 
-__cold string to_string(const struct fpta_table_schema *def) {
+__cold string to_string(const fpta_table_schema *def) {
   if (def == nullptr)
     return "nullptr";
 
-  string result = fptu::format(
-      "%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64 ", %" PRIu32 "=[",
-      def, def->csn, def->signature, def->checksum, def->shove, def->count);
+  string result =
+      fptu::format("%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64
+                   ", %" PRIuSIZE "=[",
+                   def, def->version_csn(), def->signature(), def->checksum(),
+                   def->table_shove(), def->column_count());
 
-  for (size_t i = 0; i < def->count; ++i) {
-    const fpta_shove_t shove = def->columns[i];
+  for (size_t i = 0; i < def->column_count(); ++i) {
+    const fpta_shove_t shove = def->column_shove(i);
     const fpta_index_type index = fpta_shove2index(shove);
     const fptu_type type = fpta_shove2type(shove);
     result += fptu::format(&", @%" PRIx64 "."[(i == 0) ? 2 : 0], shove) +

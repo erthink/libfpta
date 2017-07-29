@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -102,7 +102,7 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
     return rc;
 
   if (fpta_table_has_secondary(table_id)) {
-    for (size_t i = 1; i < table_id->table.def->count; ++i) {
+    for (size_t i = 1; i < table_id->table.def->column_count(); ++i) {
       rc = mdbx_drop(txn->mdbx_txn, dbi[i], 0);
       if (unlikely(rc != MDBX_SUCCESS))
         return fpta_internal_abort(txn, rc);

@@ -94,7 +94,7 @@ extern "C" char *gets(char *);
 
 //----------------------------------------------------------------------------
 
-struct fpta_table_schema {
+struct fpta_table_stored_schema {
   uint64_t checksum;
   uint32_t signature;
   uint32_t count;
@@ -103,11 +103,26 @@ struct fpta_table_schema {
   fpta_shove_t columns[fpta_max_cols];
 };
 
-static __inline size_t fpta_table_schema_size(size_t cols) {
+static __inline size_t fpta_table_stored_schema_size(size_t cols) {
   assert(cols <= fpta_max_cols);
-  return sizeof(fpta_table_schema) -
+  return sizeof(fpta_table_stored_schema) -
          sizeof(fpta_shove_t) * (fpta_max_cols - cols);
 }
+
+struct fpta_table_schema {
+  fpta_table_stored_schema _stored;
+
+  uint64_t checksum() const { return _stored.checksum; }
+  uint32_t signature() const { return _stored.signature; }
+  fpta_shove_t table_shove() const { return _stored.shove; }
+  uint64_t version_csn() const { return _stored.csn; }
+  size_t column_count() const { return _stored.count; }
+  fpta_shove_t column_shove(size_t number) const {
+    assert(number < _stored.count);
+    return _stored.columns[number];
+  }
+  const fpta_shove_t *column_shoves_array() const { return _stored.columns; }
+};
 
 enum fpta_internals {
   /* используем некорретный для индекса набор флагов, чтобы в fpta_name
@@ -229,7 +244,7 @@ struct fpta_cursor {
 
   const fpta_table_schema *table_def() const { return table_id->table.def; }
   fpta_shove_t index_shove() const {
-    return table_def()->columns[column_number];
+    return table_def()->column_shove(column_number);
   }
 
   fpta_key range_from_key;

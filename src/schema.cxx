@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -298,9 +298,10 @@ int __hot fpta_open_table(fpta_txn *txn, fpta_name *table_id,
   if (likely(handle > 0))
     return FPTA_OK;
 
-  const unsigned dbi_flags = fpta_dbi_flags(table_id->table.def->columns, 0);
+  const unsigned dbi_flags =
+      fpta_dbi_flags(table_id->table.def->column_shoves_array(), 0);
   const fpta_shove_t data_shove =
-      fpta_data_shove(table_id->table.def->columns, 0);
+      fpta_data_shove(table_id->table.def->column_shoves_array(), 0);
   return fpta_dbi_open(txn, dbi_shove, handle, dbi_flags, table_id->table.pk,
                        data_shove, &table_id->handle_cache_hint);
 }
@@ -325,8 +326,8 @@ int __hot fpta_open_column(fpta_txn *txn, fpta_name *column_id,
   if (likely(idx_handle > 0))
     return FPTA_OK;
 
-  const unsigned dbi_flags = fpta_dbi_flags(table_id->table.def->columns,
-                                            (unsigned)column_id->column.num);
+  const unsigned dbi_flags = fpta_dbi_flags(
+      table_id->table.def->column_shoves_array(), column_id->column.num);
   return fpta_dbi_open(txn, dbi_shove, idx_handle, dbi_flags, column_id->shove,
                        table_id->table.pk, &column_id->handle_cache_hint);
 }
@@ -339,13 +340,14 @@ int __hot fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const fpta_shove_t shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_id->table.def->column_count(); ++i) {
+    const fpta_shove_t shove = table_id->table.def->column_shove(i);
     if (!fpta_is_indexed(shove))
       break;
 
     const fpta_shove_t dbi_shove = fpta_dbi_shove(table_id->shove, i);
-    const unsigned dbi_flags = fpta_dbi_flags(table_id->table.def->columns, i);
+    const unsigned dbi_flags =
+        fpta_dbi_flags(table_id->table.def->column_shoves_array(), i);
     unsigned cache_hint_unused = ~0u;
     rc = fpta_dbi_open(txn, dbi_shove, dbi_array[i], dbi_flags, shove,
                        table_id->table.pk, &cache_hint_unused);
@@ -582,21 +584,22 @@ int fpta_column_set_validate(fpta_column_set *column_set) {
 //----------------------------------------------------------------------------
 
 bool fpta_schema_validate(const MDBX_val def) {
-  if (unlikely(def.iov_len < fpta_table_schema_size(1)))
+  if (unlikely(def.iov_len < fpta_table_stored_schema_size(1)))
     return false;
 
-  if (unlikely((def.iov_len - sizeof(fpta_table_schema)) %
+  if (unlikely((def.iov_len - sizeof(fpta_table_stored_schema)) %
                sizeof(fpta_shove_t)))
     return false;
 
-  const fpta_table_schema *schema = (const fpta_table_schema *)def.iov_base;
+  const fpta_table_stored_schema *schema =
+      (const fpta_table_stored_schema *)def.iov_base;
   if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
     return false;
 
   if (unlikely(schema->count > fpta_max_cols))
     return false;
 
-  if (unlikely(def.iov_len != fpta_table_schema_size(schema->count)))
+  if (unlikely(def.iov_len != fpta_table_stored_schema_size(schema->count)))
     return false;
 
   if (unlikely(schema->csn == 0))
@@ -616,23 +619,27 @@ bool fpta_schema_validate(const MDBX_val def) {
 }
 
 static int fpta_schema_dup(const MDBX_val data, fpta_table_schema **def) {
-  assert(data.iov_len >= fpta_table_schema_size(1) &&
-         data.iov_len <= sizeof(fpta_table_schema));
+  assert(data.iov_len >= fpta_table_stored_schema_size(1) &&
+         data.iov_len <= sizeof(fpta_table_stored_schema));
   assert(def != nullptr);
 
-  fpta_table_schema *schema = (fpta_table_schema *)realloc(*def, data.iov_len);
+  fpta_table_schema *schema =
+      (fpta_table_schema *)realloc(*def, sizeof(fpta_table_schema));
   if (unlikely(schema == nullptr))
     return FPTA_ENOMEM;
 
-  *def = (fpta_table_schema *)memcpy(schema, data.iov_base, data.iov_len);
+  memset(schema, ~0, sizeof(fpta_table_schema));
+  memcpy(&schema->_stored, data.iov_base, data.iov_len);
+  *def = schema;
+
   return FPTA_SUCCESS;
 }
 
 static void fpta_schema_free(fpta_table_schema *def) {
   if (likely(def)) {
-    def->signature = 0;
-    def->checksum = ~def->checksum;
-    def->count = 0;
+    def->_stored.signature = 0;
+    def->_stored.checksum = ~def->_stored.checksum;
+    def->_stored.count = 0;
     free(def);
   }
 }
@@ -799,13 +806,13 @@ int fpta_table_column_count(const fpta_name *table_id) {
   const fpta_table_schema *schema = table_id->table.def;
   if (unlikely(schema == nullptr))
     return -1;
-  if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
+  if (unlikely(schema->signature() != FTPA_SCHEMA_SIGNATURE))
     return -1;
-  if (unlikely(schema->shove != table_id->shove))
+  if (unlikely(schema->table_shove() != table_id->shove))
     return -1;
 
-  assert(table_id->version >= schema->csn);
-  return (int)schema->count;
+  assert(table_id->version >= schema->version_csn());
+  return (int)schema->column_count();
 }
 
 int fpta_table_column_get(const fpta_name *table_id, unsigned column,
@@ -821,16 +828,16 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
   const fpta_table_schema *schema = table_id->table.def;
   if (unlikely(schema == nullptr))
     return FPTA_EINVAL;
-  if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
+  if (unlikely(schema->signature() != FTPA_SCHEMA_SIGNATURE))
     return FPTA_SCHEMA_CORRUPTED;
-  if (unlikely(schema->shove != table_id->shove))
+  if (unlikely(schema->table_shove() != table_id->shove))
     return FPTA_SCHEMA_CORRUPTED;
 
-  assert(table_id->version >= schema->csn);
-  if (column >= schema->count)
+  assert(table_id->version >= schema->version_csn());
+  if (column >= schema->column_count())
     return FPTA_EINVAL;
   column_id->column.table = const_cast<fpta_name *>(table_id);
-  column_id->shove = schema->columns[column];
+  column_id->shove = schema->column_shove(column);
   column_id->column.num = column;
   column_id->version = table_id->version;
   // column_id->mdbx_dbi = 0; /* done by memset() */
@@ -879,8 +886,8 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
       return rc;
 
     if (table_id->table.def) {
-      for (size_t i = 1; i < table_id->table.def->count; ++i) {
-        const fpta_shove_t shove = table_id->table.def->columns[i];
+      for (size_t i = 1; i < table_id->table.def->column_count(); ++i) {
+        const fpta_shove_t shove = table_id->table.def->column_shove(i);
         if (!fpta_is_indexed(shove))
           break;
 
@@ -901,27 +908,28 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
     }
 
     fpta_table_schema *schema = table_id->table.def;
-    assert(schema == nullptr || txn->schema_version() >= schema->csn);
+    assert(schema == nullptr || txn->schema_version() >= schema->version_csn());
     table_id->version = txn->schema_version();
 
-    table_id->table.pk = schema
-                             ? schema->columns[0] & (fpta_column_typeid_mask |
-                                                     fpta_column_index_mask)
-                             : fpta_index_none | fptu_null;
+    table_id->table.pk =
+        schema
+            ? schema->column_shove(0) &
+                  (fpta_column_typeid_mask | fpta_column_index_mask)
+            : fpta_index_none | fptu_null;
   }
 
   if (unlikely(table_id->table.def == nullptr))
     return MDBX_NOTFOUND;
 
   fpta_table_schema *schema = table_id->table.def;
-  if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
+  if (unlikely(schema->signature() != FTPA_SCHEMA_SIGNATURE))
     return FPTA_SCHEMA_CORRUPTED;
 
   assert(fpta_shove2index(table_id->shove) == (fpta_index_type)fpta_flag_table);
-  if (unlikely(schema->shove != table_id->shove))
+  if (unlikely(schema->table_shove() != table_id->shove))
     return FPTA_SCHEMA_CORRUPTED;
 
-  assert(table_id->version >= schema->csn);
+  assert(table_id->version >= schema->version_csn());
   if (column_id == nullptr)
     return FPTA_SUCCESS;
 
@@ -940,9 +948,9 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   if (column_id->version != table_id->version) {
     column_id->column.num = ~0u;
     column_id->handle_cache_hint = ~0u;
-    for (size_t i = 0; i < schema->count; ++i) {
-      if (fpta_shove_eq(column_id->shove, schema->columns[i])) {
-        column_id->shove = schema->columns[i];
+    for (size_t i = 0; i < schema->column_count(); ++i) {
+      if (fpta_shove_eq(column_id->shove, schema->column_shove(i))) {
+        column_id->shove = schema->column_shove(i);
         column_id->column.num = (unsigned)i;
         break;
       }
@@ -1009,18 +1017,20 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
       goto bailout;
   }
 
-  fpta_table_schema def;
+  fpta_table_stored_schema stored_schema;
   MDBX_val data;
-  data.iov_base = &def;
-  data.iov_len = fpta_table_schema_size(column_set->count);
+  data.iov_base = &stored_schema;
+  data.iov_len = fpta_table_stored_schema_size(column_set->count);
 
-  def.signature = FTPA_SCHEMA_SIGNATURE;
-  def.count = column_set->count;
-  def.csn = txn->db_version;
-  def.shove = table_shove;
-  memcpy(def.columns, column_set->shoves, sizeof(fpta_shove_t) * def.count);
-  def.checksum = t1ha(&def.signature, data.iov_len - sizeof(def.checksum),
-                      FTPA_SCHEMA_CHECKSEED);
+  stored_schema.signature = FTPA_SCHEMA_SIGNATURE;
+  stored_schema.count = column_set->count;
+  stored_schema.csn = txn->db_version;
+  stored_schema.shove = table_shove;
+  memcpy(stored_schema.columns, column_set->shoves,
+         sizeof(fpta_shove_t) * stored_schema.count);
+  stored_schema.checksum = t1ha(&stored_schema.signature,
+                                data.iov_len - sizeof(stored_schema.checksum),
+                                FTPA_SCHEMA_CHECKSEED);
 
   MDBX_val key;
   key.iov_len = sizeof(table_shove);
@@ -1070,15 +1080,16 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   if (!fpta_schema_validate(data))
     return FPTA_SCHEMA_CORRUPTED;
 
-  const fpta_table_schema *def = (const fpta_table_schema *)data.iov_base;
-  for (size_t i = 0; i < def->count; ++i) {
-    const auto shove = def->columns[i];
+  const fpta_table_stored_schema *const stored_schema =
+      (const fpta_table_stored_schema *)data.iov_base;
+  for (size_t i = 0; i < stored_schema->count; ++i) {
+    const auto shove = stored_schema->columns[i];
     if (!fpta_is_indexed(shove))
       break;
     assert(i < fpta_max_indexes);
 
-    const unsigned dbi_flags = fpta_dbi_flags(def->columns, i);
-    const fpta_shove_t data_shove = fpta_data_shove(def->columns, i);
+    const unsigned dbi_flags = fpta_dbi_flags(stored_schema->columns, i);
+    const fpta_shove_t data_shove = fpta_data_shove(stored_schema->columns, i);
     rc = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), dbi[i], dbi_flags,
                        shove, data_shove, nullptr);
     if (rc != MDBX_SUCCESS && rc != MDBX_NOTFOUND)
@@ -1090,7 +1101,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
     return rc;
 
   txn->schema_version() = txn->db_version;
-  for (size_t i = 0; i < def->count; ++i) {
+  for (size_t i = 0; i < stored_schema->count; ++i) {
     if (dbi[i] > 0) {
       fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
       int err = mdbx_drop(txn->mdbx_txn, dbi[i], true);
@@ -1105,9 +1116,9 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
 //----------------------------------------------------------------------------
 
 int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row) {
-  assert(table_id->table.def->count > 0);
-  for (size_t i = table_id->table.def->count; --i > 0;) {
-    const auto shove = table_id->table.def->columns[i];
+  assert(table_id->table.def->column_count() > 0);
+  for (size_t i = table_id->table.def->column_count(); --i > 0;) {
+    const auto shove = table_id->table.def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (index > fpta_index_none) {

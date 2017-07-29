@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -52,8 +52,8 @@ int fpta_name_refresh_filter(fpta_txn *txn, fpta_name *table_id,
 bool fpta_schema_validate(const MDBX_val def);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
-  return table_id->table.def->count > 1 &&
-         fpta_index_is_secondary(table_id->table.def->columns[1]);
+  return table_id->table.def->column_count() > 1 &&
+         fpta_index_is_secondary(table_id->table.def->column_shove(1));
 }
 
 static __inline bool fpta_db_validate(fpta_db *db) {

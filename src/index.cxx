@@ -943,8 +943,8 @@ __hot int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
   fpta_pollute(&key, sizeof(key), 0);
 #endif
 
-  assert(column < def->count);
-  const fpta_shove_t shove = def->columns[column];
+  assert(column < def->column_count());
+  const fpta_shove_t shove = def->column_shove(column);
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);

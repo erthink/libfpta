@@ -27,8 +27,8 @@ int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_id->table.def->column_count(); ++i) {
+    const auto shove = table_id->table.def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (!fpta_index_is_secondary(index))
@@ -69,8 +69,8 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_id->table.def->column_count(); ++i) {
+    const auto shove = table_id->table.def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (!fpta_index_is_secondary(index))
@@ -147,8 +147,8 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDBX_val &pk_key,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_id->table.def->column_count(); ++i) {
+    const auto shove = table_id->table.def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (!fpta_index_is_secondary(index))
