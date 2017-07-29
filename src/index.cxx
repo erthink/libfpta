@@ -937,12 +937,14 @@ return_corrupted:
 
 //----------------------------------------------------------------------------
 
-__hot int fpta_index_row2key(fpta_shove_t shove, size_t column,
+__hot int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
                              const fptu_ro &row, fpta_key &key, bool copy) {
 #ifndef NDEBUG
   fpta_pollute(&key, sizeof(key), 0);
 #endif
 
+  assert(column < def->count);
+  const fpta_shove_t shove = def->columns[column];
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);

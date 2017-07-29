@@ -223,12 +223,14 @@ struct fpta_cursor {
   fpta_db *db;
 
   fpta_name *table_id;
-  struct {
-    unsigned shove;
-    unsigned column_order;
-  } index;
-  MDBX_dbi tbl_handle, idx_handle;
+  unsigned column_number;
   fpta_cursor_options options;
+  MDBX_dbi tbl_handle, idx_handle;
+
+  const fpta_table_schema *table_def() const { return table_id->table.def; }
+  fpta_shove_t index_shove() const {
+    return table_def()->columns[column_number];
+  }
 
   fpta_key range_from_key;
   fpta_key range_to_key;
@@ -295,8 +297,8 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
 int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx_key,
                          fpta_value &key_value);
 
-int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
-                       fpta_key &key, bool copy = false);
+int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
+                       const fptu_ro &row, fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
                           MDBX_val pk_key_old, const fptu_ro &row_old,

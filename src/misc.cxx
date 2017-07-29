@@ -479,7 +479,7 @@ __cold string to_string(const fpta_cursor *cursor) {
     else
       result += ",\n\tstate non-positioned (FPTA_ECURSOR)";
 
-    const fpta_shove_t shove = cursor->index.shove;
+    const fpta_shove_t shove = cursor->index_shove();
     const fpta_index_type index = fpta_shove2index(shove);
     const fptu_type type = fpta_shove2type(shove);
 
@@ -487,7 +487,7 @@ __cold string to_string(const fpta_cursor *cursor) {
               fptu::format(",\n\tindex {@%" PRIx64 ".", shove) +
               to_string(index) + "." + to_string(type) +
               fptu::format(", col#%u, dbi#%u_%u},\n\trange-from-key ",
-                           cursor->index.column_order, cursor->tbl_handle,
+                           cursor->column_number, cursor->tbl_handle,
                            cursor->idx_handle) +
               to_string(cursor->range_from_key) + ",\n\trange-to-key " +
               to_string(cursor->range_to_key) + ",\n\tfilter " +

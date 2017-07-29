@@ -438,7 +438,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(cursor->index.column_order == (unsigned)column_id->column.num))
+  if (unlikely(cursor->column_number == (unsigned)column_id->column.num))
     return FPTA_EINVAL;
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);

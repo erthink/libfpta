@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -465,7 +465,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     return rc;
 
   fpta_key pk_key;
-  rc = fpta_index_row2key(table_id->table.pk, 0, row_value, pk_key, false);
+  rc = fpta_index_row2key(table_id->table.def, 0, row_value, pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -550,7 +550,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
     return rc;
 
   fpta_key pk_key;
-  rc = fpta_index_row2key(table_id->table.pk, 0, row, pk_key, false);
+  rc = fpta_index_row2key(table_id->table.def, 0, row, pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -621,7 +621,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   }
 
   fpta_key key;
-  rc = fpta_index_row2key(table_id->table.pk, 0, row, key, false);
+  rc = fpta_index_row2key(table_id->table.def, 0, row, key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
