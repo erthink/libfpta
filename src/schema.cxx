@@ -586,34 +586,37 @@ int fpta_column_set_validate(fpta_column_set *column_set) {
 
 //----------------------------------------------------------------------------
 
-bool fpta_schema_validate(const MDBX_val def) {
-  if (unlikely(def.iov_len < fpta_table_stored_schema_size(1)))
+bool fpta_schema_validate(const fpta_shove_t schema_key,
+                          const MDBX_val &schema_data) {
+  if (unlikely(schema_data.iov_len < fpta_table_stored_schema_size(1)))
     return false;
 
-  if (unlikely((def.iov_len - sizeof(fpta_table_stored_schema)) %
+  if (unlikely((schema_data.iov_len - sizeof(fpta_table_stored_schema)) %
                sizeof(fpta_shove_t)))
     return false;
 
   const fpta_table_stored_schema *schema =
-      (const fpta_table_stored_schema *)def.iov_base;
+      (const fpta_table_stored_schema *)schema_data.iov_base;
   if (unlikely(schema->signature != FTPA_SCHEMA_SIGNATURE))
     return false;
 
   if (unlikely(schema->count > fpta_max_cols))
     return false;
 
-  if (unlikely(def.iov_len != fpta_table_stored_schema_size(schema->count)))
+  if (unlikely(schema_data.iov_len !=
+               fpta_table_stored_schema_size(schema->count)))
     return false;
 
   if (unlikely(schema->csn == 0))
     return false;
 
-  if (unlikely(fpta_shove2index(schema->shove) !=
+  if (unlikely(fpta_shove2index(schema_key) !=
                (fpta_index_type)fpta_flag_table))
     return false;
 
-  uint64_t checksum = t1ha(&schema->signature, def.iov_len - sizeof(checksum),
-                           FTPA_SCHEMA_CHECKSEED);
+  uint64_t checksum =
+      t1ha(&schema->signature, schema_data.iov_len - sizeof(checksum),
+           FTPA_SCHEMA_CHECKSEED);
   if (unlikely(checksum != schema->checksum))
     return false;
 
@@ -621,9 +624,11 @@ bool fpta_schema_validate(const MDBX_val def) {
          fpta_column_def_validate(schema->columns, schema->count);
 }
 
-static int fpta_schema_dup(const MDBX_val data, fpta_table_schema **def) {
-  assert(data.iov_len >= fpta_table_stored_schema_size(1) &&
-         data.iov_len <= sizeof(fpta_table_stored_schema));
+static int fpta_schema_clone(const fpta_shove_t schema_key,
+                             const MDBX_val &schema_data,
+                             fpta_table_schema **def) {
+  assert(schema_data.iov_len >= fpta_table_stored_schema_size(1) &&
+         schema_data.iov_len <= sizeof(fpta_table_stored_schema));
   assert(def != nullptr);
 
   fpta_table_schema *schema =
@@ -632,7 +637,8 @@ static int fpta_schema_dup(const MDBX_val data, fpta_table_schema **def) {
     return FPTA_ENOMEM;
 
   memset(schema, ~0, sizeof(fpta_table_schema));
-  memcpy(&schema->_stored, data.iov_base, data.iov_len);
+  memcpy(&schema->_stored, schema_data.iov_base, schema_data.iov_len);
+  schema->_key = schema_key;
   *def = schema;
 
   return FPTA_SUCCESS;
@@ -647,7 +653,7 @@ static void fpta_schema_free(fpta_table_schema *def) {
   }
 }
 
-static int fpta_schema_read(fpta_txn *txn, fpta_shove_t shove,
+static int fpta_schema_read(fpta_txn *txn, fpta_shove_t schema_key,
                             fpta_table_schema **def) {
   assert(fpta_txn_validate(txn, fpta_read) == FPTA_SUCCESS && def);
 
@@ -660,16 +666,16 @@ static int fpta_schema_read(fpta_txn *txn, fpta_shove_t shove,
   }
 
   MDBX_val mdbx_data, mdbx_key;
-  mdbx_key.iov_len = sizeof(shove);
-  mdbx_key.iov_base = &shove;
+  mdbx_key.iov_len = sizeof(schema_key);
+  mdbx_key.iov_base = &schema_key;
   rc = mdbx_get(txn->mdbx_txn, db->schema_dbi, &mdbx_key, &mdbx_data);
   if (rc != MDBX_SUCCESS)
     return rc;
 
-  if (!fpta_schema_validate(mdbx_data))
+  if (!fpta_schema_validate(schema_key, mdbx_data))
     return FPTA_SCHEMA_CORRUPTED;
 
-  return fpta_schema_dup(mdbx_data, def);
+  return fpta_schema_clone(schema_key, mdbx_data, def);
 }
 
 int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
@@ -718,7 +724,7 @@ int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
       break;
     }
 
-    if (!fpta_schema_validate(mdbx_data)) {
+    if (!fpta_schema_validate(id->shove, mdbx_data)) {
       rc = FPTA_SCHEMA_CORRUPTED;
       break;
     }
@@ -1023,7 +1029,6 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
   stored_schema.signature = FTPA_SCHEMA_SIGNATURE;
   stored_schema.count = column_set->count;
   stored_schema.csn = txn->db_version;
-  stored_schema.shove = table_shove;
   memcpy(stored_schema.columns, column_set->shoves,
          sizeof(fpta_shove_t) * stored_schema.count);
   stored_schema.checksum = t1ha(&stored_schema.signature,
@@ -1066,16 +1071,16 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
 
   MDBX_dbi dbi[fpta_max_indexes];
   memset(dbi, 0, sizeof(dbi));
-  fpta_shove_t table_shove = fpta_shove_name(table_name, fpta_table);
+  fpta_shove_t schema_key = fpta_shove_name(table_name, fpta_table);
 
   MDBX_val data, key;
-  key.iov_len = sizeof(table_shove);
-  key.iov_base = &table_shove;
+  key.iov_len = sizeof(schema_key);
+  key.iov_base = &schema_key;
   rc = mdbx_get(txn->mdbx_txn, db->schema_dbi, &key, &data);
   if (rc != MDBX_SUCCESS)
     return rc;
 
-  if (!fpta_schema_validate(data))
+  if (!fpta_schema_validate(schema_key, data))
     return FPTA_SCHEMA_CORRUPTED;
 
   const fpta_table_stored_schema *const stored_schema =
@@ -1088,7 +1093,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
 
     const unsigned dbi_flags = fpta_dbi_flags(stored_schema->columns, i);
     const fpta_shove_t data_shove = fpta_data_shove(stored_schema->columns, i);
-    rc = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), dbi[i], dbi_flags,
+    rc = fpta_dbi_open(txn, fpta_dbi_shove(schema_key, i), dbi[i], dbi_flags,
                        shove, data_shove, nullptr);
     if (rc != MDBX_SUCCESS && rc != MDBX_NOTFOUND)
       return rc;
@@ -1101,7 +1106,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   txn->schema_version() = txn->db_version;
   for (size_t i = 0; i < stored_schema->count; ++i) {
     if (dbi[i] > 0) {
-      fpta_dbicache_remove(db, fpta_dbi_shove(table_shove, i));
+      fpta_dbicache_remove(db, fpta_dbi_shove(schema_key, i));
       int err = mdbx_drop(txn->mdbx_txn, dbi[i], true);
       if (unlikely(err != MDBX_SUCCESS))
         return fpta_internal_abort(txn, err);

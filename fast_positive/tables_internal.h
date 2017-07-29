@@ -99,7 +99,6 @@ struct fpta_table_stored_schema {
   uint32_t signature;
   uint32_t count;
   uint64_t csn;
-  fpta_shove_t shove;
   fpta_shove_t columns[fpta_max_cols];
 };
 
@@ -111,10 +110,11 @@ static __inline size_t fpta_table_stored_schema_size(size_t cols) {
 
 struct fpta_table_schema {
   fpta_table_stored_schema _stored;
+  fpta_shove_t _key;
 
   uint64_t checksum() const { return _stored.checksum; }
   uint32_t signature() const { return _stored.signature; }
-  fpta_shove_t table_shove() const { return _stored.shove; }
+  fpta_shove_t table_shove() const { return _key; }
   uint64_t version_csn() const { return _stored.csn; }
   size_t column_count() const { return _stored.count; }
   fpta_shove_t column_shove(size_t number) const {

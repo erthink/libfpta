@@ -49,7 +49,8 @@ struct fpta_db {
 bool fpta_filter_validate(const fpta_filter *filter);
 int fpta_name_refresh_filter(fpta_txn *txn, fpta_name *table_id,
                              fpta_filter *filter);
-bool fpta_schema_validate(const MDBX_val def);
+bool fpta_schema_validate(const fpta_shove_t schema_key,
+                          const MDBX_val &schema_data);
 
 static __inline bool fpta_table_has_secondary(const fpta_name *table_id) {
   return table_id->table.def->column_count() > 1 &&
