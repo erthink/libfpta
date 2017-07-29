@@ -400,7 +400,9 @@ __cold string to_string(const fpta_name *id) {
     return fptu::format("table.%p{@%" PRIx64 ", v%" PRIu64 ", ", id, id->shove,
                         id->version) +
            to_string(index) + "." + to_string(type) +
-           fptu::format(", dbi-hint#%u, ", id->handle_cache_hint) +
+           (id->table.def ? fptu::format(", dbi-hint#%u, ",
+                                         id->table.def->handle_cache(0))
+                          : "") +
            to_string(id->table.def) + "}";
   }
 
@@ -411,7 +413,11 @@ __cold string to_string(const fpta_name *id) {
              id, id->shove, id->version, id->column.num,
              id->column.table ? id->column.table->shove : 0, id->column.table) +
          to_string(index) + "." + to_string(type) +
-         fptu::format(", dbi-hint#%u}", id->handle_cache_hint);
+         ((id->column.table && id->column.table->table.def)
+              ? fptu::format(
+                    ", dbi-hint#%u}",
+                    id->column.table->table.def->handle_cache(id->column.num))
+              : "");
 }
 
 __cold string to_string(const fpta_column_set *) { return FIXME; }

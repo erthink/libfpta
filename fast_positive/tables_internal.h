@@ -122,6 +122,12 @@ struct fpta_table_schema {
     return _stored.columns[number];
   }
   const fpta_shove_t *column_shoves_array() const { return _stored.columns; }
+
+  unsigned _cache_hints[fpta_max_cols]; /* подсказки для кэша дескрипторов */
+  unsigned &handle_cache(size_t number) {
+    assert(number < _stored.count);
+    return _cache_hints[number];
+  }
 };
 
 enum fpta_internals {

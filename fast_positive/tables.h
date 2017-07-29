@@ -1298,7 +1298,6 @@ typedef struct fpta_name {
       unsigned num; /* номер поля в кортеже. */
     } column;
   };
-  unsigned handle_cache_hint; /* подсказка для кэша дескрипторов */
 } fpta_name;
 
 /* Инициализирует операционный идентификатор таблицы.
