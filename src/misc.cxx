@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -18,16 +18,6 @@
  */
 
 #include "details.h"
-
-#ifdef _MSC_VER
-#pragma warning(push, 1)
-#endif
-
-#include <cinttypes> // for PRId64, PRIu64
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
