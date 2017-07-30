@@ -94,20 +94,46 @@ extern "C" char *gets(char *);
 
 //----------------------------------------------------------------------------
 
-struct fpta_table_schema {
+struct fpta_table_stored_schema {
   uint64_t checksum;
   uint32_t signature;
   uint32_t count;
   uint64_t csn;
-  fpta_shove_t shove;
   fpta_shove_t columns[fpta_max_cols];
 };
 
-static __inline size_t fpta_table_schema_size(size_t cols) {
+static __inline size_t fpta_table_stored_schema_size(size_t cols) {
   assert(cols <= fpta_max_cols);
-  return sizeof(fpta_table_schema) -
+  return sizeof(fpta_table_stored_schema) -
          sizeof(fpta_shove_t) * (fpta_max_cols - cols);
 }
+
+struct fpta_table_schema {
+  fpta_table_stored_schema _stored;
+  fpta_shove_t _key;
+
+  uint64_t checksum() const { return _stored.checksum; }
+  uint32_t signature() const { return _stored.signature; }
+  fpta_shove_t table_shove() const { return _key; }
+  uint64_t version_csn() const { return _stored.csn; }
+  size_t column_count() const { return _stored.count; }
+  fpta_shove_t column_shove(size_t number) const {
+    assert(number < _stored.count);
+    return _stored.columns[number];
+  }
+  const fpta_shove_t *column_shoves_array() const { return _stored.columns; }
+  fpta_shove_t table_pk() const { return column_shove(0); }
+
+  unsigned _cache_hints[fpta_max_cols]; /* подсказки для кэша дескрипторов */
+  unsigned &handle_cache(size_t number) {
+    assert(number < _stored.count);
+    return _cache_hints[number];
+  }
+  unsigned handle_cache(size_t number) const {
+    assert(number < _stored.count);
+    return _cache_hints[number];
+  }
+};
 
 enum fpta_internals {
   /* используем некорретный для индекса набор флагов, чтобы в fpta_name
@@ -223,12 +249,14 @@ struct fpta_cursor {
   fpta_db *db;
 
   fpta_name *table_id;
-  struct {
-    unsigned shove;
-    unsigned column_order;
-  } index;
-  MDBX_dbi tbl_handle, idx_handle;
+  unsigned column_number;
   fpta_cursor_options options;
+  MDBX_dbi tbl_handle, idx_handle;
+
+  fpta_table_schema *table_schema() const { return table_id->table_schema; }
+  fpta_shove_t index_shove() const {
+    return table_schema()->column_shove(column_number);
+  }
 
   fpta_key range_from_key;
   fpta_key range_to_key;
@@ -295,29 +323,32 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
 int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx_key,
                          fpta_value &key_value);
 
-int fpta_index_row2key(fpta_shove_t shove, size_t column, const fptu_ro &row,
-                       fpta_key &key, bool copy = false);
+int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
+                       const fptu_ro &row, fpta_key &key, bool copy = false);
 
-int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
+int fpta_secondary_upsert(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_val pk_key_old, const fptu_ro &row_old,
                           MDBX_val pk_key_new, const fptu_ro &row_new,
                           const unsigned stepover);
 
-int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
+int fpta_secondary_check(fpta_txn *txn, fpta_table_schema *table_def,
                          const fptu_ro &row_old, const fptu_ro &row_new,
                          const unsigned stepover);
 
-int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDBX_val &pk_key,
-                          const fptu_ro &row_old, const unsigned stepover);
+int fpta_secondary_remove(fpta_txn *txn, fpta_table_schema *table_def,
+                          MDBX_val &pk_key, const fptu_ro &row_old,
+                          const unsigned stepover);
 
-int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row);
+int fpta_check_notindexed_cols(const fpta_table_schema *table_def,
+                               const fptu_ro &row);
 
 //----------------------------------------------------------------------------
 
-int fpta_open_table(fpta_txn *txn, fpta_name *table_id, MDBX_dbi &handle);
+int fpta_open_table(fpta_txn *txn, fpta_table_schema *table_def,
+                    MDBX_dbi &handle);
 int fpta_open_column(fpta_txn *txn, fpta_name *column_id, MDBX_dbi &tbl_handle,
                      MDBX_dbi &idx_handle);
-int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
+int fpta_open_secondaries(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_dbi *dbi_array);
 
 //----------------------------------------------------------------------------

@@ -29,8 +29,8 @@ compile:
   pre:
     - cmake .
   override:
-    - make all
+    - make --keep-going all
 
 test:
   override:
-    - make test
+    - make --keep-going test

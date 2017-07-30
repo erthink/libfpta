@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -26,7 +26,7 @@ int fpta_table_info(fpta_txn *txn, fpta_name *table_id, size_t *row_count,
     return rc;
 
   MDBX_dbi handle;
-  rc = fpta_open_table(txn, table_id, handle);
+  rc = fpta_open_table(txn, table_id->table_schema, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -64,7 +64,7 @@ int fpta_table_sequence(fpta_txn *txn, fpta_name *table_id, uint64_t *result,
     return rc;
 
   MDBX_dbi handle;
-  rc = fpta_open_table(txn, table_id, handle);
+  rc = fpta_open_table(txn, table_id->table_schema, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -78,14 +78,15 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
+  fpta_table_schema *table_def = table_id->table_schema;
   MDBX_dbi handle;
-  rc = fpta_open_table(txn, table_id, handle);
+  rc = fpta_open_table(txn, table_def, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   MDBX_dbi dbi[fpta_max_indexes];
-  if (fpta_table_has_secondary(table_id)) {
-    rc = fpta_open_secondaries(txn, table_id, dbi);
+  if (fpta_table_has_secondary(table_def)) {
+    rc = fpta_open_secondaries(txn, table_def, dbi);
     if (unlikely(rc != FPTA_SUCCESS))
       return rc;
   }
@@ -101,8 +102,8 @@ int fpta_table_clear(fpta_txn *txn, fpta_name *table_id, bool reset_sequence) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (fpta_table_has_secondary(table_id)) {
-    for (size_t i = 1; i < table_id->table.def->count; ++i) {
+  if (fpta_table_has_secondary(table_def)) {
+    for (size_t i = 1; i < table_def->column_count(); ++i) {
       rc = mdbx_drop(txn->mdbx_txn, dbi[i], 0);
       if (unlikely(rc != MDBX_SUCCESS))
         return fpta_internal_abort(txn, rc);

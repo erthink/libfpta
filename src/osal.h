@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -19,7 +19,12 @@
 
 #pragma once
 #include "fast_positive/config.h"
+
 #include <assert.h>
+#if defined(_MSC_VER) && defined(_ASSERTE)
+#undef assert
+#define assert _ASSERTE
+#endif /* _MSC_VER */
 
 #ifdef CMAKE_HAVE_PTHREAD_H
 #include <pthread.h>

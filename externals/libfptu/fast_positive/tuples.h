@@ -142,6 +142,8 @@ typedef union fptu_varlen {
 enum fptu_type : int32_t;
 #endif
 
+typedef union fptu_payload fptu_payload;
+
 /* Поле кортежа.
  *
  * Фактически это дескриптор поля, в котором записаны: тип данных,
@@ -161,6 +163,7 @@ typedef union FPTU_API fptu_field {
   inline uint_fast16_t colnum() const;
   inline fptu_type type() const;
   inline uint_fast16_t get_payload_uint16() const;
+  inline const fptu_payload *payload() const;
 #endif
 } fptu_field;
 
@@ -838,6 +841,7 @@ FPTU_API size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
 
 FPTU_API fptu_type fptu_field_type(const fptu_field *pf);
 FPTU_API int fptu_field_column(const fptu_field *pf);
+FPTU_API struct iovec fptu_field_as_iovec(const fptu_field *pf);
 
 FPTU_API uint_fast16_t fptu_field_uint16(const fptu_field *pf);
 FPTU_API int_fast32_t fptu_field_int32(const fptu_field *pf);
@@ -962,27 +966,10 @@ typedef struct fptu_build_info {
 extern FPTU_API const fptu_version_info fptu_version;
 extern FPTU_API const fptu_build_info fptu_build;
 
-#ifdef __cplusplus
-}
-
 //----------------------------------------------------------------------------
-/* Сервисные функции и классы для C++ (будет пополнятся). */
+/* Сервисные функции (будет пополнятся). */
 
-uint_fast16_t fptu_field::colnum(uint_fast16_t packed_ct) {
-  return (uint_fast16_t)(((uint16_t)packed_ct) >> fptu_co_shift);
-}
-fptu_type fptu_field::type(uint_fast16_t packed_ct) {
-  return (fptu_type)(packed_ct & fptu_ty_mask);
-}
-uint_fast16_t fptu_field::colnum() const { return colnum(this->ct); }
-fptu_type fptu_field::type() const { return type(this->ct); }
-
-uint_fast16_t fptu_field::get_payload_uint16() const {
-  assert(type() == fptu_uint16);
-  return offset;
-}
-
-typedef union fptu_payload {
+union fptu_payload {
   uint32_t u32;
   int32_t i32;
   uint64_t u64;
@@ -998,14 +985,41 @@ typedef union fptu_payload {
     fptu_varlen varlen;
     uint32_t data[1];
   } other;
-} fptu_payload;
+};
 
 static __inline fptu_payload *fptu_field_payload(fptu_field *pf) {
   return (fptu_payload *)&pf->body[pf->offset];
 }
 
+#ifdef __cplusplus
+}
+
+//----------------------------------------------------------------------------
+/* Сервисные функции и классы для C++ (будет пополнятся). */
+
+const fptu_payload *fptu_field::payload() const {
+  return (const fptu_payload *)&this->body[this->offset];
+}
+
 static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
-  return (const fptu_payload *)&pf->body[pf->offset];
+  return pf->payload();
+}
+
+uint_fast16_t fptu_field::colnum(uint_fast16_t packed_ct) {
+  return (uint_fast16_t)(((uint16_t)packed_ct) >> fptu_co_shift);
+}
+
+fptu_type fptu_field::type(uint_fast16_t packed_ct) {
+  return (fptu_type)(packed_ct & fptu_ty_mask);
+}
+
+uint_fast16_t fptu_field::colnum() const { return colnum(this->ct); }
+
+fptu_type fptu_field::type() const { return type(this->ct); }
+
+uint_fast16_t fptu_field::get_payload_uint16() const {
+  assert(type() == fptu_uint16);
+  return offset;
 }
 
 namespace fptu {

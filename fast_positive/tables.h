@@ -1287,10 +1287,8 @@ typedef struct fpta_name {
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
     /* для таблицы */
-    struct {
-      struct fpta_table_schema *def; /* копия схемы (описание колонок) */
-      unsigned pk; /* вид индекса и тип данных для primary key */
-    } table;
+    struct fpta_table_schema
+        *table_schema; /* операционная копия схемы с описанием колонок */
 
     /* для колонки */
     struct {
@@ -1298,7 +1296,6 @@ typedef struct fpta_name {
       unsigned num; /* номер поля в кортеже. */
     } column;
   };
-  unsigned handle_cache_hint; /* подсказка для кэша дескрипторов */
 } fpta_name;
 
 /* Инициализирует операционный идентификатор таблицы.
@@ -2296,7 +2293,7 @@ FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
  *  - FPTA_SUCCESS (ноль) если значение колонки было успешно обновлено.
  *  - FPTA_NODATA (-1) если значение не изменилось и не было ошибок.
  *  - Иначе код ошибки. */
-FPTA_API int fpta_inplace_column(fptu_rw *row, const fpta_name *column_id,
+FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...);
 

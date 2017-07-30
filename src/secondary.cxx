@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -19,16 +19,16 @@
 
 #include "details.h"
 
-int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
+int fpta_secondary_check(fpta_txn *txn, fpta_table_schema *table_def,
                          const fptu_ro &row_old, const fptu_ro &row_new,
                          const unsigned stepover) {
   MDBX_dbi dbi[fpta_max_indexes];
-  int rc = fpta_open_secondaries(txn, table_id, dbi);
+  int rc = fpta_open_secondaries(txn, table_def, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_def->column_count(); ++i) {
+    const auto shove = table_def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (!fpta_index_is_secondary(index))
@@ -37,13 +37,13 @@ int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
       continue;
 
     fpta_key fk_key_new;
-    rc = fpta_index_row2key(shove, i, row_new, fk_key_new, false);
+    rc = fpta_index_row2key(table_def, i, row_new, fk_key_new, false);
     if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 
     if (row_old.sys.iov_base) {
       fpta_key fk_key_old;
-      rc = fpta_index_row2key(shove, i, row_old, fk_key_old, false);
+      rc = fpta_index_row2key(table_def, i, row_old, fk_key_old, false);
       if (unlikely(rc != MDBX_SUCCESS))
         return rc;
       if (fpta_is_same(fk_key_old.mdbx, fk_key_new.mdbx))
@@ -59,17 +59,17 @@ int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
   return FPTA_SUCCESS;
 }
 
-int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
+int fpta_secondary_upsert(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_val pk_key_old, const fptu_ro &row_old,
                           MDBX_val pk_key_new, const fptu_ro &row_new,
                           const unsigned stepover) {
   MDBX_dbi dbi[fpta_max_indexes];
-  int rc = fpta_open_secondaries(txn, table_id, dbi);
+  int rc = fpta_open_secondaries(txn, table_def, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_def->column_count(); ++i) {
+    const auto shove = table_def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (!fpta_index_is_secondary(index))
@@ -78,7 +78,7 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
       continue;
 
     fpta_key fk_key_new;
-    rc = fpta_index_row2key(shove, i, row_new, fk_key_new, false);
+    rc = fpta_index_row2key(table_def, i, row_new, fk_key_new, false);
     if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 
@@ -98,7 +98,7 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
     /* else: Выполняется обновление существующей строки */
 
     fpta_key fk_key_old;
-    rc = fpta_index_row2key(shove, i, row_old, fk_key_old, false);
+    rc = fpta_index_row2key(table_def, i, row_old, fk_key_old, false);
     if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 
@@ -139,15 +139,16 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
   return FPTA_SUCCESS;
 }
 
-int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDBX_val &pk_key,
-                          const fptu_ro &row_old, const unsigned stepover) {
+int fpta_secondary_remove(fpta_txn *txn, fpta_table_schema *table_def,
+                          MDBX_val &pk_key, const fptu_ro &row_old,
+                          const unsigned stepover) {
   MDBX_dbi dbi[fpta_max_indexes];
-  int rc = fpta_open_secondaries(txn, table_id, dbi);
+  int rc = fpta_open_secondaries(txn, table_def, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  for (size_t i = 1; i < table_id->table.def->count; ++i) {
-    const auto shove = table_id->table.def->columns[i];
+  for (size_t i = 1; i < table_def->column_count(); ++i) {
+    const auto shove = table_def->column_shove(i);
     const auto index = fpta_shove2index(shove);
     assert(i < fpta_max_indexes);
     if (!fpta_index_is_secondary(index))
@@ -156,7 +157,7 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDBX_val &pk_key,
       continue;
 
     fpta_key fk_key_old;
-    rc = fpta_index_row2key(shove, i, row_old, fk_key_old, false);
+    rc = fpta_index_row2key(table_def, i, row_old, fk_key_old, false);
     if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 

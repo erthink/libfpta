@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -18,16 +18,6 @@
  */
 
 #include "details.h"
-
-#ifdef _MSC_VER
-#pragma warning(push, 1)
-#endif
-
-#include <cinttypes> // for PRId64, PRIu64
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
@@ -376,16 +366,18 @@ __cold string to_string(const fpta_put_options op) {
   }
 }
 
-__cold string to_string(const struct fpta_table_schema *def) {
+__cold string to_string(const fpta_table_schema *def) {
   if (def == nullptr)
     return "nullptr";
 
-  string result = fptu::format(
-      "%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64 ", %" PRIu32 "=[",
-      def, def->csn, def->signature, def->checksum, def->shove, def->count);
+  string result =
+      fptu::format("%p={v%" PRIu64 ", $%" PRIx32 "_%" PRIx64 ", @%" PRIx64
+                   ", %" PRIuSIZE "=[",
+                   def, def->version_csn(), def->signature(), def->checksum(),
+                   def->table_shove(), def->column_count());
 
-  for (size_t i = 0; i < def->count; ++i) {
-    const fpta_shove_t shove = def->columns[i];
+  for (size_t i = 0; i < def->column_count(); ++i) {
+    const fpta_shove_t shove = def->column_shove(i);
     const fpta_index_type index = fpta_shove2index(shove);
     const fptu_type type = fpta_shove2type(shove);
     result += fptu::format(&", @%" PRIx64 "."[(i == 0) ? 2 : 0], shove) +
@@ -403,23 +395,39 @@ __cold string to_string(const fpta_name *id) {
       fpta_shove2index(id->shove) == (fpta_index_type)fpta_flag_table;
 
   if (is_table) {
-    const fpta_index_type index = fpta_shove2index(id->table.pk);
-    const fptu_type type = fpta_shove2type(id->table.pk);
-    return fptu::format("table.%p{@%" PRIx64 ", v%" PRIu64 ", ", id, id->shove,
-                        id->version) +
-           to_string(index) + "." + to_string(type) +
-           fptu::format(", dbi-hint#%u, ", id->handle_cache_hint) +
-           to_string(id->table.def) + "}";
+    string partial = fptu::format("table.%p{@%" PRIx64 ", v%" PRIu64 ", ", id,
+                                  id->shove, id->version);
+    const fpta_table_schema *table_def = id->table_schema;
+    if (table_def == nullptr)
+      return partial + ", no-schema}";
+
+    const fpta_index_type index = fpta_shove2index(table_def->table_pk());
+    const fptu_type type = fpta_shove2type(table_def->table_pk());
+    return partial + to_string(index) + "." + to_string(type) +
+           fptu::format(", dbi-hint#%u, ", table_def->handle_cache(0)) +
+           to_string(table_def) + "}";
   }
+
+  string partial = fptu::format("column.%p{@%" PRIx64 ", v%" PRIu64, id,
+                                id->shove, id->version);
+
+  const fpta_name *table_id = id->column.table;
+  if (table_id == nullptr)
+    return partial + ", no-table, no-schema}";
+
+  const fpta_table_schema *table_def =
+      table_id ? table_id->table_schema : nullptr;
+  if (table_def == nullptr)
+    return partial + fptu::format(", @%" PRIx64 ".%p, no-schema}",
+                                  table_id->shove, table_id);
 
   const fpta_index_type index = fpta_name_colindex(id);
   const fptu_type type = fpta_name_coltype(id);
-  return fptu::format(
-             "column.%p{@%" PRIx64 ", v%" PRIu64 ", col#%i, @%" PRIx64 ".%p, ",
-             id, id->shove, id->version, id->column.num,
-             id->column.table ? id->column.table->shove : 0, id->column.table) +
+  return partial + fptu::format(", col#%i, @%" PRIx64 ".%p, ", id->column.num,
+                                table_id->shove, table_id) +
          to_string(index) + "." + to_string(type) +
-         fptu::format(", dbi-hint#%u}", id->handle_cache_hint);
+         fptu::format(", dbi-hint#%u}",
+                      table_def->handle_cache(id->column.num));
 }
 
 __cold string to_string(const fpta_column_set *) { return FIXME; }
@@ -489,7 +497,7 @@ __cold string to_string(const fpta_cursor *cursor) {
     else
       result += ",\n\tstate non-positioned (FPTA_ECURSOR)";
 
-    const fpta_shove_t shove = cursor->index.shove;
+    const fpta_shove_t shove = cursor->index_shove();
     const fpta_index_type index = fpta_shove2index(shove);
     const fptu_type type = fpta_shove2type(shove);
 
@@ -497,7 +505,7 @@ __cold string to_string(const fpta_cursor *cursor) {
               fptu::format(",\n\tindex {@%" PRIx64 ".", shove) +
               to_string(index) + "." + to_string(type) +
               fptu::format(", col#%u, dbi#%u_%u},\n\trange-from-key ",
-                           cursor->index.column_order, cursor->tbl_handle,
+                           cursor->column_number, cursor->tbl_handle,
                            cursor->idx_handle) +
               to_string(cursor->range_from_key) + ",\n\trange-to-key " +
               to_string(cursor->range_to_key) + ",\n\tfilter " +

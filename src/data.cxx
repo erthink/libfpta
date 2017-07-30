@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -464,13 +464,14 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
+  fpta_table_schema *table_def = table_id->table_schema;
   fpta_key pk_key;
-  rc = fpta_index_row2key(table_id->table.pk, 0, row_value, pk_key, false);
+  rc = fpta_index_row2key(table_def, 0, row_value, pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   MDBX_dbi handle;
-  rc = fpta_open_table(txn, table_id, handle);
+  rc = fpta_open_table(txn, table_def, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -491,7 +492,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     __unreachable();
     return FPTA_EOOPS;
   case fpta_insert:
-    if (fpta_index_is_unique(table_id->table.pk)) {
+    if (fpta_index_is_unique(table_def->table_pk())) {
       if (present_row.sys.iov_base)
         /* запись с таким PK уже есть, вставка НЕ возможна */
         return FPTA_KEYEXIST;
@@ -516,10 +517,10 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
       return (op == fpta_insert) ? FPTA_KEYEXIST : FPTA_SUCCESS;
   }
 
-  if (!fpta_table_has_secondary(table_id))
+  if (!fpta_table_has_secondary(table_def))
     return FPTA_SUCCESS;
 
-  return fpta_secondary_check(txn, table_id, present_row, row_value, 0);
+  return fpta_secondary_check(txn, table_def, present_row, row_value, 0);
 }
 
 int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
@@ -528,38 +529,39 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
+  fpta_table_schema *table_def = table_id->table_schema;
   unsigned flags = MDBX_NODUPDATA;
   switch (op) {
   default:
     return FPTA_EINVAL;
   case fpta_insert:
-    if (fpta_index_is_unique(table_id->table.pk))
+    if (fpta_index_is_unique(table_def->table_pk()))
       flags |= MDBX_NOOVERWRITE;
     break;
   case fpta_update:
     flags |= MDBX_CURRENT;
     break;
   case fpta_upsert:
-    if (!fpta_index_is_unique(table_id->table.pk))
+    if (!fpta_index_is_unique(table_def->table_pk()))
       flags |= MDBX_NOOVERWRITE;
     break;
   }
 
-  rc = fpta_check_notindexed_cols(table_id, row);
+  rc = fpta_check_notindexed_cols(table_def, row);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   fpta_key pk_key;
-  rc = fpta_index_row2key(table_id->table.pk, 0, row, pk_key, false);
+  rc = fpta_index_row2key(table_def, 0, row, pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   MDBX_dbi handle;
-  rc = fpta_open_table(txn, table_id, handle);
+  rc = fpta_open_table(txn, table_def, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (!fpta_table_has_secondary(table_id))
+  if (!fpta_table_has_secondary(table_def))
     return mdbx_put(txn->mdbx_txn, handle, &pk_key.mdbx, &row.sys, flags);
 
   fptu_ro old;
@@ -583,7 +585,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
-  rc = fpta_secondary_upsert(txn, table_id, pk_key.mdbx, old, pk_key.mdbx, row,
+  rc = fpta_secondary_upsert(txn, table_def, pk_key.mdbx, old, pk_key.mdbx, row,
                              0);
   if (unlikely(rc != MDBX_SUCCESS))
     return fpta_internal_abort(txn, rc);
@@ -598,7 +600,8 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (row.sys.iov_len && fpta_table_has_secondary(table_id) &&
+  fpta_table_schema *table_def = table_id->table_schema;
+  if (row.sys.iov_len && fpta_table_has_secondary(table_def) &&
       mdbx_is_dirty(txn->mdbx_txn, row.sys.iov_base)) {
     /* LY: Делаем копию строки, так как удаление в основной таблице
      * уничтожит текущее значение при перезаписи "грязной" страницы.
@@ -621,12 +624,12 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   }
 
   fpta_key key;
-  rc = fpta_index_row2key(table_id->table.pk, 0, row, key, false);
+  rc = fpta_index_row2key(table_def, 0, row, key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   MDBX_dbi handle;
-  rc = fpta_open_table(txn, table_id, handle);
+  rc = fpta_open_table(txn, table_def, handle);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -634,8 +637,8 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
-  if (fpta_table_has_secondary(table_id)) {
-    rc = fpta_secondary_remove(txn, table_id, key.mdbx, row, 0);
+  if (fpta_table_has_secondary(table_def)) {
+    rc = fpta_secondary_remove(txn, table_def, key.mdbx, row, 0);
     if (unlikely(rc != MDBX_SUCCESS))
       return fpta_internal_abort(txn, rc);
   }
