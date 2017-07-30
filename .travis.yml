@@ -21,7 +21,7 @@ addons:
       description: "Build submitted via Travis CI"
     notification_email: leo@yuriev.ru
     build_command_prepend: "git fetch --tags --prune && git submodule foreach --recursive git fetch --tags --prune && cmake ."
-    build_command: make
+    build_command: make --keep-going
     branch_pattern: coverity_scan
 
 compiler:
@@ -41,5 +41,5 @@ script: >
     git fetch --tags --prune &&
     git submodule foreach --recursive git fetch --tags --prune &&
     cmake --version &&
-    cmake . && make all && make test;
+    cmake . && make --keep-going all && make --keep-going test;
   fi
