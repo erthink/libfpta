@@ -122,9 +122,14 @@ struct fpta_table_schema {
     return _stored.columns[number];
   }
   const fpta_shove_t *column_shoves_array() const { return _stored.columns; }
+  fpta_shove_t table_pk() const { return column_shove(0); }
 
   unsigned _cache_hints[fpta_max_cols]; /* подсказки для кэша дескрипторов */
   unsigned &handle_cache(size_t number) {
+    assert(number < _stored.count);
+    return _cache_hints[number];
+  }
+  unsigned handle_cache(size_t number) const {
     assert(number < _stored.count);
     return _cache_hints[number];
   }
@@ -248,9 +253,9 @@ struct fpta_cursor {
   fpta_cursor_options options;
   MDBX_dbi tbl_handle, idx_handle;
 
-  const fpta_table_schema *table_def() const { return table_id->table.def; }
+  fpta_table_schema *table_schema() const { return table_id->table_schema; }
   fpta_shove_t index_shove() const {
-    return table_def()->column_shove(column_number);
+    return table_schema()->column_shove(column_number);
   }
 
   fpta_key range_from_key;
@@ -321,26 +326,29 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx_key,
 int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
                        const fptu_ro &row, fpta_key &key, bool copy = false);
 
-int fpta_secondary_upsert(fpta_txn *txn, fpta_name *table_id,
+int fpta_secondary_upsert(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_val pk_key_old, const fptu_ro &row_old,
                           MDBX_val pk_key_new, const fptu_ro &row_new,
                           const unsigned stepover);
 
-int fpta_secondary_check(fpta_txn *txn, fpta_name *table_id,
+int fpta_secondary_check(fpta_txn *txn, fpta_table_schema *table_def,
                          const fptu_ro &row_old, const fptu_ro &row_new,
                          const unsigned stepover);
 
-int fpta_secondary_remove(fpta_txn *txn, fpta_name *table_id, MDBX_val &pk_key,
-                          const fptu_ro &row_old, const unsigned stepover);
+int fpta_secondary_remove(fpta_txn *txn, fpta_table_schema *table_def,
+                          MDBX_val &pk_key, const fptu_ro &row_old,
+                          const unsigned stepover);
 
-int fpta_check_notindexed_cols(const fpta_name *table_id, const fptu_ro &row);
+int fpta_check_notindexed_cols(const fpta_table_schema *table_def,
+                               const fptu_ro &row);
 
 //----------------------------------------------------------------------------
 
-int fpta_open_table(fpta_txn *txn, fpta_name *table_id, MDBX_dbi &handle);
+int fpta_open_table(fpta_txn *txn, fpta_table_schema *table_def,
+                    MDBX_dbi &handle);
 int fpta_open_column(fpta_txn *txn, fpta_name *column_id, MDBX_dbi &tbl_handle,
                      MDBX_dbi &idx_handle);
-int fpta_open_secondaries(fpta_txn *txn, fpta_name *table_id,
+int fpta_open_secondaries(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_dbi *dbi_array);
 
 //----------------------------------------------------------------------------

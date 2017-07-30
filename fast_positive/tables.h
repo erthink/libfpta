@@ -1287,10 +1287,8 @@ typedef struct fpta_name {
   fpta_shove_t shove; /* хэш имени и внутренние данные. */
   union {
     /* для таблицы */
-    struct {
-      struct fpta_table_schema *def; /* копия схемы (описание колонок) */
-      unsigned pk; /* вид индекса и тип данных для primary key */
-    } table;
+    struct fpta_table_schema
+        *table_schema; /* операционная копия схемы с описанием колонок */
 
     /* для колонки */
     struct {

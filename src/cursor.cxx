@@ -499,7 +499,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
   } else {
     /* Поиск по "образу" строки, получаем из строки-кортежа значение
      * проиндексированной колонки в формате ключа для поиска по индексу. */
-    rc = fpta_index_row2key(cursor->table_def(), cursor->column_number, *row,
+    rc = fpta_index_row2key(cursor->table_schema(), cursor->column_number, *row,
                             seek_key, false);
     if (unlikely(rc != FPTA_SUCCESS)) {
       cursor->set_poor();
@@ -515,7 +515,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
       } else {
         /* Извлекаем и используем значение PK только если связанный с
          * курсором индекс допускает дубликаты. */
-        rc = fpta_index_row2key(cursor->table_def(), 0, *row, pk_key, false);
+        rc = fpta_index_row2key(cursor->table_schema(), 0, *row, pk_key, false);
         if (rc == FPTA_SUCCESS) {
           /* Используем уточняющее значение PK только если в строке-образце
            * есть соответствующая колонка. При этом игнорируем отсутствие
@@ -747,7 +747,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
-  if (!fpta_table_has_secondary(cursor->table_id)) {
+  if (!fpta_table_has_secondary(cursor->table_schema())) {
     rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
     if (unlikely(rc != FPTA_SUCCESS)) {
       cursor->set_poor();
@@ -797,7 +797,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
       return rc;
     }
 
-    rc = fpta_secondary_remove(cursor->txn, cursor->table_id, pk_key, old,
+    rc = fpta_secondary_remove(cursor->txn, cursor->table_schema(), pk_key, old,
                                cursor->column_number);
     if (unlikely(rc != MDBX_SUCCESS)) {
       cursor->set_poor();
@@ -840,7 +840,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return cursor->unladed_state();
 
   fpta_key column_key;
-  rc = fpta_index_row2key(cursor->table_def(), cursor->column_number,
+  rc = fpta_index_row2key(cursor->table_schema(), cursor->column_number,
                           new_row_value, column_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -848,7 +848,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(cursor->table_id))
+  if (!fpta_table_has_secondary(cursor->table_schema()))
     return FPTA_SUCCESS;
 
   fptu_ro present_row;
@@ -858,8 +858,8 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 
-    return fpta_secondary_check(cursor->txn, cursor->table_id, present_row,
-                                new_row_value, 0);
+    return fpta_secondary_check(cursor->txn, cursor->table_schema(),
+                                present_row, new_row_value, 0);
   }
 
   MDBX_val present_pk_key;
@@ -869,7 +869,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return rc;
 
   fpta_key new_pk_key;
-  rc = fpta_index_row2key(cursor->table_def(), 0, new_row_value, new_pk_key,
+  rc = fpta_index_row2key(cursor->table_schema(), 0, new_row_value, new_pk_key,
                           false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -879,7 +879,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (unlikely(rc != MDBX_SUCCESS))
     return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 
-  return fpta_secondary_check(cursor->txn, cursor->table_id, present_row,
+  return fpta_secondary_check(cursor->txn, cursor->table_schema(), present_row,
                               new_row_value, cursor->column_number);
 }
 
@@ -891,20 +891,21 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
-  rc = fpta_check_notindexed_cols(cursor->table_id, new_row_value);
+  const fpta_table_schema *table_def = cursor->table_schema();
+  rc = fpta_check_notindexed_cols(table_def, new_row_value);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   fpta_key column_key;
-  rc = fpta_index_row2key(cursor->table_def(), cursor->column_number,
-                          new_row_value, column_key, false);
+  rc = fpta_index_row2key(table_def, cursor->column_number, new_row_value,
+                          column_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(cursor->table_id)) {
+  if (!fpta_table_has_secondary(table_def)) {
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
                          &new_row_value.sys, MDBX_CURRENT | MDBX_NODUPDATA);
     if (likely(rc == MDBX_SUCCESS) &&
@@ -959,7 +960,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   }
 
   fpta_key new_pk_key;
-  rc = fpta_index_row2key(cursor->table_def(), 0, new_row_value, new_pk_key,
+  rc = fpta_index_row2key(cursor->table_schema(), 0, new_row_value, new_pk_key,
                           false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -974,8 +975,8 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   }
 #endif
 
-  rc = fpta_secondary_upsert(cursor->txn, cursor->table_id, old_pk_key, old,
-                             new_pk_key.mdbx, new_row_value,
+  rc = fpta_secondary_upsert(cursor->txn, cursor->table_schema(), old_pk_key,
+                             old, new_pk_key.mdbx, new_row_value,
                              cursor->column_number);
   if (unlikely(rc != MDBX_SUCCESS)) {
     cursor->set_poor();
