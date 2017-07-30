@@ -2313,6 +2313,10 @@ static __inline bool fpta_is_under_valgrind(void) {
   return fptu_is_under_valgrind();
 }
 
+FPTA_API uint64_t fpta_umul_64x64_128(uint64_t a, uint64_t b, uint64_t *h);
+FPTA_API uint64_t fpta_umul_32x32_64(uint32_t a, uint32_t b);
+FPTA_API uint64_t fpta_umul_64x64_high(uint64_t a, uint64_t b);
+
 typedef struct fpta_version_info {
   uint8_t major;
   uint8_t minor;

@@ -550,6 +550,33 @@ void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {
   }
 }
 
+static __inline unsigned add_with_carry(uint64_t *sum, uint64_t addend) {
+  *sum += addend;
+  return *sum < addend;
+}
+
+uint64_t fpta_umul_64x64_128(uint64_t a, uint64_t b, uint64_t *h) {
+#ifdef umul_64x64_128
+  return umul_64x64_128(a, b, h);
+#else
+  /* performs 64x64 to 128 bit multiplication */
+  uint64_t ll = umul_32x32_64((uint32_t)a, (uint32_t)b);
+  uint64_t lh = umul_32x32_64(a >> 32, (uint32_t)b);
+  uint64_t hl = umul_32x32_64((uint32_t)a, b >> 32);
+  *h = umul_32x32_64(a >> 32, b >> 32) + (lh >> 32) + (hl >> 32) +
+       add_with_carry(&ll, lh << 32) + add_with_carry(&ll, hl << 32);
+  return ll;
+#endif
+}
+
+uint64_t fpta_umul_32x32_64(uint32_t a, uint32_t b) {
+  return umul_32x32_64(a, b);
+}
+
+uint64_t fpta_umul_64x64_high(uint64_t a, uint64_t b) {
+  return umul_64x64_high(a, b);
+}
+
 //----------------------------------------------------------------------------
 
 #ifdef __SANITIZE_ADDRESS__
