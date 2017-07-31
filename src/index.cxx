@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -937,14 +937,15 @@ return_corrupted:
 
 //----------------------------------------------------------------------------
 
-__hot int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
-                             const fptu_ro &row, fpta_key &key, bool copy) {
+__hot int fpta_index_row2key(const fpta_table_schema *const schema,
+                             size_t column, const fptu_ro &row, fpta_key &key,
+                             bool copy) {
 #ifndef NDEBUG
   fpta_pollute(&key, sizeof(key), 0);
 #endif
 
-  assert(column < def->column_count());
-  const fpta_shove_t shove = def->column_shove(column);
+  assert(column < schema->column_count());
+  const fpta_shove_t shove = schema->column_shove(column);
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
@@ -954,6 +955,10 @@ __hot int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
       return FPTA_COLUMN_MISSING;
 
     switch (type) {
+    case fptu_null:
+    case fptu_null | fptu_farray:
+      return FPTA_EOOPS;
+
     default:
       if (fpta_index_is_ordered(shove)) {
         if (type >= fptu_cstr) {

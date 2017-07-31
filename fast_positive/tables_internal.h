@@ -323,7 +323,7 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
 int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx_key,
                          fpta_value &key_value);
 
-int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
+int fpta_index_row2key(const fpta_table_schema *const schema, size_t column,
                        const fptu_ro &row, fpta_key &key, bool copy = false);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_table_schema *table_def,
