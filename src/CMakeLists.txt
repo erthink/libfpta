@@ -48,6 +48,7 @@ add_library(fpta
   ../externals/t1ha/t1ha.h
   details.h
   osal.h
+  composite.cxx
   common.cxx
   table.cxx
   filter.cxx

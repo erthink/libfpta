@@ -948,6 +948,11 @@ __hot int fpta_index_row2key(const fpta_table_schema *const schema,
   const fpta_shove_t shove = schema->column_shove(column);
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
+  if (unlikely(type == fptu_null)) {
+    /* composite pseudo-column */
+    return fpta_composite_row2key(schema, column, row, key);
+  }
+
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
 
   if (unlikely(field == nullptr)) {
