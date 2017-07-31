@@ -133,6 +133,15 @@ struct fpta_table_schema {
     assert(number < _stored.count);
     return _cache_hints[number];
   }
+
+  typedef const uint8_t *composite_iter_t;
+  int composite_list(size_t number, composite_iter_t &list_begin,
+                     composite_iter_t &list_end) const {
+    /* TODO */
+    (void)number;
+    list_begin = list_end = nullptr;
+    return FPTA_ENOIMP;
+  }
 };
 
 enum fpta_internals {
