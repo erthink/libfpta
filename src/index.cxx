@@ -960,7 +960,6 @@ __hot int fpta_index_row2key(const fpta_table_schema *const schema,
       return FPTA_COLUMN_MISSING;
 
     switch (type) {
-    case fptu_null:
     case fptu_null | fptu_farray:
       return FPTA_EOOPS;
 
@@ -1077,9 +1076,6 @@ __hot int fpta_index_row2key(const fpta_table_schema *const schema,
     key.mdbx.iov_len = payload->other.varlen.opaque_bytes;
     key.mdbx.iov_base = (void *)payload->other.data;
     break;
-
-  case fptu_null:
-    return FPTA_EOOPS;
 
   case fptu_uint16:
     key.place.u32 = field->get_payload_uint16();

@@ -415,8 +415,7 @@ __cold string to_string(const fpta_name *id) {
   if (table_id == nullptr)
     return partial + ", no-table, no-schema}";
 
-  const fpta_table_schema *table_def =
-      table_id ? table_id->table_schema : nullptr;
+  const fpta_table_schema *table_def = table_id->table_schema;
   if (table_def == nullptr)
     return partial + fptu::format(", @%" PRIx64 ".%p, no-schema}",
                                   table_id->shove, table_id);
