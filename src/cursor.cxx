@@ -1024,7 +1024,6 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
 //----------------------------------------------------------------------------
 
-FPTA_API
 int fpta_apply_visitor(
     fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
     fpta_value range_to, fpta_filter *filter, fpta_cursor_options op,

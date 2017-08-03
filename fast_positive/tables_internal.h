@@ -50,7 +50,7 @@
                                    nameless struct / union */
 #pragma warning(disable : 4127) /* conditional expression is constant */
 
-#if _MSC_VER == 1900 /* MSVC 2015 compiler is mad */
+#if _MSC_VER == 1900            /* MSVC 2015 compiler is mad */
 #pragma warning(disable : 4770) /* partially validated enum used as index */
 #endif
 
