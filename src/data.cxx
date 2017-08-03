@@ -209,16 +209,79 @@ fpta_value fpta_field2value(const fptu_field *field) {
 
 int fpta_get_column(fptu_ro row, const fpta_name *column_id,
                     fpta_value *value) {
-  if (unlikely(column_id == nullptr || value == nullptr))
+  if (unlikely(!fpta_id_validate(column_id, fpta_column) || value == nullptr))
     return FPTA_EINVAL;
   const unsigned colnum = (unsigned)column_id->column.num;
-  if (colnum > fpta_max_cols)
+  if (unlikely(colnum > fpta_max_cols || fpta_column_is_composite(column_id)))
     return FPTA_EINVAL;
 
   const fptu_field *field =
       fptu_lookup_ro(row, colnum, fpta_name_coltype(column_id));
   *value = fpta_field2value_ex(field, fpta_name_colindex(column_id));
   return field ? FPTA_SUCCESS : FPTA_NODATA;
+}
+
+int fpta_get_column2buffer(fptu_ro row, const fpta_name *column_id,
+                           fpta_value *value, void *buffer,
+                           size_t buffer_length) {
+  if (unlikely(!fpta_id_validate(column_id, fpta_column) || value == nullptr))
+    return FPTA_EINVAL;
+  if (unlikely(buffer == nullptr && buffer_length))
+    return FPTA_EINVAL;
+
+  const unsigned colnum = (unsigned)column_id->column.num;
+  if (unlikely(colnum > fpta_max_cols))
+    return FPTA_EINVAL;
+
+  if (fpta_column_is_composite(column_id)) {
+    if (unlikely(buffer_length < sizeof(fpta_key))) {
+      value->binary_length = sizeof(fpta_key);
+      value->type = fpta_invalid;
+      value->binary_data = nullptr;
+      return FPTA_DATALEN_MISMATCH;
+    }
+
+    if (unlikely(!fpta_id_validate(column_id->column.table, fpta_table)))
+      return FPTA_EINVAL;
+    const fpta_table_schema *table_schema =
+        column_id->column.table->table_schema;
+    if (unlikely(table_schema == nullptr))
+      return FPTA_EINVAL;
+
+    fpta_key *key = (fpta_key *)buffer;
+    int rc = fpta_composite_row2key(table_schema, colnum, row, *key);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+
+    value->type = fpta_shoved;
+    value->binary_length = (unsigned)key->mdbx.iov_len;
+    value->binary_data = key->mdbx.iov_base;
+    return FPTA_SUCCESS;
+  }
+
+  const fptu_field *field =
+      fptu_lookup_ro(row, colnum, fpta_name_coltype(column_id));
+  *value = fpta_field2value_ex(field, fpta_name_colindex(column_id));
+  if (unlikely(field == nullptr))
+    return FPTA_NODATA;
+
+  if (value->type >= fpta_string) {
+    assert(value->type <= fpta_binary);
+    size_t needed_bytes = value->binary_length +
+                          (fptu_cstr == fpta_name_coltype(column_id) ? 1 : 0);
+    assert((value->type == fpta_string) ==
+           (fptu_cstr == fpta_name_coltype(column_id)));
+    if (unlikely(needed_bytes > buffer_length)) {
+      value->binary_length = needed_bytes;
+      value->type = fpta_invalid;
+      value->binary_data = nullptr;
+      return FPTA_DATALEN_MISMATCH;
+    }
+
+    if (likely(needed_bytes > 0))
+      value->binary_data = memcpy(buffer, value->binary_data, needed_bytes);
+  }
+  return FPTA_SUCCESS;
 }
 
 int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
