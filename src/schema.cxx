@@ -796,20 +796,38 @@ void fpta_name_destroy(fpta_name *id) {
   memset(id, 0, sizeof(fpta_name));
 }
 
-int fpta_table_column_count(const fpta_name *table_id) {
+int fpta_table_column_count_ex(const fpta_name *table_id,
+                               unsigned *total_columns,
+                               unsigned *composite_count) {
+
   if (unlikely(!fpta_id_validate(table_id, fpta_table)))
-    return -1;
+    return FPTA_EINVAL;
 
   const fpta_table_schema *schema = table_id->table_schema;
   if (unlikely(schema == nullptr))
-    return -1;
+    return FPTA_EINVAL;
   if (unlikely(schema->signature() != FTPA_SCHEMA_SIGNATURE))
-    return -1;
+    return FPTA_SCHEMA_CORRUPTED;
   if (unlikely(schema->table_shove() != table_id->shove))
-    return -1;
+    return FPTA_SCHEMA_CORRUPTED;
 
   assert(table_id->version >= schema->version_csn());
-  return (int)schema->column_count();
+  if (likely(total_columns))
+    *total_columns = schema->column_count();
+  if (composite_count) {
+    unsigned count = 0;
+    for (size_t i = 0; i < schema->column_count(); ++i) {
+      const auto shove = schema->column_shove(i);
+      assert(i < fpta_max_indexes);
+      if (!fpta_index_is_secondary(shove))
+        break;
+      if (fpta_shove2type(shove) == /* composite */ fptu_null)
+        ++count;
+    }
+    *composite_count = count;
+  }
+
+  return FPTA_SUCCESS;
 }
 
 int fpta_table_column_get(const fpta_name *table_id, unsigned column,
