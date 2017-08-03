@@ -234,6 +234,7 @@ int fpta_get_column2buffer(fptu_ro row, const fpta_name *column_id,
     return FPTA_EINVAL;
 
   if (fpta_column_is_composite(column_id)) {
+    static_assert(sizeof(fpta_key) == fpta_keybuf_len, "expect equal");
     if (unlikely(buffer_length < sizeof(fpta_key))) {
       value->binary_length = sizeof(fpta_key);
       value->type = fpta_invalid;
