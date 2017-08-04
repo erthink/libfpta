@@ -172,7 +172,7 @@ __hot MDBX_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove) {
 
   switch (type) {
   default:
-    if (type >= fptu_96) {
+    if (type >= fptu_96 || type == /* composite */ fptu_null) {
       if (!fpta_index_is_ordered(index))
         return fpta_idxcmp_type<uint64_t>;
       if (fpta_index_is_reverse(index))
@@ -330,13 +330,14 @@ static __inline unsigned shove2dbiflags(fpta_shove_t shove) {
   assert(fpta_is_indexed(shove));
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
-  assert(type != fptu_null);
 
   unsigned dbi_flags =
       fpta_index_is_unique(index) ? 0u : (unsigned)MDBX_DUPSORT;
-  if (type < fptu_96 || !fpta_index_is_ordered(index))
+  if ((type != /* composite */ fptu_null && type < fptu_96) ||
+      !fpta_index_is_ordered(index))
     dbi_flags |= MDBX_INTEGERKEY;
-  else if (fpta_index_is_reverse(index) && type >= fptu_96)
+  else if (fpta_index_is_reverse(index) &&
+           (type >= fptu_96 || type == /* composite */ fptu_null))
     dbi_flags |= MDBX_REVERSEKEY;
 
   return dbi_flags;
@@ -356,11 +357,13 @@ unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
   fpta_index_type pk_index = fpta_shove2index(pk_shove);
   unsigned dbi_flags = shove2dbiflags(shove);
   if (dbi_flags & MDBX_DUPSORT) {
-    if (pk_type < fptu_cstr)
+    if (pk_type < fptu_cstr && pk_type != /* composite */ fptu_null)
       dbi_flags |= MDBX_DUPFIXED;
-    if (pk_type < fptu_96 || !fpta_index_is_ordered(pk_index))
+    if ((pk_type < fptu_96 && pk_type != /* composite */ fptu_null) ||
+        !fpta_index_is_ordered(pk_index))
       dbi_flags |= MDBX_INTEGERDUP;
-    else if (fpta_index_is_reverse(pk_index) && pk_type >= fptu_96)
+    else if (fpta_index_is_reverse(pk_index) &&
+             (pk_type >= fptu_96 || pk_type == /* composite */ fptu_null))
       dbi_flags |= MDBX_REVERSEDUP;
   }
   return dbi_flags;
@@ -403,16 +406,16 @@ static bool fpta_index_ordered_is_compat(fptu_type data_type,
         1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
 
       /* fpta_shoved */
-      ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
-        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_96 |
-        1 << fptu_128 | 1 << fptu_160 | 1 << fptu_256),
+      ~(1 << fptu_int32 | 1 << fptu_int64 | 1 << fptu_datetime |
+        1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
+        1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_96 | 1 << fptu_128 |
+        1 << fptu_160 | 1 << fptu_256),
 
       /* fpta_begin */
-      ~(1 << fptu_null),
+      ~0,
 
       /* fpta_end */
-      ~(1 << fptu_null)};
+      ~0};
 
   return (bits[value_type] & (1 << data_type)) != 0;
 }
@@ -453,15 +456,15 @@ static bool fpta_index_unordered_is_compat(fptu_type data_type,
         1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
 
       /* fpta_shoved */
-      ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
-        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64),
+      ~(1 << fptu_int32 | 1 << fptu_int64 | 1 << fptu_datetime |
+        1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
+        1 << fptu_fp32 | 1 << fptu_fp64),
 
       /* fpta_begin */
-      ~(1 << fptu_null),
+      ~0,
 
       /* fpta_end */
-      ~(1 << fptu_null)};
+      ~0};
 
   return (bits[value_type] & (1 << data_type)) != 0;
 }
@@ -484,10 +487,10 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
                value.type == fpta_null))
     return FPTA_ETYPE;
 
-  const fptu_type type = fpta_shove2type(shove);
-  if (unlikely(!fpta_is_indexed(shove) || type == fptu_null))
+  if (unlikely(!fpta_is_indexed(shove)))
     return FPTA_EOOPS;
 
+  const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
   if (fpta_index_is_ordered(index)) {
     // упорядоченный индекс
@@ -550,7 +553,7 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     break;
 
   case fptu_null:
-    return FPTA_EOOPS;
+    return FPTA_ETYPE;
 
   case fptu_uint16:
     key.place.u32 = (uint16_t)value.sint;
@@ -762,10 +765,13 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     return FPTA_EOOPS;
 
   case fptu_null:
-    value.type = fpta_null;
-    value.binary_data = nullptr;
-    value.binary_length = 0;
-    return FPTA_EOOPS;
+    if (mdbx.iov_len > (unsigned)fpta_max_keylen &&
+        unlikely(mdbx.iov_len != (unsigned)fpta_shoved_keylen))
+      goto return_corrupted;
+    value.type = fpta_shoved;
+    value.binary_data = mdbx.iov_base;
+    value.binary_length = fpta_shoved_keylen;
+    return FPTA_SUCCESS;
 
   case fptu_uint16: {
     if (unlikely(mdbx.iov_len != sizeof(uint32_t)))
