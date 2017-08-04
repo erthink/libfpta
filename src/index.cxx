@@ -31,12 +31,8 @@
 #error Unsupported byte order.
 #endif
 
-#if !defined(UNALIGNED_OK)
-#if defined(__i386) || defined(__x86_64) || defined(_M_IX86) || defined(_M_X64)
-#define UNALIGNED_OK 1
-#else
-#define UNALIGNED_OK 0
-#endif
+#ifndef UNALIGNED_OK
+#error UNALIGNED_OK should be defined.
 #endif
 
 static int __hot fpta_idxcmp_binary_last2first(const MDBX_val *a,
@@ -125,7 +121,7 @@ static int __hot fpta_idxcmp_fp32(const MDBX_val *a, const MDBX_val *b) {
   if ((negative ^ vb) < 0)
     return negative ? -1 : 1;
 
-  int32_t cmp = (va & 0x7fffFFFF) - (vb & 0x7fffFFFF);
+  int32_t cmp = (va & INT32_C(0x7fffFFFF)) - (vb & INT32_C(0x7fffFFFF));
   return negative ? -cmp : cmp;
 }
 
@@ -141,11 +137,12 @@ static int __hot fpta_idxcmp_fp64(const MDBX_val *a, const MDBX_val *b) {
   memcpy(vb, b->iov_base, 8);
 #endif
 
-  int64_t negative = va & 0x8000000000000000ll;
+  int64_t negative = va & UINT64_C(0x8000000000000000);
   if ((negative ^ vb) < 0)
     return negative ? -1 : 1;
 
-  int cmp = fptu_cmp2int(va & 0x7fffFFFFffffFFFFll, vb & 0x7fffFFFFffffFFFFll);
+  int cmp = fptu_cmp2int(va & UINT64_C(0x7fffFFFFffffFFFF),
+                         vb & UINT64_C(0x7fffFFFFffffFFFF));
   return negative ? -cmp : cmp;
 }
 
