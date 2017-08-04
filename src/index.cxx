@@ -343,19 +343,19 @@ static __inline unsigned shove2dbiflags(fpta_shove_t shove) {
   return dbi_flags;
 }
 
-unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t shove) {
-  assert(fpta_index_is_primary(fpta_shove2index(shove)));
-  return shove2dbiflags(shove);
+unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t pk_shove) {
+  assert(fpta_index_is_primary(fpta_shove2index(pk_shove)));
+  return shove2dbiflags(pk_shove);
 }
 
 unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
-                                             fpta_shove_t shove) {
+                                             fpta_shove_t sk_shove) {
   assert(fpta_index_is_primary(fpta_shove2index(pk_shove)));
-  assert(fpta_index_is_secondary(fpta_shove2index(shove)));
+  assert(fpta_index_is_secondary(fpta_shove2index(sk_shove)));
 
   fptu_type pk_type = fpta_shove2type(pk_shove);
   fpta_index_type pk_index = fpta_shove2index(pk_shove);
-  unsigned dbi_flags = shove2dbiflags(shove);
+  unsigned dbi_flags = shove2dbiflags(sk_shove);
   if (dbi_flags & MDBX_DUPSORT) {
     if (pk_type < fptu_cstr && pk_type != /* composite */ fptu_null)
       dbi_flags |= MDBX_DUPFIXED;
@@ -498,15 +498,15 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
       return FPTA_ETYPE;
 
     if (value.type == fpta_shoved) {
-      if (unlikely(value.binary_length != sizeof(key.place)))
+      if (unlikely(value.binary_length > sizeof(key.place)))
         return FPTA_DATALEN_MISMATCH;
       if (unlikely(value.binary_data == nullptr))
         return FPTA_EINVAL;
 
-      key.mdbx.iov_len = sizeof(key.place);
+      key.mdbx.iov_len = value.binary_length;
       key.mdbx.iov_base = value.binary_data;
       if (copy) {
-        memcpy(&key.place, key.mdbx.iov_base, sizeof(key.place));
+        memcpy(&key.place, key.mdbx.iov_base, key.mdbx.iov_len);
         key.mdbx.iov_base = &key.place;
       }
       return FPTA_SUCCESS;
@@ -951,7 +951,7 @@ __hot int fpta_index_row2key(const fpta_table_schema *const schema,
   const fpta_shove_t shove = schema->column_shove(column);
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
-  if (unlikely(type == fptu_null)) {
+  if (unlikely(type == /* composite */ fptu_null)) {
     /* composite pseudo-column */
     return fpta_composite_row2key(schema, column, row, key);
   }

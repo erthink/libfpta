@@ -579,7 +579,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
       return (op == fpta_insert) ? FPTA_KEYEXIST : FPTA_SUCCESS;
   }
 
-  if (!fpta_table_has_secondary(table_def))
+  if (!table_def->has_secondary())
     return FPTA_SUCCESS;
 
   return fpta_secondary_check(txn, table_def, present_row, row_value, 0);
@@ -623,7 +623,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (!fpta_table_has_secondary(table_def))
+  if (!table_def->has_secondary())
     return mdbx_put(txn->mdbx_txn, handle, &pk_key.mdbx, &row.sys, flags);
 
   fptu_ro old;
@@ -663,7 +663,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
     return rc;
 
   fpta_table_schema *table_def = table_id->table_schema;
-  if (row.sys.iov_len && fpta_table_has_secondary(table_def) &&
+  if (row.sys.iov_len && table_def->has_secondary() &&
       mdbx_is_dirty(txn->mdbx_txn, row.sys.iov_base)) {
     /* LY: Делаем копию строки, так как удаление в основной таблице
      * уничтожит текущее значение при перезаписи "грязной" страницы.
@@ -699,7 +699,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
-  if (fpta_table_has_secondary(table_def)) {
+  if (table_def->has_secondary()) {
     rc = fpta_secondary_remove(txn, table_def, key.mdbx, row, 0);
     if (unlikely(rc != MDBX_SUCCESS))
       return fpta_internal_abort(txn, rc);

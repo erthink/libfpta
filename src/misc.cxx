@@ -68,6 +68,9 @@ static const char *__fpta_errstr(int errnum) {
   case FPTA_TXN_CANCELLED:
     return "Transaction already cancelled";
 
+  case FPTA_SIMILAR_INDEX:
+    return "Adding index which is similar to one of the existing";
+
   case FPTA_EINVAL /* EINVAL */:
     return "FPTA: Invalid argument";
   case FPTA_ENOMEM /* ENOMEM */:

@@ -198,6 +198,7 @@ typedef unsigned mode_t;
 #endif /* FPTA_ENABLE_ABORT_ON_PANIC */
 
 #ifdef __cplusplus
+#include <array>  // for std::array
 #include <string> // for std::string
 
 extern "C" {
@@ -325,6 +326,8 @@ enum fpta_error {
   /* Failure while transaction rollback */,
   FPTA_TXN_CANCELLED
   /* Transaction already cancelled */,
+  FPTA_SIMILAR_INDEX
+  /* Adding index which is similar to one of the existing */,
 
   FPTA_ENOFIELD = FPTU_ENOFIELD,
   FPTA_ENOSPACE = FPTU_ENOSPACE,
@@ -1164,8 +1167,10 @@ typedef uint64_t fpta_shove_t;
 typedef struct fpta_column_set {
   /* Счетчик заполненных описателей. */
   unsigned count;
-  /* Упакованное внутреннее описание колонок. */
+  /* Упакованные описатели колонок. */
   fpta_shove_t shoves[fpta_max_cols];
+  /* Информация о составных колонках */
+  uint16_t composites[fpta_max_cols];
 } fpta_column_set;
 
 /* Вспомогательная функция, проверяет корректность имени */
@@ -1214,17 +1219,24 @@ FPTA_API int fpta_column_describe(const char *column_name,
  *        подробно см описание константы fpta_max_keylen.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_column_describe_composite(const char *composite_name,
-                                            enum fpta_index_type index_type,
-                                            fpta_column_set *column_set,
-                                            const char *column_names_array[],
-                                            size_t column_names_count);
+FPTA_API int fpta_describe_composite_index(
+    const char *composite_name, enum fpta_index_type index_type,
+    fpta_column_set *column_set, const char *const column_names_array[],
+    size_t column_names_count);
+
+FPTA_API int fpta_describe_composite_index_va(const char *composite_name,
+                                              enum fpta_index_type index_type,
+                                              fpta_column_set *column_set,
+                                              const char *first,
+                                              const char *second,
+                                              const char *third, ...);
 
 /* Инициализирует column_set перед заполнением посредством
  * fpta_column_describe(). */
 static __inline void fpta_column_set_init(fpta_column_set *column_set) {
   column_set->count = 0;
   column_set->shoves[0] = 0;
+  column_set->composites[0] = 0;
 }
 
 /* Деструктор fpta_column_set.
@@ -1233,6 +1245,7 @@ static __inline int fpta_column_set_destroy(fpta_column_set *column_set) {
   if (column_set != nullptr && column_set->count != FPTA_DEADBEEF) {
     column_set->count = (unsigned)FPTA_DEADBEEF;
     column_set->shoves[0] = 0;
+    column_set->composites[0] = INT16_MAX;
     return FPTA_SUCCESS;
   }
 
@@ -1423,8 +1436,7 @@ static __inline fpta_index_type fpta_name_colindex(const fpta_name *column_id) {
 
 /* Проверяет является ли указанная колонка составной. */
 static __inline bool fpta_column_is_composite(const fpta_name *column_id) {
-  /* В текущей реализации у составных колонок тип fptu_null, что позволяет
-   * легко быстро их отличать от обычных. */
+  /* В текущей реализации у составных колонок тип fptu_null. */
   return fpta_name_coltype(column_id) == fptu_null;
 }
 
@@ -1509,7 +1521,7 @@ FPTA_API int fpta_table_info(fpta_txn *txn, fpta_name *table_id,
                              size_t *row_count, fpta_table_stat *stat);
 
 /* Возвращает общее количество колонок в таблице и отдельно количество
- * составных колонок.
+ * составных колонок. Код ошибки возвращается отдельно от результата.
  *
  * Аргументом table_id выбирается требуемая таблица. Функция не производит
  * отслеживание версии схемы и не обновляет какую-либо информацию, а только
@@ -1576,6 +1588,22 @@ FPTA_API int fpta_table_column_get(const fpta_name *table_id, unsigned column,
                                    fpta_name *column_id);
 
 /* Возвращает количество обычных колонок входящих в составную колонку.
+ * Код ошибки возвращается отдельно от результата.
+ *
+ * Аргументом composite_id выбирается требуемая составная колонка. Функция не
+ * производит отслеживание версии схемы и не обновляет какую-либо информацию,
+ * а только возвращает текущее закэшированное значение. Поэтому аргумент
+ * composite_id должен быть предварительно не только инициализирован, но и
+ * обязательно обновлен посредством fpta_name_refresh().
+ *
+ * Для возврата результата используется аргумент count, который не должен быть
+ * нулевым.
+ *
+ * В случае успеха возвращает ноль, иначе код ошибки. */
+FPTA_API int fpta_composite_column_count_ex(const fpta_name *composite_id,
+                                            unsigned *count);
+
+/* Возвращает количество обычных колонок входящих в составную колонку.
  *
  * Аргументом composite_id выбирается требуемая составная колонка. Функция не
  * производит отслеживание версии схемы и не обновляет какую-либо информацию,
@@ -1586,7 +1614,12 @@ FPTA_API int fpta_table_column_get(const fpta_name *table_id, unsigned column,
  * В случае успеха возвращает не-отрицательное количество колонок, либо
  * отрицательное значение как индикатор ошибки, при этом код ошибки
  * не специфицируется. */
-FPTA_API int fpta_composite_column_count(const fpta_name *composite_id);
+static __inline int fpta_composite_column_count(const fpta_name *composite_id) {
+  unsigned count;
+  return fpta_composite_column_count_ex(composite_id, &count) == FPTA_SUCCESS
+             ? (int)count
+             : -1;
+}
 
 /* Возвращает информацию об обычной колонке входящей в составную колонку.
  *
@@ -2528,7 +2561,7 @@ inline string to_string(const fpta_name &id) { return to_string(&id); }
 inline string to_string(const fpta_filter &filter) {
   return to_string(&filter);
 }
-}
+} // namespace std
 
 inline fpta_value fpta_value::negative() const {
   if (type == fpta_signed_int)
@@ -2544,6 +2577,21 @@ inline fpta_value fpta_value::negative() const {
 inline fpta_value fpta_value_str(const std::string &str) {
   return fpta_value_string(str.data(), str.length());
 }
+
+namespace fpta {
+
+template <typename First, typename Second, typename... More>
+inline int
+describe_composite_index(const char *composite_name, fpta_index_type index_type,
+                         fpta_column_set *column_set, const First &first,
+                         const Second &second, const More &... more) {
+  const std::array<const char *, sizeof...(More) + 2> array{
+      {first, second, more...}};
+  return fpta_describe_composite_index(composite_name, index_type, column_set,
+                                       array.data(), array.size());
+}
+
+} // namespace fpta
 
 #endif /* __cplusplus */
 

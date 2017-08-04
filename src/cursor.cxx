@@ -748,7 +748,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
-  if (!fpta_table_has_secondary(cursor->table_schema())) {
+  if (!cursor->table_schema()->has_secondary()) {
     rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
     if (unlikely(rc != FPTA_SUCCESS)) {
       cursor->set_poor();
@@ -849,7 +849,7 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(cursor->table_schema()))
+  if (!cursor->table_schema()->has_secondary())
     return FPTA_SUCCESS;
 
   fptu_ro present_row;
@@ -906,7 +906,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(table_def)) {
+  if (!table_def->has_secondary()) {
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
                          &new_row_value.sys, MDBX_CURRENT | MDBX_NODUPDATA);
     if (likely(rc == MDBX_SUCCESS) &&

@@ -50,13 +50,13 @@ add_library(fpta
   osal.h
   composite.cxx
   common.cxx
+  dbi.cxx
   table.cxx
   filter.cxx
   cursor.cxx
   schema.cxx
   index.cxx
   data.cxx
-  secondary.cxx
   misc.cxx
   inplace.cxx
   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
