@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -242,7 +242,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(0, memcmp(&probe_get, &col_a, sizeof(fpta_name)));
   EXPECT_EQ(FPTA_OK, fpta_table_column_get(&table, 2, &probe_get));
   EXPECT_EQ(0, memcmp(&probe_get, &col_b, sizeof(fpta_name)));
-  EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 3, &probe_get));
+  EXPECT_EQ(FPTA_NODATA, fpta_table_column_get(&table, 3, &probe_get));
 
   EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.shove));
   EXPECT_EQ(fpta_primary_unique_ordered_obverse, fpta_name_colindex(&col_pk));

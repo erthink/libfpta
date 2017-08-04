@@ -849,7 +849,7 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
 
   assert(table_id->version >= schema->version_csn());
   if (column >= schema->column_count())
-    return FPTA_EINVAL;
+    return FPTA_NODATA;
   column_id->column.table = const_cast<fpta_name *>(table_id);
   column_id->shove = schema->column_shove(column);
   column_id->column.num = column;
