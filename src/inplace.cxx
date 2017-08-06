@@ -372,7 +372,7 @@ FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
     return FPTA_EINVAL;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
+  const unsigned colnum = column_id->column.num;
   if (colnum > fpta_max_cols)
     return FPTA_EINVAL;
 
@@ -438,7 +438,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(cursor->column_number == (unsigned)column_id->column.num))
+  if (unlikely(cursor->column_number == column_id->column.num))
     return FPTA_EINVAL;
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
@@ -476,7 +476,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
     numeric_traits<fptu_fp64>::fast fp64;
   } result;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
+  const unsigned colnum = column_id->column.num;
   const fpta_index_type index = fpta_name_colindex(column_id);
   const fptu_field *field = fptu_lookup_ro(source_row, colnum, coltype);
 

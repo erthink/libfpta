@@ -319,7 +319,7 @@ int __hot fpta_open_column(fpta_txn *txn, fpta_name *column_id,
   }
 
   fpta_shove_t dbi_shove =
-      fpta_dbi_shove(table_def->table_shove(), (unsigned)column_id->column.num);
+      fpta_dbi_shove(table_def->table_shove(), column_id->column.num);
   idx_handle = fpta_dbicache_peek(
       txn, dbi_shove, table_def->handle_cache(column_id->column.num));
   if (likely(idx_handle > 0))
@@ -854,7 +854,6 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
   column_id->shove = schema->column_shove(column);
   column_id->column.num = column;
   column_id->version = table_id->version;
-  // column_id->mdbx_dbi = 0; /* done by memset() */
 
   assert(fpta_id_validate(column_id, fpta_column));
   return FPTA_SUCCESS;

@@ -101,7 +101,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   cursor->txn = txn;
   cursor->filter = filter;
   cursor->table_id = table_id;
-  cursor->column_number = (unsigned)column_id->column.num;
+  cursor->column_number = column_id->column.num;
   cursor->tbl_handle = tbl_handle;
   cursor->idx_handle = idx_handle;
 

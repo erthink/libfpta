@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -270,7 +270,7 @@ tail_recursion:
 
   case fpta_node_fncol:
     return fn->node_fncol.predicate(
-        fptu_lookup_ro(tuple, (unsigned)fn->node_fncol.column_id->column.num,
+        fptu_lookup_ro(tuple, fn->node_fncol.column_id->column.num,
                        fpta_id2type(fn->node_fncol.column_id)),
         fn->node_fncol.arg);
 
@@ -279,10 +279,10 @@ tail_recursion:
                                     fn->node_fnrow.arg);
 
   default:
-    int cmp_bits = fpta_filter_cmp(
-        fptu_lookup_ro(tuple, (unsigned)fn->node_cmp.left_id->column.num,
-                       fpta_id2type(fn->node_cmp.left_id)),
-        fn->node_cmp.right_value);
+    int cmp_bits =
+        fpta_filter_cmp(fptu_lookup_ro(tuple, fn->node_cmp.left_id->column.num,
+                                       fpta_id2type(fn->node_cmp.left_id)),
+                        fn->node_cmp.right_value);
 
     return (cmp_bits & fn->type) != 0;
   }

@@ -211,7 +211,7 @@ int fpta_get_column(fptu_ro row, const fpta_name *column_id,
                     fpta_value *value) {
   if (unlikely(!fpta_id_validate(column_id, fpta_column) || value == nullptr))
     return FPTA_EINVAL;
-  const unsigned colnum = (unsigned)column_id->column.num;
+  const unsigned colnum = column_id->column.num;
   if (unlikely(colnum > fpta_max_cols || fpta_column_is_composite(column_id)))
     return FPTA_EINVAL;
 
@@ -229,7 +229,7 @@ int fpta_get_column2buffer(fptu_ro row, const fpta_name *column_id,
   if (unlikely(buffer == nullptr && buffer_length))
     return FPTA_EINVAL;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
+  const unsigned colnum = column_id->column.num;
   if (unlikely(colnum > fpta_max_cols))
     return FPTA_EINVAL;
 
@@ -290,7 +290,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   if (unlikely(!pt || !fpta_id_validate(column_id, fpta_column)))
     return FPTA_EINVAL;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
+  const unsigned colnum = column_id->column.num;
   if (colnum > fpta_max_cols)
     return FPTA_EINVAL;
 
