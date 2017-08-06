@@ -291,6 +291,7 @@ tail_recursion:
 //----------------------------------------------------------------------------
 
 bool fpta_filter_validate(const fpta_filter *filter) {
+  int rc;
 
 tail_recursion:
 
@@ -302,7 +303,8 @@ tail_recursion:
     return false;
 
   case fpta_node_fncol:
-    if (unlikely(!fpta_id_validate(filter->node_fncol.column_id, fpta_column)))
+    rc = fpta_id_validate(filter->node_fncol.column_id, fpta_column);
+    if (unlikely(rc != FPTA_SUCCESS))
       return false;
     if (unlikely(!filter->node_fncol.predicate))
       return false;
@@ -330,7 +332,8 @@ tail_recursion:
   case fpta_node_ge:
   case fpta_node_eq:
   case fpta_node_ne:
-    if (unlikely(!fpta_id_validate(filter->node_cmp.left_id, fpta_column)))
+    rc = fpta_id_validate(filter->node_cmp.left_id, fpta_column);
+    if (unlikely(rc != FPTA_SUCCESS))
       return false;
 
     if (unlikely(filter->node_cmp.right_value.type == fpta_begin ||

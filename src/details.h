@@ -78,29 +78,61 @@ static __inline int fpta_txn_validate(fpta_txn *txn, fpta_level min_level) {
   return FPTA_OK;
 }
 
-enum fpta_schema_item { fpta_table, fpta_column };
+enum fpta_schema_item {
+  fpta_table,
+  fpta_column,
+  fpta_table_with_schema,
+  fpta_column_with_schema
+};
 
-static __inline bool fpta_id_validate(const fpta_name *id,
+static __inline int fpta_id_validate(const fpta_name *id,
                                       fpta_schema_item schema_item) {
   if (unlikely(id == nullptr))
-    return false;
+    return FPTA_EINVAL;
 
   switch (schema_item) {
   default:
-    return false;
+    return FPTA_EOOPS;
+
   case fpta_table:
+  case fpta_table_with_schema:
     if (unlikely(fpta_shove2index(id->shove) !=
                  (fpta_index_type)fpta_flag_table))
-      return false;
-    // TODO: ?
-    return true;
+      return FPTA_EINVAL;
+
+    if (schema_item > fpta_table) {
+      const fpta_table_schema *table_schema = id->table_schema;
+      if (unlikely(table_schema == nullptr))
+        return FPTA_EINVAL;
+      if (unlikely(table_schema == nullptr))
+        return FPTA_SCHEMA_CORRUPTED;
+      if (unlikely(table_schema->signature() != FTPA_SCHEMA_SIGNATURE))
+        return FPTA_SCHEMA_CORRUPTED;
+      if (unlikely(table_schema->table_shove() != id->shove))
+        return FPTA_SCHEMA_CORRUPTED;
+      assert(id->version >= table_schema->version_csn());
+    }
+    return FPTA_SUCCESS;
 
   case fpta_column:
+  case fpta_column_with_schema:
     if (unlikely(fpta_shove2index(id->shove) ==
                  (fpta_index_type)fpta_flag_table))
-      return false;
-    // TODO: ?
-    return true;
+      return FPTA_EINVAL;
+
+    if (schema_item > fpta_column) {
+      if (unlikely(id->column.num > fpta_max_cols))
+        return FPTA_EINVAL;
+      int rc = fpta_id_validate(id->column.table, fpta_table_with_schema);
+      if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
+      const fpta_table_schema *table_schema = id->column.table->table_schema;
+      if (unlikely(id->column.num > table_schema->column_count()))
+        return FPTA_SCHEMA_CORRUPTED;
+      if (unlikely(table_schema->column_shove(id->column.num) != id->shove))
+        return FPTA_SCHEMA_CORRUPTED;
+    }
+    return FPTA_SUCCESS;
   }
 }
 

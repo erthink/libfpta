@@ -306,7 +306,7 @@ int __hot fpta_open_table(fpta_txn *txn, fpta_table_schema *table_def,
 
 int __hot fpta_open_column(fpta_txn *txn, fpta_name *column_id,
                            MDBX_dbi &tbl_handle, MDBX_dbi &idx_handle) {
-  assert(fpta_id_validate(column_id, fpta_column));
+  assert(fpta_id_validate(column_id, fpta_column) == FPTA_SUCCESS);
 
   fpta_table_schema *table_def = column_id->column.table->table_schema;
   int rc = fpta_open_table(txn, table_def, tbl_handle);
@@ -711,10 +711,9 @@ int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
     // id->table_schema = nullptr; /* done by memset() */
     assert(id->table_schema == nullptr);
 
-    if (!fpta_id_validate(id, fpta_table)) {
-      rc = FPTA_SCHEMA_CORRUPTED;
+    rc = fpta_id_validate(id, fpta_table);
+    if (rc != FPTA_SUCCESS)
       break;
-    }
 
     if (!fpta_schema_validate(id->shove, mdbx_data)) {
       rc = FPTA_SCHEMA_CORRUPTED;
@@ -758,14 +757,14 @@ static int fpta_name_init(fpta_name *id, const char *name,
     id->shove = fpta_shove_name(name, fpta_table);
     // id->table_schema = nullptr; /* done by memset() */
     assert(id->table_schema == nullptr);
-    assert(fpta_id_validate(id, fpta_table));
+    assert(fpta_id_validate(id, fpta_table) == FPTA_SUCCESS);
     break;
   case fpta_column:
     id->shove = fpta_column_shove(fpta_shove_name(name, fpta_column), fptu_null,
                                   fpta_index_none);
     id->column.num = ~0u;
     id->column.table = id;
-    assert(fpta_id_validate(id, fpta_column));
+    assert(fpta_id_validate(id, fpta_column) == FPTA_SUCCESS);
     break;
   }
 
@@ -779,10 +778,11 @@ int fpta_table_init(fpta_name *table_id, const char *name) {
 
 int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
                      const char *name) {
-  if (unlikely(!fpta_id_validate(table_id, fpta_table)))
-    return FPTA_EINVAL;
+  int rc = fpta_id_validate(table_id, fpta_table);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
-  int rc = fpta_name_init(column_id, name, fpta_column);
+  rc = fpta_name_init(column_id, name, fpta_column);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -791,7 +791,7 @@ int fpta_column_init(const fpta_name *table_id, fpta_name *column_id,
 }
 
 void fpta_name_destroy(fpta_name *id) {
-  if (fpta_id_validate(id, fpta_table))
+  if (fpta_id_validate(id, fpta_table) == FPTA_SUCCESS)
     fpta_schema_free(id->table_schema);
   memset(id, 0, sizeof(fpta_name));
 }
@@ -799,19 +799,11 @@ void fpta_name_destroy(fpta_name *id) {
 int fpta_table_column_count_ex(const fpta_name *table_id,
                                unsigned *total_columns,
                                unsigned *composite_count) {
-
-  if (unlikely(!fpta_id_validate(table_id, fpta_table)))
-    return FPTA_EINVAL;
+  int rc = fpta_id_validate(table_id, fpta_table_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   const fpta_table_schema *schema = table_id->table_schema;
-  if (unlikely(schema == nullptr))
-    return FPTA_EINVAL;
-  if (unlikely(schema->signature() != FTPA_SCHEMA_SIGNATURE))
-    return FPTA_SCHEMA_CORRUPTED;
-  if (unlikely(schema->table_shove() != table_id->shove))
-    return FPTA_SCHEMA_CORRUPTED;
-
-  assert(table_id->version >= schema->version_csn());
   if (likely(total_columns))
     *total_columns = schema->column_count();
   if (composite_count) {
@@ -834,20 +826,13 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
                           fpta_name *column_id) {
   if (unlikely(column_id == nullptr))
     return FPTA_EINVAL;
-
   memset(column_id, 0, sizeof(fpta_name));
-  if (unlikely(!fpta_id_validate(table_id, fpta_table)))
-    return FPTA_EINVAL;
+
+  int rc = fpta_id_validate(table_id, fpta_table_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   const fpta_table_schema *schema = table_id->table_schema;
-  if (unlikely(schema == nullptr))
-    return FPTA_EINVAL;
-  if (unlikely(schema->signature() != FTPA_SCHEMA_SIGNATURE))
-    return FPTA_SCHEMA_CORRUPTED;
-  if (unlikely(schema->table_shove() != table_id->shove))
-    return FPTA_SCHEMA_CORRUPTED;
-
-  assert(table_id->version >= schema->version_csn());
   if (column >= schema->column_count())
     return FPTA_NODATA;
   column_id->column.table = const_cast<fpta_name *>(table_id);
@@ -855,7 +840,7 @@ int fpta_table_column_get(const fpta_name *table_id, unsigned column,
   column_id->column.num = column;
   column_id->version = table_id->version;
 
-  assert(fpta_id_validate(column_id, fpta_column));
+  assert(fpta_id_validate(column_id, fpta_column_with_schema) == FPTA_SUCCESS);
   return FPTA_SUCCESS;
 }
 
@@ -881,11 +866,15 @@ int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id) {
 
 int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
                              fpta_name *column_id) {
-  if (unlikely(!fpta_id_validate(table_id, fpta_table)))
-    return FPTA_EINVAL;
-  if (column_id && unlikely(!fpta_id_validate(column_id, fpta_column)))
-    return FPTA_EINVAL;
-  int rc = fpta_txn_validate(txn, fpta_read);
+  int rc = fpta_id_validate(table_id, fpta_table);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+  if (column_id) {
+    rc = fpta_id_validate(column_id, fpta_column);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+  rc = fpta_txn_validate(txn, fpta_read);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 

@@ -313,8 +313,11 @@ template <fptu_type type> struct saturated {
 //----------------------------------------------------------------------------
 
 FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
-  if (unlikely(!value || !fpta_id_validate(column_id, fpta_column)))
+  if (unlikely(!value))
     return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   const fpta_index_type index = fpta_name_colindex(column_id);
@@ -367,14 +370,16 @@ FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
 FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...) {
-  if (unlikely(!row || !fpta_id_validate(column_id, fpta_column)))
+  if (unlikely(!row))
     return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
     return FPTA_EINVAL;
 
   const unsigned colnum = column_id->column.num;
-  if (colnum > fpta_max_cols)
-    return FPTA_EINVAL;
+  assert(colnum <= fpta_max_cols);
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   if (unlikely((fptu_any_number & (INT32_C(1) << coltype)) == 0))

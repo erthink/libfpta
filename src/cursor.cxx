@@ -54,11 +54,12 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
     break;
   }
 
-  if (unlikely(!fpta_id_validate(column_id, fpta_column)))
-    return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   fpta_name *table_id = column_id->column.table;
-  int rc = fpta_name_refresh_couple(txn, table_id, column_id);
+  rc = fpta_name_refresh_couple(txn, table_id, column_id);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
