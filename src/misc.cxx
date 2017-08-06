@@ -65,6 +65,9 @@ static const char *__fpta_errstr(int errnum) {
   case FPTA_WANNA_DIE:
     return "FPTA: Failure while transaction rollback (wanna die)";
 
+  case FPTA_TXN_CANCELLED:
+    return "Transaction already cancelled";
+
   case FPTA_EINVAL /* EINVAL */:
     return "FPTA: Invalid argument";
   case FPTA_ENOMEM /* ENOMEM */:
