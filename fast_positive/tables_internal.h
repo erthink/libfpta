@@ -35,6 +35,10 @@
 #pragma once
 
 #ifdef _MSC_VER
+#if _MSC_VER < 1900
+#error FPTA required 'Microsoft Visual Studio 2015' or newer.
+#endif
+
 #pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
                                    has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
@@ -357,11 +361,7 @@ struct fpta_cursor {
   MDBX_cursor *mdbx_cursor;
   MDBX_val current;
 
-#if __cplusplus < 201103L
-#define poor nullptr
-#else
   static constexpr void *poor = nullptr;
-#endif
   bool is_poor() const { return current.iov_base == poor; }
   void set_poor() { current.iov_base = poor; }
 

@@ -43,8 +43,8 @@
 
 #elif defined(_MSC_VER)
 
-#if _MSC_FULL_VER < 180040629
-#error At least "Microsoft C/C++ Compiler" version 18.00.40629 (Visual Studio 2013 Update 5) is required.
+#if _MSC_FULL_VER < 190024218
+#error At least "Microsoft C/C++ Compiler" version 19.00.24218 (Visual Studio 2015 Update 5) is required.
 #endif
 
 #pragma warning(push, 1)

@@ -108,6 +108,11 @@ include(cmake.fpta/profile.cmake)
 include(cmake.fpta/compiler.cmake)
 # include(cmake.fpta/atomic.cmake)
 
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
+  message(SEND_ERROR "MSVC compiler ${MSVC_VERSION} is too old for building FPTA."
+    "At least 'Microsoft Visual Studio 2015' is required.")
+endif()
+
 if(CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE_UPPERCASE STREQUAL "DEBUG")
   set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT ON)
 else()
@@ -277,12 +282,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${FAST_POSI
 include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/externals/libfptu" "${PROJECT_SOURCE_DIR}/externals")
 add_subdirectory(externals)
 add_subdirectory(src)
-
-if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
-  message(WARNING "MSVC compiler is too old (${MSVC_VERSION}) for building tests, disable ones")
-else()
-  add_subdirectory(test)
-endif()
+add_subdirectory(test)
 
 set(PACKAGE "libfpta")
 set(CPACK_PACKAGE_VERSION_MAJOR ${FPTA_VERSION_MAJOR})
