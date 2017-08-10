@@ -719,8 +719,14 @@ int fpta_describe_composite_index_va(const char *composite_name,
 
   size_t count = 2;
   va_list ap;
+#ifdef _MSC_VER /* avoid mad warnings from MSVC */
+  va_start(ap, third);
+#endif
+
   if (third) {
+#ifndef _MSC_VER
     va_start(ap, third);
+#endif
 
     va_list ap_count;
     va_copy(ap_count, ap);

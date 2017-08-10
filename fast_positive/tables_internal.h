@@ -34,10 +34,6 @@
 
 #pragma once
 
-#include "fast_positive/config.h"
-#include "fast_positive/tables.h"
-#include "fast_positive/tuples_internal.h"
-
 #ifdef _MSC_VER
 #pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
                                    has been removed */
@@ -49,9 +45,22 @@
 #pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
 #pragma warning(disable : 4127) /* conditional expression is constant */
+#pragma warning(disable : 4996) /* std::xyz::_Unchecked_iterators::_Deprecate. \
+                                   Bla-bla-bla. See documentation on how to    \
+                                   use Visual C++ 'Checked Iterators' */
+#endif                          /* _MSC_VER (warnings) */
 
+#include "fast_positive/config.h"
+#include "fast_positive/tables.h"
+#include "fast_positive/tuples_internal.h"
+
+#ifdef _MSC_VER
 #if _MSC_VER == 1900            /* MSVC 2015 compiler is mad */
 #pragma warning(disable : 4770) /* partially validated enum used as index */
+#endif
+
+#ifndef _WIN64 /* We don't worry about padding for 32-bit builds */
+#pragma warning(disable : 4820) /* 4 bytes padding added after data member */
 #endif
 
 #pragma warning(push, 1)
@@ -386,7 +395,6 @@ struct fpta_cursor {
 
   const fpta_filter *filter;
   fpta_txn *txn;
-  fpta_db *db;
 
   fpta_name *table_id;
   unsigned column_number;
@@ -400,6 +408,7 @@ struct fpta_cursor {
 
   fpta_key range_from_key;
   fpta_key range_to_key;
+  fpta_db *db;
 };
 
 //----------------------------------------------------------------------------
