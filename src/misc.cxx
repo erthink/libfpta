@@ -19,9 +19,33 @@
 
 #include "details.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#endif
+#include <windows.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+#endif /* must die */
+
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
 static const char *__fpta_errstr(int errnum) {
+#if defined(_WIN32) || defined(_WIN64)
+  static_assert(FPTA_ENOMEM == ERROR_OUTOFMEMORY, "error code mismatch");
+  static_assert(FPTA_ENOIMP == ERROR_NOT_SUPPORTED, "error code mismatch");
+  static_assert(FPTA_EVALUE == ERROR_INVALID_DATA, "error code mismatch");
+  static_assert(FPTA_OVERFLOW == ERROR_ARITHMETIC_OVERFLOW,
+                "error code mismatch");
+  static_assert(FPTA_EEXIST == ERROR_ALREADY_EXISTS, "error code mismatch");
+  static_assert(FPTA_ENOENT == ERROR_NOT_FOUND, "error code mismatch");
+  static_assert(FPTA_EPERM == ERROR_INVALID_FUNCTION, "error code mismatch");
+  static_assert(FPTA_EBUSY == ERROR_BUSY, "error code mismatch");
+  static_assert(FPTA_ENAME == ERROR_INVALID_NAME, "error code mismatch");
+  static_assert(FPTA_EFLAG == ERROR_INVALID_FLAG_NUMBER, "error code mismatch");
+#endif /* static_asserts for Windows */
+
   switch (errnum) {
   default:
     return NULL;

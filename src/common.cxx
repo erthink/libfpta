@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -28,9 +28,9 @@ static int fpta_db_lock(fpta_db *db, fpta_level level) {
       rc = fpta_rwl_sharedlock(&db->schema_rwlock);
     else
       rc = fpta_rwl_exclusivelock(&db->schema_rwlock);
-    assert(rc == 0);
+    assert(rc == FPTA_SUCCESS);
   } else {
-    rc = (level < fpta_schema) ? 0 : EPERM;
+    rc = (level < fpta_schema) ? FPTA_SUCCESS : FPTA_EPERM;
   }
 
   return rc;
@@ -44,9 +44,9 @@ static int fpta_db_unlock(fpta_db *db, fpta_level level) {
   if (db->alterable_schema) {
     rc = fpta_rwl_unlock(&db->schema_rwlock);
   } else {
-    rc = (level < fpta_schema) ? 0 : ENOLCK;
+    rc = (level < fpta_schema) ? FPTA_SUCCESS : FPTA_EOOPS;
   }
-  assert(rc == 0);
+  assert(rc == FPTA_SUCCESS);
   return rc;
 }
 
@@ -103,7 +103,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   unsigned mdbx_flags = MDBX_NOSUBDIR;
   switch (durability) {
   default:
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
   case fpta_readonly:
     mdbx_flags |= MDBX_RDONLY;
     break;
@@ -234,7 +234,7 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
   *ptxn = nullptr;
 
   if (unlikely(level < fpta_read || level > fpta_schema))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   if (unlikely(!fpta_db_validate(db)))
     return FPTA_EINVAL;
@@ -329,7 +329,7 @@ int fpta_db_sequence(fpta_txn *txn, uint64_t *result, uint64_t increment) {
   *result = txn->db_sequence();
   if (increment) {
     if (unlikely(txn->level < fpta_write))
-      return EACCES;
+      return FPTA_EPERM;
 
     uint64_t value = txn->db_sequence() + increment;
     if (value < increment) {

@@ -451,32 +451,32 @@ static __inline ptrdiff_t __srwl_get_state(fpta_rwl_t *rwl) {
 
 static int __inline fpta_rwl_init(fpta_rwl_t *rwl) {
   if (!rwl)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   InitializeSRWLock(&rwl->srwl);
   __srwl_set_state(rwl, SRWL_FREE);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_rwl_sharedlock(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
 
   AcquireSRWLockShared(&rwl->srwl);
   __srwl_set_state(rwl, SRWL_RDLC);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_rwl_exclusivelock(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   AcquireSRWLockExclusive(&rwl->srwl);
   __srwl_set_state(rwl, (ptrdiff_t)GetCurrentThreadId());
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_rwl_unlock(fpta_rwl_t *rwl) {
   if (!rwl)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
 
   ptrdiff_t state = __srwl_get_state(rwl);
   switch (state) {
@@ -484,64 +484,60 @@ static int __inline fpta_rwl_unlock(fpta_rwl_t *rwl) {
     if (state == (ptrdiff_t)GetCurrentThreadId()) {
       __srwl_set_state(rwl, SRWL_FREE);
       ReleaseSRWLockExclusive(&rwl->srwl);
-      return ERROR_SUCCESS;
+      return FPTA_SUCCESS;
     }
   case SRWL_FREE:
-#ifndef EPERM
-    return EPERM;
-#endif
+    return FPTA_EPERM;
   case SRWL_POISON:
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   case SRWL_RDLC:
     ReleaseSRWLockShared(&rwl->srwl);
-    return ERROR_SUCCESS;
+    return FPTA_SUCCESS;
   }
 }
 
 static int __inline fpta_rwl_destroy(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   AcquireSRWLockExclusive(&rwl->srwl);
   __srwl_set_state(rwl, SRWL_POISON);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 typedef struct fpta_mutex { CRITICAL_SECTION cs; } fpta_mutex_t;
 
 static int __inline fpta_mutex_init(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   InitializeCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_mutex_lock(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   EnterCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
-#ifdef EBUSY
 static int __inline fpta_mutex_trylock(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
-  return TryEnterCriticalSection(&mutex->cs) ? ERROR_SUCCESS : EBUSY;
+    return FPTA_EINVAL;
+  return TryEnterCriticalSection(&mutex->cs) ? FPTA_SUCCESS : FPTA_EBUSY;
 }
-#endif /* EBUSY */
 
 static int __inline fpta_mutex_unlock(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   LeaveCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_mutex_destroy(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   DeleteCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 #endif /* CMAKE_HAVE_PTHREAD_H */

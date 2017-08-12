@@ -259,7 +259,7 @@ template <fptu_type type> struct saturated {
 
     switch (op) {
     default:
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
     case fpta_saturated_add:
       if (value.is_negative()) {
         value = -value;
@@ -376,7 +376,7 @@ FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   const unsigned colnum = column_id->column.num;
   assert(colnum <= fpta_max_cols);
@@ -433,7 +433,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...) {
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   int rc = fpta_cursor_validate(cursor, fpta_write);
   if (unlikely(rc != FPTA_SUCCESS))

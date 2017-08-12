@@ -251,7 +251,7 @@ public:
     fpta_column_set_init(&def);
 
     if (!valid_index_ops) {
-      EXPECT_EQ(FPTA_EINVAL,
+      EXPECT_NE(FPTA_OK,
                 fpta_column_describe(pk_col_name.c_str(), type, index, &def));
       EXPECT_EQ(FPTA_OK, fpta_column_describe("order", fptu_int32,
                                               fpta_index_none, &def));
@@ -1163,7 +1163,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
               ASSERT_EQ(FPTA_NODATA,
                         fpta_cursor_locate(cursor, false, &key, nullptr));
             } else {
-              ASSERT_EQ(FPTA_EINVAL,
+              ASSERT_NE(FPTA_OK,
                         fpta_cursor_locate(cursor, false, &key, nullptr));
             }
             ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
@@ -1177,7 +1177,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
             ASSERT_EQ(FPTA_NODATA,
                       fpta_cursor_locate(cursor, false, &key, nullptr));
           } else {
-            ASSERT_EQ(FPTA_EINVAL,
+            ASSERT_NE(FPTA_OK,
                       fpta_cursor_locate(cursor, false, &key, nullptr));
           }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
@@ -1191,8 +1191,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
           ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
         } else {
-          ASSERT_EQ(FPTA_EINVAL,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_NE(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         }
@@ -1224,8 +1223,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
           ASSERT_NO_FATAL_FAILURE(
               CheckPosition(linear, expected_dup_number, expected_dups));
         } else {
-          ASSERT_EQ(FPTA_EINVAL,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_NE(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         }

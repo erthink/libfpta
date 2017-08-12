@@ -520,7 +520,7 @@ erase_field:
 int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op) {
   if (unlikely(op < fpta_insert || op > fpta_upsert))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -595,7 +595,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   unsigned flags = MDBX_NODUPDATA;
   switch (op) {
   default:
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
   case fpta_insert:
     if (fpta_index_is_unique(table_def->table_pk()))
       flags |= MDBX_NOOVERWRITE;

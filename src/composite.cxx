@@ -632,10 +632,10 @@ int fpta_describe_composite_index(const char *composite_name,
                                   const char *const column_names_array[],
                                   size_t column_names_count) {
   if (unlikely(!fpta_validate_name(composite_name)))
-    return FPTA_EINVAL;
+    return FPTA_ENAME;
 
   if (unlikely(!fpta_is_indexed(index_type)))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   if (unlikely(column_set == nullptr))
     return FPTA_EINVAL;
@@ -652,7 +652,7 @@ int fpta_describe_composite_index(const char *composite_name,
   for (size_t i = 0; i < column_names_count; ++i) {
     const char *column_name = column_names_array[i];
     if (unlikely(!fpta_validate_name(column_name)))
-      return FPTA_EINVAL;
+      return FPTA_ENAME;
 
     const fpta_shove_t shove = fpta_shove_name(column_name, fpta_column);
     for (size_t n = 0; n < column_set->count; ++n) {

@@ -270,16 +270,16 @@ static int fpta_schema_validate(
     const fpta_shove_t shove = shoves[i];
     const fpta_index_type index_type = fpta_shove2index(shove);
     if (!fpta_check_indextype(index_type))
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
 
     if ((i == 0) !=
         (fpta_is_indexed(index_type) && fpta_index_is_primary(index_type)))
       /* первичный индекс обязан быть, только один и только в самом начале */
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
 
     if (fpta_index_is_secondary(index_type) && !fpta_index_is_unique(shoves[0]))
       /* для вторичных индексов первичный ключ должен быть уникальным */
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
 
     if (fpta_is_indexed(index_type) && ++index_count > fpta_max_indexes)
       return FPTA_TOOMANY;
@@ -292,11 +292,11 @@ static int fpta_schema_validate(
         return FPTA_ETYPE;
       /* support indexes for arrays */
       if (fpta_is_indexed(index_type))
-        return FPTA_EINVAL;
+        return FPTA_EFLAG;
     } else {
       if (data_type == /* composite */ fptu_null) {
         if (unlikely(!fpta_is_indexed(index_type)))
-          return FPTA_EINVAL;
+          return FPTA_EFLAG;
         if (unlikely(composites >= composites_detent || *composites == 0))
           return FPTA_SCHEMA_CORRUPTED;
 
@@ -313,12 +313,12 @@ static int fpta_schema_validate(
           return rc;
       } else {
         if (unlikely(data_type < fptu_uint16 || data_type > fptu_nested))
-          return FPTA_EINVAL;
+          return FPTA_ETYPE;
         if (fpta_is_indexed(index_type) && fpta_index_is_reverse(index_type) &&
             (fpta_index_is_unordered(index_type) || data_type < fptu_96) &&
             !(fpta_index_is_nullable(index_type) &&
               fpta_nullable_reverse_sensitive(data_type)))
-          return FPTA_EINVAL;
+          return FPTA_EFLAG;
       }
     }
 
@@ -403,7 +403,7 @@ int fpta_schema_add(fpta_column_set *column_set, const char *id_name,
                     fptu_type data_type, fpta_index_type index_type) {
   assert(id_name != nullptr);
   if (!fpta_check_indextype(index_type))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   assert((index_type & fpta_column_index_mask) == index_type);
   assert(index_type != (fpta_index_type)fpta_flag_table);
@@ -429,7 +429,7 @@ int fpta_schema_add(fpta_column_set *column_set, const char *id_name,
   } else {
     if (fpta_index_is_secondary(index_type) && column_set->shoves[0] &&
         !fpta_index_is_unique(column_set->shoves[0]))
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
     if (unlikely(column_set->count == fpta_max_cols))
       return FPTA_TOOMANY;
     size_t place = (column_set->count > 0) ? column_set->count : 1;
@@ -523,16 +523,16 @@ int fpta_column_describe(const char *column_name, fptu_type data_type,
                          fpta_index_type index_type,
                          fpta_column_set *column_set) {
   if (unlikely(!fpta_validate_name(column_name)))
-    return FPTA_EINVAL;
+    return FPTA_ENAME;
 
   if (unlikely(data_type < fptu_uint16 || data_type > fptu_nested))
-    return FPTA_EINVAL;
+    return FPTA_ETYPE;
 
   if (fpta_is_indexed(index_type) && fpta_index_is_reverse(index_type) &&
       (fpta_index_is_unordered(index_type) || data_type < fptu_96) &&
       !(fpta_index_is_nullable(index_type) &&
         fpta_nullable_reverse_sensitive(data_type)))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   return fpta_schema_add(column_set, column_name, data_type, index_type);
 }
@@ -622,11 +622,11 @@ static int fpta_name_init(fpta_name *id, const char *name,
 
   memset(id, 0, sizeof(fpta_name));
   if (unlikely(!fpta_validate_name(name)))
-    return FPTA_EINVAL;
+    return FPTA_ENAME;
 
   switch (schema_item) {
   default:
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
   case fpta_table:
     id->shove = fpta_shove_name(name, fpta_table);
     // id->table_schema = nullptr; /* done by memset() */
@@ -783,7 +783,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
   if (!fpta_validate_name(table_name))
-    return FPTA_EINVAL;
+    return FPTA_ENAME;
 
   const void *composites_eof = nullptr;
   rc = fpta_schema_validate(
@@ -884,7 +884,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
   if (!fpta_validate_name(table_name))
-    return FPTA_EINVAL;
+    return FPTA_ENAME;
 
   fpta_db *db = txn->db;
   if (db->schema_dbi < 1) {

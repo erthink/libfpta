@@ -334,13 +334,37 @@ enum fpta_error {
 
   FPTA_ENOFIELD = FPTU_ENOFIELD,
   FPTA_ENOSPACE = FPTU_ENOSPACE,
+  FPTA_EINVAL = FPTU_EINVAL /* Invalid argument */,
 
-  FPTA_EINVAL = EINVAL /* Invalid argument */,
-  FPTA_ENOMEM = ENOMEM /* Out of Memory */,
-  FPTA_ENOIMP = ENOSYS /* Not yet implemented */,
-  FPTA_EVALUE = EDOM /* Value is invalid or out of range */,
-  FPTA_EEXIST = EEXIST /* FIXME */,
-  FPTA_ENOENT = ENOENT /* FIXME */,
+#if defined(_WIN32) || defined(_WIN64)
+  FPTA_ENOMEM = 14 /* ERROR_OUTOFMEMORY */,
+  FPTA_ENOIMP = 50 /* ERROR_NOT_SUPPORTED */,
+  FPTA_EVALUE = 13 /* ERROR_INVALID_DATA */,
+  FPTA_OVERFLOW = 534 /* ERROR_ARITHMETIC_OVERFLOW */,
+  FPTA_EEXIST = 183 /* ERROR_ALREADY_EXISTS */,
+  FPTA_ENOENT = 1168 /* ERROR_NOT_FOUND */,
+  FPTA_EPERM = 1 /* ERROR_INVALID_FUNCTION */,
+  FPTA_EBUSY = 170 /* ERROR_BUSY */,
+  FPTA_ENAME = 123 /* ERROR_INVALID_NAME */,
+  FPTA_EFLAG = 186 /* ERROR_INVALID_FLAG_NUMBER */,
+#else
+  FPTA_ENOMEM = ENOMEM /* Out of Memory (POSIX) */,
+  FPTA_ENOIMP = ENOSYS /* Function not implemented (POSIX) */,
+  FPTA_EVALUE =
+      EDOM /* Mathematics argument out of domain of function (POSIX) */,
+  FPTA_OVERFLOW =
+      EOVERFLOW /* Value too large to be stored in data type (POSIX) */,
+#ifdef ENOTUNIQ
+  FPTA_EEXIST = ENOTUNIQ /* Name not unique on network */,
+#else
+  FPTA_EEXIST = EADDRINUSE /* Address already in use (POSIX) */,
+#endif
+  FPTA_ENOENT = ENOENT /* No such file or directory (POSIX) */,
+  FPTA_EPERM = EPERM /* Operation not permitted (POSIX) */,
+  FPTA_EBUSY = EBUSY /* Device or resource busy (POSIX) */,
+  FPTA_ENAME = EKEYREJECTED /* FPTA_EINVAL */,
+  FPTA_EFLAG = EBADRQC /* FPTA_EINVAL */,
+#endif
   FPTA_NODATA = -1 /* No data or EOF was reached */,
 
   FPTA_DEADBEEF = UINT32_C(0xDeadBeef) /* Pseudo error for results by pointer,

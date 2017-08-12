@@ -70,7 +70,7 @@ static __inline int fpta_txn_validate(fpta_txn *txn, fpta_level min_level) {
   if (unlikely(txn == nullptr || !fpta_db_validate(txn->db)))
     return FPTA_EINVAL;
   if (unlikely(txn->level < min_level || txn->level > fpta_schema))
-    return FPTA_EINVAL;
+    return FPTA_EPERM;
 
   if (unlikely(txn->mdbx_txn == nullptr))
     return FPTA_TXN_CANCELLED;

@@ -43,7 +43,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
 
   switch (op) {
   default:
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   case fpta_descending:
   case fpta_descending_dont_fetch:
@@ -353,7 +353,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
 
   if (unlikely(op < fpta_first || op > fpta_key_prev)) {
     cursor->set_poor();
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
   }
 
   if (fpta_cursor_is_descending(cursor->options))
@@ -477,7 +477,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
     if (FPTA_PROHIBIT_NEARBY4UNORDERED && !exactly) {
       /* Отвергаем неточный поиск для неупорядоченного курсора (и индекса). */
       cursor->set_poor();
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
     }
     /* Принудительно включаем точный поиск для курсора без сортировки. */
     exactly = true;
