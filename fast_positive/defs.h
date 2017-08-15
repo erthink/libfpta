@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -197,13 +197,14 @@
 #	endif
 #endif /* __deprecated */
 
-#ifndef __packed
-#	if defined(__GNUC__) || __has_attribute(packed)
-#		define __packed __attribute__((packed))
-#	else
-#		define __packed
-#	endif
-#endif /* __packed */
+#ifdef _MSC_VER
+#	define FPT_PACKED_STRUCT(name) \
+		__pragma(pack(push, 1)) struct name __pragma(pack(pop))
+#elif defined(__GNUC__) || __has_attribute(packed)
+#	define FPT_PACKED_STRUCT(name) struct __attribute__((packed)) name
+#else
+#	error Unsupported C/C++ compiler
+#endif /* FPT_PACKED_STRUCT */
 
 #ifndef __noreturn
 #	if defined(__GNUC__) || __has_attribute(noreturn)
