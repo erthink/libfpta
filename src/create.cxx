@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -150,8 +150,8 @@ size_t fptu_check_and_get_buffer_size(fptu_ro ro, unsigned more_items,
   return more_buffer_size(ro, more_items, more_payload);
 }
 
-FPTU_API size_t fptu_get_buffer_size(fptu_ro ro, unsigned more_items,
-                                     unsigned more_payload) {
+size_t fptu_get_buffer_size(fptu_ro ro, unsigned more_items,
+                            unsigned more_payload) {
   if (more_items > fptu_max_fields)
     more_items = fptu_max_fields;
   if (more_payload > fptu_max_tuple_bytes)
