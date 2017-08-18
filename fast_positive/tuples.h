@@ -66,6 +66,9 @@
 #pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
+#ifndef _STL_WARNING_LEVEL
+#define _STL_WARNING_LEVEL 3 /* Avoid warnings inside nasty MSVC STL code */
+#endif
 #pragma warning(disable : 4548) /* expression before comma has no effect;      \
                                    expected expression with side - effect */
 #pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
