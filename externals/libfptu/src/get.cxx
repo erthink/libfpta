@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -177,7 +177,7 @@ struct iovec fptu_field_as_iovec(const fptu_field *pf) {
     break;
   case fptu_cstr:
     payload = fptu_field_payload(pf);
-    opaque.iov_len = strlen(payload->cstr) + 1;
+    opaque.iov_len = strlen(payload->cstr);
     opaque.iov_base = (void *)payload->cstr;
     break;
   case fptu_nested:
