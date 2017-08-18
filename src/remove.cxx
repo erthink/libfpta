@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -63,8 +63,10 @@ void fptu_erase_field(fptu_rw *pt, fptu_field *pf) {
 }
 
 int fptu_erase(fptu_rw *pt, unsigned column, int type_or_filter) {
-  if (unlikely(column > fptu_max_cols))
+  if (unlikely(column > fptu_max_cols)) {
+    static_assert(FPTU_EINVAL > 0, "should be positive");
     return -FPTU_EINVAL;
+  }
 
   if (type_or_filter & fptu_filter) {
     int count = 0;

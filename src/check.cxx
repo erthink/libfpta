@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -19,10 +19,27 @@
 
 #include "fast_positive/tuples_internal.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#endif
+#include <windows.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+#endif /* must die */
+
 static __hot const char *fptu_field_check(const fptu_field *pf,
                                           const char *pivot, const char *detent,
                                           size_t &payload_units,
                                           const char *&prev_payload) {
+#if defined(_WIN32) || defined(_WIN64)
+  static_assert(FPTU_ENOFIELD == ERROR_INVALID_FIELD, "error code mismatch");
+  static_assert(FPTU_EINVAL == ERROR_INVALID_PARAMETER, "error code mismatch");
+  static_assert(FPTU_ENOSPACE == ERROR_ALLOTTED_SPACE_EXCEEDED,
+                "error code mismatch");
+#endif /* static_asserts for Windows */
+
   payload_units = 0;
   if (unlikely(detent < (const char *)pf + fptu_unit_size))
     return "field.header > detent";

@@ -66,6 +66,9 @@
 #pragma warning(disable : 4127) /* conditional expression is constant */
 
 #pragma warning(push, 1)
+#ifndef _STL_WARNING_LEVEL
+#define _STL_WARNING_LEVEL 3 /* Avoid warnings inside nasty MSVC STL code */
+#endif
 #pragma warning(disable : 4548) /* expression before comma has no effect;      \
                                    expected expression with side - effect */
 #pragma warning(disable : 4530) /* C++ exception handler used, but unwind      \
@@ -100,7 +103,6 @@ extern "C" {
 
 #ifdef _MSC_VER
 #pragma warning(pop)
-#pragma pack(push, 1)
 #endif
 
 //----------------------------------------------------------------------------
@@ -119,14 +121,22 @@ extern "C" {
 enum fptu_error {
   FPTU_SUCCESS = 0,
   FPTU_OK = FPTU_SUCCESS,
+#if defined(_WIN32) || defined(_WIN64)
+  FPTU_ENOFIELD = 0x00000650 /* ERROR_INVALID_FIELD */,
+  FPTU_EINVAL = 0x00000057 /* ERROR_INVALID_PARAMETER */,
+  FPTU_ENOSPACE = 0x00000540 /* ERROR_ALLOTTED_SPACE_EXCEEDED */,
+#else
   FPTU_ENOFIELD = ENOENT,
   FPTU_EINVAL = EINVAL,
   FPTU_ENOSPACE = ENOSPC,
+#endif
 };
+
+#pragma pack(push, 1)
 
 /* Внутренний тип для хранения размера полей переменной длины. */
 typedef union fptu_varlen {
-  struct __packed {
+  struct {
     uint16_t brutto; /* брутто-размер в 4-байтовых юнитах,
                       * всегда больше или равен 1. */
     union {
@@ -142,12 +152,14 @@ typedef union fptu_varlen {
 enum fptu_type : int32_t;
 #endif
 
+typedef union fptu_payload fptu_payload;
+
 /* Поле кортежа.
  *
  * Фактически это дескриптор поля, в котором записаны: тип данных,
  * номер колонки и смещение к данным. */
 typedef union FPTU_API fptu_field {
-  struct __packed {
+  struct {
     uint16_t ct;     /* тип и "номер колонки". */
     uint16_t offset; /* смещение к данным относительно заголовка, либо
                         непосредственно данные для uint16_t. */
@@ -161,6 +173,7 @@ typedef union FPTU_API fptu_field {
   inline uint_fast16_t colnum() const;
   inline fptu_type type() const;
   inline uint_fast16_t get_payload_uint16() const;
+  inline const fptu_payload *payload() const;
 #endif
 } fptu_field;
 
@@ -170,6 +183,70 @@ typedef union fptu_unit {
   fptu_varlen varlen;
   uint32_t data;
 } fptu_unit;
+
+/* Представление времени.
+ *
+ * В формате фиксированной точки 32-dot-32:
+ *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
+ *     но без знака. Это отодвигает проблему 2038-го года на 2106,
+ *     требуя взамен аккуратности при вычитании.
+ *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
+ *
+ * Эта форма унифицирована с "Positive Hyper100re" и одновременно достаточно
+ * удобна в использовании. Поэтому настоятельно рекомендуется использовать
+ * именно её, особенно для хранения и передачи данных. */
+typedef union FPTU_API fptu_time {
+  uint64_t fixedpoint;
+  struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    uint32_t fractional;
+    uint32_t utc;
+#else
+    uint32_t utc;
+    uint32_t fractional;
+#endif
+  };
+
+#ifdef __cplusplus
+  static uint_fast32_t ns2fractional(uint_fast32_t);
+  static uint_fast32_t fractional2ns(uint_fast32_t);
+  static uint_fast32_t us2fractional(uint_fast32_t);
+  static uint_fast32_t fractional2us(uint_fast32_t);
+  static uint_fast32_t ms2fractional(uint_fast32_t);
+  static uint_fast32_t fractional2ms(uint_fast32_t);
+
+#ifdef HAVE_TIMESPEC_TV_NSEC
+  /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
+   * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
+   * либо от возможности использовать libfptu из C, либо от Clang,
+   * либо от конструкторов (они и пострадали). */
+  static fptu_time from_timespec(const struct timespec &ts) {
+    fptu_time result = {((uint64_t)ts.tv_sec << 32) |
+                        ns2fractional((uint_fast32_t)ts.tv_nsec)};
+    return result;
+  }
+#endif /* HAVE_TIMESPEC_TV_NSEC */
+
+#ifdef HAVE_TIMEVAL_TV_USEC
+  static fptu_time from_timeval(const struct timeval &tv) {
+    fptu_time result = {((uint64_t)tv.tv_sec << 32) |
+                        us2fractional((uint_fast32_t)tv.tv_usec)};
+    return result;
+  }
+#endif /* HAVE_TIMEVAL_TV_USEC */
+
+#ifdef _FILETIME_
+  static fptu_time from_filetime(FILETIME *pFileTime) {
+    uint64_t ns100 =
+        ((uint64_t)pFileTime->dwHighDateTime << 32) + pFileTime->dwLowDateTime;
+    return from_100ns(
+        ns100 - UINT64_C(/* UTC offset from 1601-01-01 */ 116444736000000000));
+  }
+#endif /* _FILETIME_ */
+#endif
+} fptu_time;
+
+#pragma pack(pop)
 
 /* Представление сериализованной формы кортежа.
  *
@@ -337,68 +414,6 @@ typedef enum fptu_type
   fptu_sha256 = fptu_256,
   fptu_wstring = fptu_opaque
 } fptu_type;
-
-/* Представление времени.
- *
- * В формате фиксированной точки 32-dot-32:
- *   - В старшей "целой" части секунды по UTC, буквально как выдает time(),
- *     но без знака. Это отодвигает проблему 2038-го года на 2106,
- *     требуя взамен аккуратности при вычитании.
- *   - В младшей "дробной" части неполные секунды в 1/2**32 долях.
- *
- * Эта форма унифицирована с "Positive Hyper100re" и одновременно достаточно
- * удобна в использовании. Поэтому настоятельно рекомендуется использовать
- * именно её, особенно для хранения и передачи данных. */
-typedef union FPTU_API fptu_time {
-  uint64_t fixedpoint;
-  struct __packed {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    uint32_t fractional;
-    uint32_t utc;
-#else
-    uint32_t utc;
-    uint32_t fractional;
-#endif
-  };
-
-#ifdef __cplusplus
-  static uint_fast32_t ns2fractional(uint_fast32_t);
-  static uint_fast32_t fractional2ns(uint_fast32_t);
-  static uint_fast32_t us2fractional(uint_fast32_t);
-  static uint_fast32_t fractional2us(uint_fast32_t);
-  static uint_fast32_t ms2fractional(uint_fast32_t);
-  static uint_fast32_t fractional2ms(uint_fast32_t);
-
-#ifdef HAVE_TIMESPEC_TV_NSEC
-  /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
-   * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
-   * либо от возможности использовать libfptu из C, либо от Clang,
-   * либо от конструкторов (они и пострадали). */
-  static fptu_time from_timespec(const struct timespec &ts) {
-    fptu_time result = {((uint64_t)ts.tv_sec << 32) |
-                        ns2fractional((uint_fast32_t)ts.tv_nsec)};
-    return result;
-  }
-#endif /* HAVE_TIMESPEC_TV_NSEC */
-
-#ifdef HAVE_TIMEVAL_TV_USEC
-  static fptu_time from_timeval(const struct timeval &tv) {
-    fptu_time result = {((uint64_t)tv.tv_sec << 32) |
-                        us2fractional((uint_fast32_t)tv.tv_usec)};
-    return result;
-  }
-#endif /* HAVE_TIMEVAL_TV_USEC */
-
-#ifdef _FILETIME_
-  static fptu_time from_filetime(FILETIME *pFileTime) {
-    uint64_t ns100 =
-        ((uint64_t)pFileTime->dwHighDateTime << 32) + pFileTime->dwLowDateTime;
-    return from_100ns(
-        ns100 - UINT64_C(/* UTC offset from 1601-01-01 */ 116444736000000000));
-  }
-#endif /* _FILETIME_ */
-#endif
-} fptu_time;
 
 /* Возвращает текущее время в правильной форме.
  *
@@ -838,6 +853,7 @@ FPTU_API size_t fptu_field_count_ro_ex(fptu_ro ro, fptu_field_filter filter,
 
 FPTU_API fptu_type fptu_field_type(const fptu_field *pf);
 FPTU_API int fptu_field_column(const fptu_field *pf);
+FPTU_API struct iovec fptu_field_as_iovec(const fptu_field *pf);
 
 FPTU_API uint_fast16_t fptu_field_uint16(const fptu_field *pf);
 FPTU_API int_fast32_t fptu_field_int32(const fptu_field *pf);
@@ -877,21 +893,21 @@ FPTU_API struct iovec fptu_get_opaque(fptu_ro ro, unsigned column, int *error);
 FPTU_API fptu_ro fptu_get_nested(fptu_ro ro, unsigned column, int *error);
 
 // TODO: fptu_field_array(), fptu_get_array()
-typedef struct FPTU_API fptu_array {
-  size_t size;
-  union {
-    uint16_t uint16[2];
-    int32_t int32[1];
-    uint32_t uint32[1];
-    int64_t int64[1];
-    uint64_t uint64[1];
-    double fp64[1];
-    float fp32[1];
-    const char *cstr[1];
-    fptu_ro nested[1];
-    struct iovec opaque[1];
-  };
-} fptu_array;
+// typedef struct FPTU_API fptu_array {
+//  size_t size;
+//  union {
+//    uint16_t uint16[2];
+//    int32_t int32[1];
+//    uint32_t uint32[1];
+//    int64_t int64[1];
+//    uint64_t uint64[1];
+//    double fp64[1];
+//    float fp32[1];
+//    const char *cstr[1];
+//    fptu_ro nested[1];
+//    struct iovec opaque[1];
+//  };
+//} fptu_array;
 
 //----------------------------------------------------------------------------
 /* Определения и примитивы для сравнения. */
@@ -959,30 +975,13 @@ typedef struct fptu_build_info {
   const char *compile_flags;
 } fptu_build_info;
 
-extern FPTU_API const struct fptu_version_info fptu_version;
-extern FPTU_API const struct fptu_build_info fptu_build;
-
-#ifdef __cplusplus
-}
+extern FPTU_API const fptu_version_info fptu_version;
+extern FPTU_API const fptu_build_info fptu_build;
 
 //----------------------------------------------------------------------------
-/* Сервисные функции и классы для C++ (будет пополнятся). */
+/* Сервисные функции (будет пополнятся). */
 
-uint_fast16_t fptu_field::colnum(uint_fast16_t packed_ct) {
-  return (uint_fast16_t)(((uint16_t)packed_ct) >> fptu_co_shift);
-}
-fptu_type fptu_field::type(uint_fast16_t packed_ct) {
-  return (fptu_type)(packed_ct & fptu_ty_mask);
-}
-uint_fast16_t fptu_field::colnum() const { return colnum(this->ct); }
-fptu_type fptu_field::type() const { return type(this->ct); }
-
-uint_fast16_t fptu_field::get_payload_uint16() const {
-  assert(type() == fptu_uint16);
-  return offset;
-}
-
-typedef union fptu_payload {
+union fptu_payload {
   uint32_t u32;
   int32_t i32;
   uint64_t u64;
@@ -998,14 +997,41 @@ typedef union fptu_payload {
     fptu_varlen varlen;
     uint32_t data[1];
   } other;
-} fptu_payload;
+};
 
 static __inline fptu_payload *fptu_field_payload(fptu_field *pf) {
   return (fptu_payload *)&pf->body[pf->offset];
 }
 
+#ifdef __cplusplus
+}
+
+//----------------------------------------------------------------------------
+/* Сервисные функции и классы для C++ (будет пополнятся). */
+
+const fptu_payload *fptu_field::payload() const {
+  return (const fptu_payload *)&this->body[this->offset];
+}
+
 static __inline const fptu_payload *fptu_field_payload(const fptu_field *pf) {
-  return (const fptu_payload *)&pf->body[pf->offset];
+  return pf->payload();
+}
+
+uint_fast16_t fptu_field::colnum(uint_fast16_t packed_ct) {
+  return (uint_fast16_t)(((uint16_t)packed_ct) >> fptu_co_shift);
+}
+
+fptu_type fptu_field::type(uint_fast16_t packed_ct) {
+  return (fptu_type)(packed_ct & fptu_ty_mask);
+}
+
+uint_fast16_t fptu_field::colnum() const { return colnum(this->ct); }
+
+fptu_type fptu_field::type() const { return type(this->ct); }
+
+uint_fast16_t fptu_field::get_payload_uint16() const {
+  assert(type() == fptu_uint16);
+  return offset;
 }
 
 namespace fptu {
@@ -1245,7 +1271,6 @@ bool operator<=(const fptu_lge &, const fptu_lge &) = delete;
 #endif /* __cplusplus */
 
 #ifdef _MSC_VER
-#pragma pack(pop)
 #pragma warning(pop)
 #endif
 

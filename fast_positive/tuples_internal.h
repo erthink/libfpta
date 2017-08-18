@@ -449,6 +449,7 @@ fptu_depleted2lge(const iterator &left_pos, const iterator &left_end,
 }
 
 #ifdef _MSC_VER
+
 #ifndef snprintf
 #define snprintf(buffer, buffer_size, format, ...)                             \
   _snprintf_s(buffer, buffer_size, _TRUNCATE, format, __VA_ARGS__)
@@ -458,4 +459,34 @@ fptu_depleted2lge(const iterator &left_pos, const iterator &left_end,
 #define vsnprintf(buffer, buffer_size, format, args)                           \
   _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args)
 #endif /* vsnprintf */
+
+#ifdef _ASSERTE
+#undef assert
+#define assert _ASSERTE
+#endif
+
+#if _MSC_VER >= 1900 && !defined(PRIuSIZE)
+/* LY: MSVC 2015/2017 has buggy/inconsistent PRIuPTR/PRIxPTR macros
+ * for internal format-args checker. */
+#undef PRIuPTR
+#undef PRIiPTR
+#undef PRIdPTR
+#undef PRIxPTR
+#define PRIuPTR "Iu"
+#define PRIiPTR "Ii"
+#define PRIdPTR "Id"
+#define PRIxPTR "Ix"
+#define PRIuSIZE "zu"
+#define PRIiSIZE "zi"
+#define PRIdSIZE "zd"
+#define PRIxSIZE "zx"
+#endif /* fix PRI*PTR for _MSC_VER */
+
 #endif /* _MSC_VER */
+
+#ifndef PRIuSIZE
+#define PRIuSIZE PRIuPTR
+#define PRIiSIZE PRIiPTR
+#define PRIdSIZE PRIdPTR
+#define PRIxSIZE PRIxPTR
+#endif /* PRI*SIZE macros */
