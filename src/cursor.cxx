@@ -832,7 +832,12 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 
 //----------------------------------------------------------------------------
 
-int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
+int fpta_cursor_validate_update_ex(fpta_cursor *cursor, fptu_ro new_row_value,
+                                   fpta_put_options op) {
+  if (unlikely(op != fpta_update &&
+               op != (fpta_update | fpta_skip_nonnullable_check)))
+    return FPTA_EFLAG;
+
   int rc = fpta_cursor_validate(cursor, fpta_write);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -848,6 +853,12 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
+
+  if ((op & fpta_skip_nonnullable_check) == 0) {
+    rc = fpta_check_notindexed_cols(cursor->table_schema(), new_row_value);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
 
   if (!cursor->table_schema()->has_secondary())
     return FPTA_SUCCESS;

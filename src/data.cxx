@@ -519,7 +519,8 @@ erase_field:
 
 int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op) {
-  if (unlikely(op < fpta_insert || op > fpta_upsert))
+  if (unlikely(op < fpta_insert ||
+               op > (fpta_upsert | fpta_skip_nonnullable_check)))
     return FPTA_EFLAG;
 
   int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
@@ -531,6 +532,14 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   rc = fpta_index_row2key(table_def, 0, row_value, pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
+
+  if (op & fpta_skip_nonnullable_check)
+    op = (fpta_put_options)(op - fpta_skip_nonnullable_check);
+  else {
+    rc = fpta_check_notindexed_cols(table_def, row_value);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
 
   MDBX_dbi handle;
   rc = fpta_open_table(txn, table_def, handle);
