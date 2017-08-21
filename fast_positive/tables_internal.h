@@ -59,7 +59,7 @@
 #include "fast_positive/tuples_internal.h"
 
 #ifdef _MSC_VER
-#if _MSC_VER == 1900            /* MSVC 2015 compiler is mad */
+#if _MSC_VER >= 1900            /* MSVC 2015/2017 compilers are mad */
 #pragma warning(disable : 4770) /* partially validated enum used as index */
 #endif
 
