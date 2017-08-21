@@ -97,8 +97,6 @@ static __inline int fpta_id_validate(const fpta_name *id,
       const fpta_table_schema *table_schema = id->table_schema;
       if (unlikely(table_schema == nullptr))
         return FPTA_EINVAL;
-      if (unlikely(table_schema == nullptr))
-        return FPTA_SCHEMA_CORRUPTED;
       if (unlikely(table_schema->signature() != FTPA_SCHEMA_SIGNATURE))
         return FPTA_SCHEMA_CORRUPTED;
       if (unlikely(table_schema->table_shove() != id->shove))
