@@ -332,6 +332,12 @@ enum fpta_error {
   FPTA_SIMILAR_INDEX
   /* Adding index which is similar to one of the existing */,
 
+  FPTA_NODATA = -1 /* No data or EOF was reached */,
+  FPTA_DEADBEEF = UINT32_C(0xDeadBeef) /* Pseudo error for results by refs,
+    mean `no value` returned */,
+
+  /**************************************** Native (system) error codes ***/
+
   FPTA_ENOFIELD = FPTU_ENOFIELD,
   FPTA_ENOSPACE = FPTU_ENOSPACE,
   FPTA_EINVAL = FPTU_EINVAL /* Invalid argument */,
@@ -365,10 +371,6 @@ enum fpta_error {
   FPTA_ENAME = EKEYREJECTED /* FPTA_EINVAL */,
   FPTA_EFLAG = EBADRQC /* FPTA_EINVAL */,
 #endif
-  FPTA_NODATA = -1 /* No data or EOF was reached */,
-
-  FPTA_DEADBEEF = UINT32_C(0xDeadBeef) /* Pseudo error for results by pointer,
-    mean `no value` returned */,
 
   /************************************************* MDBX's error codes ***/
   FPTA_KEYEXIST = -30799 /* key/data pair already exists */,

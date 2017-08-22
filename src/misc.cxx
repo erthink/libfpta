@@ -95,24 +95,8 @@ static const char *__fpta_errstr(int errnum) {
   case FPTA_SIMILAR_INDEX:
     return "Adding index which is similar to one of the existing";
 
-  case FPTA_EINVAL /* EINVAL */:
-    return "FPTA: Invalid argument";
-  case FPTA_ENOMEM /* ENOMEM */:
-    return "FPTA: Out of memory";
-  case FPTA_ENOIMP /* may == ENOSYS */:
-    return "FPTA: Not yet implemented";
-
   case FPTA_NODATA /* -1, EOF */:
     return "FPTA: No data or EOF was reached";
-
-  case FPTA_ENOSPACE /* FPTU_ENOSPACE, may == ENOSPC */:
-    return "FPTA: No space left in row/tuple";
-
-  case FPTA_ENOFIELD /* FPTU_ENOFIELD, may == ENOENT */:
-    return "FPTA: No such column/field";
-
-  case FPTA_EVALUE /* may == EDOM */:
-    return "FPTA: Value is invalid or out of range";
   }
 }
 
