@@ -508,14 +508,13 @@ int fpta_composite_index_validate(
     /* more cases for ordered */
     if (fpta_index_is_ordered(column_shove) &&
         fpta_index_is_ordered(index_type)) {
-      if (column_number == 0 && fpta_index_is_obverse(column_shove) &&
+      if (scan == items_begin && fpta_index_is_obverse(column_shove) &&
           fpta_index_is_obverse(index_type))
         /* obverse-sorting by a composite key
          * outmatches sorting by the first element */
         return FPTA_SIMILAR_INDEX;
 
-      if (column_number + 1 == column_count &&
-          fpta_index_is_reverse(column_shove) &&
+      if (scan + 1 == items_end && fpta_index_is_reverse(column_shove) &&
           fpta_index_is_reverse(index_type))
         /* reverse-sorting by a composite key outmatches
          * sorting by the last (first in reverse) element */
