@@ -664,7 +664,8 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_LT(se_composite_origin.binary_length, se_composite_key.binary_length);
   EXPECT_GT(0, memcmp(se_composite_origin.binary_data,
                       se_composite_key.binary_data,
-                      se_composite_key.binary_length));
+                      std::min(se_composite_key.binary_length,
+                               se_composite_origin.binary_length)));
   // позиционируем курсор на конкретное составное значение,
   // это вторая и последняя строка таблицы
   EXPECT_EQ(FPTA_OK,
@@ -682,7 +683,8 @@ TEST(SmokeIndex, Secondary) {
   EXPECT_LT(se_composite_origin.binary_length, se_composite_key.binary_length);
   EXPECT_LT(0, memcmp(se_composite_origin.binary_data,
                       se_composite_key.binary_data,
-                      se_composite_key.binary_length));
+                      std::min(se_composite_key.binary_length,
+                               se_composite_origin.binary_length)));
 
   // разрушаем созданные кортежи
   // на всякий случай предварительно проверяя их
