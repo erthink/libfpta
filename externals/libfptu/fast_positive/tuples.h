@@ -126,9 +126,14 @@ enum fptu_error {
   FPTU_EINVAL = 0x00000057 /* ERROR_INVALID_PARAMETER */,
   FPTU_ENOSPACE = 0x00000540 /* ERROR_ALLOTTED_SPACE_EXCEEDED */,
 #else
-  FPTU_ENOFIELD = ENOENT,
-  FPTU_EINVAL = EINVAL,
-  FPTU_ENOSPACE = ENOSPC,
+#ifdef ENOKEY
+  FPTU_ENOFIELD = ENOKEY /* Required key not available */,
+#else
+  FPTU_ENOFIELD = ENOENT /* No such file or directory (POSIX) */,
+#endif
+  FPTU_EINVAL = EINVAL /* Invalid argument (POSIX) */,
+  FPTU_ENOSPACE = ENOBUFS /* No buffer space available (POSIX)  */,
+/* OVERFLOW - Value too large to be stored in data type (POSIX) */
 #endif
 };
 
