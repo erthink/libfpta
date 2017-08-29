@@ -3159,6 +3159,8 @@ TEST(Smoke, OverchargeOnCommit) {
 
   fptu_rw *tuple = fptu_alloc(6, 1000);
   ASSERT_NE(tuple, (fptu_rw *)nullptr);
+  scoped_ptrw_guard ptrw_guard;
+  ptrw_guard.reset(tuple);
 
   int err = FPTA_OK;
   for (uint64_t pk = 0; err == FPTA_OK; ++pk) {
@@ -3201,7 +3203,6 @@ TEST(Smoke, OverchargeOnCommit) {
     }
   }
 
-  free(tuple);
   fpta_name_destroy(&host);
   fpta_name_destroy(&id);
   fpta_name_destroy(&last_changed);
@@ -3287,8 +3288,12 @@ TEST(Smoke, AsyncSchemaChange) {
                                   &db_correlator));
 
   fpta_txn *txn_correlator = nullptr;
-  fptu_rw *tuple = fptu_alloc(4, 1000);
   fpta_name table_id_, host, last, id, user;
+
+  fptu_rw *tuple = fptu_alloc(4, 1000);
+  ASSERT_NE(tuple, (fptu_rw *)nullptr);
+  scoped_ptrw_guard ptrw_guard;
+  ptrw_guard.reset(tuple);
 
   // выполняем пробное обновление в кореляторе
   {
@@ -3335,8 +3340,6 @@ TEST(Smoke, AsyncSchemaChange) {
     fptu_clear(tuple);
 
 #if 0 /* лишние телодвижения */
-    free(tuple);
-
     fpta_name_destroy(&table_id_);
     fpta_name_destroy(&host);
     fpta_name_destroy(&last);
@@ -3420,7 +3423,6 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &id, "_id"));
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table_id_, &user, "user"));
 
-    fptu_rw *tuple = fptu_alloc(4, 1000);
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &table_id_));
 #endif
 
@@ -3453,7 +3455,6 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
   }
 
-  free(tuple);
   fpta_name_destroy(&host);
   fpta_name_destroy(&last);
   fpta_name_destroy(&id);
