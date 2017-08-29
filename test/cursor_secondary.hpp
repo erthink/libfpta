@@ -257,8 +257,8 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
 
     if (!valid_pk) {
-      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
-                                                  pk_index, &def));
+      EXPECT_NE(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
+                                              pk_index, &def));
 
       // разрушаем описание таблицы
       EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
@@ -268,8 +268,8 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
                                             pk_index, &def));
     if (!valid_se) {
-      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
-                                                  se_index, &def));
+      EXPECT_NE(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
+                                              se_index, &def));
 
       // разрушаем описание таблицы
       EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
@@ -841,7 +841,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
               ASSERT_EQ(FPTA_NODATA,
                         fpta_cursor_locate(cursor, false, &key, nullptr));
             } else {
-              ASSERT_EQ(FPTA_EINVAL,
+              ASSERT_NE(FPTA_OK,
                         fpta_cursor_locate(cursor, false, &key, nullptr));
             }
             ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
@@ -855,7 +855,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
             ASSERT_EQ(FPTA_NODATA,
                       fpta_cursor_locate(cursor, false, &key, nullptr));
           } else {
-            ASSERT_EQ(FPTA_EINVAL,
+            ASSERT_NE(FPTA_OK,
                       fpta_cursor_locate(cursor, false, &key, nullptr));
           }
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
@@ -869,8 +869,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
           ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_NO_FATAL_FAILURE(CheckPosition(linear, -1, 1));
         } else {
-          ASSERT_EQ(FPTA_EINVAL,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_NE(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         }
@@ -908,8 +907,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
           ASSERT_NO_FATAL_FAILURE(
               CheckPosition(linear, expected_dup_number, expected_dups));
         } else {
-          ASSERT_EQ(FPTA_EINVAL,
-                    fpta_cursor_locate(cursor, false, &key, nullptr));
+          ASSERT_NE(FPTA_OK, fpta_cursor_locate(cursor, false, &key, nullptr));
           ASSERT_EQ(FPTA_NODATA, fpta_cursor_eof(cursor));
           ASSERT_EQ(FPTA_ECURSOR, fpta_cursor_dups(cursor_guard.get(), &dups));
         }

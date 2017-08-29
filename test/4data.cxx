@@ -229,7 +229,7 @@ TEST(Data, UpsertColumn) {
   fpta_column_set def;
   fpta_column_set_init(&def);
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_ETYPE,
             fpta_column_describe("null", fptu_null, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("uint16", fptu_uint16, fpta_index_none, &def));
@@ -264,7 +264,7 @@ TEST(Data, UpsertColumn) {
 
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("nested", fptu_nested, fpta_index_none, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_ETYPE,
             fpta_column_describe("farray", fptu_farray, fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 

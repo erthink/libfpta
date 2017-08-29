@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -30,6 +30,11 @@
 #cmakedefine HAVE_nanf
 #cmakedefine HAVE_nan
 #cmakedefine HAVE_IEEE754_H
+#cmakedefine HAVE_ENDIAN_H
+#cmakedefine HAVE_BYTESWAP_H
+#cmakedefine HAVE_SYS_PARAM_H
+#cmakedefine HAVE_NETINET_IN_H
+#cmakedefine HAVE_RESOLV_H
 
 #cmakedefine LTO_ENABLED
 #cmakedefine ENABLE_VALGRIND

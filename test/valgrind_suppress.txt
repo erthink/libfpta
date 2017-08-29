@@ -1,6 +1,13 @@
 {
-   t1ha_oneshot_read
+   t1ha_oneshot_read-Ox
    Memcheck:Addr8
+   fun:tail64_le
+   fun:t1ha1_le
+}
+{
+   t1ha_oneshot_read-O0
+   Memcheck:Addr8
+   fun:fetch64_le
    fun:tail64_le
    fun:t1ha1_le
 }

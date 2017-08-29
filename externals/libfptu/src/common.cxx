@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -104,8 +104,13 @@ __hot fptu_field *fptu_lookup(fptu_rw *pt, unsigned column,
 //----------------------------------------------------------------------------
 
 __hot fptu_ro fptu_take_noshrink(const fptu_rw *pt) {
-  fptu_ro tuple;
+  static_assert(offsetof(fptu_ro, units) == offsetof(iovec, iov_base) &&
+                    offsetof(fptu_ro, total_bytes) ==
+                        offsetof(iovec, iov_len) &&
+                    sizeof(fptu_ro) == sizeof(iovec),
+                "unexpected struct iovec");
 
+  fptu_ro tuple;
   assert(pt->head > 0);
   assert(pt->tail - pt->head <= UINT16_MAX);
   fptu_payload *payload = (fptu_payload *)&pt->units[pt->head - 1];

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -38,17 +38,17 @@ TEST(Schema, Trivia) {
   fpta_column_set_init(&def);
   EXPECT_NE(FPTA_SUCCESS, fpta_column_set_validate(&def));
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_ENAME,
             fpta_column_describe("", fptu_cstr,
                                  fpta_primary_unique_ordered_obverse, &def));
   EXPECT_EQ(FPTA_EINVAL,
             fpta_column_describe("column_a", fptu_cstr,
                                  fpta_primary_unique_ordered_obverse, nullptr));
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("column_a", fptu_uint64,
                                  fpta_primary_unique_ordered_reverse, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_ETYPE,
             fpta_column_describe("column_a", fptu_null,
                                  fpta_primary_unique_ordered_obverse, &def));
 
@@ -59,17 +59,17 @@ TEST(Schema, Trivia) {
    *
    * Поэтому внутри диапазона остаются только две недопустимые комбинации,
    * которые и проверяем. */
-  EXPECT_EQ(FPTA_EINVAL, fpta_column_describe("column_a", fptu_cstr,
-                                              fpta_index_funique, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG, fpta_column_describe("column_a", fptu_cstr,
+                                             fpta_index_funique, &def));
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe(
                 "column_a", fptu_cstr,
                 (fpta_index_type)(fpta_index_fsecondary | fpta_index_funique),
                 &def));
-  EXPECT_EQ(FPTA_EINVAL, fpta_column_describe("column_a", fptu_cstr,
-                                              (fpta_index_type)-1, &def));
+  EXPECT_EQ(FPTA_EFLAG, fpta_column_describe("column_a", fptu_cstr,
+                                             (fpta_index_type)-1, &def));
   EXPECT_EQ(
-      FPTA_EINVAL,
+      FPTA_EFLAG,
       fpta_column_describe(
           "column_a", fptu_cstr,
           (fpta_index_type)(fpta_index_funique + fpta_index_fordered +
@@ -193,7 +193,7 @@ TEST(Schema, Base) {
   //------------------------------------------------------------------------
   // создаем первую таблицу в отдельной транзакции
   EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, fpta_read, nullptr));
-  EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, (fpta_level)0, &txn));
+  EXPECT_EQ(FPTA_EFLAG, fpta_transaction_begin(db, (fpta_level)0, &txn));
   EXPECT_EQ(nullptr, txn);
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
   ASSERT_NE(nullptr, txn);
@@ -242,7 +242,7 @@ TEST(Schema, Base) {
   EXPECT_EQ(0, memcmp(&probe_get, &col_a, sizeof(fpta_name)));
   EXPECT_EQ(FPTA_OK, fpta_table_column_get(&table, 2, &probe_get));
   EXPECT_EQ(0, memcmp(&probe_get, &col_b, sizeof(fpta_name)));
-  EXPECT_EQ(FPTA_EINVAL, fpta_table_column_get(&table, 3, &probe_get));
+  EXPECT_EQ(FPTA_NODATA, fpta_table_column_get(&table, 3, &probe_get));
 
   EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.shove));
   EXPECT_EQ(fpta_primary_unique_ordered_obverse, fpta_name_colindex(&col_pk));
@@ -271,7 +271,7 @@ TEST(Schema, Base) {
   //------------------------------------------------------------------------
   // создаем вторую таблицу в отдельной транзакции
   EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, fpta_read, nullptr));
-  EXPECT_EQ(FPTA_EINVAL, fpta_transaction_begin(db, (fpta_level)0, &txn));
+  EXPECT_EQ(FPTA_EFLAG, fpta_transaction_begin(db, (fpta_level)0, &txn));
   EXPECT_EQ(nullptr, txn);
   EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
   ASSERT_NE(nullptr, txn);
@@ -399,86 +399,86 @@ TEST(Schema, TriviaWithNullable) {
   fpta_column_set_init(&def);
   EXPECT_NE(FPTA_SUCCESS, fpta_column_set_validate(&def));
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_int32,
                                  fpta_primary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_int64,
                                  fpta_primary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_fp32,
                                  fpta_primary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_fp64,
                                  fpta_primary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_datetime,
                                  fpta_primary_unique_ordered_reverse_nullable,
                                  &def));
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_int32,
                                  fpta_primary_withdups_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_int64,
                                  fpta_primary_withdups_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_fp32,
                                  fpta_primary_withdups_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_fp64,
                                  fpta_primary_withdups_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_datetime,
                                  fpta_primary_withdups_ordered_reverse_nullable,
                                  &def));
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_int32,
                                  fpta_secondary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_int64,
                                  fpta_secondary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_fp32,
                                  fpta_secondary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_fp64,
                                  fpta_secondary_unique_ordered_reverse_nullable,
                                  &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe("col", fptu_datetime,
                                  fpta_secondary_unique_ordered_reverse_nullable,
                                  &def));
 
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe(
                 "col", fptu_int32,
                 fpta_secondary_withdups_ordered_reverse_nullable, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe(
                 "col", fptu_int64,
                 fpta_secondary_withdups_ordered_reverse_nullable, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe(
                 "col", fptu_fp32,
                 fpta_secondary_withdups_ordered_reverse_nullable, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe(
                 "col", fptu_fp64,
                 fpta_secondary_withdups_ordered_reverse_nullable, &def));
-  EXPECT_EQ(FPTA_EINVAL,
+  EXPECT_EQ(FPTA_EFLAG,
             fpta_column_describe(
                 "col", fptu_datetime,
                 fpta_secondary_withdups_ordered_reverse_nullable, &def));

@@ -209,27 +209,89 @@ fpta_value fpta_field2value(const fptu_field *field) {
 
 int fpta_get_column(fptu_ro row, const fpta_name *column_id,
                     fpta_value *value) {
-  if (unlikely(column_id == nullptr || value == nullptr))
+  if (unlikely(value == nullptr))
     return FPTA_EINVAL;
-  const unsigned colnum = (unsigned)column_id->column.num;
-  if (colnum > fpta_max_cols)
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+  if (unlikely(fpta_column_is_composite(column_id)))
     return FPTA_EINVAL;
 
   const fptu_field *field =
-      fptu_lookup_ro(row, colnum, fpta_name_coltype(column_id));
+      fptu_lookup_ro(row, column_id->column.num, fpta_name_coltype(column_id));
   *value = fpta_field2value_ex(field, fpta_name_colindex(column_id));
   return field ? FPTA_SUCCESS : FPTA_NODATA;
 }
 
+int fpta_get_column2buffer(fptu_ro row, const fpta_name *column_id,
+                           fpta_value *value, void *buffer,
+                           size_t buffer_length) {
+  if (unlikely(value == nullptr))
+    return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+  if (unlikely(buffer == nullptr && buffer_length))
+    return FPTA_EINVAL;
+
+  if (fpta_column_is_composite(column_id)) {
+    static_assert(sizeof(fpta_key) == fpta_keybuf_len, "expect equal");
+    if (unlikely(buffer_length < sizeof(fpta_key))) {
+      value->binary_length = sizeof(fpta_key);
+      value->type = fpta_invalid;
+      value->binary_data = nullptr;
+      return FPTA_DATALEN_MISMATCH;
+    }
+
+    fpta_key *key = (fpta_key *)buffer;
+    const fpta_table_schema *table_schema =
+        column_id->column.table->table_schema;
+    int rc =
+        fpta_composite_row2key(table_schema, column_id->column.num, row, *key);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+
+    value->type = fpta_shoved;
+    value->binary_length = (unsigned)key->mdbx.iov_len;
+    value->binary_data = key->mdbx.iov_base;
+    return FPTA_SUCCESS;
+  }
+
+  const fptu_field *field =
+      fptu_lookup_ro(row, column_id->column.num, fpta_name_coltype(column_id));
+  *value = fpta_field2value_ex(field, fpta_name_colindex(column_id));
+  if (unlikely(field == nullptr))
+    return FPTA_NODATA;
+
+  if (value->type >= fpta_string) {
+    assert(value->type <= fpta_binary);
+    size_t needed_bytes = value->binary_length +
+                          (fptu_cstr == fpta_name_coltype(column_id) ? 1 : 0);
+    assert((value->type == fpta_string) ==
+           (fptu_cstr == fpta_name_coltype(column_id)));
+    if (unlikely(needed_bytes > buffer_length)) {
+      value->binary_length = needed_bytes;
+      value->type = fpta_invalid;
+      value->binary_data = nullptr;
+      return FPTA_DATALEN_MISMATCH;
+    }
+
+    if (likely(needed_bytes > 0))
+      value->binary_data = memcpy(buffer, value->binary_data, needed_bytes);
+  }
+  return FPTA_SUCCESS;
+}
+
 int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
                        fpta_value value) {
-  if (unlikely(!pt || !fpta_id_validate(column_id, fpta_column)))
+  if (unlikely(!pt))
     return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
-  if (colnum > fpta_max_cols)
-    return FPTA_EINVAL;
-
+  const unsigned colnum = column_id->column.num;
+  assert(colnum <= fpta_max_cols);
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   const fpta_index_type index = fpta_name_colindex(column_id);
 
@@ -447,7 +509,7 @@ denil_catched:
     return FPTA_EVALUE;
 
 erase_field:
-  int rc = fptu_erase(pt, colnum, fptu_any);
+  rc = fptu_erase(pt, colnum, fptu_any);
   assert(rc >= 0);
   (void)rc;
   return FPTA_SUCCESS;
@@ -457,8 +519,9 @@ erase_field:
 
 int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
                       fpta_put_options op) {
-  if (unlikely(op < fpta_insert || op > fpta_upsert))
-    return FPTA_EINVAL;
+  if (unlikely(op < fpta_insert ||
+               op > (fpta_upsert | fpta_skip_nonnullable_check)))
+    return FPTA_EFLAG;
 
   int rc = fpta_name_refresh_couple(txn, table_id, nullptr);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -469,6 +532,14 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   rc = fpta_index_row2key(table_def, 0, row_value, pk_key, false);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
+
+  if (op & fpta_skip_nonnullable_check)
+    op = (fpta_put_options)(op - fpta_skip_nonnullable_check);
+  else {
+    rc = fpta_check_notindexed_cols(table_def, row_value);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
 
   MDBX_dbi handle;
   rc = fpta_open_table(txn, table_def, handle);
@@ -517,7 +588,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
       return (op == fpta_insert) ? FPTA_KEYEXIST : FPTA_SUCCESS;
   }
 
-  if (!fpta_table_has_secondary(table_def))
+  if (!table_def->has_secondary())
     return FPTA_SUCCESS;
 
   return fpta_secondary_check(txn, table_def, present_row, row_value, 0);
@@ -533,7 +604,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   unsigned flags = MDBX_NODUPDATA;
   switch (op) {
   default:
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
   case fpta_insert:
     if (fpta_index_is_unique(table_def->table_pk()))
       flags |= MDBX_NOOVERWRITE;
@@ -561,7 +632,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (!fpta_table_has_secondary(table_def))
+  if (!table_def->has_secondary())
     return mdbx_put(txn->mdbx_txn, handle, &pk_key.mdbx, &row.sys, flags);
 
   fptu_ro old;
@@ -601,7 +672,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
     return rc;
 
   fpta_table_schema *table_def = table_id->table_schema;
-  if (row.sys.iov_len && fpta_table_has_secondary(table_def) &&
+  if (row.sys.iov_len && table_def->has_secondary() &&
       mdbx_is_dirty(txn->mdbx_txn, row.sys.iov_base)) {
     /* LY: Делаем копию строки, так как удаление в основной таблице
      * уничтожит текущее значение при перезаписи "грязной" страницы.
@@ -637,7 +708,7 @@ int fpta_delete(fpta_txn *txn, fpta_name *table_id, fptu_ro row) {
   if (unlikely(rc != MDBX_SUCCESS))
     return rc;
 
-  if (fpta_table_has_secondary(table_def)) {
+  if (table_def->has_secondary()) {
     rc = fpta_secondary_remove(txn, table_def, key.mdbx, row, 0);
     if (unlikely(rc != MDBX_SUCCESS))
       return fpta_internal_abort(txn, rc);
@@ -656,11 +727,12 @@ int fpta_get(fpta_txn *txn, fpta_name *column_id,
 
   if (unlikely(column_value == nullptr))
     return FPTA_EINVAL;
-  if (unlikely(!fpta_id_validate(column_id, fpta_column)))
-    return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   fpta_name *table_id = column_id->column.table;
-  int rc = fpta_name_refresh_couple(txn, table_id, column_id);
+  rc = fpta_name_refresh_couple(txn, table_id, column_id);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 

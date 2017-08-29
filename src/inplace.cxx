@@ -259,7 +259,7 @@ template <fptu_type type> struct saturated {
 
     switch (op) {
     default:
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
     case fpta_saturated_add:
       if (value.is_negative()) {
         value = -value;
@@ -313,8 +313,11 @@ template <fptu_type type> struct saturated {
 //----------------------------------------------------------------------------
 
 FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
-  if (unlikely(!value || !fpta_id_validate(column_id, fpta_column)))
+  if (unlikely(!value))
     return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   const fpta_index_type index = fpta_name_colindex(column_id);
@@ -367,14 +370,16 @@ FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
 FPTA_API int fpta_column_inplace(fptu_rw *row, const fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...) {
-  if (unlikely(!row || !fpta_id_validate(column_id, fpta_column)))
+  if (unlikely(!row))
     return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column_with_schema);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
-  if (colnum > fpta_max_cols)
-    return FPTA_EINVAL;
+  const unsigned colnum = column_id->column.num;
+  assert(colnum <= fpta_max_cols);
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
   if (unlikely((fptu_any_number & (INT32_C(1) << coltype)) == 0))
@@ -428,7 +433,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
                                  const fpta_inplace op, const fpta_value value,
                                  ...) {
   if (unlikely(op < fpta_saturated_add || op > fpta_bes))
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   int rc = fpta_cursor_validate(cursor, fpta_write);
   if (unlikely(rc != FPTA_SUCCESS))
@@ -438,7 +443,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(cursor->column_number == (unsigned)column_id->column.num))
+  if (unlikely(cursor->column_number == column_id->column.num))
     return FPTA_EINVAL;
 
   const fptu_type coltype = fpta_shove2type(column_id->shove);
@@ -476,7 +481,7 @@ FPTA_API int fpta_cursor_inplace(fpta_cursor *cursor, fpta_name *column_id,
     numeric_traits<fptu_fp64>::fast fp64;
   } result;
 
-  const unsigned colnum = (unsigned)column_id->column.num;
+  const unsigned colnum = column_id->column.num;
   const fpta_index_type index = fpta_name_colindex(column_id);
   const fptu_field *field = fptu_lookup_ro(source_row, colnum, coltype);
 

@@ -108,6 +108,11 @@ include(cmake.fpta/profile.cmake)
 include(cmake.fpta/compiler.cmake)
 # include(cmake.fpta/atomic.cmake)
 
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
+  message(SEND_ERROR "MSVC compiler ${MSVC_VERSION} is too old for building FPTA."
+    "At least 'Microsoft Visual Studio 2015' is required.")
+endif()
+
 if(CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE_UPPERCASE STREQUAL "DEBUG")
   set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT ON)
 else()
@@ -148,6 +153,9 @@ if(INTERPROCEDURAL_OPTIMIZATION)
   else()
     message(WARNING "Unable to engage interprocedural/LTO optimization.")
   endif()
+else()
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+  set(LTO_ENABLED FALSE)
 endif()
 
 find_program(VALGRIND valgrind)
@@ -196,6 +204,11 @@ endif()
 CHECK_SYMBOL_EXISTS(nan math.h HAVE_nan)
 CHECK_SYMBOL_EXISTS(nanf math.h HAVE_nanf)
 CHECK_INCLUDE_FILES(ieee754.h HAVE_IEEE754_H)
+CHECK_INCLUDE_FILES(endian.h HAVE_ENDIAN_H)
+CHECK_INCLUDE_FILES(byteswap.h HAVE_BYTESWAP_H)
+CHECK_INCLUDE_FILES(sys/param.h HAVE_SYS_PARAM_H)
+CHECK_INCLUDE_FILES(netinet/in.h HAVE_NETINET_IN_H)
+CHECK_INCLUDE_FILES(resolv.h HAVE_RESOLV_H)
 
 #
 # Enable 'make tags' target.
@@ -272,12 +285,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${FAST_POSI
 include_directories("${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/externals/libfptu" "${PROJECT_SOURCE_DIR}/externals")
 add_subdirectory(externals)
 add_subdirectory(src)
-
-if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
-  message(WARNING "MSVC compiler is too old (${MSVC_VERSION}) for building tests, disable ones")
-else()
-  add_subdirectory(test)
-endif()
+add_subdirectory(test)
 
 set(PACKAGE "libfpta")
 set(CPACK_PACKAGE_VERSION_MAJOR ${FPTA_VERSION_MAJOR})

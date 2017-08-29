@@ -26,6 +26,333 @@
 #define assert _ASSERTE
 #endif /* _MSC_VER */
 
+/*----------------------------------------------------------------------------*/
+/* Compiler's includes for builtins/intrinsics */
+
+#if __GNUC_PREREQ(4, 4) || defined(__clang__)
+
+#if defined(__i386__) || defined(__x86_64__)
+#include <cpuid.h>
+#include <x86intrin.h>
+#endif
+#define bswap64(v) __builtin_bswap64(v)
+#define bswap32(v) __builtin_bswap32(v)
+#if __GNUC_PREREQ(4, 8) || __has_builtin(__builtin_bswap16)
+#define bswap16(v) __builtin_bswap16(v)
+#endif
+
+#elif defined(_MSC_VER)
+
+#if _MSC_FULL_VER < 190024215
+#error At least "Microsoft C/C++ Compiler" version 19.00.24215 (Visual Studio 2015 Update 3) is required.
+#endif
+#if _MSC_FULL_VER < 190024218
+#pragma message(                                                               \
+    "It is recommended to use \"Microsoft C/C++ Compiler\" version 19.00.24218.1 (Visual Studio 2015 Update 5) or newer.")
+#endif
+
+#pragma warning(push, 1)
+
+#include <intrin.h>
+#define bswap64(v) _byteswap_uint64(v)
+#define bswap32(v) _byteswap_ulong(v)
+#define bswap16(v) _byteswap_ushort(v)
+#define rot64(v, s) _rotr64(v, s)
+#define rot32(v, s) _rotr(v, s)
+
+#if defined(_M_ARM64) || defined(_M_X64) || defined(_M_IA64)
+#pragma intrinsic(_umul128)
+#define umul_64x64_128(a, b, ph) _umul128(a, b, ph)
+#pragma intrinsic(__umulh)
+#define umul_64x64_high(a, b) __umulh(a, b)
+#endif
+
+#if defined(_M_IX86)
+#pragma intrinsic(__emulu)
+#define umul_32x32_64(a, b) __emulu(a, b)
+#elif defined(_M_ARM)
+#define umul_32x32_64(a, b) _arm_umull(a, b)
+#endif
+
+#endif /* Compiler */
+
+#ifndef rot64
+static __inline uint64_t rot64(uint64_t v, unsigned s) {
+  return (v >> s) | (v << (64 - s));
+}
+#endif /* rot64 */
+
+#ifndef rot32
+static __inline uint32_t rot32(uint32_t v, unsigned s) {
+  return (v >> s) | (v << (32 - s));
+}
+#endif /* rot32 */
+
+#ifndef umul_32x32_64
+static __inline uint64_t umul_32x32_64(uint32_t a, uint32_t b) {
+  return a * (uint64_t)b;
+}
+#endif /* umul_32x32_64 */
+
+#ifndef umul_64x64_128
+static __inline uint64_t umul_64x64_128(uint64_t a, uint64_t b, uint64_t *h) {
+#if defined(__SIZEOF_INT128__) ||                                              \
+    (defined(_INTEGRAL_MAX_BITS) && _INTEGRAL_MAX_BITS >= 128)
+  __uint128_t r = (__uint128_t)a * (__uint128_t)b;
+  /* modern GCC could nicely optimize this */
+  *h = r >> 64;
+  return r;
+#elif defined(umul_64x64_high)
+  *h = umul_64x64_high(a, b);
+  return a * b;
+#else
+  return fpta_umul_64x64_128(a, b, h);
+#endif
+}
+#endif /* umul_64x64_128() */
+
+#ifndef umul_64x64_high
+static __inline uint64_t umul_64x64_high(uint64_t a, uint64_t b) {
+  uint64_t h;
+  umul_64x64_128(a, b, &h);
+  return h;
+}
+#endif /* umul_64x64_high */
+
+#if !defined(UNALIGNED_OK)
+#if defined(__i386) || defined(__x86_64__) || defined(_M_IX86) ||              \
+    defined(_M_X64) || defined(i386) || defined(_X86_) || defined(__i386__) || \
+    defined(_X86_64_)
+#define UNALIGNED_OK 1
+#else
+#define UNALIGNED_OK 0
+#endif
+#endif /* UNALIGNED_OK */
+
+/*----------------------------------------------------------------------------*/
+/* Byteorder */
+
+#if defined(HAVE_ENDIAN_H)
+#include <endian.h>
+#elif defined(HAVE_SYS_PARAM_H)
+#include <sys/param.h> /* for endianness */
+#elif defined(HAVE_NETINET_IN_H) && defined(HAVE_RESOLV_H)
+#include <netinet/in.h>
+#include <resolv.h> /* defines BYTE_ORDER on HPUX and Solaris */
+#endif
+
+#ifdef HAVE_BYTESWAP_H
+#include <byteswap.h>
+#endif
+
+#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) ||           \
+    !defined(__ORDER_BIG_ENDIAN__)
+
+#if defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+#define __ORDER_LITTLE_ENDIAN__ __LITTLE_ENDIAN
+#define __ORDER_BIG_ENDIAN__ __BIG_ENDIAN
+#define __BYTE_ORDER__ __BYTE_ORDER
+#else
+#define __ORDER_LITTLE_ENDIAN__ 1234
+#define __ORDER_BIG_ENDIAN__ 4321
+#if defined(__LITTLE_ENDIAN__) || defined(_LITTLE_ENDIAN) ||                   \
+    defined(__ARMEL__) || defined(__THUMBEL__) || defined(__AARCH64EL__) ||    \
+    defined(__MIPSEL__) || defined(_MIPSEL) || defined(__MIPSEL) ||            \
+    defined(__i386) || defined(__x86_64__) || defined(_M_IX86) ||              \
+    defined(_M_X64) || defined(i386) || defined(_X86_) || defined(__i386__) || \
+    defined(_X86_64_) || defined(_M_ARM) || defined(_M_ARM64) ||               \
+    defined(__e2k__)
+#define __BYTE_ORDER__ __ORDER_LITTLE_ENDIAN__
+#elif defined(__BIG_ENDIAN__) || defined(_BIG_ENDIAN) || defined(__ARMEB__) || \
+    defined(__THUMBEB__) || defined(__AARCH64EB__) || defined(__MIPSEB__) ||   \
+    defined(_MIPSEB) || defined(__MIPSEB) || defined(_M_IA64)
+#define __BYTE_ORDER__ __ORDER_BIG_ENDIAN__
+#else
+#error __BYTE_ORDER__ should be defined.
+#endif
+#endif
+
+#endif /* __BYTE_ORDER__ || __ORDER_LITTLE_ENDIAN__ || __ORDER_BIG_ENDIAN__ */
+
+#ifndef bswap64
+#if defined(bswap_64)
+#define bswap64 bswap_64
+#elif defined(__bswap_64)
+#define bswap64 __bswap_64
+#else
+static __inline uint64_t bswap64(uint64_t v) {
+  return v << 56 | v >> 56 | ((v << 40) & UINT64_C(0x00ff000000000000)) |
+         ((v << 24) & UINT64_C(0x0000ff0000000000)) |
+         ((v << 8) & UINT64_C(0x000000ff00000000)) |
+         ((v >> 8) & UINT64_C(0x00000000ff000000)) |
+         ((v >> 24) & UINT64_C(0x0000000000ff0000)) |
+         ((v >> 40) & UINT64_C(0x000000000000ff00));
+}
+#endif
+#endif /* bswap64 */
+
+#ifndef bswap32
+#if defined(bswap_32)
+#define bswap32 bswap_32
+#elif defined(__bswap_32)
+#define bswap32 __bswap_32
+#else
+static __inline uint32_t bswap32(uint32_t v) {
+  return v << 24 | v >> 24 | ((v << 8) & UINT32_C(0x00ff0000)) |
+         ((v >> 8) & UINT32_C(0x0000ff00));
+}
+#endif
+#endif /* bswap32 */
+
+#ifndef bswap16
+#if defined(bswap_16)
+#define bswap16 bswap_16
+#elif defined(__bswap_16)
+#define bswap16 __bswap_16
+#else
+static __inline uint16_t bswap16(uint16_t v) { return v << 8 | v >> 8; }
+#endif
+#endif /* bswap16 */
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+
+#if !defined(htobe16) || !defined(htole16) || !defined(be16toh) ||             \
+    !defined(le16toh)
+#define htobe16(x) bswap16(x)
+#define htole16(x) (x)
+#define be16toh(x) bswap16(x)
+#define le16toh(x) (x)
+#endif
+
+#if !defined(htobe32) || !defined(htole32) || !defined(be32toh) ||             \
+    !defined(le32toh)
+#define htobe32(x) bswap32(x)
+#define htole32(x) (x)
+#define be32toh(x) bswap32(x)
+#define le32toh(x) (x)
+#endif
+
+#if !defined(htobe64) || !defined(htole64) || !defined(be64toh) ||             \
+    !defined(le64toh)
+#define htobe64(x) bswap64(x)
+#define htole64(x) (x)
+#define be64toh(x) bswap64(x)
+#define le64toh(x) (x)
+#endif
+
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+
+#if !defined(htobe16) || !defined(htole16) || !defined(be16toh) ||             \
+    !defined(le16toh)
+#define htobe16(x) (x)
+#define htole16(x) bswap16(x)
+#define be16toh(x) (x)
+#define le16toh(x) bswap16(x)
+#endif
+
+#if !defined(htobe32) || !defined(htole32) || !defined(be32toh) ||             \
+    !defined(le32toh)
+#define htobe32(x) (x)
+#define htole32(x) bswap32(x)
+#define be32toh(x) (x)
+#define le32toh(x) bswap32(x)
+#endif
+
+#if !defined(htobe64) || !defined(htole64) || !defined(be64toh) ||             \
+    !defined(le64toh)
+#define htobe64(x) (x)
+#define htole64(x) bswap64(x)
+#define be64toh(x) (x)
+#define le64toh(x) bswap64(x)
+#endif
+
+#else
+#error Unsupported byte order.
+#endif /* htole / htobe / htole / letoh */
+
+template <typename integer> inline integer htole(integer value);
+template <> inline uint16_t htole<uint16_t>(uint16_t value) {
+  return htole16(value);
+}
+template <> inline int16_t htole<int16_t>(int16_t value) {
+  return htole16(value);
+}
+template <> inline uint32_t htole<uint32_t>(uint32_t value) {
+  return htole32(value);
+}
+template <> inline int32_t htole<int32_t>(int32_t value) {
+  return htole32(value);
+}
+template <> inline uint64_t htole<uint64_t>(uint64_t value) {
+  return htole64(value);
+}
+template <> inline int64_t htole<int64_t>(int64_t value) {
+  return htole64(value);
+}
+
+template <typename integer> inline integer htobe(integer value);
+template <> inline uint16_t htobe<uint16_t>(uint16_t value) {
+  return htobe16(value);
+}
+template <> inline int16_t htobe<int16_t>(int16_t value) {
+  return htobe16(value);
+}
+template <> inline uint32_t htobe<uint32_t>(uint32_t value) {
+  return htobe32(value);
+}
+template <> inline int32_t htobe<int32_t>(int32_t value) {
+  return htobe32(value);
+}
+template <> inline uint64_t htobe<uint64_t>(uint64_t value) {
+  return htobe64(value);
+}
+template <> inline int64_t htobe<int64_t>(int64_t value) {
+  return htobe64(value);
+}
+
+template <typename integer> inline integer letoh(integer value);
+template <> inline uint16_t letoh<uint16_t>(uint16_t value) {
+  return le16toh(value);
+}
+template <> inline int16_t letoh<int16_t>(int16_t value) {
+  return le16toh(value);
+}
+template <> inline uint32_t letoh<uint32_t>(uint32_t value) {
+  return le32toh(value);
+}
+template <> inline int32_t letoh<int32_t>(int32_t value) {
+  return le32toh(value);
+}
+template <> inline uint64_t letoh<uint64_t>(uint64_t value) {
+  return le64toh(value);
+}
+template <> inline int64_t letoh<int64_t>(int64_t value) {
+  return le64toh(value);
+}
+
+template <typename integer> inline integer betoh(integer value);
+template <> inline uint16_t betoh<uint16_t>(uint16_t value) {
+  return be16toh(value);
+}
+template <> inline int16_t betoh<int16_t>(int16_t value) {
+  return be16toh(value);
+}
+template <> inline uint32_t betoh<uint32_t>(uint32_t value) {
+  return be32toh(value);
+}
+template <> inline int32_t betoh<int32_t>(int32_t value) {
+  return be32toh(value);
+}
+template <> inline uint64_t betoh<uint64_t>(uint64_t value) {
+  return be64toh(value);
+}
+template <> inline int64_t betoh<int64_t>(int64_t value) {
+  return be64toh(value);
+}
+
+/*----------------------------------------------------------------------------*/
+/* Threads */
+
 #ifdef CMAKE_HAVE_PTHREAD_H
 #include <pthread.h>
 
@@ -124,32 +451,32 @@ static __inline ptrdiff_t __srwl_get_state(fpta_rwl_t *rwl) {
 
 static int __inline fpta_rwl_init(fpta_rwl_t *rwl) {
   if (!rwl)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   InitializeSRWLock(&rwl->srwl);
   __srwl_set_state(rwl, SRWL_FREE);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_rwl_sharedlock(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
 
   AcquireSRWLockShared(&rwl->srwl);
   __srwl_set_state(rwl, SRWL_RDLC);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_rwl_exclusivelock(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   AcquireSRWLockExclusive(&rwl->srwl);
   __srwl_set_state(rwl, (ptrdiff_t)GetCurrentThreadId());
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_rwl_unlock(fpta_rwl_t *rwl) {
   if (!rwl)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
 
   ptrdiff_t state = __srwl_get_state(rwl);
   switch (state) {
@@ -157,64 +484,60 @@ static int __inline fpta_rwl_unlock(fpta_rwl_t *rwl) {
     if (state == (ptrdiff_t)GetCurrentThreadId()) {
       __srwl_set_state(rwl, SRWL_FREE);
       ReleaseSRWLockExclusive(&rwl->srwl);
-      return ERROR_SUCCESS;
+      return FPTA_SUCCESS;
     }
   case SRWL_FREE:
-#ifndef EPERM
-    return EPERM;
-#endif
+    return FPTA_EPERM;
   case SRWL_POISON:
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   case SRWL_RDLC:
     ReleaseSRWLockShared(&rwl->srwl);
-    return ERROR_SUCCESS;
+    return FPTA_SUCCESS;
   }
 }
 
 static int __inline fpta_rwl_destroy(fpta_rwl_t *rwl) {
   if (!rwl || __srwl_get_state(rwl) == SRWL_POISON)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   AcquireSRWLockExclusive(&rwl->srwl);
   __srwl_set_state(rwl, SRWL_POISON);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 typedef struct fpta_mutex { CRITICAL_SECTION cs; } fpta_mutex_t;
 
 static int __inline fpta_mutex_init(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   InitializeCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_mutex_lock(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   EnterCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
-#ifdef EBUSY
 static int __inline fpta_mutex_trylock(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
-  return TryEnterCriticalSection(&mutex->cs) ? ERROR_SUCCESS : EBUSY;
+    return FPTA_EINVAL;
+  return TryEnterCriticalSection(&mutex->cs) ? FPTA_SUCCESS : FPTA_EBUSY;
 }
-#endif /* EBUSY */
 
 static int __inline fpta_mutex_unlock(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   LeaveCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 static int __inline fpta_mutex_destroy(fpta_mutex_t *mutex) {
   if (!mutex)
-    return ERROR_INVALID_PARAMETER;
+    return FPTA_EINVAL;
   DeleteCriticalSection(&mutex->cs);
-  return ERROR_SUCCESS;
+  return FPTA_SUCCESS;
 }
 
 #endif /* CMAKE_HAVE_PTHREAD_H */

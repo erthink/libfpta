@@ -6,11 +6,11 @@
 - [ ] mdbx: зафиксировать формат БД.
 - [ ] fpta: пробросить обновленный API управления размером.
 - [ ] fpta: add "Basic Exponential Smoothing" to inplace saturated ops.
-- [ ] fpta, fptu: использовать "нативные" коды ошибок в Windows.
+- [x] fpta, fptu: использовать "нативные" коды ошибок в Windows.
 
 Оперативное
 ===========
-- [ ] fpta: composite unique constraints.
+- [x] fpta: composite indexes (включая unique constraints).
 
 Качество
 ========
@@ -70,6 +70,10 @@
 
 Юнит-тесты
 ==========
+- [ ] composite: большой комбинаторный тест генерации составных ключей с контролем их порядка (ordering)
+      для всех сочетаний колонок, включая nullable, простукивание DENIL-значений,
+      проверку obverse/reverse как для составного индекса, так и для компонентов,
+      в том числе с превышением fpta_max_keylen.
 - [ ] filter: проверка фильтра для кортежа.
 - [ ] filter: больше, меньше, равно, не-равно.
 - [ ] filter: and, or, not.

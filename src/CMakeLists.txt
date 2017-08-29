@@ -48,14 +48,15 @@ add_library(fpta
   ../externals/t1ha/t1ha.h
   details.h
   osal.h
+  composite.cxx
   common.cxx
+  dbi.cxx
   table.cxx
   filter.cxx
   cursor.cxx
   schema.cxx
   index.cxx
   data.cxx
-  secondary.cxx
   misc.cxx
   inplace.cxx
   ${CMAKE_CURRENT_BINARY_DIR}/version.cxx
@@ -94,6 +95,7 @@ endif()
 
 install(TARGETS fpta
   LIBRARY DESTINATION lib COMPONENT runtime
+  RUNTIME DESTINATION lib COMPONENT runtime
   ARCHIVE DESTINATION lib/static COMPONENT devel
   PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
   PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel

@@ -203,8 +203,8 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_t1ha, "t1ha"));
 
     if (!valid_pk) {
-      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(pk_col_name.c_str(), pk_type,
-                                                  pk_index, &def));
+      EXPECT_NE(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
+                                              pk_index, &def));
 
       // разрушаем описание таблицы
       EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
@@ -214,8 +214,8 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_describe(pk_col_name.c_str(), pk_type,
                                             pk_index, &def));
     if (!valid_se) {
-      EXPECT_EQ(FPTA_EINVAL, fpta_column_describe(se_col_name.c_str(), se_type,
-                                                  se_index, &def));
+      EXPECT_NE(FPTA_OK, fpta_column_describe(se_col_name.c_str(), se_type,
+                                              se_index, &def));
 
       // разрушаем описание таблицы
       EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));

@@ -107,7 +107,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
               fpta_column_describe("t1ha", fptu_uint64, fpta_index_none, &def));
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
   } else {
-    EXPECT_EQ(FPTA_EINVAL,
+    EXPECT_NE(FPTA_OK,
               fpta_column_describe(pk_col_name.c_str(), type, index, &def));
     EXPECT_EQ(FPTA_OK,
               fpta_column_describe("order", fptu_int32, fpta_index_none, &def));

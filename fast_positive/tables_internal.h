@@ -34,11 +34,11 @@
 
 #pragma once
 
-#include "fast_positive/config.h"
-#include "fast_positive/tables.h"
-#include "fast_positive/tuples_internal.h"
-
 #ifdef _MSC_VER
+#if _MSC_VER < 1900
+#error FPTA required 'Microsoft Visual Studio 2015' or newer.
+#endif
+
 #pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
                                    has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */
@@ -49,6 +49,23 @@
 #pragma warning(disable : 4201) /* nonstandard extension used :                \
                                    nameless struct / union */
 #pragma warning(disable : 4127) /* conditional expression is constant */
+#pragma warning(disable : 4996) /* std::xyz::_Unchecked_iterators::_Deprecate. \
+                                   Bla-bla-bla. See documentation on how to    \
+                                   use Visual C++ 'Checked Iterators' */
+#endif                          /* _MSC_VER (warnings) */
+
+#include "fast_positive/config.h"
+#include "fast_positive/tables.h"
+#include "fast_positive/tuples_internal.h"
+
+#ifdef _MSC_VER
+#if _MSC_VER >= 1900            /* MSVC 2015/2017 compilers are mad */
+#pragma warning(disable : 4770) /* partially validated enum used as index */
+#endif
+
+#ifndef _WIN64 /* We don't worry about padding for 32-bit builds */
+#pragma warning(disable : 4820) /* 4 bytes padding added after data member */
+#endif
 
 #pragma warning(push, 1)
 #pragma warning(disable : 4548) /* expression before comma has no effect;      \
@@ -79,6 +96,7 @@ static __inline int_fast32_t mrand48(void) { return mrand64(); }
 #include <cfloat> // for float limits
 #include <cmath>  // for fabs()
 #include <limits> // for numeric_limits<>
+#include <vector> // for vector<>
 
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -94,23 +112,137 @@ extern "C" char *gets(char *);
 
 //----------------------------------------------------------------------------
 
+static __inline fpta_shove_t fpta_column_shove(fpta_shove_t shove,
+                                               fptu_type data_type,
+                                               fpta_index_type index_type) {
+  assert((data_type & ~fpta_column_typeid_mask) == 0);
+  assert((index_type & ~fpta_column_index_mask) == 0);
+  assert((shove & ((1 << fpta_name_hash_shift) - 1)) == 0);
+  return shove | data_type | index_type;
+}
+
+static __inline bool fpta_shove_eq(fpta_shove_t a, fpta_shove_t b) {
+  static_assert(fpta_name_hash_shift > 0, "expect hash/shove is shifted");
+  /* A равно B, если отличия только в бладших битах */
+  return (a ^ b) < ((1u << fpta_name_hash_shift) - 1);
+}
+
+static __inline fptu_type fpta_shove2type(fpta_shove_t shove) {
+  static_assert(fpta_column_typeid_shift == 0,
+                "expecting column_typeid_shift is zero");
+  unsigned type = shove & fpta_column_typeid_mask;
+  return (fptu_type)type;
+}
+
+static __inline fpta_index_type fpta_shove2index(fpta_shove_t shove) {
+  static_assert((int)fpta_primary_unique_ordered_obverse <
+                    fpta_column_index_mask,
+                "check fpta_column_index_mask");
+  static_assert((int)fpta_primary_unique_ordered_obverse >
+                    (1 << fpta_column_index_shift) - 1,
+                "expect fpta_primary_unique_ordered_obverse is shifted");
+  static_assert((fpta_column_index_mask & fpta_column_typeid_mask) == 0,
+                "seems a bug");
+  unsigned index = shove & fpta_column_index_mask;
+  return (fpta_index_type)index;
+}
+
+static __inline bool fpta_is_composite(const fpta_shove_t shove) {
+  return fpta_shove2type(shove) == /* composite */ fptu_null;
+}
+
+static __inline fptu_type fpta_id2type(const fpta_name *id) {
+  return fpta_shove2type(id->shove);
+}
+
+static __inline fpta_index_type fpta_id2index(const fpta_name *id) {
+  return fpta_shove2index(id->shove);
+}
+
+static __inline bool fpta_is_indexed(const fpta_shove_t index) {
+  return (index & (fpta_column_index_mask - fpta_index_fnullable)) != 0;
+}
+
+static __inline bool fpta_index_is_unique(const fpta_shove_t index) {
+  assert(fpta_is_indexed(index));
+  return (index & fpta_index_funique) != 0;
+}
+
+static __inline bool fpta_index_is_ordered(const fpta_shove_t index) {
+  assert(fpta_is_indexed(index));
+  return (index & fpta_index_fordered) != 0;
+}
+
+static __inline bool fpta_index_is_unordered(const fpta_shove_t index) {
+  return !fpta_index_is_ordered(index);
+}
+
+static __inline bool fpta_index_is_obverse(const fpta_shove_t index) {
+  return (index & fpta_index_fobverse) != 0;
+}
+
+static __inline bool fpta_index_is_reverse(const fpta_shove_t index) {
+  return (index & fpta_index_fobverse) == 0;
+}
+
+static __inline bool fpta_index_is_primary(const fpta_shove_t index) {
+  assert(fpta_is_indexed(index));
+  return (index & fpta_index_fsecondary) == 0;
+}
+
+static __inline bool fpta_index_is_secondary(const fpta_shove_t index) {
+  return (index & fpta_index_fsecondary) != 0;
+}
+
+static __inline bool fpta_index_is_nullable(const fpta_index_type index) {
+  assert(index == (index & fpta_column_index_mask));
+  return index > fpta_index_fnullable;
+}
+
+static __inline bool fpta_column_is_nullable(const fpta_name *column_id) {
+  return (column_id->shove & fpta_index_fnullable) != 0;
+}
+
+static __inline bool fpta_cursor_is_ordered(const fpta_cursor_options op) {
+  return (op & (fpta_descending | fpta_ascending)) != fpta_unsorted;
+}
+
+static __inline bool fpta_cursor_is_descending(const fpta_cursor_options op) {
+  return (op & (fpta_descending | fpta_ascending)) == fpta_descending;
+}
+
+static __inline bool fpta_cursor_is_ascending(const fpta_cursor_options op) {
+  return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
+}
+
+//----------------------------------------------------------------------------
+
 struct fpta_table_stored_schema {
   uint64_t checksum;
   uint32_t signature;
   uint32_t count;
   uint64_t csn;
-  fpta_shove_t columns[fpta_max_cols];
+  fpta_shove_t columns[1];
 };
 
-static __inline size_t fpta_table_stored_schema_size(size_t cols) {
-  assert(cols <= fpta_max_cols);
-  return sizeof(fpta_table_stored_schema) -
-         sizeof(fpta_shove_t) * (fpta_max_cols - cols);
+static __inline bool fpta_is_intersected(const void *left_begin,
+                                         const void *left_end,
+                                         const void *right_begin,
+                                         const void *right_end) {
+  assert(left_begin <= left_end);
+  assert(right_begin <= right_end);
+
+  return !(left_begin >= right_end || right_begin >= left_end);
 }
 
-struct fpta_table_schema {
-  fpta_table_stored_schema _stored;
+struct fpta_table_schema final {
   fpta_shove_t _key;
+  unsigned _cache_hints[fpta_max_cols]; /* подсказки для кэша дескрипторов */
+
+  static size_t header_size() {
+    return sizeof(fpta_table_stored_schema) -
+           sizeof(fpta_table_stored_schema::columns);
+  }
 
   uint64_t checksum() const { return _stored.checksum; }
   uint32_t signature() const { return _stored.signature; }
@@ -124,7 +256,6 @@ struct fpta_table_schema {
   const fpta_shove_t *column_shoves_array() const { return _stored.columns; }
   fpta_shove_t table_pk() const { return column_shove(0); }
 
-  unsigned _cache_hints[fpta_max_cols]; /* подсказки для кэша дескрипторов */
   unsigned &handle_cache(size_t number) {
     assert(number < _stored.count);
     return _cache_hints[number];
@@ -133,6 +264,34 @@ struct fpta_table_schema {
     assert(number < _stored.count);
     return _cache_hints[number];
   }
+
+  typedef uint16_t composite_item_t;
+  typedef const composite_item_t *composite_iter_t;
+  composite_iter_t _composite_offsets;
+
+  composite_iter_t composites_begin() const {
+    return (composite_iter_t)&_stored.columns[_stored.count];
+  }
+  composite_iter_t composites_end() const { return _composite_offsets; }
+
+  int composite_list(size_t number, composite_iter_t &list_begin,
+                     composite_iter_t &list_end) const {
+    assert(fpta_is_composite(column_shove(number)));
+    const composite_iter_t composite =
+        composites_begin() + _composite_offsets[number];
+    if (unlikely(composite >= composites_end() || *composite < 2))
+      return FPTA_EOOPS;
+
+    list_begin = composite + 1;
+    list_end = list_begin + *composite;
+    return FPTA_SUCCESS;
+  }
+
+  bool has_secondary() const {
+    return column_count() > 1 && fpta_index_is_secondary(column_shove(1));
+  }
+
+  fpta_table_stored_schema _stored; /* must be last field (dynamic size) */
 };
 
 enum fpta_internals {
@@ -197,22 +356,12 @@ struct fpta_key {
   } place;
 };
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4820) /* bytes padding added after data member       \
-                                   for aligment */
-#endif                          /* _MSC_VER (warnings) */
-
 struct fpta_cursor {
   fpta_cursor(const fpta_cursor &) = delete;
   MDBX_cursor *mdbx_cursor;
   MDBX_val current;
 
-#if __cplusplus < 201103L
-#define poor nullptr
-#else
   static constexpr void *poor = nullptr;
-#endif
   bool is_poor() const { return current.iov_base == poor; }
   void set_poor() { current.iov_base = poor; }
 
@@ -246,7 +395,6 @@ struct fpta_cursor {
 
   const fpta_filter *filter;
   fpta_txn *txn;
-  fpta_db *db;
 
   fpta_name *table_id;
   unsigned column_number;
@@ -260,61 +408,15 @@ struct fpta_cursor {
 
   fpta_key range_from_key;
   fpta_key range_to_key;
+  fpta_db *db;
 };
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 //----------------------------------------------------------------------------
 
-static __inline fpta_shove_t fpta_column_shove(fpta_shove_t shove,
-                                               fptu_type data_type,
-                                               fpta_index_type index_type) {
-  assert((data_type & ~fpta_column_typeid_mask) == 0);
-  assert((index_type & ~fpta_column_index_mask) == 0);
-  assert((shove & ((1 << fpta_name_hash_shift) - 1)) == 0);
-  return shove | data_type | index_type;
-}
-
-static __inline bool fpta_shove_eq(fpta_shove_t a, fpta_shove_t b) {
-  static_assert(fpta_name_hash_shift > 0, "expect hash/shove is shifted");
-  /* A равно B, если отличия только в бладших битах */
-  return (a ^ b) < ((1u << fpta_name_hash_shift) - 1);
-}
-
-static __inline fptu_type fpta_shove2type(fpta_shove_t shove) {
-  static_assert(fpta_column_typeid_shift == 0,
-                "expecting column_typeid_shift is zero");
-  unsigned type = shove & fpta_column_typeid_mask;
-  return (fptu_type)type;
-}
-
-static __inline fpta_index_type fpta_shove2index(fpta_shove_t shove) {
-  static_assert((int)fpta_primary_unique_ordered_obverse <
-                    fpta_column_index_mask,
-                "check fpta_column_index_mask");
-  static_assert((int)fpta_primary_unique_ordered_obverse >
-                    (1 << fpta_column_index_shift) - 1,
-                "expect fpta_primary_unique_ordered_obverse is shifted");
-  static_assert((fpta_column_index_mask & fpta_column_typeid_mask) == 0,
-                "seems a bug");
-  unsigned index = shove & fpta_column_index_mask;
-  return (fpta_index_type)index;
-}
-
-static __inline fptu_type fpta_id2type(const fpta_name *id) {
-  return fpta_shove2type(id->shove);
-}
-
-static __inline fpta_index_type fpta_id2index(const fpta_name *id) {
-  return fpta_shove2index(id->shove);
-}
-
 MDBX_cmp_func *fpta_index_shove2comparator(fpta_shove_t shove);
-unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t shove);
+unsigned fpta_index_shove2primary_dbiflags(fpta_shove_t pk_shove);
 unsigned fpta_index_shove2secondary_dbiflags(fpta_shove_t pk_shove,
-                                             fpta_shove_t shove);
+                                             fpta_shove_t sk_shove);
 
 bool fpta_index_is_compat(fpta_shove_t shove, const fpta_value &value);
 
@@ -323,8 +425,11 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
 int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx_key,
                          fpta_value &key_value);
 
-int fpta_index_row2key(const fpta_table_schema *const def, size_t column,
+int fpta_index_row2key(const fpta_table_schema *const schema, size_t column,
                        const fptu_ro &row, fpta_key &key, bool copy = false);
+
+int fpta_composite_row2key(const fpta_table_schema *const schema, size_t column,
+                           const fptu_ro &row, fpta_key &key);
 
 int fpta_secondary_upsert(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_val pk_key_old, const fptu_ro &row_old,
@@ -342,6 +447,21 @@ int fpta_secondary_remove(fpta_txn *txn, fpta_table_schema *table_def,
 int fpta_check_notindexed_cols(const fpta_table_schema *table_def,
                                const fptu_ro &row);
 
+int fpta_schema_add(fpta_column_set *column_set, const char *column_name,
+                    fptu_type data_type, fpta_index_type index_type);
+
+int fpta_composite_index_validate(
+    const fpta_index_type index_type,
+    const fpta_table_schema::composite_item_t *const items_begin,
+    const fpta_table_schema::composite_item_t *const items_end,
+    const fpta_shove_t *const columns_shoves, const size_t column_count,
+    const fpta_table_schema::composite_item_t *const composites_begin,
+    const fpta_table_schema::composite_item_t *const composites_end,
+    const fpta_shove_t skipself);
+
+int fpta_name_refresh_filter(fpta_txn *txn, fpta_name *table_id,
+                             fpta_filter *filter);
+
 //----------------------------------------------------------------------------
 
 int fpta_open_table(fpta_txn *txn, fpta_table_schema *table_def,
@@ -351,75 +471,21 @@ int fpta_open_column(fpta_txn *txn, fpta_name *column_id, MDBX_dbi &tbl_handle,
 int fpta_open_secondaries(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_dbi *dbi_array);
 
-//----------------------------------------------------------------------------
-
 fpta_cursor *fpta_cursor_alloc(fpta_db *db);
 void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor);
 
 //----------------------------------------------------------------------------
 
-static __inline bool fpta_is_indexed(const fpta_shove_t index) {
-  return (index & (fpta_column_index_mask - fpta_index_fnullable)) != 0;
-}
-
-static __inline bool fpta_index_is_unique(const fpta_shove_t index) {
-  assert(fpta_is_indexed(index));
-  return (index & fpta_index_funique) != 0;
-}
-
-static __inline bool fpta_index_is_ordered(const fpta_shove_t index) {
-  assert(fpta_is_indexed(index));
-  return (index & fpta_index_fordered) != 0;
-}
-
-static __inline bool fpta_index_is_obverse(const fpta_shove_t index) {
-  return (index & fpta_index_fobverse) != 0;
-}
-
-static __inline bool fpta_index_is_reverse(const fpta_shove_t index) {
-  return (index & fpta_index_fobverse) == 0;
-}
-
-static __inline bool fpta_index_is_primary(const fpta_shove_t index) {
-  assert(fpta_is_indexed(index));
-  return (index & fpta_index_fsecondary) == 0;
-}
-
-static __inline bool fpta_index_is_secondary(const fpta_shove_t index) {
-  return (index & fpta_index_fsecondary) != 0;
-}
-
-static __inline bool fpta_index_is_nullable(const fpta_index_type index) {
-  assert(index == (index & fpta_column_index_mask));
-  return index > fpta_index_fnullable;
-}
-
-static __inline bool fpta_column_is_nullable(const fpta_name *column_id) {
-  return (column_id->shove & fpta_index_fnullable) != 0;
-}
-
-static __inline bool fpta_cursor_is_ordered(const fpta_cursor_options op) {
-  return (op & (fpta_descending | fpta_ascending)) != fpta_unsorted;
-}
-
-static __inline bool fpta_cursor_is_descending(const fpta_cursor_options op) {
-  return (op & (fpta_descending | fpta_ascending)) == fpta_descending;
-}
-
-static __inline bool fpta_cursor_is_ascending(const fpta_cursor_options op) {
-  return (op & (fpta_descending | fpta_ascending)) == fpta_ascending;
-}
-
 int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead = false);
-
-static __inline bool fpta_is_same(const MDBX_val &a, const MDBX_val &b) {
-  return a.iov_len == b.iov_len &&
-         memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
-}
 
 namespace std {
 FPTA_API string to_string(const MDBX_val &);
 FPTA_API string to_string(const fpta_key &);
+}
+
+static __inline bool fpta_is_same(const MDBX_val &a, const MDBX_val &b) {
+  return a.iov_len == b.iov_len &&
+         memcmp(a.iov_base, b.iov_base, a.iov_len) == 0;
 }
 
 template <typename type>
@@ -433,11 +499,6 @@ static __inline bool binary_ne(const type &a, const type &b) {
 }
 
 //----------------------------------------------------------------------------
-
-static __inline bool fpta_nullable_reverse_sensitive(const fptu_type type) {
-  return type == fptu_uint16 || type == fptu_uint32 || type == fptu_uint64 ||
-         (type >= fptu_96 && type <= fptu_256);
-}
 
 typedef union {
   uint32_t __i;
@@ -525,4 +586,9 @@ static __inline bool check_fixbin_not_denil(const fpta_index_type index,
                                    : FPTA_DENIL_FIXBIN_REVERSE))
       return true;
   return false;
+}
+
+static __inline bool fpta_nullable_reverse_sensitive(const fptu_type type) {
+  return type == fptu_uint16 || type == fptu_uint32 || type == fptu_uint64 ||
+         (type >= fptu_96 && type <= fptu_256);
 }

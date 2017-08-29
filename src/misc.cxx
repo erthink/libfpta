@@ -19,9 +19,33 @@
 
 #include "details.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#endif
+#include <windows.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+#endif /* must die */
+
 #define FIXME "FIXME: " __FILE__ ", " FPT_STRINGIFY(__LINE__)
 
 static const char *__fpta_errstr(int errnum) {
+#if defined(_WIN32) || defined(_WIN64)
+  static_assert(FPTA_ENOMEM == ERROR_OUTOFMEMORY, "error code mismatch");
+  static_assert(FPTA_ENOIMP == ERROR_NOT_SUPPORTED, "error code mismatch");
+  static_assert(FPTA_EVALUE == ERROR_INVALID_DATA, "error code mismatch");
+  static_assert(FPTA_OVERFLOW == ERROR_ARITHMETIC_OVERFLOW,
+                "error code mismatch");
+  static_assert(FPTA_EEXIST == ERROR_ALREADY_EXISTS, "error code mismatch");
+  static_assert(FPTA_ENOENT == ERROR_NOT_FOUND, "error code mismatch");
+  static_assert(FPTA_EPERM == ERROR_INVALID_FUNCTION, "error code mismatch");
+  static_assert(FPTA_EBUSY == ERROR_BUSY, "error code mismatch");
+  static_assert(FPTA_ENAME == ERROR_INVALID_NAME, "error code mismatch");
+  static_assert(FPTA_EFLAG == ERROR_INVALID_FLAG_NUMBER, "error code mismatch");
+#endif /* static_asserts for Windows */
+
   switch (errnum) {
   default:
     return NULL;
@@ -65,24 +89,14 @@ static const char *__fpta_errstr(int errnum) {
   case FPTA_WANNA_DIE:
     return "FPTA: Failure while transaction rollback (wanna die)";
 
-  case FPTA_EINVAL /* EINVAL */:
-    return "FPTA: Invalid argument";
-  case FPTA_ENOMEM /* ENOMEM */:
-    return "FPTA: Out of memory";
-  case FPTA_ENOIMP /* may == ENOSYS */:
-    return "FPTA: Not yet implemented";
+  case FPTA_TXN_CANCELLED:
+    return "Transaction already cancelled";
+
+  case FPTA_SIMILAR_INDEX:
+    return "Adding index which is similar to one of the existing";
 
   case FPTA_NODATA /* -1, EOF */:
     return "FPTA: No data or EOF was reached";
-
-  case FPTA_ENOSPACE /* FPTU_ENOSPACE, may == ENOSPC */:
-    return "FPTA: No space left in row/tuple";
-
-  case FPTA_ENOFIELD /* FPTU_ENOFIELD, may == ENOENT */:
-    return "FPTA: No such column/field";
-
-  case FPTA_EVALUE /* may == EDOM */:
-    return "FPTA: Value is invalid or out of range";
   }
 }
 
@@ -415,8 +429,7 @@ __cold string to_string(const fpta_name *id) {
   if (table_id == nullptr)
     return partial + ", no-table, no-schema}";
 
-  const fpta_table_schema *table_def =
-      table_id ? table_id->table_schema : nullptr;
+  const fpta_table_schema *table_def = table_id->table_schema;
   if (table_def == nullptr)
     return partial + fptu::format(", @%" PRIx64 ".%p, no-schema}",
                                   table_id->shove, table_id);
@@ -548,6 +561,33 @@ void fpta_pollute(void *ptr, size_t bytes, uintptr_t xormask) {
       memcpy(ptr, &tail, bytes);
     }
   }
+}
+
+static __inline unsigned add_with_carry(uint64_t *sum, uint64_t addend) {
+  *sum += addend;
+  return *sum < addend;
+}
+
+uint64_t fpta_umul_64x64_128(uint64_t a, uint64_t b, uint64_t *h) {
+#ifdef umul_64x64_128
+  return umul_64x64_128(a, b, h);
+#else
+  /* performs 64x64 to 128 bit multiplication */
+  uint64_t ll = umul_32x32_64((uint32_t)a, (uint32_t)b);
+  uint64_t lh = umul_32x32_64(a >> 32, (uint32_t)b);
+  uint64_t hl = umul_32x32_64((uint32_t)a, b >> 32);
+  *h = umul_32x32_64(a >> 32, b >> 32) + (lh >> 32) + (hl >> 32) +
+       add_with_carry(&ll, lh << 32) + add_with_carry(&ll, hl << 32);
+  return ll;
+#endif
+}
+
+uint64_t fpta_umul_32x32_64(uint32_t a, uint32_t b) {
+  return umul_32x32_64(a, b);
+}
+
+uint64_t fpta_umul_64x64_high(uint64_t a, uint64_t b) {
+  return umul_64x64_high(a, b);
 }
 
 //----------------------------------------------------------------------------

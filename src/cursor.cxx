@@ -43,7 +43,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
 
   switch (op) {
   default:
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
 
   case fpta_descending:
   case fpta_descending_dont_fetch:
@@ -54,11 +54,12 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
     break;
   }
 
-  if (unlikely(!fpta_id_validate(column_id, fpta_column)))
-    return FPTA_EINVAL;
+  int rc = fpta_id_validate(column_id, fpta_column);
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
 
   fpta_name *table_id = column_id->column.table;
-  int rc = fpta_name_refresh_couple(txn, table_id, column_id);
+  rc = fpta_name_refresh_couple(txn, table_id, column_id);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
@@ -101,7 +102,7 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   cursor->txn = txn;
   cursor->filter = filter;
   cursor->table_id = table_id;
-  cursor->column_number = (unsigned)column_id->column.num;
+  cursor->column_number = column_id->column.num;
   cursor->tbl_handle = tbl_handle;
   cursor->idx_handle = idx_handle;
 
@@ -352,7 +353,7 @@ int fpta_cursor_move(fpta_cursor *cursor, fpta_seek_operations op) {
 
   if (unlikely(op < fpta_first || op > fpta_key_prev)) {
     cursor->set_poor();
-    return FPTA_EINVAL;
+    return FPTA_EFLAG;
   }
 
   if (fpta_cursor_is_descending(cursor->options))
@@ -476,7 +477,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
     if (FPTA_PROHIBIT_NEARBY4UNORDERED && !exactly) {
       /* Отвергаем неточный поиск для неупорядоченного курсора (и индекса). */
       cursor->set_poor();
-      return FPTA_EINVAL;
+      return FPTA_EFLAG;
     }
     /* Принудительно включаем точный поиск для курсора без сортировки. */
     exactly = true;
@@ -747,7 +748,7 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
   if (unlikely(!cursor->is_filled()))
     return cursor->unladed_state();
 
-  if (!fpta_table_has_secondary(cursor->table_schema())) {
+  if (!cursor->table_schema()->has_secondary()) {
     rc = mdbx_cursor_del(cursor->mdbx_cursor, 0);
     if (unlikely(rc != FPTA_SUCCESS)) {
       cursor->set_poor();
@@ -831,7 +832,12 @@ int fpta_cursor_delete(fpta_cursor *cursor) {
 
 //----------------------------------------------------------------------------
 
-int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
+int fpta_cursor_validate_update_ex(fpta_cursor *cursor, fptu_ro new_row_value,
+                                   fpta_put_options op) {
+  if (unlikely(op != fpta_update &&
+               op != (fpta_update | fpta_skip_nonnullable_check)))
+    return FPTA_EFLAG;
+
   int rc = fpta_cursor_validate(cursor, fpta_write);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
@@ -848,7 +854,13 @@ int fpta_cursor_validate_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(cursor->table_schema()))
+  if ((op & fpta_skip_nonnullable_check) == 0) {
+    rc = fpta_check_notindexed_cols(cursor->table_schema(), new_row_value);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+  }
+
+  if (!cursor->table_schema()->has_secondary())
     return FPTA_SUCCESS;
 
   fptu_ro present_row;
@@ -905,7 +917,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
   if (!fpta_is_same(cursor->current, column_key.mdbx))
     return FPTA_KEY_MISMATCH;
 
-  if (!fpta_table_has_secondary(table_def)) {
+  if (!table_def->has_secondary()) {
     rc = mdbx_cursor_put(cursor->mdbx_cursor, &column_key.mdbx,
                          &new_row_value.sys, MDBX_CURRENT | MDBX_NODUPDATA);
     if (likely(rc == MDBX_SUCCESS) &&
@@ -1024,7 +1036,6 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
 
 //----------------------------------------------------------------------------
 
-FPTA_API
 int fpta_apply_visitor(
     fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
     fpta_value range_to, fpta_filter *filter, fpta_cursor_options op,

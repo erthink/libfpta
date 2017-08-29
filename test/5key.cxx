@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -38,7 +38,7 @@ TEST(Value2Key, Invalid) {
   EXPECT_EQ(FPTA_EOOPS,
             value2key(fpta_column_shove(0, fptu_cstr, fpta_index_none),
                       fpta_value_cstr("42"), key));
-  EXPECT_EQ(FPTA_EOOPS,
+  EXPECT_EQ(FPTA_ETYPE,
             value2key(fpta_column_shove(0, fptu_null,
                                         fpta_primary_unique_ordered_obverse),
                       fpta_value_cstr("42"), key));
