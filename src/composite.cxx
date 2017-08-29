@@ -35,9 +35,9 @@ typedef int (*concat_column_t)(fpta_key &key, const bool alternale_nils,
                                const fpta_table_schema *const schema,
                                const fptu_ro &row, unsigned column);
 
-static int concat_unordered(fpta_key &key, const bool alternale_nils,
-                            const fpta_table_schema *const schema,
-                            const fptu_ro &row, unsigned column) {
+static int __hot concat_unordered(fpta_key &key, const bool alternale_nils,
+                                  const fpta_table_schema *const schema,
+                                  const fptu_ro &row, unsigned column) {
   const uint64_t MARKER_ABSENT = UINT64_C(0x974BC764BAC4C7F);
   uint64_t *const hash = (uint64_t *)key.mdbx.iov_base;
   const fpta_shove_t shove = schema->column_shove(column);
@@ -59,7 +59,7 @@ static int concat_unordered(fpta_key &key, const bool alternale_nils,
   return FPTA_SUCCESS;
 }
 
-static int concat_bytes(fpta_key &key, const void *data, size_t length) {
+static int __hot concat_bytes(fpta_key &key, const void *data, size_t length) {
   uint64_t *const hash = (uint64_t *)key.mdbx.iov_base;
   assert(hash == &key.place.longkey_obverse.tailhash ||
          hash == &key.place.longkey_reverse.headhash);
@@ -106,9 +106,9 @@ static int concat_bytes(fpta_key &key, const void *data, size_t length) {
   return FPTA_SUCCESS;
 }
 
-static int concat_ordered(fpta_key &key, const bool alternale_nils,
-                          const fpta_table_schema *const schema,
-                          const fptu_ro &row, unsigned column) {
+static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
+                                const fpta_table_schema *const schema,
+                                const fptu_ro &row, unsigned column) {
   const fpta_shove_t shove = schema->column_shove(column);
   const fptu_type type = fpta_shove2type(shove);
   const fpta_index_type index = fpta_shove2index(shove);
@@ -330,8 +330,9 @@ static int concat_ordered(fpta_key &key, const bool alternale_nils,
   }
 }
 
-int fpta_composite_row2key(const fpta_table_schema *const schema, size_t column,
-                           const fptu_ro &row, fpta_key &key) {
+int __hot fpta_composite_row2key(const fpta_table_schema *const schema,
+                                 size_t column, const fptu_ro &row,
+                                 fpta_key &key) {
 #ifndef NDEBUG
   fpta_pollute(&key, sizeof(key), 0);
 #endif
@@ -347,20 +348,18 @@ int fpta_composite_row2key(const fpta_table_schema *const schema, size_t column,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  concat_column_t concat =
-      fpta_index_is_ordered(index) ? concat_ordered : concat_unordered;
-
+  concat_column_t concat;
   if (likely(fpta_index_is_unordered(index))) {
     key.mdbx.iov_base = &key.place.u64;
     key.mdbx.iov_len = 8;
     key.place.u64 = 0;
     concat = concat_unordered;
   } else {
-    concat = concat_ordered;
     key.mdbx.iov_len = 0;
     key.mdbx.iov_base = fpta_index_is_obverse(index)
                             ? &key.place.longkey_obverse.tailhash
                             : &key.place.longkey_reverse.headhash;
+    concat = concat_ordered;
   }
 
   const bool alternale_nils = fpta_index_is_nullable(index);
@@ -453,7 +452,7 @@ int fpta_composite_column_get(const fpta_name *composite_id, unsigned item,
 
 //----------------------------------------------------------------------------
 
-int fpta_composite_index_validate(
+int __cold fpta_composite_index_validate(
     const fpta_index_type index_type,
     const fpta_table_schema::composite_item_t *const items_begin,
     const fpta_table_schema::composite_item_t *const items_end,
@@ -625,11 +624,11 @@ int fpta_composite_index_validate(
   return FPTA_SUCCESS;
 }
 
-int fpta_describe_composite_index(const char *composite_name,
-                                  fpta_index_type index_type,
-                                  fpta_column_set *column_set,
-                                  const char *const column_names_array[],
-                                  size_t column_names_count) {
+int __cold fpta_describe_composite_index(const char *composite_name,
+                                         fpta_index_type index_type,
+                                         fpta_column_set *column_set,
+                                         const char *const column_names_array[],
+                                         size_t column_names_count) {
   if (unlikely(!fpta_validate_name(composite_name)))
     return FPTA_ENAME;
 
@@ -707,11 +706,12 @@ int fpta_describe_composite_index(const char *composite_name,
   return FPTA_SUCCESS;
 }
 
-int fpta_describe_composite_index_va(const char *composite_name,
-                                     fpta_index_type index_type,
-                                     fpta_column_set *column_set,
-                                     const char *first, const char *second,
-                                     const char *third, ...) {
+int __cold fpta_describe_composite_index_va(const char *composite_name,
+                                            fpta_index_type index_type,
+                                            fpta_column_set *column_set,
+                                            const char *first,
+                                            const char *second,
+                                            const char *third, ...) {
 
   if (unlikely(first == nullptr || second == nullptr))
     return FPTA_EINVAL;
