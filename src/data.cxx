@@ -536,7 +536,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   if (op & fpta_skip_nonnullable_check)
     op = (fpta_put_options)(op - fpta_skip_nonnullable_check);
   else {
-    rc = fpta_check_notindexed_cols(table_def, row_value);
+    rc = fpta_check_nonnullable(table_def, row_value);
     if (unlikely(rc != FPTA_SUCCESS))
       return rc;
   }
@@ -591,7 +591,7 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
   if (!table_def->has_secondary())
     return FPTA_SUCCESS;
 
-  return fpta_secondary_check(txn, table_def, present_row, row_value, 0);
+  return fpta_check_secondary_uniq(txn, table_def, present_row, row_value, 0);
 }
 
 int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
@@ -618,7 +618,7 @@ int fpta_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row,
     break;
   }
 
-  rc = fpta_check_notindexed_cols(table_def, row);
+  rc = fpta_check_nonnullable(table_def, row);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 

@@ -19,31 +19,55 @@
 
 #include "details.h"
 
-int fpta_check_notindexed_cols(const fpta_table_schema *table_def,
-                               const fptu_ro &row) {
+/* Проверяет наличие в строке значений non-nullable колонок, которые
+ * не индексированы, либо индексированы без ограничений уникальности.
+ * Другими словами, это те колонки, которые должны иметь значения,
+ * но не проверяются в fpta_check_secondary_uniqueness(). */
+int fpta_check_nonnullable(const fpta_table_schema *table_def,
+                           const fptu_ro &row) {
   assert(table_def->column_count() > 0);
-  for (size_t i = table_def->column_count(); --i > 0;) {
+  for (size_t i = 1; i < table_def->column_count(); ++i) {
     const auto shove = table_def->column_shove(i);
     const auto index = fpta_shove2index(shove);
-    assert(i < fpta_max_indexes);
-    if (index > fpta_index_none) {
-      assert(fpta_index_is_secondary(index) || (index & fpta_index_fnullable));
-#ifdef NDEBUG
-      break;
+
+    if (index & fpta_index_fnullable) {
+      if (!fpta_is_indexed(index)) {
+/* при сортировке колонок по типам/флажкам индексов не-индексируемые
+ * nullable колонки идут последними, т.е. дальше проверять нечего */
+#ifndef NDEBUG
+        while (++i < table_def->column_count()) {
+          const auto shove = table_def->column_shove(i);
+          const auto index = fpta_shove2index(shove);
+          assert(!fpta_is_indexed(index));
+          assert(index & fpta_index_fnullable);
+        }
 #endif
-    } else {
-      const fptu_type type = fpta_shove2type(shove);
-      const fptu_field *field = fptu_lookup_ro(row, (unsigned)i, type);
-      if (unlikely(field == nullptr))
-        return FPTA_COLUMN_MISSING;
+        break;
+      }
+      continue;
     }
+
+    if (index & fpta_index_funique) {
+      /* колонки с контролем уникальности
+       * будут проверены в fpta_check_secondary_uniqueness() */
+      assert(fpta_is_indexed(index) && fpta_index_is_secondary(index));
+      continue;
+    }
+
+    const fptu_type type = fpta_shove2type(shove);
+    if (type == /* composite */ fptu_null)
+      continue;
+
+    const fptu_field *field = fptu_lookup_ro(row, (unsigned)i, type);
+    if (unlikely(field == nullptr))
+      return FPTA_COLUMN_MISSING;
   }
   return FPTA_SUCCESS;
 }
 
-int fpta_secondary_check(fpta_txn *txn, fpta_table_schema *table_def,
-                         const fptu_ro &row_old, const fptu_ro &row_new,
-                         const unsigned stepover) {
+int fpta_check_secondary_uniq(fpta_txn *txn, fpta_table_schema *table_def,
+                              const fptu_ro &row_old, const fptu_ro &row_new,
+                              const unsigned stepover) {
   MDBX_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_def, dbi);
   if (unlikely(rc != FPTA_SUCCESS))
