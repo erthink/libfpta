@@ -33,82 +33,66 @@
 #pragma warning(pop)
 #endif
 
-static void print_value(const char *caption, const char *comment, long value) {
-  printf("%-20s = %ld\t// %s\n", caption, value, comment);
-}
+#define print_value(comment, value)                                            \
+  printf("%-20s = %ld\t// %s\n", #value, (long)value, comment)
 
-static void print_mask(const char *caption, const char *comment, long value) {
-  printf("%-20s = 0x%lx\t// %s\n", caption, value, comment);
-}
+#define print_mask(comment, value)                                             \
+  printf("%-20s = 0x%lx\t// %s\n", #value, (long)value, comment)
 
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
   printf("// базовые лимиты и параметры:\n");
-  print_value("fptu_bits", "ширина счетчиков в битах", fptu_bits);
-  print_value("fptu_unit_size", "размер одного юнита в байтах", fptu_unit_size);
-  print_value("fptu_typeid_bits", "ширина типа в идентификаторе поля",
-              fptu_typeid_bits);
-  print_value("fptu_ct_reserve_bits", "резерв в идентификаторе поля",
-              fptu_ct_reserve_bits);
-  print_value("fptu_lx_bits", "резерв под флаги в заголовке кортежа",
-              fptu_lx_bits);
+  print_value("ширина счетчиков в битах", fptu_bits);
+  print_value("размер одного юнита в байтах", fptu_unit_size);
+  print_value("ширина типа в идентификаторе поля", fptu_typeid_bits);
+  print_value("резерв в идентификаторе поля", fptu_ct_reserve_bits);
+  print_value("резерв под флаги в заголовке кортежа", fptu_lx_bits);
   printf("\n");
 
   printf("// производные константы и параметры:\n");
-  print_value("fptu_unit_shift", "log2(fptu_unit_size)", fptu_unit_shift);
-  print_value("fptu_limit", "основной внутренний лимит", fptu_limit);
-  print_value("fptu_co_bits", "ширина тега-номера поля/колонки", fptu_co_bits);
-  print_mask("fptu_ty_mask",
-             "маска для получения типа из идентификатора поля/колонки",
+  print_value("log2(fptu_unit_size)", fptu_unit_shift);
+  print_value("основной внутренний лимит", fptu_limit);
+  print_value("ширина тега-номера поля/колонки", fptu_co_bits);
+  print_mask("маска для получения типа из идентификатора поля/колонки",
              fptu_ty_mask);
-  print_mask("fptu_fr_mask",
-             "маска резервных битов в идентификаторе поля/колонки",
+  print_mask("маска резервных битов в идентификаторе поля/колонки",
              fptu_fr_mask);
-  print_value("fptu_co_shift",
-              "сдвиг для получения тега-номера из идентификатора поля/колонки",
+  print_value("сдвиг для получения тега-номера из идентификатора поля/колонки",
               fptu_co_shift);
-  print_value("fptu_co_dead",
-              "значение тега-номера для удаленных полей/колонок", fptu_co_dead);
-  print_value("fptu_lt_bits", "кол-во бит доступных для хранения размера "
-                              "массива дескрипторов полей",
+  print_value("значение тега-номера для удаленных полей/колонок", fptu_co_dead);
+  print_value("кол-во бит доступных для хранения размера "
+              "массива дескрипторов полей",
               fptu_lt_bits);
-  print_mask("fptu_lx_mask",
-             "маска для выделения служебных бит из заголовка кортежа",
+  print_mask("маска для выделения служебных бит из заголовка кортежа",
              fptu_lx_mask);
-  print_mask("fptu_lt_mask", "маска для получения размера массива "
-                             "дескрипторов из заголовка кортежа",
+  print_mask("маска для получения размера массива "
+             "дескрипторов из заголовка кортежа",
              fptu_lt_mask);
   printf("\n");
 
   printf("// итоговые ограничения:\n");
-  print_value("fptu_max_tuple_bytes", "максимальный суммарный размер "
-                                      "сериализованного представления "
-                                      "кортежа",
+  print_value("максимальный суммарный размер "
+              "сериализованного представления "
+              "кортежа",
               fptu_max_tuple_bytes);
-  print_value("fptu_max_cols", "максимальный тег-номер поля/колонки",
-              fptu_max_cols);
-  print_value("fptu_max_fields",
-              "максимальное кол-во полей/колонок в одном кортеже",
+  print_value("максимальный тег-номер поля/колонки", fptu_max_cols);
+  print_value("максимальное кол-во полей/колонок в одном кортеже",
               fptu_max_fields);
-  print_value("fptu_max_field_bytes", "максимальный размер поля/колонки",
-              fptu_max_field_bytes);
-  print_value("fptu_max_opaque_bytes",
-              "максимальный размер произвольной последовательности байт",
+  print_value("максимальный размер поля/колонки", fptu_max_field_bytes);
+  print_value("максимальный размер произвольной последовательности байт",
               fptu_max_opaque_bytes);
-  print_value("fptu_max_array", "максимальное кол-во элементов в массиве",
-              fptu_max_array);
+  print_value("максимальное кол-во элементов в массиве", fptu_max_array_len);
   printf("\n");
 
   printf("// максимальные размеры буферов:\n");
-  print_value("fptu_buffer_enought",
-              "буфер достаточного размера для любого кортежа",
+  print_value("буфер достаточного размера для любого кортежа",
               fptu_buffer_enought);
-  print_value("fptu_buffer_limit", "предельный размер для резервирования, "
-                                   "превышение которого считается ошибкой",
+  print_value("предельный размер для резервирования, "
+              "превышение которого считается ошибкой",
               fptu_buffer_limit);
 
-  printf("\nno Windows, no Java, no Problems ;)\n");
+  printf("\nless Windows, no Java, no Problems ;)\n");
   return 0;
 }

@@ -344,7 +344,7 @@ enum fptu_bits {
   fptu_max_opaque_bytes = fptu_max_field_bytes - fptu_unit_size,
   // максимальное кол-во элементов в массиве,
   // так чтобы при любом базовом типе не превышались другие лимиты
-  fptu_max_array = fptu_max_opaque_bytes / 32,
+  fptu_max_array_len = fptu_max_opaque_bytes / 32,
   // буфер достаточного размера для любого кортежа
   fptu_buffer_enought =
       sizeof(fptu_rw) + fptu_max_tuple_bytes + fptu_max_fields * fptu_unit_size,
