@@ -28,6 +28,7 @@
 #pragma warning(push, 1)
 #endif /* _MSC_VER (warnings) */
 
+#include <math.h>
 #include <stdio.h>
 
 #ifdef _MSC_VER
@@ -35,10 +36,10 @@
 #endif
 
 #define print_value(comment, value)                                            \
-  printf("%-20s = %ld\t// %s\n", #value, (long)value, comment)
+  printf("%-24s = %7ld  // %s\n", #value, (long)value, comment)
 
 #define print_mask(comment, value)                                             \
-  printf("%-20s = 0x%lx\t// %s\n", #value, (long)value, comment)
+  printf("%-24s = 0x%-5lx  // %s\n", #value, (long)value, comment)
 
 int main(int argc, char *argv[]) {
   (void)argc;
@@ -49,11 +50,17 @@ int main(int argc, char *argv[]) {
   print_value("максимальное кол-во колонок", fptu_max_cols);
   print_value("максимальное кол-во индексов для одной таблице",
               fpta_max_indexes);
-  print_value("максимальная длина ключа", fpta_max_keylen);
-  print_value("максимально суммарное кол-во таблиц и индексов", fpta_max_dbi);
+  print_value("максимальное суммарное кол-во таблиц и индексов", fpta_max_dbi);
+
+  print_value("максимальная длина строки/записи в байтах", fpta_max_row_bytes);
+  print_value("максимальная длина значения колонки в байтах",
+              fpta_max_col_bytes);
+  print_value("максимальное кол-во элементов в массиве", fpta_max_array_len);
 
   print_value("минимальная длина имени", fpta_name_len_min);
   print_value("максимальная длина имени", fpta_name_len_max);
+  print_value("максимальная длина ключа (дополняется t1ha при превышении)",
+              fpta_max_keylen);
 
   printf("// внутренние технические детали:\n");
   print_value("размер буфера для ключа", fpta_keybuf_len);
@@ -70,6 +77,10 @@ int main(int argc, char *argv[]) {
 
   print_value("ширина хэша имени в битах", fpta_name_hash_bits);
   print_value("сдвиг для получения хэша имени", fpta_name_hash_shift);
+
+  const double_t fpta_name_clash_probab = pow(2.0, -fpta_name_hash_bits / 2.0);
+  printf("%-24s = %.2g  // %s\n", "fpta_name_clash_prob",
+         fpta_name_clash_probab, "вероятность коллизии в именах");
 
   printf("\nless Windows, no Java, no Problems ;)\n");
   return 0;
