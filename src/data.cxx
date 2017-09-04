@@ -49,7 +49,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     result.type = fpta_binary;
     break;
 
-  case fptu_null:
+  case fptu_null /* here is not a composite, but invalid */:
     break;
 
   case fptu_uint16:
@@ -320,7 +320,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     return fptu_upsert_opaque(pt, colnum, value.binary_data,
                               value.binary_length);
 
-  case fptu_null:
+  case fptu_null /* composite */:
     return FPTA_EINVAL;
 
   case fptu_uint16:
