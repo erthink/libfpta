@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -311,6 +311,508 @@ INSTANTIATE_TEST_CASE_P(
 #else
 TEST(CrudSimple, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 #endif /* GTEST_HAS_COMBINE */
+
+//----------------------------------------------------------------------------
+
+TEST(Nullable, AsyncSchemaChange) {
+  /* Проверка поведения при асинхронном изменении признака nullable
+   * для части колонок.
+   *
+   * Сценарий:
+   *  1. Создаем базу с одной таблицей и двумя индексированные колонками.
+   *     Исходно обе колонки НЕ-nullable.
+   *
+   *  2. Делаем несколько итераций последующих шагов. При этом в конце
+   *     каждой итерации пересоздаем таблицу, меняя только признак nullable
+   *     для одной из колонок.
+   *
+   *  2. Вставляем данные из контекста "коррелятора" для проверки
+   *     что с таблицей все хорошо.
+   *
+   *  3. Параллельно открываем базу в контексте "командера" и изменяем
+   *     схему таблицы.
+   *
+   *  4. Еще раз вставляем данные из контекста "коррелятора". При этом пробуем
+   *     вставить строки/коретежи, как со значениями для всех колонок,
+   *     так и все варианты отсутствия колонок.
+   *
+   *  5. Переходим к следующей итерации или освобождаем ресурсы.
+   */
+
+  // создаем исходную базу
+  fpta_db *db_commander = nullptr;
+  uint64_t db_initial_version;
+  {
+    // чистим
+    if (REMOVE_FILE(testdb_name) != 0)
+      ASSERT_EQ(ENOENT, errno);
+    if (REMOVE_FILE(testdb_name_lck) != 0)
+      ASSERT_EQ(ENOENT, errno);
+
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
+                                    &db_commander));
+    ASSERT_NE(db_commander, (fpta_db *)nullptr);
+
+    // описываем простейшую таблицу с двумя колонками
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("pk", fptu_int64,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "se", fptu_int64,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // запускам транзакцию и создаем таблицу с обозначенным набором колонок
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+    ASSERT_EQ(FPTA_OK,
+              fpta_transaction_versions(txn, &db_initial_version, nullptr));
+    ASSERT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
+    ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  }
+
+  // формируем четые строки-кортежа с разным заполнением значениями
+  scoped_ptrw_guard pt_guard[4];
+  fptu_rw *tuple_empty = fptu_alloc(2, 16);
+  ASSERT_NE(tuple_empty, (fptu_rw *)nullptr);
+  pt_guard[0].reset(tuple_empty);
+  fptu_rw *tuple_pk_only = fptu_alloc(2, 16);
+  ASSERT_NE(tuple_pk_only, (fptu_rw *)nullptr);
+  pt_guard[1].reset(tuple_pk_only);
+  fptu_rw *tuple_se_only = fptu_alloc(2, 16);
+  ASSERT_NE(tuple_se_only, (fptu_rw *)nullptr);
+  pt_guard[2].reset(tuple_se_only);
+  fptu_rw *tuple_both = fptu_alloc(2, 16);
+  ASSERT_NE(tuple_both, (fptu_rw *)nullptr);
+  pt_guard[3].reset(tuple_both);
+
+  // итоговые значения тегов-идентификаторов заведом известны,
+  // поэтому заполняем кортежи без использования идентификаторов колонок,
+  // но после проверим их (tuple_empty оставляем пустым).
+  EXPECT_EQ(FPTU_OK, fptu_upsert_int64(tuple_pk_only, 0, 1));
+  EXPECT_EQ(FPTU_OK, fptu_upsert_int64(tuple_se_only, 1, 2));
+  EXPECT_EQ(FPTU_OK, fptu_upsert_int64(tuple_both, 0, 3));
+  EXPECT_EQ(FPTU_OK, fptu_upsert_int64(tuple_both, 1, 4));
+
+  // идентификаторы колонок для коммандера, они будут связаны
+  // со средой/базой открытой из коммандера,
+  // и НЕ должы использоваться в среде коррелятора.
+  fpta_name cm_table, cm_col_pk, cm_col_se;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&cm_table, "table"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&cm_table, &cm_col_pk, "pk"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&cm_table, &cm_col_se, "se"));
+
+  // идентификаторы колонок для коррелятора, они будут связаны
+  // со средой/базой открытой из коррелятора,
+  // и НЕ должы использоваться в среде коммандера.
+  fpta_name cr_table, cr_col_pk, cr_col_se;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&cr_table, "table"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&cr_table, &cr_col_pk, "pk"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&cr_table, &cr_col_se, "se"));
+
+  // открываем базу в "корреляторе"
+  fpta_db *db_correlator = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, false,
+                                  &db_correlator));
+
+  // выполняем первое пробное обновление в корреляторе
+  // обе колонки требуют значений
+  {
+    fpta_txn *txn_correlator = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+
+    // сверяем идентификаторы колонок
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &cr_table, &cr_col_pk));
+    EXPECT_EQ(FPTA_OK,
+              fpta_name_refresh_couple(txn_correlator, &cr_table, &cr_col_se));
+    ASSERT_EQ(0, cr_col_pk.column.num);
+    ASSERT_EQ(1, cr_col_se.column.num);
+    EXPECT_EQ(db_initial_version + 0, cr_table.version);
+    EXPECT_EQ(db_initial_version + 0, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 0, cr_col_se.version);
+
+    EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_insert_row(txn_correlator, &cr_table,
+                                                   fptu_take(tuple_empty)));
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                        fptu_take(tuple_pk_only)));
+    EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_insert_row(txn_correlator, &cr_table,
+                                                   fptu_take(tuple_se_only)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_both)));
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+  }
+
+  // выполняем контрольное чтение и изменяем схему в "коммандоре"
+  // первая колонка становится nullable
+  {
+    fpta_txn *txn_commander = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema,
+                                              &txn_commander));
+    ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+
+    // контрольное чтение
+    fptu_ro row;
+    fpta_value key = fpta_value_sint(3);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_pk, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
+
+    // сверяем идентификаторы и версию схемы
+    ASSERT_EQ(0, cm_col_pk.column.num);
+    EXPECT_EQ(db_initial_version + 0, cm_table.version);
+    EXPECT_EQ(db_initial_version + 0, cm_col_pk.version);
+    // вторая колонка не использовалась и поэтому требует ручного обновления
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_commander, &cm_col_se));
+    EXPECT_EQ(db_initial_version + 0, cm_col_se.version);
+    ASSERT_EQ(1, cm_col_se.column.num);
+
+    // удаляем существующую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
+
+    // описываем новую структуру таблицы
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "pk", fptu_int64,
+                           fpta_primary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "se", fptu_int64,
+                           fpta_secondary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // создаем новую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn_commander, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+  }
+
+  // выполняем второе контрольное обновление данных
+  // после первого изменения схемы
+  // сейчас первая колонка nullable, а вторая нет
+  {
+    fpta_txn *txn_correlator = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+
+    // делаем пробные вставки
+    // теперь первая (pk) колонка nullable, но вторая (se) еще нет
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                        fptu_take(tuple_empty)));
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                        fptu_take(tuple_pk_only)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_se_only)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_both)));
+
+    // сверяем идентификатор таблицы, он должен был обновиться автоматически,
+    // а идентификаторы колонок - нет
+    EXPECT_EQ(db_initial_version + 2, cr_table.version);
+    EXPECT_EQ(db_initial_version + 0, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 0, cr_col_se.version);
+    // обновляем и сверяем идентификаторы колонок
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_pk));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_se));
+    EXPECT_EQ(db_initial_version + 2, cr_table.version);
+    EXPECT_EQ(db_initial_version + 2, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 2, cr_col_se.version);
+    EXPECT_EQ(0, cr_col_pk.column.num);
+    EXPECT_EQ(1, cr_col_se.column.num);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+  }
+
+  // выполняем третье контрольное чтение
+  // и второй раз изменяем схему в "коммандоре"
+  // вторая колонка также становится nullable
+  {
+    fpta_txn *txn_commander = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema,
+                                              &txn_commander));
+    ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+
+    // контрольное чтение
+    fptu_ro row;
+    fpta_value key = fpta_value_sint(4);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_se, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
+    key = fpta_value_sint(2);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_se, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_se_only).sys));
+
+    // сверяем идентификаторы и версию схемы
+    ASSERT_EQ(0, cm_col_pk.column.num);
+    EXPECT_EQ(db_initial_version + 2, cm_table.version);
+    EXPECT_EQ(db_initial_version + 2, cm_col_se.version);
+    // первая колонка не использовалась и поэтому требует ручного обновления
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_commander, &cm_col_pk));
+    EXPECT_EQ(db_initial_version + 2, cm_col_pk.version);
+    ASSERT_EQ(1, cm_col_se.column.num);
+
+    // удаляем существующую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
+
+    // описываем новую структуру таблицы
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "pk", fptu_int64,
+                           fpta_primary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "se", fptu_int64,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // создаем новую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn_commander, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+  }
+
+  // выполняем третье контрольное обновление данных
+  // после второго изменения схемы
+  // сейчас обе колонки nullable
+  {
+    fpta_txn *txn_correlator = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+
+    // делаем пробные вставки, теперь обе колонки nullable
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_pk_only)));
+    EXPECT_EQ(FPTA_OK, fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                                 fptu_take(tuple_se_only)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_both)));
+    // попытку вставки двух пустых значений делаем последней,
+    // иначе сможем вставить другие комбинации с NIL.
+    EXPECT_EQ(FPTA_KEYEXIST, fpta_insert_row(txn_correlator, &cr_table,
+                                             fptu_take(tuple_empty)));
+
+    // сверяем идентификатор таблицы, он должен был обновиться автоматически,
+    // а идентификаторы колонок - нет
+    EXPECT_EQ(db_initial_version + 4, cr_table.version);
+    EXPECT_EQ(db_initial_version + 2, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 2, cr_col_se.version);
+    // обновляем и сверяем идентификаторы колонок
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_pk));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_se));
+    EXPECT_EQ(db_initial_version + 4, cr_table.version);
+    EXPECT_EQ(db_initial_version + 4, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 4, cr_col_se.version);
+    EXPECT_EQ(0, cr_col_pk.column.num);
+    EXPECT_EQ(1, cr_col_se.column.num);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+  }
+
+  // выполняем четверное контрольное чтение
+  // и в третий раз изменяем схему в "коммандоре"
+  // первая колонка становится не-nullable, вторая остается nullable
+  {
+    fpta_txn *txn_commander = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema,
+                                              &txn_commander));
+    ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+
+    // контрольное чтение
+    fptu_ro row;
+    fpta_value key = fpta_value_sint(4);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_se, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
+    key = fpta_value_sint(2);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_se, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_se_only).sys));
+    key = fpta_value_sint(1);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_pk, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_pk_only).sys));
+
+    // сверяем идентификаторы и версию схемы
+    ASSERT_EQ(0, cm_col_pk.column.num);
+    EXPECT_EQ(db_initial_version + 4, cm_table.version);
+    EXPECT_EQ(db_initial_version + 4, cm_col_pk.version);
+    EXPECT_EQ(db_initial_version + 4, cm_col_se.version);
+    ASSERT_EQ(1, cm_col_se.column.num);
+
+    // удаляем существующую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
+
+    // описываем новую структуру таблицы
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("pk", fptu_int64,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe(
+                  "se", fptu_int64,
+                  fpta_secondary_unique_ordered_obverse_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // создаем новую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn_commander, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+  }
+
+  // выполняем контрольное обновление данных после третьего изменения схемы
+  // сейчас первая колонка снова не-nullable, а вторая еще nullable
+  {
+    fpta_txn *txn_correlator = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+
+    // делаем пробные вставки
+    // теперь первая (pk) колонка не-nullable, но вторая (se) еще nullable
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                        fptu_take(tuple_empty)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_pk_only)));
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                        fptu_take(tuple_se_only)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_both)));
+
+    // сверяем идентификатор таблицы, он должен был обновиться автоматически,
+    // а идентификаторы колонок - нет
+    EXPECT_EQ(db_initial_version + 6, cr_table.version);
+    EXPECT_EQ(db_initial_version + 4, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 4, cr_col_se.version);
+    // обновляем и сверяем идентификаторы колонок
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_pk));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_se));
+    EXPECT_EQ(db_initial_version + 6, cr_table.version);
+    EXPECT_EQ(db_initial_version + 6, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 6, cr_col_se.version);
+    EXPECT_EQ(0, cr_col_pk.column.num);
+    EXPECT_EQ(1, cr_col_se.column.num);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+  }
+
+  // выполняем пятое контрольное чтение
+  // и в четверный (последний) раз изменяем схему в "коммандоре"
+  // вторая колонка становится не-nullable
+  {
+    fpta_txn *txn_commander = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema,
+                                              &txn_commander));
+    ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+
+    // контрольное чтение
+    fptu_ro row;
+    fpta_value key = fpta_value_sint(4);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_se, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
+    key = fpta_value_sint(1);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_pk, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_pk_only).sys));
+
+    // сверяем идентификаторы и версию схемы
+    ASSERT_EQ(0, cm_col_pk.column.num);
+    EXPECT_EQ(db_initial_version + 6, cm_table.version);
+    EXPECT_EQ(db_initial_version + 6, cm_col_pk.version);
+    EXPECT_EQ(db_initial_version + 6, cm_col_se.version);
+    ASSERT_EQ(1, cm_col_se.column.num);
+
+    // удаляем существующую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
+
+    // описываем новую структуру таблицы
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("pk", fptu_int64,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "se", fptu_int64,
+                           fpta_secondary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    // создаем новую таблицу
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn_commander, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+  }
+
+  // выполняем пятое (последнее) пробное обновление в корреляторе
+  // сейчас сноыав обе колонки требуют значений
+  {
+    fpta_txn *txn_correlator = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write,
+                                              &txn_correlator));
+
+    EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_insert_row(txn_correlator, &cr_table,
+                                                   fptu_take(tuple_empty)));
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_insert_row(txn_correlator, &cr_table,
+                                        fptu_take(tuple_pk_only)));
+    EXPECT_EQ(FPTA_COLUMN_MISSING, fpta_insert_row(txn_correlator, &cr_table,
+                                                   fptu_take(tuple_se_only)));
+    EXPECT_EQ(FPTA_OK, fpta_insert_row(txn_correlator, &cr_table,
+                                       fptu_take(tuple_both)));
+
+    // сверяем идентификаторы колонок
+    ASSERT_EQ(0, cr_col_pk.column.num);
+    ASSERT_EQ(1, cr_col_se.column.num);
+    EXPECT_EQ(db_initial_version + 8, cr_table.version);
+    // идентификаторы колонок не использовались с прошлой транзакции
+    EXPECT_EQ(db_initial_version + 6, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 6, cr_col_se.version);
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_pk));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_correlator, &cr_col_se));
+    EXPECT_EQ(db_initial_version + 8, cr_col_pk.version);
+    EXPECT_EQ(db_initial_version + 8, cr_col_se.version);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
+  }
+
+  // разрушаем идентифкаторы коррелятора
+  fpta_name_destroy(&cr_col_pk);
+  fpta_name_destroy(&cr_col_se);
+  fpta_name_destroy(&cr_table);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_correlator));
+
+  // выполняем контрольное чтение и изменяем схему в "коммандоре"
+  // первая колонка становится nullable
+  {
+    fpta_txn *txn_commander = nullptr;
+    EXPECT_EQ(FPTA_OK,
+              fpta_transaction_begin(db_commander, fpta_read, &txn_commander));
+    ASSERT_NE((fpta_txn *)nullptr, txn_commander);
+
+    // контрольное чтение
+    fptu_ro row;
+    fpta_value key = fpta_value_sint(4);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_se, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
+    key = fpta_value_sint(3);
+    EXPECT_EQ(FPTA_OK, fpta_get(txn_commander, &cm_col_pk, &key, &row));
+    EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
+
+    // сверяем идентификаторы и версию схемы
+    ASSERT_EQ(0, cm_col_pk.column.num);
+    EXPECT_EQ(db_initial_version + 8, cm_table.version);
+    EXPECT_EQ(db_initial_version + 8, cm_col_pk.version);
+    EXPECT_EQ(db_initial_version + 8, cm_col_se.version);
+    ASSERT_EQ(1, cm_col_se.column.num);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
+  }
+
+  // разрушаем идентифкаторы коммандера
+  fpta_name_destroy(&cm_col_pk);
+  fpta_name_destroy(&cm_col_se);
+  fpta_name_destroy(&cm_table);
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_commander));
+}
 
 //----------------------------------------------------------------------------
 

@@ -186,19 +186,17 @@ static int fpta_schema_clone(const fpta_shove_t schema_key,
   return FPTA_EOOPS;
 } */
 
-static __inline int weight(const fpta_shove_t index) {
+static int index2prio(const fpta_shove_t index) {
+  /* primary, secondary, non-indexed non-nullable, non-indexed nullable */
   if (fpta_is_indexed(index))
-    return fpta_index_is_primary(index) ? 3 : 2;
-  if (index & fpta_index_fnullable)
-    return 1;
-  return 0;
+    return fpta_index_is_primary(index) ? 0 : 1;
+  return (index & fpta_index_fnullable) ? 3 : 2;
 }
 
 static bool compare(const fpta_shove_t &left, const fpta_shove_t &right) {
-  const auto left_weight = weight(left);
-  const auto rigth_weight = weight(right);
-  return left_weight > rigth_weight ||
-         (left_weight == rigth_weight && left < right);
+  const auto left_prio = index2prio(left);
+  const auto rigth_prio = index2prio(right);
+  return left_prio < rigth_prio || (left_prio == rigth_prio && left < right);
 }
 
 static bool fpta_check_indextype(const fpta_index_type index_type) {

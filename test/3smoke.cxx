@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -3180,10 +3180,9 @@ TEST(Smoke, OverchargeOnCommit) {
     EXPECT_EQ(FPTA_OK,
               fpta_upsert_column(tuple, &primary_key, fpta_value_uint(pk)));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date, now));
-    EXPECT_EQ(
-        FPTA_OK,
-        fpta_upsert_column(
-            tuple, &name, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &name,
+                           fpta_value_cstr("qa-kolobok.mpqa.OoCa5Qua.ru")));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &host,
                                           fpta_value_cstr("administrator")));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(pk)));
@@ -3316,10 +3315,9 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK,
               fpta_name_refresh_couple(txn_correlator, &table_id_, &user));
 
-    EXPECT_EQ(
-        FPTA_OK,
-        fpta_upsert_column(
-            tuple, &host, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &host,
+                           fpta_value_cstr("qa-kolobok.mpqa.OoCa5Qua.ru")));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(
                            tuple, &last, fpta_value_datetime(fptu_now_fine())));
     uint64_t seq = 0;
@@ -3329,9 +3327,9 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK,
               fpta_upsert_column(tuple, &id, fpta_value_sint((int64_t)seq)));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
-                                          fpta_value_cstr("Администратор")));
+                                          fpta_value_cstr("Administrator")));
 
-    fpta_value value = fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru");
+    fpta_value value = fpta_value_cstr("qa-kolobok.mpqa.OoCa5Qua.ru");
     fptu_ro record;
     EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn_correlator, &host, &value, &record));
     EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn_correlator, &table_id_,
@@ -3435,17 +3433,16 @@ TEST(Smoke, AsyncSchemaChange) {
     EXPECT_EQ(FPTA_OK,
               fpta_name_refresh_couple(txn_correlator, &table_id_, &user));
 
-    EXPECT_EQ(
-        FPTA_OK,
-        fpta_upsert_column(
-            tuple, &host, fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru")));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &host,
+                           fpta_value_cstr("qa-kolobok.mpqa.OoCa5Qua.ru")));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(
                            tuple, &last, fpta_value_datetime(fptu_now_fine())));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_sint(0)));
     EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
-                                          fpta_value_cstr("Администратор")));
+                                          fpta_value_cstr("Administrator")));
 
-    fpta_value value = fpta_value_cstr("qa-kolobok.mpqa.rd.ptsecurity.ru");
+    fpta_value value = fpta_value_cstr("qa-kolobok.mpqa.OoCa5Qua.ru");
     fptu_ro record;
     EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn_correlator, &host, &value, &record));
     EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn_correlator, &table_id_,
@@ -3474,7 +3471,7 @@ TEST(Smoke, FilterAndRange) {
    *
    *  2. Вставляем одну строку.
    *
-   *  3. Открываем курсов и перемещаем его к первой подходящей записи.
+   *  3. Открываем курсор и перемещаем его к первой подходящей записи.
    *     Проверяем для сортировки по-возрастанию и по-убыванию.
    *
    *  4. Освобождаем ресурсы.

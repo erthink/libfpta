@@ -855,7 +855,7 @@ int fpta_cursor_validate_update_ex(fpta_cursor *cursor, fptu_ro new_row_value,
     return FPTA_KEY_MISMATCH;
 
   if ((op & fpta_skip_nonnullable_check) == 0) {
-    rc = fpta_check_notindexed_cols(cursor->table_schema(), new_row_value);
+    rc = fpta_check_nonnullable(cursor->table_schema(), new_row_value);
     if (unlikely(rc != FPTA_SUCCESS))
       return rc;
   }
@@ -870,8 +870,8 @@ int fpta_cursor_validate_update_ex(fpta_cursor *cursor, fptu_ro new_row_value,
     if (unlikely(rc != MDBX_SUCCESS))
       return rc;
 
-    return fpta_secondary_check(cursor->txn, cursor->table_schema(),
-                                present_row, new_row_value, 0);
+    return fpta_check_secondary_uniq(cursor->txn, cursor->table_schema(),
+                                     present_row, new_row_value, 0);
   }
 
   MDBX_val present_pk_key;
@@ -891,8 +891,9 @@ int fpta_cursor_validate_update_ex(fpta_cursor *cursor, fptu_ro new_row_value,
   if (unlikely(rc != MDBX_SUCCESS))
     return (rc != MDBX_NOTFOUND) ? rc : (int)FPTA_INDEX_CORRUPTED;
 
-  return fpta_secondary_check(cursor->txn, cursor->table_schema(), present_row,
-                              new_row_value, cursor->column_number);
+  return fpta_check_secondary_uniq(cursor->txn, cursor->table_schema(),
+                                   present_row, new_row_value,
+                                   cursor->column_number);
 }
 
 int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
@@ -904,7 +905,7 @@ int fpta_cursor_update(fpta_cursor *cursor, fptu_ro new_row_value) {
     return cursor->unladed_state();
 
   const fpta_table_schema *table_def = cursor->table_schema();
-  rc = fpta_check_notindexed_cols(table_def, new_row_value);
+  rc = fpta_check_nonnullable(table_def, new_row_value);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 

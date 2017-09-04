@@ -957,7 +957,6 @@ __hot int fpta_index_row2key(const fpta_table_schema *const schema,
   }
 
   const fptu_field *field = fptu_lookup_ro(row, (unsigned)column, type);
-
   if (unlikely(field == nullptr)) {
     if (!fpta_index_is_nullable(index))
       return FPTA_COLUMN_MISSING;

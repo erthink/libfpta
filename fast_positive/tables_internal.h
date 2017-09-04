@@ -436,16 +436,16 @@ int fpta_secondary_upsert(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_val pk_key_new, const fptu_ro &row_new,
                           const unsigned stepover);
 
-int fpta_secondary_check(fpta_txn *txn, fpta_table_schema *table_def,
-                         const fptu_ro &row_old, const fptu_ro &row_new,
-                         const unsigned stepover);
+int fpta_check_secondary_uniq(fpta_txn *txn, fpta_table_schema *table_def,
+                              const fptu_ro &row_old, const fptu_ro &row_new,
+                              const unsigned stepover);
 
 int fpta_secondary_remove(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_val &pk_key, const fptu_ro &row_old,
                           const unsigned stepover);
 
-int fpta_check_notindexed_cols(const fpta_table_schema *table_def,
-                               const fptu_ro &row);
+int fpta_check_nonnullable(const fpta_table_schema *table_def,
+                           const fptu_ro &row);
 
 int fpta_schema_add(fpta_column_set *column_set, const char *column_name,
                     fptu_type data_type, fpta_index_type index_type);
