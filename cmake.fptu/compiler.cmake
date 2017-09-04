@@ -406,6 +406,9 @@ macro(setup_compile_flags)
   endif()
 
   if(MSVC)
+    if(NOT MSVC_VERSION LESS 1900)
+      add_compile_flags("C;CXX" "/utf-8")
+    endif()
     if(MSVC_VERSION EQUAL 1910)
       # LY: avoid /Wall for Visual Studio 2017, otherwise due a bug we could lost the control
       #     and get a lot of junk warnings from compiler's and SDK headers.
