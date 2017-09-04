@@ -264,7 +264,12 @@ enum fpta_bits {
   fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits,
 
   /* Максимальное кол-во индексов для одной таблице (порядка 500) */
-  fpta_max_indexes = (1 << (fpta_id_bits - fpta_name_hash_bits))
+  fpta_max_indexes = (1 << (fpta_id_bits - fpta_name_hash_bits)),
+
+  /* Максимальное суммарное кол-во таблиц и всех вторичных индексов,
+   * включая составные индексы/колонки */
+  fpta_max_dbi = 32764 /* соответствует MDBX_MAX_DBI - FPTA_SCHEMA_DBI
+    = (INT16_MAX - CORE_DBS) - 1 = 32767 - 2 - 1 */
 };
 
 /* Экземпляр БД.
