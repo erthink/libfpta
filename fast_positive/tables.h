@@ -657,6 +657,13 @@ static __inline int fpta_value_destroy(fpta_value *value) {
   return FPTA_EINVAL;
 }
 
+/* Значение fpta_value совмещенное с буфером для удобного получения
+ * составных ключей, используется для вызова fpta_get_column4key(). */
+typedef struct fpta_value4key {
+  fpta_value value;
+  uint8_t key_buffer[fpta_keybuf_len];
+} fpta_value4key;
+
 //----------------------------------------------------------------------------
 /* In-place numeric operations with saturation */
 
@@ -2559,10 +2566,16 @@ FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
  * требуемый размер.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_get_column2buffer(fptu_ro row_value,
-                                    const fpta_name *column_id,
+FPTA_API int fpta_get_column2buffer(fptu_ro row, const fpta_name *column_id,
                                     fpta_value *value, void *buffer,
                                     size_t buffer_length);
+
+static __inline int fpta_get_column4key(fptu_ro row, const fpta_name *column_id,
+                                        fpta_value4key *value4key) {
+  return fpta_get_column2buffer(row, column_id, &value4key->value,
+                                value4key->key_buffer,
+                                sizeof(value4key->key_buffer));
+}
 
 /* Обновляет значение колонки в переданном кортеже-строке, выполняя бинарную
  * операцию c аргументом и текущим значением колонки (поля кортежа).
