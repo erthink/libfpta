@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
   print_value("максимальный размер поля/колонки", fptu_max_field_bytes);
   print_value("максимальный размер произвольной последовательности байт",
               fptu_max_opaque_bytes);
-  print_value("максимальное кол-во элементов в массиве", fptu_max_array);
+  print_value("максимальное кол-во элементов в массиве", fptu_max_array_len);
   printf("\n");
 
   printf("// максимальные размеры буферов:\n");
