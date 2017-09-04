@@ -552,7 +552,9 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     key.mdbx.iov_base = value.binary_data;
     break;
 
-  case fptu_null:
+  case fptu_null /* composite */:
+    /* Для составных индексов/колонок должно быть передано fpta_shoved,
+     * что обрабатывается чуть выше. Поэтому здесь только возврат ошибки. */
     return FPTA_ETYPE;
 
   case fptu_uint16:
@@ -764,7 +766,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     __unreachable();
     return FPTA_EOOPS;
 
-  case fptu_null:
+  case fptu_null /* composite */:
     if (mdbx.iov_len > (unsigned)fpta_max_keylen &&
         unlikely(mdbx.iov_len != (unsigned)fpta_shoved_keylen))
       goto return_corrupted;

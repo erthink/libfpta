@@ -23,8 +23,8 @@
  * не индексированы, либо индексированы без ограничений уникальности.
  * Другими словами, это те колонки, которые должны иметь значения,
  * но не проверяются в fpta_check_secondary_uniqueness(). */
-int fpta_check_nonnullable(const fpta_table_schema *table_def,
-                           const fptu_ro &row) {
+__hot int fpta_check_nonnullable(const fpta_table_schema *table_def,
+                                 const fptu_ro &row) {
   assert(table_def->column_count() > 0);
   for (size_t i = 1; i < table_def->column_count(); ++i) {
     const auto shove = table_def->column_shove(i);
@@ -65,9 +65,10 @@ int fpta_check_nonnullable(const fpta_table_schema *table_def,
   return FPTA_SUCCESS;
 }
 
-int fpta_check_secondary_uniq(fpta_txn *txn, fpta_table_schema *table_def,
-                              const fptu_ro &row_old, const fptu_ro &row_new,
-                              const unsigned stepover) {
+__hot int fpta_check_secondary_uniq(fpta_txn *txn, fpta_table_schema *table_def,
+                                    const fptu_ro &row_old,
+                                    const fptu_ro &row_new,
+                                    const unsigned stepover) {
   MDBX_dbi dbi[fpta_max_indexes];
   int rc = fpta_open_secondaries(txn, table_def, dbi);
   if (unlikely(rc != FPTA_SUCCESS))

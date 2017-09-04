@@ -23,7 +23,7 @@ static __hot fptu_lge fpta_cmp_null(const fptu_field *left) {
   auto payload = fptu_field_payload(left);
 
   switch (fptu_get_type(left->ct)) {
-  case fptu_null:
+  case fptu_null /* here is/should not a composite column/index */:
     return fptu_eq;
   case fptu_opaque:
     if (payload->other.varlen.opaque_bytes == 0)
@@ -160,7 +160,7 @@ static __hot fptu_lge fpta_cmp_binary(const fptu_field *left,
   size_t left_len;
 
   switch (fptu_get_type(left->ct)) {
-  case fptu_null:
+  case fptu_null /* here is/should not a composite column/index */:
     return (right_len == 0) ? fptu_eq : fptu_ic;
 
   case fptu_uint16:
@@ -306,6 +306,8 @@ tail_recursion:
     rc = fpta_id_validate(filter->node_fncol.column_id, fpta_column);
     if (unlikely(rc != FPTA_SUCCESS))
       return false;
+    if (unlikely(fpta_column_is_composite(filter->node_fncol.column_id)))
+      return false;
     if (unlikely(!filter->node_fncol.predicate))
       return false;
     return true;
@@ -334,6 +336,8 @@ tail_recursion:
   case fpta_node_ne:
     rc = fpta_id_validate(filter->node_cmp.left_id, fpta_column);
     if (unlikely(rc != FPTA_SUCCESS))
+      return false;
+    if (unlikely(fpta_column_is_composite(filter->node_cmp.left_id)))
       return false;
 
     if (unlikely(filter->node_cmp.right_value.type == fpta_begin ||
