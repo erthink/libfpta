@@ -346,7 +346,7 @@ enum fptu_bits {
   // так чтобы при любом базовом типе не превышались другие лимиты
   fptu_max_array_len = fptu_max_opaque_bytes / 32,
   // буфер достаточного размера для любого кортежа
-  fptu_buffer_enought =
+  fptu_buffer_enough =
       sizeof(fptu_rw) + fptu_max_tuple_bytes + fptu_max_fields * fptu_unit_size,
   // предельный размер, превышение которого считается ошибкой
   fptu_buffer_limit = fptu_max_tuple_bytes * 2

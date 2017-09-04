@@ -42,7 +42,7 @@ TEST(Init, Invalid) {
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, fptu_max_fields * 2));
   EXPECT_EQ(nullptr, fptu_init(space_exactly_noitems, 0, ~0u));
 
-  char space_maximum[fptu_buffer_enought];
+  char space_maximum[fptu_buffer_enough];
   EXPECT_EQ(nullptr, fptu_init(space_maximum, sizeof(space_maximum),
                                fptu_max_fields + 1));
   EXPECT_EQ(nullptr, fptu_init(nullptr, sizeof(space_maximum), 0));
@@ -59,7 +59,7 @@ TEST(Init, Invalid) {
 }
 
 TEST(Init, Base) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
 
   static const size_t extra_space_cases[] = {
       /* clang-format off */

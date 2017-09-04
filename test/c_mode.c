@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 
   printf("// максимальные размеры буферов:\n");
   print_value("буфер достаточного размера для любого кортежа",
-              fptu_buffer_enought);
+              fptu_buffer_enough);
   print_value("предельный размер для резервирования, "
               "превышение которого считается ошибкой",
               fptu_buffer_limit);

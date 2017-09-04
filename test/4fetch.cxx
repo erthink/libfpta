@@ -75,8 +75,8 @@ TEST(Fetch, Invalid) {
 }
 
 TEST(Fetch, Base) {
-  char origin_space[fptu_buffer_enought];
-  char fetched_space[fptu_buffer_enought];
+  char origin_space[fptu_buffer_enough];
+  char fetched_space[fptu_buffer_enough];
   fptu_ro origin_ro, fetched_ro;
   fptu_rw *origin_pt, *fetched_pt;
 
@@ -194,8 +194,8 @@ TEST(Fetch, Base) {
 }
 
 TEST(Fetch, Variate) {
-  char origin_space[fptu_buffer_enought];
-  char fetched_space[fptu_buffer_enought];
+  char origin_space[fptu_buffer_enough];
+  char fetched_space[fptu_buffer_enough];
   fptu_ro origin_ro, fetched_ro;
   fptu_rw *origin_pt, *fetched_pt;
 
@@ -268,7 +268,7 @@ TEST(Fetch, Variate) {
         EXPECT_EQ(origin_pt->head, fetched_pt->head);
         EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
       }
-      if (bytes == fptu_buffer_enought)
+      if (bytes == fptu_buffer_enough)
         EXPECT_EQ(origin_pt->end, fetched_pt->end);
 
       // adds header-only fields and check
@@ -317,7 +317,7 @@ TEST(Fetch, Variate) {
           EXPECT_EQ(origin_pt->head, fetched_pt->head);
           EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
         }
-        if (bytes == fptu_buffer_enought)
+        if (bytes == fptu_buffer_enough)
           EXPECT_EQ(origin_pt->end, fetched_pt->end);
       }
 
@@ -372,7 +372,7 @@ TEST(Fetch, Variate) {
           EXPECT_EQ(origin_pt->head, fetched_pt->head);
           EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
         }
-        if (bytes == fptu_buffer_enought)
+        if (bytes == fptu_buffer_enough)
           EXPECT_EQ(origin_pt->end, fetched_pt->end);
       }
     }
