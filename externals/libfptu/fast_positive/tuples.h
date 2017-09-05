@@ -346,7 +346,7 @@ enum fptu_bits {
   // так чтобы при любом базовом типе не превышались другие лимиты
   fptu_max_array_len = fptu_max_opaque_bytes / 32,
   // буфер достаточного размера для любого кортежа
-  fptu_buffer_enought =
+  fptu_buffer_enough =
       sizeof(fptu_rw) + fptu_max_tuple_bytes + fptu_max_fields * fptu_unit_size,
   // предельный размер, превышение которого считается ошибкой
   fptu_buffer_limit = fptu_max_tuple_bytes * 2
@@ -1074,7 +1074,9 @@ static inline uint64_t cast_wide(uint64_t value) { return value; }
 static inline double_t cast_wide(float value) { return value; }
 static inline double_t cast_wide(double value) { return value; }
 #if FLT_EVAL_METHOD > 1
-static inline double_t cast_wide(double_t /*long double*/) { return value; }
+static inline double_t cast_wide(double_t /*long double*/ value) {
+  return value;
+}
 #endif
 
 template <typename VALUE_TYPE, typename RANGE_BEGIN_TYPE,
@@ -1100,12 +1102,44 @@ inline bool is_within<uint64_t, uint64_t, uint64_t>(uint64_t value,
 }
 
 template <>
+inline bool is_within<double_t, double_t, double_t>(double_t value,
+                                                    double_t begin,
+                                                    double_t end) {
+  assert(begin < end);
+  return value >= begin && value <= end;
+}
+
+template <>
 inline bool is_within<uint64_t, int64_t, int64_t>(uint64_t value, int64_t begin,
                                                   int64_t end) {
   assert(begin < end);
   if (end < 0 || value > (uint64_t)end)
     return false;
   if (begin > 0 && value < (uint64_t)begin)
+    return false;
+  return true;
+}
+
+template <>
+inline bool is_within<uint64_t, double_t, double_t>(uint64_t value,
+                                                    double_t begin,
+                                                    double_t end) {
+  assert(begin < end);
+  if (end < 0 || (end < (double_t)UINT64_MAX && value > (uint64_t)end))
+    return false;
+  if (begin > 0 && (begin > (double_t)UINT64_MAX || value < (uint64_t)begin))
+    return false;
+  return true;
+}
+
+template <>
+inline bool is_within<int64_t, double_t, double_t>(int64_t value,
+                                                   double_t begin,
+                                                   double_t end) {
+  assert(begin < end);
+  if (end < (double_t)INT64_MAX && value > (int64_t)end)
+    return false;
+  if (begin > (double_t)INT64_MAX || value < (int64_t)begin)
     return false;
   return true;
 }

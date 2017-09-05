@@ -28,7 +28,7 @@ static bool field_filter_any(const fptu_field *, void *context, void *param) {
 }
 
 TEST(Remove, Base) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
   fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
   ASSERT_NE(nullptr, pt);
 
@@ -130,7 +130,7 @@ TEST(Remove, Base) {
 }
 
 TEST(Remove, Serie) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
   fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
   ASSERT_NE(nullptr, pt);
 
@@ -175,7 +175,7 @@ TEST(Remove, Serie) {
 }
 
 TEST(Remove, Shuffle) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
 
   ASSERT_TRUE(shuffle6::selftest());
 

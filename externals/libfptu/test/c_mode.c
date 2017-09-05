@@ -29,29 +29,42 @@
 
 #include <stdio.h>
 
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+#define print_value(comment, value)                                            \
+  wprintf(L"%-20S = %ld\t// %S\n", #value, (long)value, comment)
+#define print_mask(comment, value)                                             \
+  wprintf(L"%-20S = 0x%lx\t// %S\n", #value, (long)value, comment)
+#define print(text) wprintf(L"%S", text)
+#else
+#define print_value(comment, value)                                            \
+  printf("%-20s = %ld\t// %s\n", #value, (long)value, comment)
+#define print_mask(comment, value)                                             \
+  printf("%-20s = 0x%lx\t// %s\n", #value, (long)value, comment)
+#define print(text) puts(text)
+#endif /* WINDOWS */
+
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 
-#define print_value(comment, value)                                            \
-  printf("%-20s = %ld\t// %s\n", #value, (long)value, comment)
-
-#define print_mask(comment, value)                                             \
-  printf("%-20s = 0x%lx\t// %s\n", #value, (long)value, comment)
-
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  SetConsoleOutputCP(CP_UTF8);
+#endif /* WINDOWS */
 
-  printf("// базовые лимиты и параметры:\n");
+  print("// базовые лимиты и параметры:\n");
   print_value("ширина счетчиков в битах", fptu_bits);
   print_value("размер одного юнита в байтах", fptu_unit_size);
   print_value("ширина типа в идентификаторе поля", fptu_typeid_bits);
   print_value("резерв в идентификаторе поля", fptu_ct_reserve_bits);
   print_value("резерв под флаги в заголовке кортежа", fptu_lx_bits);
-  printf("\n");
 
-  printf("// производные константы и параметры:\n");
+  print("\n// производные константы и параметры:\n");
   print_value("log2(fptu_unit_size)", fptu_unit_shift);
   print_value("основной внутренний лимит", fptu_limit);
   print_value("ширина тега-номера поля/колонки", fptu_co_bits);
@@ -70,9 +83,8 @@ int main(int argc, char *argv[]) {
   print_mask("маска для получения размера массива "
              "дескрипторов из заголовка кортежа",
              fptu_lt_mask);
-  printf("\n");
 
-  printf("// итоговые ограничения:\n");
+  print("\n// итоговые ограничения:\n");
   print_value("максимальный суммарный размер "
               "сериализованного представления "
               "кортежа",
@@ -84,15 +96,14 @@ int main(int argc, char *argv[]) {
   print_value("максимальный размер произвольной последовательности байт",
               fptu_max_opaque_bytes);
   print_value("максимальное кол-во элементов в массиве", fptu_max_array_len);
-  printf("\n");
 
-  printf("// максимальные размеры буферов:\n");
+  print("\n// максимальные размеры буферов:\n");
   print_value("буфер достаточного размера для любого кортежа",
-              fptu_buffer_enought);
+              fptu_buffer_enough);
   print_value("предельный размер для резервирования, "
               "превышение которого считается ошибкой",
               fptu_buffer_limit);
 
-  printf("\nless Windows, no Java, no Problems ;)\n");
+  print("\nless Windows, no Java, no Problems ;)\n");
   return 0;
 }
