@@ -48,7 +48,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   # In Mac OS, the dynamic linker recognizes
   # @loader_path, @executable_path and @rpath tokens, ex:
   #   '@loder_path/lit.dylib'
-  # means load lit from the same dir the requesting binary lives in.
+  # means load lib from the same dir the requesting binary lives in.
   # Since our dynamic libraries aren't intended for static linking,
   # this is pretty much irrelevant. Disable CMake rpath features
   # altogether. Suppresses a few warnings.

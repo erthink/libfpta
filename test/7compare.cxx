@@ -38,7 +38,7 @@
 #endif
 
 TEST(Compare, FetchTags) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
   ASSERT_TRUE(shuffle6::selftest());
 
   for (unsigned create_iter = 0; create_iter < (1 << 6); ++create_iter) {
@@ -142,12 +142,12 @@ TEST(Compare, EmptyNull) {
 }
 
 TEST(Compare, Base) {
-  char space4major[fptu_buffer_enought];
+  char space4major[fptu_buffer_enough];
   fptu_rw *major = fptu_init(space4major, sizeof(space4major), fptu_max_fields);
   ASSERT_NE(nullptr, major);
   ASSERT_STREQ(nullptr, fptu_check(major));
 
-  char space4minor[fptu_buffer_enought];
+  char space4minor[fptu_buffer_enough];
   fptu_rw *minor = fptu_init(space4minor, sizeof(space4minor), fptu_max_fields);
   ASSERT_NE(nullptr, minor);
   ASSERT_STREQ(nullptr, fptu_check(minor));
@@ -206,12 +206,12 @@ TEST(Compare, DISABLED_Shuffle)
    */
   ASSERT_TRUE(shuffle6::selftest());
 
-  char space4minor[fptu_buffer_enought];
+  char space4minor[fptu_buffer_enough];
   fptu_rw *minor = fptu_init(space4minor, sizeof(space4minor), fptu_max_fields);
   ASSERT_NE(nullptr, minor);
   ASSERT_STREQ(nullptr, fptu_check(minor));
 
-  char space4major[fptu_buffer_enought];
+  char space4major[fptu_buffer_enough];
   fptu_rw *major = fptu_init(space4major, sizeof(space4major), fptu_max_fields);
   ASSERT_NE(nullptr, major);
   ASSERT_STREQ(nullptr, fptu_check(major));

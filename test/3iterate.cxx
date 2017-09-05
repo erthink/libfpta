@@ -68,7 +68,7 @@ TEST(Iterate, Empty) {
 }
 
 TEST(Iterate, Simple) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
   fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -163,7 +163,7 @@ TEST(Iterate, Simple) {
 }
 
 TEST(Iterate, Filter) {
-  char space[fptu_buffer_enought];
+  char space[fptu_buffer_enough];
   fptu_rw *pt = fptu_init(space, sizeof(space), fptu_max_fields);
   ASSERT_NE(nullptr, pt);
   ASSERT_STREQ(nullptr, fptu_check(pt));
