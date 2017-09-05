@@ -467,7 +467,7 @@ int fpta_cursor_locate(fpta_cursor *cursor, bool exactly, const fpta_value *key,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely((key && row) || (!key && !row))) {
+  if (unlikely((key != nullptr) == (row != nullptr))) {
     /* Должен быть выбран один из режимов поиска. */
     cursor->set_poor();
     return FPTA_EINVAL;

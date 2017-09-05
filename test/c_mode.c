@@ -25,14 +25,82 @@
     disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
 #pragma warning(                                                               \
     disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
-#endif /* windows mustdie */
+#pragma warning(push, 1)
+#endif /* _MSC_VER (warnings) */
 
+#include <math.h>
 #include <stdio.h>
+
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+#define print_value(comment, value)                                            \
+  wprintf(L"%-24S = %7ld  // %S\n", #value, (long)value, comment)
+#define print_mask(comment, value)                                             \
+  wprintf(L"%-24S = 0x%-5lx  // %S\n", #value, (long)value, comment)
+#define print(text) wprintf(L"%S", text)
+#else
+#define print_value(comment, value)                                            \
+  printf("%-24s = %7ld  // %s\n", #value, (long)value, comment)
+#define print_mask(comment, value)                                             \
+  printf("%-24s = 0x%05lx  // %s\n", #value, (long)value, comment)
+#define print(text) puts(text)
+#endif /* WINDOWS */
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  SetConsoleOutputCP(CP_UTF8);
+#endif /* WINDOWS */
 
-  printf("\nno Windows, no Java, no Problems ;)\n");
+  print("// основные ограничения и константы:\n");
+  print_value("максимальное кол-во таблиц", fpta_tables_max);
+  print_value("максимальное кол-во колонок", fptu_max_cols);
+  print_value("максимальное кол-во индексов для одной таблице",
+              fpta_max_indexes);
+  print_value("максимальное суммарное кол-во таблиц и индексов", fpta_max_dbi);
+
+  print_value("максимальная длина строки/записи в байтах", fpta_max_row_bytes);
+  print_value("максимальная длина значения колонки в байтах",
+              fpta_max_col_bytes);
+  print_value("максимальное кол-во элементов в массиве", fpta_max_array_len);
+
+  print_value("минимальная длина имени", fpta_name_len_min);
+  print_value("максимальная длина имени", fpta_name_len_max);
+  print_value("максимальная длина ключа (дополняется t1ha при превышении)",
+              fpta_max_keylen);
+
+  print("// внутренние технические детали:\n");
+  print_value("размер буфера для ключа", fpta_keybuf_len);
+
+  print_value("ширина идентификатора в битах", fpta_id_bits);
+
+  print_value("ширина типа колонки в битах", fpta_column_typeid_bits);
+  print_value("сдвиг для получения типа колонки", fpta_column_typeid_shift);
+  print_mask("маска для получения типа колонки", fpta_column_typeid_mask);
+
+  print_value("ширина типа индекса в битах", fpta_column_index_bits);
+  print_value("сдвиг для получения типа индекса", fpta_column_index_shift);
+  print_mask("маска для получения типа индекса", fpta_column_index_mask);
+
+  print_value("ширина хэша имени в битах", fpta_name_hash_bits);
+  print_value("сдвиг для получения хэша имени", fpta_name_hash_shift);
+
+  const double_t fpta_name_clash_probab = pow(2.0, -fpta_name_hash_bits / 2.0);
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  wprintf(L"%-24S = %.2g  // %S\n",
+#else
+  printf("%-24s = %.2g  // %s\n",
+#endif /* WINDOWS */
+          "fpta_name_clash_prob", fpta_name_clash_probab,
+          "вероятность коллизии в именах");
+
+  print("\nless Windows, no Java, no Problems ;)\n");
   return 0;
 }

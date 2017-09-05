@@ -204,3 +204,14 @@ foreach(option IN LISTS options)
   endif()
   find_package_message("FPTA_${option}" "FPTA_${option}: ${value}" "${value}")
 endforeach(option)
+
+if(NOT BUILD_SHARED_LIBS)
+  message(
+    "   **********************************************************************\n"
+    "       libfpta is free software: you can redistribute it and/or modify it\n"
+    "       under the terms of the GNU Lesser General Public License as\n"
+    "       published by the Free Software Foundation, either version 3 of the\n"
+    "       License, or (at your option) any later version.\n\n"
+    "       So, libfpta could be STATICALLY LINKED ONLY WITH GPLed software.\n"
+    "   **********************************************************************")
+endif()

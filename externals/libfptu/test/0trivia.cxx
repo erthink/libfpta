@@ -66,12 +66,12 @@ TEST(Trivia, Apriory) {
   ASSERT_LE(fptu_max_field_bytes, fptu_limit * fptu_unit_size);
   ASSERT_LE(fptu_max_opaque_bytes, fptu_max_field_bytes - fptu_unit_size);
 
-  ASSERT_LE(fptu_max_array, fptu_max_fields);
-  ASSERT_LE(fptu_max_array, fptu_max_field_bytes / fptu_unit_size - 1);
+  ASSERT_LE(fptu_max_array_len, fptu_max_fields);
+  ASSERT_LE(fptu_max_array_len, fptu_max_field_bytes / fptu_unit_size - 1);
   ASSERT_GE(fptu_max_field_bytes, fptu_max_fields * fptu_unit_size);
   ASSERT_GE(fptu_max_tuple_bytes, fptu_max_field_bytes + fptu_unit_size * 2);
   ASSERT_GE(fptu_max_tuple_bytes, (fptu_max_fields + 1) * fptu_unit_size * 2);
-  ASSERT_LE(fptu_buffer_enought, fptu_buffer_limit);
+  ASSERT_LE(fptu_buffer_enough, fptu_buffer_limit);
 
   ASSERT_EQ(fptu_ty_mask, fptu_farray | fptu_nested);
   ASSERT_GT(fptu_fr_mask, fptu_ty_mask);

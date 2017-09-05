@@ -85,8 +85,8 @@
 
 #if defined(HAVE_SYS_STAT_H) && !defined(_WIN32) && !defined(_WIN64)
 #include <sys/stat.h> // for mode_t
-#else
-typedef unsigned mode_t;
+#elif !defined(__mode_t_defined)
+typedef unsigned short mode_t;
 #endif
 
 #ifdef _MSC_VER
@@ -216,6 +216,12 @@ enum fpta_bits {
   fpta_tables_max = 1024,
   /* Максимальное кол-во колонок (порядка 1000) */
   fpta_max_cols = fptu_max_cols,
+  /* Максимальный размер строки/записи в байтах */
+  fpta_max_row_bytes = fptu_max_tuple_bytes,
+  /* Максимальная длина значения колонки в байтах */
+  fpta_max_col_bytes = fptu_max_opaque_bytes,
+  /* Максимальное кол-во элементов в массиве */
+  fpta_max_array_len = fptu_max_array_len,
 
   /* Максимальная длина ключа и/или индексируемого поля. Ограничение
    * актуально только для упорядоченных индексов для строк, бинарных данных
@@ -264,7 +270,12 @@ enum fpta_bits {
   fpta_name_hash_shift = fpta_column_index_shift + fpta_column_index_bits,
 
   /* Максимальное кол-во индексов для одной таблице (порядка 500) */
-  fpta_max_indexes = (1 << (fpta_id_bits - fpta_name_hash_bits))
+  fpta_max_indexes = (1 << (fpta_id_bits - fpta_name_hash_bits)),
+
+  /* Максимальное суммарное кол-во таблиц и всех вторичных индексов,
+   * включая составные индексы/колонки */
+  fpta_max_dbi = 32764 /* соответствует MDBX_MAX_DBI - FPTA_SCHEMA_DBI
+    = (INT16_MAX - CORE_DBS) - 1 = 32767 - 2 - 1 */
 };
 
 /* Экземпляр БД.
@@ -645,6 +656,13 @@ static __inline int fpta_value_destroy(fpta_value *value) {
 
   return FPTA_EINVAL;
 }
+
+/* Значение fpta_value совмещенное с буфером для удобного получения
+ * составных ключей, используется для вызова fpta_get_column4key(). */
+typedef struct fpta_value4key {
+  fpta_value value;
+  uint8_t key_buffer[fpta_keybuf_len];
+} fpta_value4key;
 
 //----------------------------------------------------------------------------
 /* In-place numeric operations with saturation */
@@ -2548,10 +2566,16 @@ FPTA_API int fpta_get_column(fptu_ro row_value, const fpta_name *column_id,
  * требуемый размер.
  *
  * В случае успеха возвращает ноль, иначе код ошибки. */
-FPTA_API int fpta_get_column2buffer(fptu_ro row_value,
-                                    const fpta_name *column_id,
+FPTA_API int fpta_get_column2buffer(fptu_ro row, const fpta_name *column_id,
                                     fpta_value *value, void *buffer,
                                     size_t buffer_length);
+
+static __inline int fpta_get_column4key(fptu_ro row, const fpta_name *column_id,
+                                        fpta_value4key *value4key) {
+  return fpta_get_column2buffer(row, column_id, &value4key->value,
+                                value4key->key_buffer,
+                                sizeof(value4key->key_buffer));
+}
 
 /* Обновляет значение колонки в переданном кортеже-строке, выполняя бинарную
  * операцию c аргументом и текущим значением колонки (поля кортежа).
