@@ -85,8 +85,8 @@
 
 #if defined(HAVE_SYS_STAT_H) && !defined(_WIN32) && !defined(_WIN64)
 #include <sys/stat.h> // for mode_t
-#else
-typedef unsigned mode_t;
+#elif !defined(__mode_t_defined)
+typedef unsigned short mode_t;
 #endif
 
 #ifdef _MSC_VER
