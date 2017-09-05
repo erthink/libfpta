@@ -31,21 +31,35 @@
 #include <math.h>
 #include <stdio.h>
 
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+#define print_value(comment, value)                                            \
+  wprintf(L"%-24S = %7ld  // %S\n", #value, (long)value, comment)
+#define print_mask(comment, value)                                             \
+  wprintf(L"%-24S = 0x%-5lx  // %S\n", #value, (long)value, comment)
+#define print(text) wprintf(L"%S", text)
+#else
+#define print_value(comment, value)                                            \
+  printf("%-24s = %7ld  // %s\n", #value, (long)value, comment)
+#define print_mask(comment, value)                                             \
+  printf("%-24s = 0x%05lx  // %s\n", #value, (long)value, comment)
+#define print(text) puts(text)
+#endif /* WINDOWS */
+
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 
-#define print_value(comment, value)                                            \
-  printf("%-24s = %7ld  // %s\n", #value, (long)value, comment)
-
-#define print_mask(comment, value)                                             \
-  printf("%-24s = 0x%-5lx  // %s\n", #value, (long)value, comment)
-
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  SetConsoleOutputCP(CP_UTF8);
+#endif /* WINDOWS */
 
-  printf("// основные ограничения и константы:\n");
+  print("// основные ограничения и константы:\n");
   print_value("максимальное кол-во таблиц", fpta_tables_max);
   print_value("максимальное кол-во колонок", fptu_max_cols);
   print_value("максимальное кол-во индексов для одной таблице",
@@ -62,7 +76,7 @@ int main(int argc, char *argv[]) {
   print_value("максимальная длина ключа (дополняется t1ha при превышении)",
               fpta_max_keylen);
 
-  printf("// внутренние технические детали:\n");
+  print("// внутренние технические детали:\n");
   print_value("размер буфера для ключа", fpta_keybuf_len);
 
   print_value("ширина идентификатора в битах", fpta_id_bits);
@@ -79,9 +93,14 @@ int main(int argc, char *argv[]) {
   print_value("сдвиг для получения хэша имени", fpta_name_hash_shift);
 
   const double_t fpta_name_clash_probab = pow(2.0, -fpta_name_hash_bits / 2.0);
-  printf("%-24s = %.2g  // %s\n", "fpta_name_clash_prob",
-         fpta_name_clash_probab, "вероятность коллизии в именах");
+#if defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
+  wprintf(L"%-24S = %.2g  // %S\n",
+#else
+  printf("%-24s = %.2g  // %s\n",
+#endif /* WINDOWS */
+          "fpta_name_clash_prob", fpta_name_clash_probab,
+          "вероятность коллизии в именах");
 
-  printf("\nless Windows, no Java, no Problems ;)\n");
+  print("\nless Windows, no Java, no Problems ;)\n");
   return 0;
 }
