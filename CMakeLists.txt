@@ -68,12 +68,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  set(BUILD_SHARED_LIBS_DEFAULT OFF)
-else()
-  set(BUILD_SHARED_LIBS_DEFAULT ON)
-endif()
-option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ${BUILD_SHARED_LIBS_DEFAULT})
+option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
 
 # Define GNU standard installation directories
 include(GNUInstallDirs)
