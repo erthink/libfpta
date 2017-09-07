@@ -6649,6 +6649,10 @@ int mdbx_cursor_get(MDBX_cursor *mc, MDBX_val *key, MDBX_val *data,
       return MDBX_EINVAL;
     if (unlikely(mc->mc_xcursor == NULL))
       return MDBX_INCOMPATIBLE;
+    if (mc->mc_ki[mc->mc_top] >= NUMKEYS(mc->mc_pg[mc->mc_top])) {
+      mc->mc_ki[mc->mc_top] = NUMKEYS(mc->mc_pg[mc->mc_top]);
+      return MDBX_NOTFOUND;
+    }
     {
       MDBX_node *leaf = NODEPTR(mc->mc_pg[mc->mc_top], mc->mc_ki[mc->mc_top]);
       if (!F_ISSET(leaf->mn_flags, F_DUPDATA)) {
@@ -7360,6 +7364,8 @@ int mdbx_cursor_del(MDBX_cursor *mc, unsigned flags) {
               continue;
             if (m2->mc_pg[mc->mc_top] == mp) {
               MDBX_node *n2 = leaf;
+              if (m2->mc_ki[mc->mc_top] >= NUMKEYS(mp))
+                continue;
               if (m2->mc_ki[mc->mc_top] != mc->mc_ki[mc->mc_top]) {
                 n2 = NODEPTR(mp, m2->mc_ki[mc->mc_top]);
                 if (n2->mn_flags & F_SUBDATA)
@@ -8112,6 +8118,8 @@ static void mdbx_cursor_copy(const MDBX_cursor *csrc, MDBX_cursor *cdst);
 /* Perform act while tracking temporary cursor mn */
 #define WITH_CURSOR_TRACKING(mn, act)                                          \
   do {                                                                         \
+    mdbx_cassert(&(mn),                                                        \
+                 mn.mc_txn->mt_cursors != NULL /* must be not rdonly txt */);  \
     MDBX_cursor mc_dummy, *tracked,                                            \
         **tp = &(mn).mc_txn->mt_cursors[mn.mc_dbi];                            \
     if ((mn).mc_flags & C_SUB) {                                               \
@@ -10073,6 +10081,9 @@ int mdbx_dbi_open_ex(MDBX_txn *txn, const char *table_name, unsigned user_flags,
     if (unlikely((node->mn_flags & (F_DUPDATA | F_SUBDATA)) != F_SUBDATA))
       return MDBX_INCOMPATIBLE;
   }
+
+  if (rc != MDBX_SUCCESS && unlikely(txn->mt_flags & MDBX_TXN_RDONLY))
+    return MDBX_EACCESS;
 
   /* Done here so we cannot fail after creating a new DB */
   char *namedup = mdbx_strdup(table_name);
