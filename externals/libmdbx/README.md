@@ -1,4 +1,14 @@
-﻿libmdbx
+﻿### IMPENDING CHANGES WARNING
+================================================================================
+
+**Now MDBX is under active development and until November 2017 is expected a big
+change both of API and database format.  Unfortunately those update will lead to
+loss of compatibility with previous versions.**
+
+The aim of this revolution in providing a clearer robust API and adding new
+features, including the database properties.
+
+libmdbx
 ======================================
 Extended LMDB, aka "Расширенная LMDB".
 
@@ -51,6 +61,15 @@ _libmdbx_ является развитием "Lightning Memory-Mapped Database"
 Tables](https://github.com/leo-yuriev/libfpta), aka ["Позитивные
 Таблицы"](https://github.com/leo-yuriev/libfpta) by [Positive
 Technologies](https://www.ptsecurity.ru).
+
+
+## Acknowledgements
+
+Howard Chu (Symas Corporation) - the author of LMDB,
+from which originated the MDBX in 2015.
+
+Martin Hedenfalk <martin@bzero.se> - the author of `btree.c` code,
+which was used for begin development of LMDB.
 
 
 Характеристики и ключевые особенности
