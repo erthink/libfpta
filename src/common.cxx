@@ -100,6 +100,9 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(path == nullptr || *path == '\0'))
     return FPTA_EINVAL;
 
+  if (unlikely(megabytes > (SIZE_MAX >> 20)))
+    return FPTA_EINVAL;
+
   unsigned mdbx_flags = MDBX_NOSUBDIR;
   switch (durability) {
   default:
@@ -159,7 +162,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
-  rc = mdbx_env_set_mapsize(db->mdbx_env, megabytes * (1 << 20));
+  rc = mdbx_env_set_mapsize(db->mdbx_env, megabytes << 20);
   if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
