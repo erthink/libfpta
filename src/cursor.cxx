@@ -81,12 +81,12 @@ int fpta_cursor_open(fpta_txn *txn, fpta_name *column_id, fpta_value range_from,
   if (unlikely(range_from.type == fpta_end || range_to.type == fpta_begin))
     return FPTA_EINVAL;
 
-  if (unlikely(!fpta_filter_validate(filter)))
-    return FPTA_EINVAL;
-
   rc = fpta_name_refresh_filter(txn, column_id->column.table, filter);
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
+
+  if (unlikely(!fpta_filter_validate(filter)))
+    return FPTA_EINVAL;
 
   MDBX_dbi tbl_handle, idx_handle;
   rc = fpta_open_column(txn, column_id, tbl_handle, idx_handle);
