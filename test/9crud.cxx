@@ -1046,6 +1046,150 @@ TEST(Nullable, SchemaReloadAfterAbort) {
 
 //----------------------------------------------------------------------------
 
+static std::string random_string(int len) {
+  static std::string alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  std::string result;
+  for (int i = 0; i < len; ++i)
+    result.push_back(alphabet[rand() % alphabet.length()]);
+  return result;
+}
+
+TEST(CRUD, DISABLED_ExtraOps) {
+  /* FIXME: Описание сценария теста */
+
+  // чистим
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  fpta_db *db_correlator = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 20, true,
+                                  &db_correlator));
+  ASSERT_NE(db_correlator, (fpta_db *)nullptr);
+
+  { // create table
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("uuidfield", fptu_cstr,
+                                   fpta_primary_unique_ordered_reverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("dst_ip", fptu_cstr,
+                                            fpta_noindex_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("port", fptu_int64,
+                                            fpta_noindex_nullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("date", fptu_datetime,
+                                            fpta_noindex_nullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("_id", fptu_int64,
+                                   fpta_secondary_unique_unordered, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "_last_changed", fptu_datetime,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK,
+              fpta_transaction_begin(db_correlator, fpta_schema, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  }
+  EXPECT_EQ(FPTA_OK, fpta_db_close(db_correlator));
+
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 30, false,
+                                  &db_correlator));
+  int i = 0;
+  for (; i < 1500000; ++i) { // try to fill table
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+
+    fpta_name table, uuid, dst_ip, port, date, id, lc;
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &uuid, "uuidfield"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &dst_ip, "dst_ip"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &port, "port"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &date, "date"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &id, "_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &lc, "_last_changed"));
+
+    fpta_name_refresh(txn, &table);
+    fptu_ro record;
+    memset(&record, 0, sizeof(fptu_ro));
+
+    const auto string_holder = random_string(36);
+    fpta_value value = fpta_value_str(string_holder);
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &uuid));
+    int rc = fpta_get(txn, &uuid, &value, &record);
+    EXPECT_TRUE(rc == FPTA_OK || rc == FPTA_NOTFOUND);
+
+    size_t row_count = 0;
+    EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, nullptr));
+    if (row_count > 50000) {
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &lc));
+      fpta_cursor *cursor = nullptr;
+
+      ASSERT_EQ(FPTA_OK,
+                fpta_cursor_open(txn, &lc, fpta_value_begin(), fpta_value_end(),
+                                 nullptr, fpta_ascending_dont_fetch, &cursor));
+      EXPECT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_first));
+
+      size_t deleted = 0;
+      for (size_t j = 0; j < 20000; ++j) {
+        EXPECT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
+        ++deleted;
+      }
+      ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+    }
+
+    fptu_rw *tuple = fptu_alloc(5, 110);
+    ASSERT_NE(tuple, (fptu_rw *)nullptr);
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &uuid));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &uuid, value));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &port));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &port,
+    // fpta_value_sint(100)));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &dst_ip));
+    std::string ip = random_string(7 + (rand() % 9));
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &dst_ip, fpta_value_cstr(ip.c_str())));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &date));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &date, fpta_value_datetime(fptu_now_fine())));
+
+    uint64_t seq = 0;
+    EXPECT_EQ(FPTA_OK, fpta_table_sequence(txn, &table, &seq, 1));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &id));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(seq)));
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &lc));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &lc, fpta_value_datetime(fptu_now_fine())));
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_probe_and_upsert_row(txn, &table, fptu_take(tuple)));
+
+    fptu_clear(tuple);
+    free(tuple);
+
+    fpta_name_destroy(&table);
+    fpta_name_destroy(&uuid);
+    fpta_name_destroy(&port);
+    fpta_name_destroy(&dst_ip);
+    fpta_name_destroy(&date);
+    fpta_name_destroy(&id);
+    fpta_name_destroy(&lc);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  }
+  EXPECT_EQ(FPTA_OK, fpta_db_close(db_correlator));
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
