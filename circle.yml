@@ -13,7 +13,7 @@ dependencies:
   pre:
     - sudo apt update -q
   override:
-    - sudo apt install cmake libgtest-dev
+    - sudo apt install cmake libgtest-dev valgrind
   post:
     - c++ --version
     - cmake --version

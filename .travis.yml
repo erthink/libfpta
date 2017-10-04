@@ -15,6 +15,7 @@ addons:
     packages:
       - cmake
       - libgtest-dev
+      - valgrind
   coverity_scan:
     project:
       name: "leo-yuriev/libfpta"
