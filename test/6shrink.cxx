@@ -58,7 +58,7 @@ TEST(Shrink, Base) {
   EXPECT_EQ(0u, pt->junk);
   fptu_field *fp = fptu_lookup(pt, 0xB, fptu_uint16);
   ASSERT_NE(nullptr, fp);
-  EXPECT_EQ(0xBB43, fptu_field_uint16(fp));
+  EXPECT_EQ(0xBB43u, fptu_field_uint16(fp));
 
   // add thrid field and erase previous
   EXPECT_EQ(FPTU_OK, fptu_insert_uint32(pt, 0xC, 42));
