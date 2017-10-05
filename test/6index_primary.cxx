@@ -86,7 +86,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   // нужно простое число, иначе сломается переупорядочивание
   ASSERT_TRUE(isPrime(NNN));
   // иначе не сможем проверить fptu_uint16
-  ASSERT_GE(65535u, NNN);
+  ASSERT_GE(65535, NNN);
 
   SCOPED_TRACE("type " + std::to_string(type) + ", index " +
                std::to_string(index) +
@@ -341,8 +341,7 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
     auto checksum = order_checksum(tuple_order, type, index).uint;
     ASSERT_EQ(checksum, tuple_checksum);
 
-    auto tuple_dup_id =
-        (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
+    auto tuple_dup_id = fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));

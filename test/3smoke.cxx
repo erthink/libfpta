@@ -563,21 +563,21 @@ TEST(Smoke, mapdup_order2key) {
     int dup = mapdup_order2key(order, NNN);
     checker[dup] += 1;
   }
-  EXPECT_EQ(1u, checker[0]);
-  EXPECT_EQ(1u, checker[1]);
-  EXPECT_EQ(1u, checker[2]);
-  EXPECT_EQ(1u, checker[3]);
-  EXPECT_EQ(1u, checker[4]);
-  EXPECT_EQ(1u, checker[5]);
-  EXPECT_EQ(1u, checker[6]);
-  EXPECT_EQ(1u, checker[7]);
-  EXPECT_EQ(2u, checker[8]);
-  EXPECT_EQ(2u, checker[9]);
-  EXPECT_EQ(2u, checker[10]);
-  EXPECT_EQ(2u, checker[11]);
-  EXPECT_EQ(4u, checker[12]);
-  EXPECT_EQ(4u, checker[13]);
-  EXPECT_EQ(8u, checker[14]);
+  EXPECT_EQ(1, checker[0]);
+  EXPECT_EQ(1, checker[1]);
+  EXPECT_EQ(1, checker[2]);
+  EXPECT_EQ(1, checker[3]);
+  EXPECT_EQ(1, checker[4]);
+  EXPECT_EQ(1, checker[5]);
+  EXPECT_EQ(1, checker[6]);
+  EXPECT_EQ(1, checker[7]);
+  EXPECT_EQ(2, checker[8]);
+  EXPECT_EQ(2, checker[9]);
+  EXPECT_EQ(2, checker[10]);
+  EXPECT_EQ(2, checker[11]);
+  EXPECT_EQ(4, checker[12]);
+  EXPECT_EQ(4, checker[13]);
+  EXPECT_EQ(8, checker[14]);
   EXPECT_EQ(15u, checker.size());
 }
 
@@ -1138,7 +1138,7 @@ TEST_F(SmokeCRUD, none) {
       // проверяем кол-во повторов
       size_t dups;
       EXPECT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &dups));
-      EXPECT_EQ(expected_dups, dups);
+      EXPECT_EQ(expected_dups, (int)dups);
 
       ASSERT_EQ(FPTU_OK, fptu_clear(row));
       if (m & 1)

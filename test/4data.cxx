@@ -629,7 +629,7 @@ TEST(Data, UpsertColumn) {
             fptu_get_fp64(row, col_fp64.column.num, &error));
   EXPECT_EQ(FPTU_OK, error);
 
-  EXPECT_EQ(0x8001, fptu_get_uint16(row, col_uint16.column.num, &error));
+  EXPECT_EQ(0x8001u, fptu_get_uint16(row, col_uint16.column.num, &error));
   EXPECT_EQ(FPTU_OK, error);
   EXPECT_STREQ("xyz-string", fptu_get_cstr(row, col_str.column.num, &error));
   EXPECT_EQ(FPTU_OK, error);

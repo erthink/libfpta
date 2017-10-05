@@ -35,7 +35,7 @@ public:
   bool secondary;
   int order_key;
   int order_val;
-  int nitems;
+  unsigned nitems;
   int shift;
 
   scoped_db_guard db_quard;
@@ -198,7 +198,7 @@ TEST_P(CrudSimple, Nulls) {
                std::to_string(nitems) + ", shift " + std::to_string(shift));
 
   std::string changelog;
-  for (int i = 0; i < nitems; ++i) {
+  for (unsigned i = 0; i < nitems; ++i) {
     const int n = (i + shift) % 9;
     ASSERT_EQ(FPTU_OK, fptu_clear(row));
     ASSERT_STREQ(nullptr, fptu_check(row));
@@ -430,8 +430,8 @@ TEST(Nullable, AsyncSchemaChange) {
               fpta_name_refresh_couple(txn_correlator, &cr_table, &cr_col_pk));
     EXPECT_EQ(FPTA_OK,
               fpta_name_refresh_couple(txn_correlator, &cr_table, &cr_col_se));
-    ASSERT_EQ(0, cr_col_pk.column.num);
-    ASSERT_EQ(1, cr_col_se.column.num);
+    ASSERT_EQ(0u, cr_col_pk.column.num);
+    ASSERT_EQ(1u, cr_col_se.column.num);
     EXPECT_EQ(db_initial_version + 0, cr_table.version);
     EXPECT_EQ(db_initial_version + 0, cr_col_pk.version);
     EXPECT_EQ(db_initial_version + 0, cr_col_se.version);
@@ -464,13 +464,13 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
 
     // сверяем идентификаторы и версию схемы
-    ASSERT_EQ(0, cm_col_pk.column.num);
+    ASSERT_EQ(0u, cm_col_pk.column.num);
     EXPECT_EQ(db_initial_version + 0, cm_table.version);
     EXPECT_EQ(db_initial_version + 0, cm_col_pk.version);
     // вторая колонка не использовалась и поэтому требует ручного обновления
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_commander, &cm_col_se));
     EXPECT_EQ(db_initial_version + 0, cm_col_se.version);
-    ASSERT_EQ(1, cm_col_se.column.num);
+    ASSERT_EQ(1u, cm_col_se.column.num);
 
     // удаляем существующую таблицу
     EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
@@ -523,8 +523,8 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_EQ(db_initial_version + 2, cr_table.version);
     EXPECT_EQ(db_initial_version + 2, cr_col_pk.version);
     EXPECT_EQ(db_initial_version + 2, cr_col_se.version);
-    EXPECT_EQ(0, cr_col_pk.column.num);
-    EXPECT_EQ(1, cr_col_se.column.num);
+    EXPECT_EQ(0u, cr_col_pk.column.num);
+    EXPECT_EQ(1u, cr_col_se.column.num);
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
   }
@@ -548,13 +548,13 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_se_only).sys));
 
     // сверяем идентификаторы и версию схемы
-    ASSERT_EQ(0, cm_col_pk.column.num);
+    ASSERT_EQ(0u, cm_col_pk.column.num);
     EXPECT_EQ(db_initial_version + 2, cm_table.version);
     EXPECT_EQ(db_initial_version + 2, cm_col_se.version);
     // первая колонка не использовалась и поэтому требует ручного обновления
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn_commander, &cm_col_pk));
     EXPECT_EQ(db_initial_version + 2, cm_col_pk.version);
-    ASSERT_EQ(1, cm_col_se.column.num);
+    ASSERT_EQ(1u, cm_col_se.column.num);
 
     // удаляем существующую таблицу
     EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
@@ -607,8 +607,8 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_EQ(db_initial_version + 4, cr_table.version);
     EXPECT_EQ(db_initial_version + 4, cr_col_pk.version);
     EXPECT_EQ(db_initial_version + 4, cr_col_se.version);
-    EXPECT_EQ(0, cr_col_pk.column.num);
-    EXPECT_EQ(1, cr_col_se.column.num);
+    EXPECT_EQ(0u, cr_col_pk.column.num);
+    EXPECT_EQ(1u, cr_col_se.column.num);
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
   }
@@ -635,11 +635,11 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_pk_only).sys));
 
     // сверяем идентификаторы и версию схемы
-    ASSERT_EQ(0, cm_col_pk.column.num);
+    ASSERT_EQ(0u, cm_col_pk.column.num);
     EXPECT_EQ(db_initial_version + 4, cm_table.version);
     EXPECT_EQ(db_initial_version + 4, cm_col_pk.version);
     EXPECT_EQ(db_initial_version + 4, cm_col_se.version);
-    ASSERT_EQ(1, cm_col_se.column.num);
+    ASSERT_EQ(1u, cm_col_se.column.num);
 
     // удаляем существующую таблицу
     EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
@@ -692,8 +692,8 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_EQ(db_initial_version + 6, cr_table.version);
     EXPECT_EQ(db_initial_version + 6, cr_col_pk.version);
     EXPECT_EQ(db_initial_version + 6, cr_col_se.version);
-    EXPECT_EQ(0, cr_col_pk.column.num);
-    EXPECT_EQ(1, cr_col_se.column.num);
+    EXPECT_EQ(0u, cr_col_pk.column.num);
+    EXPECT_EQ(1u, cr_col_se.column.num);
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_correlator, false));
   }
@@ -717,11 +717,11 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_pk_only).sys));
 
     // сверяем идентификаторы и версию схемы
-    ASSERT_EQ(0, cm_col_pk.column.num);
+    ASSERT_EQ(0u, cm_col_pk.column.num);
     EXPECT_EQ(db_initial_version + 6, cm_table.version);
     EXPECT_EQ(db_initial_version + 6, cm_col_pk.version);
     EXPECT_EQ(db_initial_version + 6, cm_col_se.version);
-    ASSERT_EQ(1, cm_col_se.column.num);
+    ASSERT_EQ(1u, cm_col_se.column.num);
 
     // удаляем существующую таблицу
     EXPECT_EQ(FPTA_OK, fpta_table_drop(txn_commander, "table"));
@@ -760,8 +760,8 @@ TEST(Nullable, AsyncSchemaChange) {
                                        fptu_take(tuple_both)));
 
     // сверяем идентификаторы колонок
-    ASSERT_EQ(0, cr_col_pk.column.num);
-    ASSERT_EQ(1, cr_col_se.column.num);
+    ASSERT_EQ(0u, cr_col_pk.column.num);
+    ASSERT_EQ(1u, cr_col_se.column.num);
     EXPECT_EQ(db_initial_version + 8, cr_table.version);
     // идентификаторы колонок не использовались с прошлой транзакции
     EXPECT_EQ(db_initial_version + 6, cr_col_pk.version);
@@ -798,11 +798,11 @@ TEST(Nullable, AsyncSchemaChange) {
     EXPECT_TRUE(fpta_is_same(row.sys, fptu_take(tuple_both).sys));
 
     // сверяем идентификаторы и версию схемы
-    ASSERT_EQ(0, cm_col_pk.column.num);
+    ASSERT_EQ(0u, cm_col_pk.column.num);
     EXPECT_EQ(db_initial_version + 8, cm_table.version);
     EXPECT_EQ(db_initial_version + 8, cm_col_pk.version);
     EXPECT_EQ(db_initial_version + 8, cm_col_se.version);
-    ASSERT_EQ(1, cm_col_se.column.num);
+    ASSERT_EQ(1u, cm_col_se.column.num);
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn_commander, false));
   }

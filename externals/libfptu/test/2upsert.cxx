@@ -323,7 +323,7 @@ TEST(Upsert, Base) {
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
   EXPECT_EQ((1 + 15 + 34) * 4u, ro.total_bytes);
 
-  EXPECT_EQ(0x8001, fptu_get_uint16(ro, 0, nullptr));
+  EXPECT_EQ(0x8001u, fptu_get_uint16(ro, 0, nullptr));
   EXPECT_EQ(UINT32_C(1354824703), fptu_get_uint32(ro, 1, nullptr));
   EXPECT_EQ(-8782211, fptu_get_int32(ro, 42, nullptr));
   EXPECT_EQ(UINT64_C(15047220096467327), fptu_get_uint64(ro, 111, nullptr));
@@ -531,7 +531,7 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ(bytes_limit - bytes_used, fptu_space4data(pt));
   ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
-  EXPECT_EQ(0x8001, fptu_get_uint16(ro, 0, nullptr));
+  EXPECT_EQ(0x8001u, fptu_get_uint16(ro, 0, nullptr));
   // insert the second copy of field(0, uint16)
   EXPECT_EQ(FPTU_OK, fptu_insert_uint16(pt, 0, 0x8001 + 43));
   ASSERT_STREQ(nullptr, fptu_check(pt));
@@ -539,7 +539,7 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ(bytes_limit - bytes_used, fptu_space4data(pt));
   ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
-  EXPECT_EQ(0x8001 + 43, fptu_get_uint16(ro, 0, nullptr));
+  EXPECT_EQ(0x8001u + 43, fptu_get_uint16(ro, 0, nullptr));
   EXPECT_EQ(0u, fptu_junkspace(pt));
 
   // insert the first copy of field(0, uint32)
@@ -837,7 +837,7 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ((items_limit + 1) * 4 + bytes_limit, ro.total_bytes);
 
   // one more check secondary values
-  EXPECT_EQ(0x8001 + 43, fptu_get_uint16(ro, 0, nullptr));
+  EXPECT_EQ(0x8001u + 43, fptu_get_uint16(ro, 0, nullptr));
   EXPECT_EQ(UINT32_C(1354824703) + 43, fptu_get_uint32(ro, 0, nullptr));
   EXPECT_EQ(INT32_C(-8782211) + 43, fptu_get_int32(ro, 0, nullptr));
   EXPECT_EQ(UINT64_C(15047220096467327) + 43, fptu_get_uint64(ro, 0, nullptr));
@@ -865,7 +865,7 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ(0u, fptu_space4items(pt));
   EXPECT_EQ(0u, fptu_space4data(pt));
   EXPECT_EQ(junk, fptu_junkspace(pt));
-  EXPECT_EQ(0x8001 - 42, fptu_get_uint16(ro, 0, nullptr));
+  EXPECT_EQ(0x8001u - 42, fptu_get_uint16(ro, 0, nullptr));
 
   // remove the first copy of field and check value of the next copy
   EXPECT_EQ(1, fptu_erase(pt, 0, fptu_uint16));
@@ -876,7 +876,7 @@ TEST(Upsert, InsertUpdate) {
   EXPECT_EQ(junk, fptu_junkspace(pt));
   ro = fptu_take_noshrink(pt);
   ASSERT_STREQ(nullptr, fptu_check_ro(ro));
-  EXPECT_EQ(0x8001, fptu_get_uint16(ro, 0, nullptr));
+  EXPECT_EQ(0x8001u, fptu_get_uint16(ro, 0, nullptr));
 
   // remove the second copy
   EXPECT_EQ(1, fptu_erase(pt, 0, fptu_uint16));
