@@ -47,7 +47,7 @@ public:
   virtual void SetUp() {
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     secondary = std::tr1::get<0>(GetParam());
-    nitems = std::tr1::get<1>(GetParam());
+    nitems = (unsigned)std::tr1::get<1>(GetParam());
     shift = std::tr1::get<2>(GetParam());
     order_key = std::tr1::get<3>(GetParam());
     order_val = std::tr1::get<4>(GetParam());
@@ -199,7 +199,7 @@ TEST_P(CrudSimple, Nulls) {
 
   std::string changelog;
   for (unsigned i = 0; i < nitems; ++i) {
-    const int n = (i + shift) % 9;
+    const int n = ((int)i + shift) % 9;
     ASSERT_EQ(FPTU_OK, fptu_clear(row));
     ASSERT_STREQ(nullptr, fptu_check(row));
 

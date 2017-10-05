@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -139,18 +139,18 @@ template <fptu_type data_type> struct probe_triplet {
     }
   }
 
-  void check(unsigned expected) {
-    EXPECT_EQ(expected, (unsigned)n);
+  void check(int expected) {
+    EXPECT_EQ(expected, n);
 
     // паранойя на случай повреждения ключей
     ASSERT_TRUE(std::is_sorted(obverse.begin(), obverse.end()));
     ASSERT_TRUE(std::is_sorted(reverse.begin(), reverse.end()));
 
     // наборы должны содержать все значения
-    EXPECT_EQ(expected, unordered.size());
-    EXPECT_EQ(expected, obverse.size());
+    EXPECT_EQ(expected, (int)unordered.size());
+    EXPECT_EQ(expected, (int)obverse.size());
     if (has_reverse())
-      EXPECT_EQ(expected, reverse.size());
+      EXPECT_EQ(expected, (int)reverse.size());
 
     // а ordered должны быть также упорядочены
     EXPECT_TRUE(is_properly_ordered(obverse));
