@@ -383,7 +383,8 @@ TEST(Fetch, DeNils) {
   EXPECT_EQ(fptu_null, fptu_field_type(nullptr));
   EXPECT_EQ(-1, fptu_field_column(nullptr));
 
-  EXPECT_EQ((unsigned)UINT16_MAX /*FPTU_DENIL_UINT16*/, fptu_field_uint16(nullptr));
+  EXPECT_EQ((unsigned)UINT16_MAX /*FPTU_DENIL_UINT16*/,
+            fptu_field_uint16(nullptr));
   EXPECT_EQ(INT32_MIN /*FPTU_DENIL_INT32*/, fptu_field_int32(nullptr));
   EXPECT_EQ(UINT32_MAX /*FPTU_DENIL_UINT32*/, fptu_field_uint32(nullptr));
   EXPECT_EQ(INT64_MIN /*FPTU_DENIL_INT64*/, fptu_field_int64(nullptr));
