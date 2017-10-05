@@ -1,4 +1,7 @@
-﻿libfpta
+﻿Ждём всех на [Highload++2017](http://www.highload.ru/2017/abstracts/2837.html)!
+=============================
+
+libfpta
 ==============================================
 Fast Positive Tables, aka "Позитивные Таблицы"
 by [Positive Technologies](https://www.ptsecurity.ru).
