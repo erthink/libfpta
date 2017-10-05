@@ -158,7 +158,7 @@ public:
 
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
-    ASSERT_EQ(expected_n_dups, dups);
+    ASSERT_EQ(expected_n_dups, (int)dups);
   }
 
   virtual void Fill() {
@@ -216,7 +216,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(65535u, NNN);
+    ASSERT_GE(65535, NNN);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     type = std::tr1::get<0>(GetParam());
     index = std::tr1::get<1>(GetParam());
@@ -412,7 +412,7 @@ public:
       }
       prev_order = tuple_order;
     }
-    ASSERT_EQ(NNN, reorder.size());
+    ASSERT_EQ(NNN, (int)reorder.size());
   }
 
   virtual void TearDown() {
@@ -502,7 +502,7 @@ TEST_P(CursorPrimary, basicMoves) {
       std::to_string(index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -688,7 +688,7 @@ TEST_P(CursorPrimaryDups, dupMoves) {
       std::to_string(index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -1066,7 +1066,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
       "ordering " + std::to_string(ordering) + ", index " +
       std::to_string(index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
 
   /* заполняем present "номерами" значений ключа существующих записей,
    * важно что эти "номера" через карту позволяют получить соответствующее
@@ -1267,7 +1267,7 @@ TEST_P(CursorPrimary, locate_and_delele) {
       ASSERT_EQ(0, fpta_cursor_eof(cursor));
       size_t dups = 100500;
       ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
-      ASSERT_EQ(expected_dups, dups);
+      ASSERT_EQ(expected_dups, (int)dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       expected_dups = --dups_countdown.at(linear);
@@ -1457,7 +1457,7 @@ TEST_P(CursorPrimary, update_and_KeyMismatch) {
 
       size_t ndups;
       ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &ndups));
-      ASSERT_EQ(expected_dups, ndups);
+      ASSERT_EQ(expected_dups, (int)ndups);
     }
   }
 
@@ -1493,7 +1493,7 @@ TEST_P(CursorPrimary, update_and_KeyMismatch) {
 
     size_t ndups;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &ndups));
-    ASSERT_EQ(expected_dups, ndups);
+    ASSERT_EQ(expected_dups, (int)ndups);
 
     const auto checksum = order_checksum(order, type, index).uint;
     for (;;) {

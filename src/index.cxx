@@ -451,14 +451,14 @@ static bool fpta_index_unordered_is_compat(fptu_type data_type,
       1 << fptu_cstr,
 
       /* fpta_binary */
-      ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
-        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
-        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
-
-      /* fpta_shoved */
       ~(1 << fptu_int32 | 1 << fptu_int64 | 1 << fptu_datetime |
         1 << fptu_uint16 | 1 << fptu_uint32 | 1 << fptu_uint64 |
-        1 << fptu_fp32 | 1 << fptu_fp64),
+        1 << fptu_fp32 | 1 << fptu_fp64 | 1 << fptu_cstr),
+
+      /* fpta_shoved */
+      ~(1 << fptu_null | 1 << fptu_int32 | 1 << fptu_int64 |
+        1 << fptu_datetime | 1 << fptu_uint16 | 1 << fptu_uint32 |
+        1 << fptu_uint64 | 1 << fptu_fp32 | 1 << fptu_fp64),
 
       /* fpta_begin */
       ~0,

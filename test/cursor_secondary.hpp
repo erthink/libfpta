@@ -142,7 +142,7 @@ public:
 
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
-    ASSERT_EQ(expected_n_dups, dups);
+    ASSERT_EQ(expected_n_dups, (int)dups);
   }
 
   void Fill() {
@@ -216,7 +216,7 @@ public:
     // нужно простое число, иначе сломается переупорядочивание
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
-    ASSERT_GE(65535u, NNN * NDUP);
+    ASSERT_GE(65535, NNN * NDUP);
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
     pk_index = std::tr1::get<0>(GetParam());
     pk_type = std::tr1::get<1>(GetParam());
@@ -410,7 +410,7 @@ public:
       prev_order = tuple_order;
     }
 
-    ASSERT_EQ(NNN, reorder.size());
+    ASSERT_EQ(NNN, (int)reorder.size());
 
     //------------------------------------------------------------------------
 
@@ -555,7 +555,7 @@ TEST_P(CursorSecondary, basicMoves) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
@@ -745,7 +745,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
   /* заполняем present "номерами" значений ключа существующих записей,
    * важно что эти "номера" через карту позволяют получить соответствующее
    * значения от генератора ключей */
@@ -951,7 +951,7 @@ TEST_P(CursorSecondary, locate_and_delele) {
       ASSERT_EQ(0, fpta_cursor_eof(cursor));
       size_t dups = 100500;
       ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
-      ASSERT_EQ(expected_dups, dups);
+      ASSERT_EQ(expected_dups, (int)dups);
 
       ASSERT_EQ(FPTA_OK, fpta_cursor_delete(cursor));
       expected_dups = --dups_countdown.at(linear);
@@ -1072,7 +1072,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
 
   any_keygen keygen(se_type, se_index);
   const int expected_dups = fpta_index_is_unique(se_index) ? 1 : NDUP;
@@ -1162,7 +1162,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
 
       size_t ndups;
       ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &ndups));
-      ASSERT_EQ(expected_dups, ndups);
+      ASSERT_EQ(expected_dups, (int)ndups);
     }
   }
 
@@ -1199,7 +1199,7 @@ TEST_P(CursorSecondary, update_and_KeyMismatch) {
 
     size_t ndups;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor, &ndups));
-    ASSERT_EQ(expected_dups, ndups);
+    ASSERT_EQ(expected_dups, (int)ndups);
 
     for (;;) {
       ASSERT_EQ(FPTA_OK, fpta_cursor_get(cursor_guard.get(), &tuple));

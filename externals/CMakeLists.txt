@@ -37,7 +37,7 @@ add_library(mdbx STATIC
   libmdbx/src/version.c
   )
 
-target_compile_definitions(mdbx PRIVATE MDBX_DEBUG=$<CONFIG:Debug> $<$<BOOL:${ENABLE_VALGRIND}>:ENABLE_VALGRIND>)
+target_compile_definitions(mdbx PRIVATE MDBX_DEVEL=0 MDBX_DEBUG=$<CONFIG:Debug> $<$<BOOL:${ENABLE_VALGRIND}>:ENABLE_VALGRIND>)
 target_link_libraries(mdbx ${CMAKE_THREAD_LIBS_INIT})
 
 if(UNIX AND NOT APPLE)

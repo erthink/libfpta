@@ -247,17 +247,17 @@ TEST(Schema, Base) {
   EXPECT_EQ(fptu_cstr, fpta_shove2type(col_pk.shove));
   EXPECT_EQ(fpta_primary_unique_ordered_obverse, fpta_name_colindex(&col_pk));
   EXPECT_EQ(fptu_cstr, fpta_name_coltype(&col_pk));
-  EXPECT_EQ(0, col_pk.column.num);
+  EXPECT_EQ(0u, col_pk.column.num);
 
   EXPECT_EQ(fptu_uint64, fpta_shove2type(col_a.shove));
   EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_a));
   EXPECT_EQ(fptu_uint64, fpta_name_coltype(&col_a));
-  EXPECT_EQ(1, col_a.column.num);
+  EXPECT_EQ(1u, col_a.column.num);
 
   EXPECT_EQ(fptu_fp64, fpta_shove2type(col_b.shove));
   EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_b));
   EXPECT_EQ(fptu_fp64, fpta_name_coltype(&col_b));
-  EXPECT_EQ(2, col_b.column.num);
+  EXPECT_EQ(2u, col_b.column.num);
 
   // получаем описание схемы, проверяем кол-во таблиц и освобождаем
   EXPECT_EQ(FPTA_OK, fpta_schema_fetch(txn, &schema_info));

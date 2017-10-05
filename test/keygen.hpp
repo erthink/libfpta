@@ -139,8 +139,8 @@ template <fptu_type data_type> struct probe_triplet {
     }
   }
 
-  void check(int expected) {
-    EXPECT_EQ(expected, n);
+  void check(unsigned expected) {
+    EXPECT_EQ(expected, (unsigned)n);
 
     // паранойя на случай повреждения ключей
     ASSERT_TRUE(std::is_sorted(obverse.begin(), obverse.end()));
@@ -382,7 +382,7 @@ struct scalar_range_stepper {
 #pragma warning(pop)
 #endif
 
-    EXPECT_EQ(N, probe.size());
+    EXPECT_EQ(N, (int)probe.size());
     EXPECT_EQ(1u, probe.count(type(0)));
     EXPECT_EQ(1u, probe.count(std::numeric_limits<type>::max()));
     EXPECT_EQ(1u, probe.count(std::numeric_limits<type>::lowest()));
@@ -477,7 +477,7 @@ template <unsigned keylen> struct fixbin_stepper {
     }
 
     EXPECT_TRUE(is_properly_ordered(probe));
-    EXPECT_EQ(N, probe.size());
+    EXPECT_EQ(N, (int)probe.size());
 
     fixbin_type value;
     memset(&value, 0, sizeof(value));
@@ -546,7 +546,7 @@ template <fptu_type data_type> struct varbin_stepper {
     }
 
     EXPECT_TRUE(is_properly_ordered(probe));
-    EXPECT_EQ(N, probe.size());
+    EXPECT_EQ(N, (int)probe.size());
 
     std::vector<uint8_t> value;
     EXPECT_EQ(1u, probe.count(value));

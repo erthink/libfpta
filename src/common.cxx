@@ -100,6 +100,9 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(path == nullptr || *path == '\0'))
     return FPTA_EINVAL;
 
+  if (unlikely(megabytes > (SIZE_MAX >> 20)))
+    return FPTA_EINVAL;
+
   unsigned mdbx_flags = MDBX_NOSUBDIR;
   switch (durability) {
   default:
@@ -159,7 +162,7 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
-  rc = mdbx_env_set_mapsize(db->mdbx_env, megabytes * (1 << 20));
+  rc = mdbx_env_set_mapsize(db->mdbx_env, megabytes << 20);
   if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
@@ -390,6 +393,23 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
       }
     }
   }
+
+  if (db->schema_dbi > 0) {
+    unsigned tbl_flags, tbl_state;
+    int err = mdbx_dbi_flags_ex(txn->mdbx_txn, db->schema_dbi, &tbl_flags,
+                                &tbl_state);
+    if (err != MDBX_SUCCESS ||
+        (tbl_state & (MDBX_TBL_NEW | MDBX_TBL_STALE)) != 0) {
+      if (!dbi_locked && txn->level < fpta_schema) {
+        err = fpta_mutex_lock(&db->dbi_mutex);
+        if (unlikely(err != 0))
+          return err;
+        dbi_locked = true;
+      }
+      db->schema_dbi = 0;
+    }
+  }
+
   if (dbi_locked) {
     int err = fpta_mutex_unlock(&db->dbi_mutex);
     assert(err == 0);

@@ -125,7 +125,7 @@ TEST_P(CursorSecondaryDups, dupMoves) {
       std::to_string(se_index) +
       (valid_cursor_ops ? ", (valid cursor case)" : ", (invalid cursor case)"));
 
-  ASSERT_LT(5u, n_records);
+  ASSERT_LT(5, n_records);
   fpta_cursor *const cursor = cursor_guard.get();
   ASSERT_NE(nullptr, cursor);
 
