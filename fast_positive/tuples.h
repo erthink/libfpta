@@ -980,7 +980,9 @@ typedef struct fptu_build_info {
   const char *compile_flags;
 } fptu_build_info;
 
+#if HAVE_FPTU_VERSIONINFO
 extern FPTU_API const fptu_version_info fptu_version;
+#endif /* HAVE_FPTU_VERSIONINFO */
 extern FPTU_API const fptu_build_info fptu_build;
 
 //----------------------------------------------------------------------------

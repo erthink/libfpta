@@ -33,8 +33,12 @@
 
 #
 # Get version
-fetch_version(FPTU "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
-message(STATUS "libfptu version is ${FPTU_VERSION}")
+if(HAVE_FPTU_VERSIONINFO)
+  fetch_version(FPTU "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
+  message(STATUS "libfptu version is ${FPTU_VERSION}")
+else()
+  set(FPTU_VERSION "unversioned")
+endif()
 
 add_library(fptu
   ${FAST_POSITIVE_CONFIG_H}
@@ -59,7 +63,7 @@ add_library(fptu
 set_target_properties(fptu PROPERTIES
   PROJECT_LABEL "Fast Positive Tuples"
   FRAMEWORK TRUE
-  VERSION "${FPTU_VERSION_MAJOR}.${FPTU_VERSION_MINOR}.${FPTU_VERSION_RELEASE}.${FPTU_VERSION_REVISION}"
+  VERSION "${FPTU_VERSION}"
   PUBLIC_HEADER "../fast_positive/defs.h;../fast_positive/tuples.h;${FAST_POSITIVE_CONFIG_H}"
   PRIVATE_HEADER ../fast_positive/tuples_internal.h
   INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
@@ -103,7 +107,6 @@ if(NOT FPTU_DEFINITIONS)
   set(FPTU_DEFINITIONS "")
 endif()
 list(REMOVE_DUPLICATES FPTU_DEFINITIONS)
-set(FPTU_DEFINITIONS_VERSION ${FPTU_DEFINITIONS})
 string(REGEX REPLACE "([^;]+)" " -D\\1" FPTU_DEFINITIONS "${FPTU_DEFINITIONS}")
 string(STRIP FPTU_DEFINITIONS "${FPTU_DEFINITIONS}")
 

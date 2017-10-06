@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -19,15 +19,17 @@
 
 #include "fast_positive/tuples_internal.h"
 
-#if FPTU_VERSION_MAJOR != @FPTU_VERSION_MAJOR@ || FPTU_VERSION_MINOR != @FPTU_VERSION_MINOR@
-#error "API version mismatch!"
-#endif
-
 #if defined(_MSC_VER) && defined(FPTU_BUILD_TAGRET)
 #pragma message("Configuration-depended FPTU_BUILD_TAGRET: " FPTU_BUILD_TAGRET)
 #endif
 #if defined(_MSC_VER) && defined(FPTU_COMPILE_FLAGS)
 #pragma message("Configuration-depended FPTU_COMPILE_FLAGS: " FPTU_COMPILE_FLAGS)
+#endif
+
+#if HAVE_FPTU_VERSIONINFO
+
+#if FPTU_VERSION_MAJOR != @FPTU_VERSION_MAJOR@ || FPTU_VERSION_MINOR != @FPTU_VERSION_MINOR@
+#error "API version mismatch!"
 #endif
 
 /*FPTU_API*/ const fptu_version_info fptu_version = {
@@ -39,6 +41,7 @@
     "@FPTU_GIT_DESCRIBE@"
   }
 };
+#endif /* HAVE_FPTU_VERSIONINFO */
 
 /*FPTU_API*/ const fptu_build_info fptu_build = {
   "@FPTU_BUILD_TIMESTAMP@",
