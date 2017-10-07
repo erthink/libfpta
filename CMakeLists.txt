@@ -80,6 +80,11 @@ include(cmake.fptu/os.cmake)
 include(cmake.fptu/profile.cmake)
 include(cmake.fptu/compiler.cmake)
 
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION LESS 1900)
+  message(SEND_ERROR "MSVC compiler ${MSVC_VERSION} is too old for building FPTU."
+    "At least 'Microsoft Visual Studio 2015' is required.")
+endif()
+
 if(CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE_UPPERCASE STREQUAL "DEBUG")
   set(INTERPROCEDURAL_OPTIMIZATION_DEFAULT ON)
 else()
