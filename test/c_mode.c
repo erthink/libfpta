@@ -21,10 +21,9 @@
 #include <fast_positive/tables.h>
 
 #ifdef _MSC_VER
-#pragma warning(                                                               \
-    disable : 4710 /* sprintf_s(char *const, const std::size_t, const char *const, ...): функция не является встроенной */)
-#pragma warning(                                                               \
-    disable : 4711 /* function 'fptu_init' selected for automatic inline expansion*/)
+#pragma warning(disable : 4710) /* 'xyz': function not inlined */
+#pragma warning(disable : 4711) /* function 'xyz' selected for                 \
+                                   automatic inline expansion */
 #pragma warning(push, 1)
 #endif /* _MSC_VER (warnings) */
 
@@ -59,7 +58,7 @@ int main(int argc, char *argv[]) {
   SetConsoleOutputCP(CP_UTF8);
 #endif /* WINDOWS */
 
-  print("// основные ограничения и константы:\n");
+  print("// основные ограничения и константы:");
   print_value("максимальное кол-во таблиц", fpta_tables_max);
   print_value("максимальное кол-во колонок", fptu_max_cols);
   print_value("максимальное кол-во индексов для одной таблице",
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]) {
   print_value("максимальная длина ключа (дополняется t1ha при превышении)",
               fpta_max_keylen);
 
-  print("// внутренние технические детали:\n");
+  print("\n// внутренние технические детали:");
   print_value("размер буфера для ключа", fpta_keybuf_len);
 
   print_value("ширина идентификатора в битах", fpta_id_bits);
@@ -101,6 +100,17 @@ int main(int argc, char *argv[]) {
           "fpta_name_clash_prob", fpta_name_clash_probab,
           "вероятность коллизии в именах");
 
-  print("\nless Windows, no Java, no Problems ;)\n");
+#if HAVE_FPTA_VERSIONINFO
+  printf("\n libfpta version %s: %s, %d.%d.%d.%d,\n\tcommit %s, tree %s\n",
+         fpta_version.git.describe, fpta_version.git.datetime,
+         fpta_version.major, fpta_version.minor, fpta_version.release,
+         fpta_version.revision, fpta_version.git.commit, fpta_version.git.tree);
+#endif /* HAVE_FPTU_VERSIONINFO */
+
+  printf("\n libfpta build %s: %s, %s,\n\t%s,\n\t%s\n", fpta_build.datetime,
+         fpta_build.target, fpta_build.compiler, fpta_build.cmake_options,
+         fpta_build.compile_flags);
+
+  print("\n less Windows, no Java, no Problems ;)\n");
   return 0;
 }

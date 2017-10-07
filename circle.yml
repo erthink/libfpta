@@ -20,10 +20,11 @@ dependencies:
 
 checkout:
   post:
+    - git fetch --unshallow || true
     - git fetch --tags --prune
-    - git submodule foreach --recursive git fetch --tags --prune
     - git submodule sync
     - git submodule update --init --recursive
+    - git submodule foreach --recursive git fetch --tags --prune
 
 compile:
   pre:
@@ -34,3 +35,5 @@ compile:
 test:
   override:
     - make --keep-going test
+    - externals/libfptu/test/fptu_c_mode
+    - test/fpta_c_mode

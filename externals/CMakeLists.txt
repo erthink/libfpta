@@ -1,3 +1,4 @@
+add_definitions(-Dfptu_EXPORTS=1)
 add_subdirectory(libfptu/src)
 add_subdirectory(libfptu/test)
 

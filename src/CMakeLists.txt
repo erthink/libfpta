@@ -34,10 +34,20 @@
 
 #
 # Get version
-fetch_version(FPTA "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
-message(STATUS "libfpta version is ${FPTA_VERSION}")
+if(HAVE_FPTA_VERSIONINFO)
+  fetch_version(FPTA "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
+  message(STATUS "libfpta version is ${FPTA_VERSION}")
+else()
+  set(FPTA_VERSION "unversioned")
+endif()
 
-add_library(fpta
+if(LIBFPTA_STATIC)
+  set(LIBFPTA_TYPE STATIC)
+else()
+  set(LIBFPTA_TYPE SHARED)
+endif()
+
+add_library(fpta ${LIBFPTA_TYPE}
   ${FAST_POSITIVE_CONFIG_H}
   ../fast_positive/tables.h
   ../fast_positive/tables_internal.h
@@ -65,7 +75,7 @@ add_library(fpta
 set_target_properties(fpta PROPERTIES
   PROJECT_LABEL "Fast Positive Tables"
   FRAMEWORK TRUE
-  VERSION "${FPTA_VERSION_MAJOR}.${FPTA_VERSION_MINOR}.${FPTA_VERSION_RELEASE}.${FPTA_VERSION_REVISION}"
+  VERSION "${FPTA_VERSION}"
   PUBLIC_HEADER "../fast_positive/tables.h;${FAST_POSITIVE_CONFIG_H}"
   PRIVATE_HEADER "../fast_positive/tables_internal.h"
   INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
@@ -112,7 +122,6 @@ if(NOT FPTA_DEFINITIONS)
   set(FPTA_DEFINITIONS "")
 endif()
 list(REMOVE_DUPLICATES FPTA_DEFINITIONS)
-set(FPTA_DEFINITIONS_VERSION ${FPTA_DEFINITIONS})
 string(REGEX REPLACE "([^;]+)" " -D\\1" FPTA_DEFINITIONS "${FPTA_DEFINITIONS}")
 string(STRIP FPTA_DEFINITIONS "${FPTA_DEFINITIONS}")
 

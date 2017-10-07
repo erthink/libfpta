@@ -28,6 +28,7 @@ artifacts:
     name: test_results
 
 install:
+- git submodule sync
 - git submodule update --init --recursive
 - git fetch --tags --prune
 - git submodule foreach --recursive git fetch --tags --prune
@@ -68,3 +69,5 @@ test_script:
     if ($LastExitCode -ne 0) {
         throw "Exec: $ErrorMessage"
     }
+    & externals/libfptu/test/$env:CONFIGURATION/fptu_c_mode.exe
+    & test/$env:CONFIGURATION/fpta_c_mode.exe

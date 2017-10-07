@@ -21,7 +21,7 @@ addons:
       name: "leo-yuriev/libfpta"
       description: "Build submitted via Travis CI"
     notification_email: leo@yuriev.ru
-    build_command_prepend: "git fetch --tags --prune && git submodule foreach --recursive git fetch --tags --prune && cmake ."
+    build_command_prepend: "git fetch --unshallow --tags --prune && git submodule foreach --recursive git fetch --unshallow --tags --prune && cmake ."
     build_command: make --keep-going
     branch_pattern: coverity_scan
 
@@ -39,8 +39,9 @@ before_install: >
 
 script: >
   if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
-    git fetch --tags --prune &&
-    git submodule foreach --recursive git fetch --tags --prune &&
+    git fetch --unshallow --tags --prune &&
+    git submodule foreach --recursive git fetch --unshallow --tags --prune &&
     cmake --version &&
-    cmake . && make --keep-going all && make --keep-going test;
+    cmake . && make --keep-going all && make --keep-going test &&
+    externals/libfptu/test/fptu_c_mode && test/fpta_c_mode;
   fi
