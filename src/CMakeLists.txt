@@ -40,7 +40,13 @@ else()
   set(FPTU_VERSION "unversioned")
 endif()
 
-add_library(fptu
+if(LIBFPTU_STATIC)
+  set(LIBFPTU_TYPE STATIC)
+else()
+  set(LIBFPTU_TYPE SHARED)
+endif()
+
+add_library(fptu ${LIBFPTU_TYPE}
   ${FAST_POSITIVE_CONFIG_H}
   ../fast_positive/defs.h
   ../fast_positive/tuples.h
