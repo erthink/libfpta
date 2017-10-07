@@ -28,6 +28,7 @@ artifacts:
     name: test_results
 
 install:
+- git submodule sync
 - git submodule update --init --recursive
 - git fetch --tags --prune
 - git submodule foreach --recursive git fetch --tags --prune
