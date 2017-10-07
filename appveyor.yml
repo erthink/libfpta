@@ -72,3 +72,4 @@ test_script:
     if ($LastExitCode -ne 0) {
         throw "Exec: $ErrorMessage"
     }
+    & test/$env:CONFIGURATION/fptu_c_mode.exe

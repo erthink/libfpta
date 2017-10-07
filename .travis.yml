@@ -39,5 +39,5 @@ script: >
     git fetch --unshallow --tags --prune &&
     git submodule foreach --recursive git fetch --unshallow --tags --prune &&
     cmake --version &&
-    cmake . && make all && make test;
+    cmake . && make all && make test && test/fptu_c_mode;
   fi

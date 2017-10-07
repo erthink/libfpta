@@ -28,3 +28,4 @@ compile:
 test:
   override:
     - make test
+    - test/fptu_c_mode
