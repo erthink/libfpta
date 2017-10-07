@@ -42,5 +42,6 @@ script: >
     git fetch --tags --prune &&
     git submodule foreach --recursive git fetch --tags --prune &&
     cmake --version &&
-    cmake . && make --keep-going all && make --keep-going test;
+    cmake . && make --keep-going all && make --keep-going test &&
+    externals/libfptu/test/fptu_c_mode && test/fpta_c_mode;
   fi

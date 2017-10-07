@@ -34,3 +34,5 @@ compile:
 test:
   override:
     - make --keep-going test
+    - externals/libfptu/test/fptu_c_mode
+    - test/fpta_c_mode
