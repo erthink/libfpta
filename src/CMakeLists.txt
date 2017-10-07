@@ -41,7 +41,13 @@ else()
   set(FPTA_VERSION "unversioned")
 endif()
 
-add_library(fpta
+if(LIBFPTA_STATIC)
+  set(LIBFPTA_TYPE STATIC)
+else()
+  set(LIBFPTA_TYPE SHARED)
+endif()
+
+add_library(fpta ${LIBFPTA_TYPE}
   ${FAST_POSITIVE_CONFIG_H}
   ../fast_positive/tables.h
   ../fast_positive/tables_internal.h
