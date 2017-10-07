@@ -31,8 +31,9 @@ artifacts:
     name: test_results
 
 install:
-- git submodule update --init --recursive
+- git submodule sync
 - git fetch --tags --prune
+- git submodule update --init --recursive
 - git submodule foreach --recursive git fetch --tags --prune
 - cmake --version
 
