@@ -2643,7 +2643,9 @@ typedef struct fpta_build_info {
   const char *compile_flags;
 } fpta_build_info;
 
+#if HAVE_FPTA_VERSIONINFO
 extern FPTA_API const fpta_version_info fpta_version;
+#endif /* HAVE_FPTA_VERSIONINFO */
 extern FPTA_API const fpta_build_info fpta_build;
 
 #ifdef __cplusplus
