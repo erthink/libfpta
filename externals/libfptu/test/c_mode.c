@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -103,6 +103,17 @@ int main(int argc, char *argv[]) {
   print_value("предельный размер для резервирования, "
               "превышение которого считается ошибкой",
               fptu_buffer_limit);
+
+#if HAVE_FPTU_VERSIONINFO
+  printf("\n libfptu version %s: %s, %d.%d.%d.%d,\n\tcommit %s, tree %s\n",
+         fptu_version.git.describe, fptu_version.git.datetime,
+         fptu_version.major, fptu_version.minor, fptu_version.release,
+         fptu_version.revision, fptu_version.git.commit, fptu_version.git.tree);
+#endif /* HAVE_FPTU_VERSIONINFO */
+
+  printf("\n libfptu build %s: %s, %s,\n\t%s,\n\t%s\n", fptu_build.datetime,
+         fptu_build.target, fptu_build.compiler, fptu_build.cmake_options,
+         fptu_build.compile_flags);
 
   print("\nless Windows, no Java, no Problems ;)\n");
   return 0;

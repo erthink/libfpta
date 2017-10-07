@@ -10,9 +10,6 @@ environment:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       CMAKE_GENERATOR: Visual Studio 14 2015
       TOOLSET: v140
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      CMAKE_GENERATOR: Visual Studio 12 2013
-      TOOLSET: v120
 
 branches:
   except:
@@ -31,8 +28,9 @@ artifacts:
     name: test_results
 
 install:
-- git submodule update --init --recursive
+- git submodule sync
 - git fetch --tags --prune
+- git submodule update --init --recursive
 - git submodule foreach --recursive git fetch --tags --prune
 - cmake --version
 
@@ -71,3 +69,4 @@ test_script:
     if ($LastExitCode -ne 0) {
         throw "Exec: $ErrorMessage"
     }
+    & test/$env:CONFIGURATION/fptu_c_mode.exe

@@ -49,27 +49,47 @@ macro(fetch_version name version_file)
     execute_process(COMMAND ${GIT} describe --tags --long --dirty=-dirty
       OUTPUT_VARIABLE ${name}_GIT_DESCRIBE
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      RESULT_VARIABLE rc)
+    if(rc)
+      message(FATAL_ERROR "Please install latest version of git ('describe --tags --long --dirty' failed)")
+    endif()
 
     execute_process(COMMAND ${GIT} show --no-patch --format=%cI HEAD
       OUTPUT_VARIABLE ${name}_GIT_TIMESTAMP
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      RESULT_VARIABLE rc)
+    if(rc)
+      message(FATAL_ERROR "Please install latest version of git ('show --no-patch --format=%cI HEAD' failed)")
+    endif()
 
     execute_process(COMMAND ${GIT} show --no-patch --format=%T HEAD
       OUTPUT_VARIABLE ${name}_GIT_TREE
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      RESULT_VARIABLE rc)
+    if(rc)
+      message(FATAL_ERROR "Please install latest version of git ('show --no-patch --format=%T HEAD' failed)")
+    endif()
 
     execute_process(COMMAND ${GIT} show --no-patch --format=%H HEAD
       OUTPUT_VARIABLE ${name}_GIT_COMMIT
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      RESULT_VARIABLE rc)
+    if(rc)
+      message(FATAL_ERROR "Please install latest version of git ('show --no-patch --format=%H HEAD' failed)")
+    endif()
 
     execute_process(COMMAND ${GIT} rev-list --count --no-merges HEAD
       OUTPUT_VARIABLE ${name}_GIT_REVISION
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      RESULT_VARIABLE rc)
+    if(rc)
+      message(FATAL_ERROR "Please install latest version of git ('rev-list --count --no-merges HEAD' failed)")
+    endif()
 
     string(REGEX MATCH "^(v)?([0-9]+)\\.([0-9]+)\\.([0-9]+)(.*)?" git_version_valid "${${name}_GIT_DESCRIBE}")
     if(git_version_valid)
