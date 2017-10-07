@@ -38,3 +38,4 @@
 #cmakedefine ENABLE_ASAN
 
 #cmakedefine01 LIBFPTU_STATIC
+#cmakedefine01 HAVE_FPTU_VERSIONINFO

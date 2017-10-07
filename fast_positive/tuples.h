@@ -163,7 +163,7 @@ typedef union fptu_payload fptu_payload;
  *
  * Фактически это дескриптор поля, в котором записаны: тип данных,
  * номер колонки и смещение к данным. */
-typedef union FPTU_API fptu_field {
+typedef union /*FPTU_API*/ fptu_field {
   struct {
     uint16_t ct;     /* тип и "номер колонки". */
     uint16_t offset; /* смещение к данным относительно заголовка, либо
@@ -200,7 +200,7 @@ typedef union fptu_unit {
  * Эта форма унифицирована с "Positive Hyper100re" и одновременно достаточно
  * удобна в использовании. Поэтому настоятельно рекомендуется использовать
  * именно её, особенно для хранения и передачи данных. */
-typedef union FPTU_API fptu_time {
+typedef union /*FPTU_API*/ fptu_time {
   uint64_t fixedpoint;
   struct {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -213,19 +213,19 @@ typedef union FPTU_API fptu_time {
   };
 
 #ifdef __cplusplus
-  static uint_fast32_t ns2fractional(uint_fast32_t);
-  static uint_fast32_t fractional2ns(uint_fast32_t);
-  static uint_fast32_t us2fractional(uint_fast32_t);
-  static uint_fast32_t fractional2us(uint_fast32_t);
-  static uint_fast32_t ms2fractional(uint_fast32_t);
-  static uint_fast32_t fractional2ms(uint_fast32_t);
+  static FPTU_API uint_fast32_t ns2fractional(uint_fast32_t);
+  static FPTU_API uint_fast32_t fractional2ns(uint_fast32_t);
+  static FPTU_API uint_fast32_t us2fractional(uint_fast32_t);
+  static FPTU_API uint_fast32_t fractional2us(uint_fast32_t);
+  static FPTU_API uint_fast32_t ms2fractional(uint_fast32_t);
+  static FPTU_API uint_fast32_t fractional2ms(uint_fast32_t);
 
 #ifdef HAVE_TIMESPEC_TV_NSEC
   /* LY: Clang не позволяет возвращать из C-linkage функции структуру,
    * у которой есть какие-либо конструкторы C++. Поэтому необходимо отказаться
    * либо от возможности использовать libfptu из C, либо от Clang,
    * либо от конструкторов (они и пострадали). */
-  static fptu_time from_timespec(const struct timespec &ts) {
+  static FPTU_API fptu_time from_timespec(const struct timespec &ts) {
     fptu_time result = {((uint64_t)ts.tv_sec << 32) |
                         ns2fractional((uint_fast32_t)ts.tv_nsec)};
     return result;
@@ -233,7 +233,7 @@ typedef union FPTU_API fptu_time {
 #endif /* HAVE_TIMESPEC_TV_NSEC */
 
 #ifdef HAVE_TIMEVAL_TV_USEC
-  static fptu_time from_timeval(const struct timeval &tv) {
+  static FPTU_API fptu_time from_timeval(const struct timeval &tv) {
     fptu_time result = {((uint64_t)tv.tv_sec << 32) |
                         us2fractional((uint_fast32_t)tv.tv_usec)};
     return result;
@@ -241,7 +241,7 @@ typedef union FPTU_API fptu_time {
 #endif /* HAVE_TIMEVAL_TV_USEC */
 
 #ifdef _FILETIME_
-  static fptu_time from_filetime(FILETIME *pFileTime) {
+  static FPTU_API fptu_time from_filetime(FILETIME *pFileTime) {
     uint64_t ns100 =
         ((uint64_t)pFileTime->dwHighDateTime << 32) + pFileTime->dwLowDateTime;
     return from_100ns(
@@ -980,7 +980,9 @@ typedef struct fptu_build_info {
   const char *compile_flags;
 } fptu_build_info;
 
+#if HAVE_FPTU_VERSIONINFO
 extern FPTU_API const fptu_version_info fptu_version;
+#endif /* HAVE_FPTU_VERSIONINFO */
 extern FPTU_API const fptu_build_info fptu_build;
 
 //----------------------------------------------------------------------------
