@@ -222,7 +222,8 @@ TEST(Data, UpsertColumn) {
     ASSERT_EQ(ENOENT, errno);
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+                         true, &db));
   ASSERT_NE(nullptr, db);
 
   // создаем набор колонок разных типов

@@ -58,7 +58,8 @@ TEST(SmokeComposite, Primary) {
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+                         true, &db));
   ASSERT_NE(nullptr, db);
 
   // описываем простейшую таблицу с тремя колонками и одним составным PK
@@ -384,7 +385,8 @@ TEST(SmokeIndex, Secondary) {
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+                         true, &db));
   ASSERT_NE(nullptr, db);
 
   // описываем простейшую таблицу с тремя колонками,

@@ -151,7 +151,8 @@ TEST(Schema, Base) {
   fpta_db *db = nullptr;
   /* открываем базу в режиме неизменяемой схемы */
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, 0644, 1, false, &db));
+            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+                         false, &db));
   ASSERT_NE(nullptr, db);
 
   /* пробуем начать транзакцию изменения схемы в базе с неизменяемой схемой */
@@ -164,7 +165,8 @@ TEST(Schema, Base) {
 
   /* повторно открываем базу с возможностью изменять схему */
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+                         true, &db));
   ASSERT_NE(nullptr, db);
 
   // формируем описание колонок для первой таблицы
