@@ -178,6 +178,7 @@ int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove, MDBX_dbi &handle,
 
 MDBX_dbi fpta_dbicache_remove(fpta_db *db, const fpta_shove_t shove,
                               unsigned *const cache_hint = nullptr);
+int fpta_dbicache_flush(fpta_txn *txn);
 
 //----------------------------------------------------------------------------
 
