@@ -74,8 +74,8 @@ public:
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, true, &db));
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                           true, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);
 
@@ -350,9 +350,8 @@ TEST(Nullable, AsyncSchemaChange) {
     if (REMOVE_FILE(testdb_name_lck) != 0)
       ASSERT_EQ(ENOENT, errno);
 
-    EXPECT_EQ(FPTA_OK,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, true, &db_commander));
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                    0644, 1, true, &db_commander));
     ASSERT_NE(db_commander, (fpta_db *)nullptr);
 
     // описываем простейшую таблицу с двумя колонками
@@ -417,7 +416,7 @@ TEST(Nullable, AsyncSchemaChange) {
 
   // открываем базу в "корреляторе"
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, false, &db_correlator));
 
   // выполняем первое пробное обновление в корреляторе
@@ -828,12 +827,12 @@ TEST(Nullable, SchemaReloadAfterAbort) {
     ASSERT_EQ(ENOENT, errno);
 
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, false, &db_correlator));
   ASSERT_NE(db_correlator, (fpta_db *)nullptr);
 
   fpta_db *db_commander = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, true, &db_commander));
   ASSERT_NE(db_commander, (fpta_db *)nullptr);
 
@@ -936,7 +935,7 @@ TEST(Nullable, SchemaReloadAfterAbort) {
     fpta_name_destroy(&lc);
   }
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, true, &db_commander));
   ASSERT_NE(db_commander, (fpta_db *)nullptr);
   { // drop and recreate table in commander
@@ -1066,7 +1065,7 @@ TEST(CRUD, DISABLED_ExtraOps) {
     ASSERT_EQ(ENOENT, errno);
 
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 20, true, &db_correlator));
   ASSERT_NE(db_correlator, (fpta_db *)nullptr);
 
@@ -1100,7 +1099,7 @@ TEST(CRUD, DISABLED_ExtraOps) {
   }
   EXPECT_EQ(FPTA_OK, fpta_db_close(db_correlator));
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 30, false, &db_correlator));
   int i = 0;
   for (; i < 1500000; ++i) { // try to fill table
@@ -1202,12 +1201,12 @@ TEST(Nullable, SchemaReload) {
     ASSERT_EQ(ENOENT, errno);
 
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, false, &db_correlator));
   ASSERT_NE(db_correlator, (fpta_db *)nullptr);
 
   fpta_db *db_commander = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, true, &db_commander));
   ASSERT_NE(db_commander, (fpta_db *)nullptr);
 
@@ -1313,7 +1312,7 @@ TEST(Nullable, SchemaReload) {
     fpta_name_destroy(&lc);
   }
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, true, &db_commander));
   ASSERT_NE(db_commander, (fpta_db *)nullptr);
   { // drop and recreate table in commander

@@ -60,7 +60,7 @@ TEST(SmokeIndex, Primary) {
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+            fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
                          true, &db));
   ASSERT_NE(nullptr, db);
 
@@ -316,7 +316,7 @@ TEST(SmokeIndex, Secondary) {
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+            fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
                          true, &db));
   ASSERT_NE(nullptr, db);
 
@@ -733,8 +733,8 @@ public:
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, true, &db));
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                           true, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);
 
@@ -1561,8 +1561,8 @@ public:
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, true, &db));
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                           true, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);
 
@@ -2057,7 +2057,7 @@ TEST(SmoceCrud, OneRowOneColumn) {
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+            fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
                          true, &db));
   ASSERT_NE(nullptr, db);
 
@@ -2861,7 +2861,7 @@ TEST(Smoke, ReOpenAfterAbort) {
 
   // открываем/создаем базу
   fpta_db *db = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, true, &db));
   ASSERT_NE(db, (fpta_db *)nullptr);
 
@@ -2899,7 +2899,7 @@ TEST(Smoke, ReOpenAfterAbort) {
   db = nullptr;
 
   // открываем базу
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, false, &db));
   ASSERT_NE(db, (fpta_db *)nullptr);
 
@@ -2957,8 +2957,8 @@ TEST(Smoke, Kamerades) {
   {
     // открываем/создаем базульку в 1 мегабайт
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, true,
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                           true,
                            &commander_db)); // таблица создаётся из "коммандера"
     ASSERT_NE(nullptr, commander_db);
 
@@ -2998,8 +2998,8 @@ TEST(Smoke, Kamerades) {
 
     // открываем из коррелятора
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, false, &correlator_db));
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                           false, &correlator_db));
     ASSERT_NE(nullptr, correlator_db);
 
     // начинаем транзакцию для вставки данных
@@ -3050,7 +3050,7 @@ TEST(Smoke, Kamerades) {
       EXPECT_EQ(
           FPTA_SUCCESS,
           fpta_db_open(
-              testdb_name, fpta_async, fpta_regime_default, 0644, 1, false,
+              testdb_name, fpta_weak, fpta_regime_default, 0644, 1, false,
               &commander_db)); // теперь пытаемся только читать из "коммандера"
     }
 
@@ -3115,7 +3115,7 @@ TEST(Smoke, OverchargeOnCommit) {
 
   // открываем/создаем базу
   fpta_db *db = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0664, 1, true, &db));
   ASSERT_NE(db, (fpta_db *)nullptr);
 
@@ -3155,7 +3155,7 @@ TEST(Smoke, OverchargeOnCommit) {
   db = nullptr;
 
   // открываем базу
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0664, 1, false, &db));
   ASSERT_NE(db, (fpta_db *)nullptr);
 
@@ -3252,8 +3252,8 @@ TEST(Smoke, AsyncSchemaChange) {
       ASSERT_EQ(ENOENT, errno);
 
     fpta_db *db = nullptr;
-    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async,
-                                    fpta_regime_default, 0644, 1, true, &db));
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                    0644, 1, true, &db));
     ASSERT_NE(db, (fpta_db *)nullptr);
 
     // описываем простейшую таблицу с одним PK (int64) и колонками
@@ -3295,7 +3295,7 @@ TEST(Smoke, AsyncSchemaChange) {
 
   // открываем базу в "корреляторе"
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                   0644, 1, false, &db_correlator));
 
   fpta_txn *txn_correlator = nullptr;
@@ -3365,9 +3365,8 @@ TEST(Smoke, AsyncSchemaChange) {
   {
     // открываем базу в "командоре"
     fpta_db *db_commander = nullptr;
-    EXPECT_EQ(FPTA_OK,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
-                           1, true, &db_commander));
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                    0644, 1, true, &db_commander));
 
     fpta_txn *txn_commander = nullptr;
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema,
@@ -3385,7 +3384,7 @@ TEST(Smoke, AsyncSchemaChange) {
   EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db_commander));
   db_commander = nullptr;
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1, true,
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1, true,
                                   &db_commander));
   EXPECT_EQ(FPTA_OK,
             fpta_transaction_begin(db_commander, fpta_schema, &txn_commander));

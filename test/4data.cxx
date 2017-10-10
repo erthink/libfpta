@@ -222,7 +222,7 @@ TEST(Data, UpsertColumn) {
     ASSERT_EQ(ENOENT, errno);
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644, 1,
+            fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
                          true, &db));
   ASSERT_NE(nullptr, db);
 

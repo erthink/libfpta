@@ -111,7 +111,7 @@ int fpta_db_open(const char *path, fpta_durability durability,
   case fpta_readonly:
     mdbx_flags |= MDBX_RDONLY;
     break;
-  case fpta_async:
+  case fpta_weak:
     mdbx_flags |= MDBX_UTTERLY_NOSYNC;
   /* fall through */
   case fpta_lazy:

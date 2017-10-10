@@ -306,7 +306,7 @@ public:
 
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644,
                            megabytes, true, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);
@@ -438,7 +438,7 @@ public:
     db = nullptr;
     // открываем заново
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, fpta_regime_default, 0644,
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644,
                            megabytes, false, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);

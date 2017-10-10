@@ -194,7 +194,7 @@ __cold string to_string(const fpta_durability durability) {
     return "mode-sync";
   case fpta_lazy:
     return "mode-lazy";
-  case fpta_async:
+  case fpta_weak:
     return "mode-async";
   }
 }

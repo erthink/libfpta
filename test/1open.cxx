@@ -61,7 +61,7 @@ TEST(Open, Trivia) {
   ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
 
   EXPECT_EQ(FPTA_SUCCESS,
-            fpta_db_open(testdb_name, fpta_async,
+            fpta_db_open(testdb_name, fpta_weak,
                          fpta_frendly4writeback | fpta_frendly4compaction, 0644,
                          1, false, &db));
   EXPECT_NE(nullptr, db);
