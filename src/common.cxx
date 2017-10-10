@@ -111,26 +111,25 @@ int fpta_db_open(const char *path, fpta_durability durability,
   case fpta_readonly:
     mdbx_flags |= MDBX_RDONLY;
     break;
-  case fpta_sync:
-    break;
-  case fpta_lazy:
-    mdbx_flags |= MDBX_NOSYNC | MDBX_NOMETASYNC;
-    break;
   case fpta_async:
     mdbx_flags |= MDBX_UTTERLY_NOSYNC;
+  /* fall through */
+  case fpta_lazy:
+    mdbx_flags |= MDBX_NOSYNC | MDBX_NOMETASYNC;
+    if (0 == (regime_flags & fpta_saferam))
+      mdbx_flags |= MDBX_WRITEMAP;
+  /* fall through */
+  case fpta_sync:
+    if (regime_flags & fpta_frendly4hdd) {
+      // LY: nothing for now
+    } else {
+      if (regime_flags & fpta_frendly4writeback)
+        mdbx_flags |= MDBX_LIFORECLAIM;
+      if (regime_flags & fpta_frendly4compaction)
+        mdbx_flags |= MDBX_COALESCE;
+    }
     break;
   }
-
-  if (regime_flags & fpta_frendly4hdd) {
-    // LY: nothing for now
-  } else {
-    if (regime_flags & fpta_frendly4writeback)
-      mdbx_flags |= MDBX_LIFORECLAIM;
-    if (regime_flags & fpta_frendly4compaction)
-      mdbx_flags |= MDBX_COALESCE;
-  }
-  if (regime_flags & fpta_saferam)
-    mdbx_flags &= ~MDBX_WRITEMAP;
 
   fpta_db *db = (fpta_db *)calloc(1, sizeof(fpta_db));
   if (unlikely(db == nullptr))
