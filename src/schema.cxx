@@ -674,10 +674,10 @@ int fpta_name_refresh(fpta_txn *txn, fpta_name *name_id) {
 
   const bool is_table =
       fpta_shove2index(name_id->shove) == (fpta_index_type)fpta_flag_table;
-  if (is_table)
-    return fpta_name_refresh_couple(txn, name_id, nullptr);
 
-  return fpta_name_refresh_couple(txn, name_id->column.table, name_id);
+  return fpta_name_refresh_couple(txn,
+                                  is_table ? name_id : name_id->column.table,
+                                  is_table ? nullptr : name_id);
 }
 
 int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
@@ -714,7 +714,13 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
         if (unlikely(rc != FPTA_SUCCESS))
           return rc;
       }
+#if 1 /* LY: hotfix until libmdbx update */
+    } else {
+      rc = fpta_dbicache_flush(txn);
+      if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
     }
+#endif /* LY: hotfix until libmdbx update */
 
     rc = fpta_schema_read(txn, table_id->shove, &table_id->table_schema);
     if (unlikely(rc != FPTA_SUCCESS)) {

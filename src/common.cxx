@@ -91,7 +91,8 @@ void fpta_cursor_free(fpta_db *db, fpta_cursor *cursor) {
 
 //----------------------------------------------------------------------------
 
-int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
+int fpta_db_open(const char *path, fpta_durability durability,
+                 fpta_regime_flags regime_flags, mode_t file_mode,
                  size_t megabytes, bool alterable_schema, fpta_db **pdb) {
   if (unlikely(pdb == nullptr))
     return FPTA_EINVAL;
@@ -110,16 +111,23 @@ int fpta_db_open(const char *path, fpta_durability durability, mode_t file_mode,
   case fpta_readonly:
     mdbx_flags |= MDBX_RDONLY;
     break;
-  case fpta_sync:
-    mdbx_flags |= MDBX_LIFORECLAIM | MDBX_COALESCE;
-    break;
+  case fpta_weak:
+    mdbx_flags |= MDBX_UTTERLY_NOSYNC;
+  /* fall through */
   case fpta_lazy:
-    mdbx_flags |=
-        MDBX_LIFORECLAIM | MDBX_COALESCE | MDBX_NOSYNC | MDBX_NOMETASYNC;
-    break;
-  case fpta_async:
-    mdbx_flags |= MDBX_LIFORECLAIM | MDBX_COALESCE | MDBX_WRITEMAP |
-                  MDBX_MAPASYNC | MDBX_UTTERLY_NOSYNC;
+    mdbx_flags |= MDBX_NOSYNC | MDBX_NOMETASYNC;
+    if (0 == (regime_flags & fpta_saferam))
+      mdbx_flags |= MDBX_WRITEMAP;
+  /* fall through */
+  case fpta_sync:
+    if (regime_flags & fpta_frendly4hdd) {
+      // LY: nothing for now
+    } else {
+      if (regime_flags & fpta_frendly4writeback)
+        mdbx_flags |= MDBX_LIFORECLAIM;
+      if (regime_flags & fpta_frendly4compaction)
+        mdbx_flags |= MDBX_COALESCE;
+    }
     break;
   }
 

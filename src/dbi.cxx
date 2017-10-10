@@ -149,7 +149,7 @@ __cold int fpta_dbi_close(fpta_txn *txn, const fpta_shove_t shove,
   return rc;
 }
 
-__cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
+__cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
                          MDBX_dbi &handle, const unsigned dbi_flags,
                          const fpta_shove_t key_shove,
                          const fpta_shove_t data_shove,
@@ -158,7 +158,7 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
   fpta_db *db = txn->db;
 
   if (likely(cache_hint)) {
-    handle = fpta_dbicache_lookup(db, shove, cache_hint);
+    handle = fpta_dbicache_lookup(db, dbi_shove, cache_hint);
     if (likely(handle))
       return FPTA_SUCCESS;
   }
@@ -168,7 +168,7 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
     if (unlikely(err != 0))
       return err;
     if (likely(cache_hint)) {
-      handle = fpta_dbicache_lookup(db, shove, cache_hint);
+      handle = fpta_dbicache_lookup(db, dbi_shove, cache_hint);
       if (likely(handle)) {
         err = fpta_mutex_unlock(&db->dbi_mutex);
         assert(err == 0);
@@ -179,7 +179,7 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
   }
 
   fpta_dbi_name dbi_name;
-  fpta_shove2str(shove, &dbi_name);
+  fpta_shove2str(dbi_shove, &dbi_name);
 
   const auto keycmp = fpta_index_shove2comparator(key_shove);
   const auto datacmp = fpta_index_shove2comparator(data_shove);
@@ -188,7 +188,7 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
   if (likely(rc == FPTA_SUCCESS)) {
     assert(handle != 0);
     if (cache_hint)
-      *cache_hint = fpta_dbicache_update(db, shove, handle);
+      *cache_hint = fpta_dbicache_update(db, dbi_shove, handle);
   } else {
     assert(handle == 0);
   }
@@ -198,6 +198,41 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove,
     assert(err == 0);
     (void)err;
   }
+  return rc;
+}
+
+__cold int fpta_dbicache_flush(fpta_txn *txn) {
+  fpta_db *db = txn->db;
+  bool locked = false;
+
+  int rc = FPTA_SUCCESS;
+  for (size_t i = 0; i < fpta_dbi_cache_size && rc == FPTA_SUCCESS; ++i) {
+    if (!db->dbi_handles[i])
+      continue;
+
+    if (txn->level < fpta_schema && !locked) {
+      int err = fpta_mutex_lock(&db->dbi_mutex);
+      if (unlikely(err != 0))
+        return err;
+
+      locked = true;
+      if (!db->dbi_handles[i])
+        continue;
+    }
+
+    int err = mdbx_dbi_close(db->mdbx_env, db->dbi_handles[i]);
+    if (err != MDBX_BAD_DBI)
+      rc = err;
+    db->dbi_handles[i] = 0;
+    db->dbi_shoves[i] = 0;
+  }
+
+  if (locked) {
+    int err = fpta_mutex_unlock(&db->dbi_mutex);
+    assert(err == 0);
+    (void)err;
+  }
+
   return rc;
 }
 

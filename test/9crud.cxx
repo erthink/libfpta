@@ -74,7 +74,8 @@ public:
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_SUCCESS,
-              fpta_db_open(testdb_name, fpta_async, 0644, 1, true, &db));
+              fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                           true, &db));
     ASSERT_NE(nullptr, db);
     db_quard.reset(db);
 
@@ -349,8 +350,8 @@ TEST(Nullable, AsyncSchemaChange) {
     if (REMOVE_FILE(testdb_name_lck) != 0)
       ASSERT_EQ(ENOENT, errno);
 
-    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
-                                    &db_commander));
+    EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                    0644, 1, true, &db_commander));
     ASSERT_NE(db_commander, (fpta_db *)nullptr);
 
     // описываем простейшую таблицу с двумя колонками
@@ -415,8 +416,8 @@ TEST(Nullable, AsyncSchemaChange) {
 
   // открываем базу в "корреляторе"
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, false,
-                                  &db_correlator));
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, false, &db_correlator));
 
   // выполняем первое пробное обновление в корреляторе
   // обе колонки требуют значений
@@ -826,13 +827,13 @@ TEST(Nullable, SchemaReloadAfterAbort) {
     ASSERT_EQ(ENOENT, errno);
 
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, false,
-                                  &db_correlator));
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, false, &db_correlator));
   ASSERT_NE(db_correlator, (fpta_db *)nullptr);
 
   fpta_db *db_commander = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
-                                  &db_commander));
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, true, &db_commander));
   ASSERT_NE(db_commander, (fpta_db *)nullptr);
 
   { // create table in commander
@@ -934,8 +935,8 @@ TEST(Nullable, SchemaReloadAfterAbort) {
     fpta_name_destroy(&lc);
   }
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 1, true,
-                                  &db_commander));
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, true, &db_commander));
   ASSERT_NE(db_commander, (fpta_db *)nullptr);
   { // drop and recreate table in commander
     fpta_txn *txn = nullptr;
@@ -1064,8 +1065,8 @@ TEST(CRUD, DISABLED_ExtraOps) {
     ASSERT_EQ(ENOENT, errno);
 
   fpta_db *db_correlator = nullptr;
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 20, true,
-                                  &db_correlator));
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 20, true, &db_correlator));
   ASSERT_NE(db_correlator, (fpta_db *)nullptr);
 
   { // create table
@@ -1098,8 +1099,8 @@ TEST(CRUD, DISABLED_ExtraOps) {
   }
   EXPECT_EQ(FPTA_OK, fpta_db_close(db_correlator));
 
-  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_async, 0644, 30, false,
-                                  &db_correlator));
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 30, false, &db_correlator));
   int i = 0;
   for (; i < 1500000; ++i) { // try to fill table
     fpta_txn *txn = nullptr;
@@ -1185,6 +1186,239 @@ TEST(CRUD, DISABLED_ExtraOps) {
 
     EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   }
+  EXPECT_EQ(FPTA_OK, fpta_db_close(db_correlator));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Nullable, SchemaReload) {
+  /* FIXME: Описание сценария теста */
+
+  // чистим
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  fpta_db *db_correlator = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, false, &db_correlator));
+  ASSERT_NE(db_correlator, (fpta_db *)nullptr);
+
+  fpta_db *db_commander = nullptr;
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, true, &db_commander));
+  ASSERT_NE(db_commander, (fpta_db *)nullptr);
+
+  { // create table in commander
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("host", fptu_cstr,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "port", fptu_int64,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "user", fptu_cstr,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "date", fptu_datetime,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("_id", fptu_int64,
+                                   fpta_secondary_unique_unordered, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "_last_changed", fptu_datetime,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  }
+  EXPECT_EQ(FPTA_OK, fpta_db_close(db_commander));
+  db_commander = nullptr;
+
+  { // try to fill table in correlator
+    fpta_name table, host, port, user, date, id, lc;
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &host, "host"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &port, "port"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &user, "user"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &date, "date"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &id, "_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &lc, "_last_changed"));
+
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+
+    fpta_name_refresh(txn, &table);
+    fptu_ro record;
+    memset(&record, 0, sizeof(fptu_ro));
+
+    fpta_value value = fpta_value_cstr("127.0.0.1");
+
+    // no need to refresh column name because it will be refreshed inside
+    // fpta_get
+    EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn, &host, &value, &record));
+    size_t row_count = 0;
+    EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, nullptr));
+    EXPECT_EQ(size_t(0), row_count);
+
+    fptu_rw *tuple = fptu_alloc(6, 1024);
+    ASSERT_NE(tuple, (fptu_rw *)nullptr);
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &host));
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &host, fpta_value_cstr("127.0.0.1")));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &port));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &port,
+    // fpta_value_sint(100)));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &user));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
+    // fpta_value_cstr("user")));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &date));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date,
+    // fpta_value_datetime(fptu_now_fine())));
+
+    uint64_t seq = 0;
+    EXPECT_EQ(FPTA_OK, fpta_table_sequence(txn, &table, &seq, 1));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &id));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(seq)));
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &lc));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &lc, fpta_value_datetime(fptu_now_fine())));
+
+    EXPECT_EQ(FPTA_COLUMN_MISSING,
+              fpta_probe_and_upsert_row(txn, &table, fptu_take(tuple)));
+
+    fptu_clear(tuple);
+    free(tuple);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+
+    fpta_name_destroy(&table);
+    fpta_name_destroy(&host);
+    fpta_name_destroy(&port);
+    fpta_name_destroy(&user);
+    fpta_name_destroy(&date);
+    fpta_name_destroy(&id);
+    fpta_name_destroy(&lc);
+  }
+
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
+                                  0644, 1, true, &db_commander));
+  ASSERT_NE(db_commander, (fpta_db *)nullptr);
+  { // drop and recreate table in commander
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_drop(txn, "table"));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("host", fptu_cstr,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("port", fptu_int64,
+                                            fpta_index_fnullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("user", fptu_cstr,
+                                            fpta_index_fnullable, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe("date", fptu_datetime,
+                                            fpta_index_fnullable, &def));
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("_id", fptu_int64,
+                                   fpta_secondary_unique_unordered, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "_last_changed", fptu_datetime,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+
+    EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_commander, fpta_schema, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "table", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  }
+  EXPECT_EQ(FPTA_OK, fpta_db_close(db_commander));
+  db_commander = nullptr;
+
+  { // try to fill table in correlator
+    fpta_name table, host, port, user, date, id, lc;
+    EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &host, "host"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &port, "port"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &user, "user"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &date, "date"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &id, "_id"));
+    EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &lc, "_last_changed"));
+
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db_correlator, fpta_write, &txn));
+    ASSERT_NE((fpta_txn *)nullptr, txn);
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
+    fptu_ro record;
+    memset(&record, 0, sizeof(fptu_ro));
+
+    fpta_value value = fpta_value_cstr("127.0.0.1");
+
+    // no need to refresh column name because it will be refreshed inside
+    // fpta_get
+    EXPECT_EQ(FPTA_NOTFOUND, fpta_get(txn, &host, &value, &record));
+    size_t row_count = 0;
+    EXPECT_EQ(FPTA_OK, fpta_table_info(txn, &table, &row_count, nullptr));
+    EXPECT_EQ(size_t(0), row_count);
+
+    fptu_rw *tuple = fptu_alloc(6, 1024);
+    ASSERT_NE(tuple, (fptu_rw *)nullptr);
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &host));
+    EXPECT_EQ(FPTA_OK,
+              fpta_upsert_column(tuple, &host, fpta_value_cstr("127.0.0.1")));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &port));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &port,
+    // fpta_value_sint(100)));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &user));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &user,
+    // fpta_value_cstr("user")));
+    // EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &date));
+    // EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &date,
+    // fpta_value_datetime(fptu_now_fine())));
+
+    uint64_t seq = 0;
+    EXPECT_EQ(FPTA_OK, fpta_table_sequence(txn, &table, &seq, 1));
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &id));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &id, fpta_value_uint(seq)));
+
+    EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &lc));
+    EXPECT_EQ(FPTA_OK, fpta_upsert_column(
+                           tuple, &lc, fpta_value_datetime(fptu_now_fine())));
+
+    EXPECT_EQ(FPTA_OK,
+              fpta_probe_and_upsert_row(txn, &table, fptu_take(tuple)));
+
+    fptu_clear(tuple);
+    free(tuple);
+
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+
+    fpta_name_destroy(&table);
+    fpta_name_destroy(&host);
+    fpta_name_destroy(&port);
+    fpta_name_destroy(&user);
+    fpta_name_destroy(&date);
+    fpta_name_destroy(&id);
+    fpta_name_destroy(&lc);
+  }
+
   EXPECT_EQ(FPTA_OK, fpta_db_close(db_correlator));
 }
 
