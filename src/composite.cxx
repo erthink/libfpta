@@ -31,13 +31,14 @@ static __inline uint64_t add_rotate_xor(uint64_t base, uint64_t addend,
   return (base + addend) ^ rotated;
 }
 
-typedef int (*concat_column_t)(fpta_key &key, const bool alternale_nils,
+typedef int (*concat_column_t)(fpta_key &key, const bool tersely,
                                const fpta_table_schema *const schema,
                                const fptu_ro &row, unsigned column);
 
-static int __hot concat_unordered(fpta_key &key, const bool alternale_nils,
+static int __hot concat_unordered(fpta_key &key, const bool unused_tersely,
                                   const fpta_table_schema *const schema,
                                   const fptu_ro &row, unsigned column) {
+  (void)unused_tersely;
   const uint64_t MARKER_ABSENT = UINT64_C(0x974BC764BAC4C7F);
   uint64_t *const hash = (uint64_t *)key.mdbx.iov_base;
   const fpta_shove_t shove = schema->column_shove(column);
@@ -46,9 +47,8 @@ static int __hot concat_unordered(fpta_key &key, const bool alternale_nils,
   if (unlikely(field == nullptr)) {
     if (unlikely(!fpta_column_is_nullable(shove)))
       return FPTA_COLUMN_MISSING;
-    if (!alternale_nils)
-      /* add absent-marker to resulting hash */
-      *hash = add_rotate_xor(*hash, MARKER_ABSENT);
+    /* add absent-marker to resulting hash */
+    *hash = add_rotate_xor(*hash, MARKER_ABSENT);
   } else {
     const struct iovec iov = fptu_field_as_iovec(field);
     /* add value to resulting hash */
@@ -105,7 +105,7 @@ static int __hot concat_bytes(fpta_key &key, const void *data, size_t length) {
   return FPTA_SUCCESS;
 }
 
-static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
+static int __hot concat_ordered(fpta_key &key, const bool tersely,
                                 const fpta_table_schema *const schema,
                                 const fptu_ro &row, unsigned column) {
   const fpta_shove_t shove = schema->column_shove(column);
@@ -113,15 +113,24 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
   const fptu_field *field = fptu_lookup_ro(row, column, type);
 
   const uint8_t prefix_absent = 0;
-  const uint8_t prefix_present = 42;
+  const uint8_t prefix_present_empty = 42;
+  const uint8_t prefix_present_nonempty = 142;
   const bool obverse = key.mdbx.iov_base == &key.place.longkey_obverse.tailhash;
 
   if (unlikely(field == nullptr)) {
     if (unlikely(!fpta_column_is_nullable(shove)))
       return FPTA_COLUMN_MISSING;
-    if (alternale_nils || type >= fptu_cstr)
-      /* just concatenate absent-marker to the resulting key */
+
+    if (type >= fptu_cstr) {
+      /* for variable-length columns add absent-marker to the resulting key,
+       * but only if TERSELY is OFF */
+      return unlikely(tersely) ? (int)FPTA_SUCCESS
+                               : concat_bytes(key, &prefix_absent, 1);
+    } else if (unlikely(tersely)) {
+      /* for fixed-length columns put absent-marker instead of denil-value
+       * only if TERSELY is ON */
       return concat_bytes(key, &prefix_absent, 1);
+    }
 
     switch (type) {
     default: {
@@ -226,9 +235,10 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
   }
 
-  if (fpta_column_is_nullable(shove) && (alternale_nils || type >= fptu_cstr))
-    /* add present-marker */
-    concat_bytes(key, &prefix_present, 1);
+  if (type < fptu_cstr && fpta_column_is_nullable(shove) && unlikely(tersely)) {
+    /* add present-marker for fixed-length nullable columns if TERSELY is ON */
+    concat_bytes(key, &prefix_present_nonempty, 1);
+  }
 
   switch (type) {
   default: {
@@ -239,6 +249,14 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
 
     const struct iovec iov = fptu_field_as_iovec(field);
+    if (likely(!tersely)) {
+      /* for variable-length columns, add one of present-markers,
+       * but only if TERSELY is OFF */
+      concat_bytes(key, iov.iov_len ? &prefix_present_nonempty
+                                    : &prefix_present_empty,
+                   1);
+    }
+
     /* don't need byteorder conversion for string/binary data */
     return concat_bytes(key, iov.iov_base, iov.iov_len);
   }
@@ -360,16 +378,16 @@ int __hot fpta_composite_row2key(const fpta_table_schema *const schema,
     concat = concat_ordered;
   }
 
-  const bool alternale_nils = fpta_is_indexed_and_nullable(index);
+  const bool tersely = (index & fpta_tersely_composite) ? true : false;
   if (fpta_index_is_obverse(index)) {
     for (auto i = begin; i != end; ++i) {
-      rc = concat(key, alternale_nils, schema, row, *i);
+      rc = concat(key, tersely, schema, row, *i);
       if (unlikely(rc != FPTA_SUCCESS))
         return rc;
     }
   } else {
     for (auto i = end; i != begin;) {
-      rc = concat(key, alternale_nils, schema, row, *--i);
+      rc = concat(key, tersely, schema, row, *--i);
       if (unlikely(rc != FPTA_SUCCESS))
         return rc;
     }
