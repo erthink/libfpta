@@ -194,13 +194,13 @@ static __inline bool fpta_index_is_secondary(const fpta_shove_t index) {
   return (index & fpta_index_fsecondary) != 0;
 }
 
-static __inline bool fpta_index_is_nullable(const fpta_index_type index) {
+static __inline bool fpta_is_indexed_and_nullable(const fpta_index_type index) {
   assert(index == (index & fpta_column_index_mask));
   return index > fpta_index_fnullable;
 }
 
-static __inline bool fpta_column_is_nullable(const fpta_name *column_id) {
-  return (column_id->shove & fpta_index_fnullable) != 0;
+static __inline bool fpta_column_is_nullable(const fpta_shove_t shove) {
+  return (shove & fpta_index_fnullable) != 0;
 }
 
 static __inline bool fpta_cursor_is_ordered(const fpta_cursor_options op) {
@@ -536,7 +536,7 @@ FPTA_API extern const fpta_fp64_t fpta_fp32x64_qsnan;
 template <fptu_type type>
 static __inline bool is_fixbin_denil(const fpta_index_type index,
                                      const void *fixbin) {
-  assert(fpta_index_is_nullable(index));
+  assert(fpta_is_indexed_and_nullable(index));
   const uint64_t denil = fpta_index_is_obverse(index)
                              ? FPTA_DENIL_FIXBIN_OBVERSE |
                                    (uint64_t)FPTA_DENIL_FIXBIN_OBVERSE << 8 |
@@ -579,7 +579,7 @@ static __inline bool is_fixbin_denil(const fpta_index_type index,
 static __inline bool check_fixbin_not_denil(const fpta_index_type index,
                                             const fptu_payload *payload,
                                             const size_t bytes) {
-  assert(fpta_index_is_nullable(index));
+  assert(fpta_is_indexed_and_nullable(index));
   for (size_t i = 0; i < bytes; i++)
     if (payload->fixbin[i] != (fpta_index_is_obverse(index)
                                    ? FPTA_DENIL_FIXBIN_OBVERSE

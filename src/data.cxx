@@ -53,7 +53,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_uint16:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint_fast16_t denil = numeric_traits<fptu_uint16>::denil(index);
       if (FPTA_CLEAN_DENIL && unlikely(field->get_payload_uint16() == denil))
         break;
@@ -65,7 +65,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_int32:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const int_fast32_t denil = numeric_traits<fptu_int32>::denil(index);
       if (FPTA_CLEAN_DENIL && unlikely(payload->i32 == denil))
         break;
@@ -77,7 +77,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_uint32:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint_fast32_t denil = numeric_traits<fptu_uint32>::denil(index);
       if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
         break;
@@ -89,7 +89,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_fp32:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint_fast32_t denil = FPTA_DENIL_FP32_BIN;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u32 == denil))
         break;
@@ -102,7 +102,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_int64:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const int64_t denil = numeric_traits<fptu_int64>::denil(index);
       if (FPTA_CLEAN_DENIL && unlikely(payload->i64 == denil))
         break;
@@ -114,7 +114,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_uint64:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint64_t denil = numeric_traits<fptu_uint64>::denil(index);
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
@@ -126,7 +126,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_fp64:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_FP64_BIN;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
@@ -139,7 +139,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_datetime:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
       if (FPTA_CLEAN_DENIL && unlikely(payload->u64 == denil))
         break;
@@ -151,7 +151,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_96:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_96>(index, payload->fixbin))
         break;
       assert(check_fixbin_not_denil(index, payload, 96 / 8));
@@ -162,7 +162,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_128:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_128>(index, payload->fixbin))
         break;
       assert(check_fixbin_not_denil(index, payload, 128 / 8));
@@ -173,7 +173,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_160:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_160>(index, payload->fixbin))
         break;
       assert(check_fixbin_not_denil(index, payload, 160 / 8));
@@ -184,7 +184,7 @@ static fpta_value fpta_field2value_ex(const fptu_field *field,
     break;
 
   case fptu_256:
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       if (FPTA_CLEAN_DENIL && is_fixbin_denil<fptu_256>(index, payload->fixbin))
         break;
       assert(check_fixbin_not_denil(index, payload, 256 / 8));
@@ -331,7 +331,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-      if (fpta_index_is_nullable(index)) {
+      if (fpta_is_indexed_and_nullable(index)) {
         const uint_fast16_t denil = numeric_traits<fptu_uint16>::denil(index);
         if (unlikely(value.uint == denil))
           goto denil_catched;
@@ -349,7 +349,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.uint > INT32_MAX))
         return FPTA_EVALUE;
     case fpta_signed_int:
-      if (fpta_index_is_nullable(index)) {
+      if (fpta_is_indexed_and_nullable(index)) {
         const int_fast32_t denil = numeric_traits<fptu_int32>::denil(index);
         if (unlikely(value.sint == denil))
           goto denil_catched;
@@ -367,7 +367,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-      if (fpta_index_is_nullable(index)) {
+      if (fpta_is_indexed_and_nullable(index)) {
         const uint_fast32_t denil = numeric_traits<fptu_uint32>::denil(index);
         if (unlikely(value.uint == denil))
           goto denil_catched;
@@ -380,7 +380,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_fp32:
     if (unlikely(value.type != fpta_float_point))
       return FPTA_ETYPE;
-    if (fpta_index_is_nullable(index) &&
+    if (fpta_is_indexed_and_nullable(index) &&
         /* LY: проверяем на DENIL с учетом усечения при конвертации во float */
         unlikely(value.uint >= FPTA_DENIL_FP32x64_BIN)) {
       if (value.uint == FPTA_DENIL_FP32x64_BIN)
@@ -404,7 +404,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.uint > INT64_MAX))
         return FPTA_EVALUE;
     case fpta_signed_int:
-      if (fpta_index_is_nullable(index)) {
+      if (fpta_is_indexed_and_nullable(index)) {
         const int64_t denil = numeric_traits<fptu_int64>::denil(index);
         if (unlikely(value.sint == denil))
           goto denil_catched;
@@ -420,7 +420,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
     case fpta_unsigned_int:
-      if (fpta_index_is_nullable(index)) {
+      if (fpta_is_indexed_and_nullable(index)) {
         const uint64_t denil = numeric_traits<fptu_uint64>::denil(index);
         if (unlikely(value.uint == denil))
           goto denil_catched;
@@ -431,7 +431,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_fp64:
     if (unlikely(value.type != fpta_float_point))
       return FPTA_ETYPE;
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_FP64_BIN;
       if (unlikely(value.uint == denil))
         goto denil_catched;
@@ -443,7 +443,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
   case fptu_datetime:
     if (value.type != fpta_datetime)
       return FPTA_ETYPE;
-    if (fpta_index_is_nullable(index)) {
+    if (fpta_is_indexed_and_nullable(index)) {
       const uint64_t denil = FPTA_DENIL_DATETIME_BIN;
       if (unlikely(value.datetime.fixedpoint == denil))
         goto denil_catched;
@@ -457,7 +457,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (fpta_index_is_nullable(index) &&
+    if (fpta_is_indexed_and_nullable(index) &&
         is_fixbin_denil<fptu_96>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_96(pt, colnum, value.binary_data);
@@ -469,7 +469,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (fpta_index_is_nullable(index) &&
+    if (fpta_is_indexed_and_nullable(index) &&
         is_fixbin_denil<fptu_128>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_128(pt, colnum, value.binary_data);
@@ -481,7 +481,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (fpta_index_is_nullable(index) &&
+    if (fpta_is_indexed_and_nullable(index) &&
         is_fixbin_denil<fptu_160>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_160(pt, colnum, value.binary_data);
@@ -493,7 +493,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
       return FPTA_DATALEN_MISMATCH;
     if (unlikely(!value.binary_data))
       return FPTA_EINVAL;
-    if (fpta_index_is_nullable(index) &&
+    if (fpta_is_indexed_and_nullable(index) &&
         is_fixbin_denil<fptu_160>(index, value.binary_data))
       goto denil_catched;
     return fptu_upsert_256(pt, colnum, value.binary_data);

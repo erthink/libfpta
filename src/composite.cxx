@@ -44,8 +44,7 @@ static int __hot concat_unordered(fpta_key &key, const bool alternale_nils,
   const fptu_type type = fpta_shove2type(shove);
   const fptu_field *field = fptu_lookup_ro(row, column, type);
   if (unlikely(field == nullptr)) {
-    const fpta_index_type index = fpta_shove2index(shove);
-    if (unlikely(!fpta_index_is_nullable(index)))
+    if (unlikely(!fpta_column_is_nullable(shove)))
       return FPTA_COLUMN_MISSING;
     if (!alternale_nils)
       /* add absent-marker to resulting hash */
@@ -111,7 +110,6 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
                                 const fptu_ro &row, unsigned column) {
   const fpta_shove_t shove = schema->column_shove(column);
   const fptu_type type = fpta_shove2type(shove);
-  const fpta_index_type index = fpta_shove2index(shove);
   const fptu_field *field = fptu_lookup_ro(row, column, type);
 
   const uint8_t prefix_absent = 0;
@@ -119,7 +117,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
   const bool obverse = key.mdbx.iov_base == &key.place.longkey_obverse.tailhash;
 
   if (unlikely(field == nullptr)) {
-    if (unlikely(!fpta_index_is_nullable(index)))
+    if (unlikely(!fpta_column_is_nullable(shove)))
       return FPTA_COLUMN_MISSING;
     if (alternale_nils || type >= fptu_cstr)
       /* just concatenate absent-marker to the resulting key */
@@ -135,7 +133,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
       uint8_t stub[256 / 8];
       assert(length <= sizeof(stub));
       /* prepare a denil value */
-      const int fillbyte = fpta_index_is_obverse(index)
+      const int fillbyte = fpta_index_is_obverse(shove)
                                ? FPTA_DENIL_FIXBIN_OBVERSE
                                : FPTA_DENIL_FIXBIN_REVERSE;
       memset(&stub, fillbyte, length);
@@ -153,7 +151,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
 
     case fptu_uint16: {
-      uint16_t stub = (uint16_t)numeric_traits<fptu_uint16>::denil(index);
+      uint16_t stub = (uint16_t)numeric_traits<fptu_uint16>::denil(shove);
       /* convert byte order for proper comparison result in a index kind. */
       stub = obverse ? htobe(stub) : htole(stub);
       /* concatenate to the resulting key */
@@ -161,7 +159,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
 
     case fptu_uint32: {
-      uint32_t stub = (uint32_t)numeric_traits<fptu_uint32>::denil(index);
+      uint32_t stub = (uint32_t)numeric_traits<fptu_uint32>::denil(shove);
       /* convert byte order for proper comparison result in a index kind. */
       stub = obverse ? htobe(stub) : htole(stub);
       /* concatenate to the resulting key */
@@ -169,7 +167,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
 
     case fptu_uint64: {
-      uint64_t stub = (uint64_t)numeric_traits<fptu_uint64>::denil(index);
+      uint64_t stub = (uint64_t)numeric_traits<fptu_uint64>::denil(shove);
       /* convert byte order for proper comparison result in a index kind. */
       stub = obverse ? htobe(stub) : htole(stub);
       /* concatenate to the resulting key */
@@ -177,7 +175,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
 
     case fptu_int32: {
-      int32_t stub = (int32_t)numeric_traits<fptu_int32>::denil(index);
+      int32_t stub = (int32_t)numeric_traits<fptu_int32>::denil(shove);
       stub -= INT32_MIN /* rebase signed min-value to binary all-zeros */;
       /* convert byte order for proper comparison result in a index kind. */
       stub = obverse ? htobe(stub) : htole(stub);
@@ -186,7 +184,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
 
     case fptu_int64: {
-      int64_t stub = (int64_t)numeric_traits<fptu_int64>::denil(index);
+      int64_t stub = (int64_t)numeric_traits<fptu_int64>::denil(shove);
       stub -= INT64_MIN /* rebase signed min-value to binary all-zeros */;
       /* convert byte order for proper comparison result in a index kind. */
       stub = obverse ? htobe(stub) : htole(stub);
@@ -200,7 +198,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
         uint32_t u32;
         int32_t i32;
       } stub;
-      stub.fp32 = (float)numeric_traits<fptu_fp32>::denil(index);
+      stub.fp32 = (float)numeric_traits<fptu_fp32>::denil(shove);
       /* convert to binary-comparable value in the range 0..UINT32_MAX */
       stub.u32 = (stub.i32 < 0) ? UINT32_C(0xffffFFFF) - stub.u32
                                 : stub.u32 + UINT32_C(0x80000000);
@@ -216,7 +214,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
         uint64_t u64;
         int64_t i64;
       } stub;
-      stub.fp64 = (double)numeric_traits<fptu_fp64>::denil(index);
+      stub.fp64 = (double)numeric_traits<fptu_fp64>::denil(shove);
       /* convert to binary-comparable value in the range 0..UINT64_MAX */
       stub.u64 = (stub.i64 < 0) ? UINT64_C(0xffffFFFFffffFFFF) - stub.u64
                                 : stub.u64 + UINT64_C(0x8000000000000000);
@@ -228,7 +226,7 @@ static int __hot concat_ordered(fpta_key &key, const bool alternale_nils,
     }
   }
 
-  if (fpta_index_is_nullable(index) && (alternale_nils || type >= fptu_cstr))
+  if (fpta_column_is_nullable(shove) && (alternale_nils || type >= fptu_cstr))
     /* add present-marker */
     concat_bytes(key, &prefix_present, 1);
 
@@ -362,18 +360,16 @@ int __hot fpta_composite_row2key(const fpta_table_schema *const schema,
     concat = concat_ordered;
   }
 
-  const bool alternale_nils = fpta_index_is_nullable(index);
+  const bool alternale_nils = fpta_is_indexed_and_nullable(index);
   if (fpta_index_is_obverse(index)) {
     for (auto i = begin; i != end; ++i) {
-      const unsigned column = *i;
-      rc = concat(key, alternale_nils, schema, row, column);
+      rc = concat(key, alternale_nils, schema, row, *i);
       if (unlikely(rc != FPTA_SUCCESS))
         return rc;
     }
   } else {
     for (auto i = end; i != begin;) {
-      const unsigned column = *--i;
-      rc = concat(key, alternale_nils, schema, row, column);
+      rc = concat(key, alternale_nils, schema, row, *--i);
       if (unlikely(rc != FPTA_SUCCESS))
         return rc;
     }

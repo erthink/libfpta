@@ -189,9 +189,9 @@ template <> struct numeric_traits<fptu_uint16> {
   typedef uint_fast16_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? (fast)FPTA_DENIL_UINT16_OBVERSE
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    return fpta_index_is_obverse(shove) ? (fast)FPTA_DENIL_UINT16_OBVERSE
                                         : (fast)FPTA_DENIL_UINT16_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
@@ -205,9 +205,9 @@ template <> struct numeric_traits<fptu_uint32> {
   typedef uint_fast32_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT32_OBVERSE
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    return fpta_index_is_obverse(shove) ? FPTA_DENIL_UINT32_OBVERSE
                                         : FPTA_DENIL_UINT32_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
@@ -221,9 +221,9 @@ template <> struct numeric_traits<fptu_uint64> {
   typedef uint_fast64_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    return fpta_index_is_obverse(index) ? FPTA_DENIL_UINT64_OBVERSE
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    return fpta_index_is_obverse(shove) ? FPTA_DENIL_UINT64_OBVERSE
                                         : FPTA_DENIL_UINT64_REVERSE;
   }
   static fpta_value_type value_type() { return fpta_unsigned_int; }
@@ -237,9 +237,9 @@ template <> struct numeric_traits<fptu_int32> {
   typedef int_fast32_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    (void)shove;
     return FPTA_DENIL_SINT32;
   }
   static fpta_value_type value_type() { return fpta_signed_int; }
@@ -253,9 +253,9 @@ template <> struct numeric_traits<fptu_int64> {
   typedef int_fast64_t fast;
   enum { has_native_saturation = false };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    (void)shove;
     return FPTA_DENIL_SINT64;
   }
   static fpta_value_type value_type() { return fpta_signed_int; }
@@ -269,9 +269,9 @@ template <> struct numeric_traits<fptu_fp32> {
   typedef float_t fast;
   enum { has_native_saturation = true };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    (void)shove;
     return FPTA_DENIL_FP32;
   }
   static fpta_value_type value_type() { return fpta_float_point; }
@@ -285,9 +285,9 @@ template <> struct numeric_traits<fptu_fp64> {
   typedef double_t fast;
   enum { has_native_saturation = true };
   typedef std::numeric_limits<native> native_limits;
-  static fast denil(const fpta_index_type index) {
-    assert(fpta_index_is_nullable(index));
-    (void)index;
+  static fast denil(const fpta_shove_t shove) {
+    assert(fpta_column_is_nullable(shove));
+    (void)shove;
     return FPTA_DENIL_FP64;
   }
   static fpta_value_type value_type() { return fpta_float_point; }

@@ -75,7 +75,7 @@ inline bool is_valid4primary(fptu_type type, fpta_index_type index) {
     return false;
 
   if (fpta_index_is_reverse(index) && type < fptu_96) {
-    if (!fpta_index_is_nullable(index) ||
+    if (!fpta_is_indexed_and_nullable(index) ||
         !fpta_nullable_reverse_sensitive(type))
       return false;
   }
@@ -106,7 +106,7 @@ inline bool is_valid4secondary(fptu_type pk_type, fpta_index_type pk_index,
     return false;
 
   if (fpta_index_is_reverse(se_index) && se_type < fptu_96) {
-    if (!fpta_index_is_nullable(se_index) ||
+    if (!fpta_is_indexed_and_nullable(se_index) ||
         !fpta_nullable_reverse_sensitive(se_type))
       return false;
   }
