@@ -314,7 +314,7 @@ static int fpta_schema_validate(
           return FPTA_ETYPE;
         if (fpta_is_indexed(index_type) && fpta_index_is_reverse(index_type) &&
             (fpta_index_is_unordered(index_type) || data_type < fptu_96) &&
-            !(fpta_index_is_nullable(index_type) &&
+            !(fpta_is_indexed_and_nullable(index_type) &&
               fpta_nullable_reverse_sensitive(data_type)))
           return FPTA_EFLAG;
       }
@@ -528,7 +528,7 @@ int fpta_column_describe(const char *column_name, fptu_type data_type,
 
   if (fpta_is_indexed(index_type) && fpta_index_is_reverse(index_type) &&
       (fpta_index_is_unordered(index_type) || data_type < fptu_96) &&
-      !(fpta_index_is_nullable(index_type) &&
+      !(fpta_is_indexed_and_nullable(index_type) &&
         fpta_nullable_reverse_sensitive(data_type)))
     return FPTA_EFLAG;
 

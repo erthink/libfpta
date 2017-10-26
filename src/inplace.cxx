@@ -139,7 +139,7 @@ template <fptu_type type> struct saturated {
   typedef typename traits::native_limits native_limits;
 
   static fast bottom(const fpta_index_type index) {
-    if (!fpta_index_is_nullable(index) || !native_limits::is_integer)
+    if (!fpta_is_indexed_and_nullable(index) || !native_limits::is_integer)
       return native_limits::lowest();
     const fast lower = native_limits::min();
     return (lower != traits::denil(index)) ? lower : lower + 1;
@@ -147,7 +147,7 @@ template <fptu_type type> struct saturated {
 
   static fast top(const fpta_index_type index) {
     const fast upper = native_limits::max();
-    if (!fpta_index_is_nullable(index) || !native_limits::is_integer)
+    if (!fpta_is_indexed_and_nullable(index) || !native_limits::is_integer)
       return upper;
     return (upper != traits::denil(index)) ? upper : upper - 1;
   }
@@ -326,7 +326,7 @@ FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
 
   switch (value->type) {
   case fpta_null:
-    if (fpta_index_is_nullable(index))
+    if (fpta_is_indexed_and_nullable(index))
       return FPTA_SUCCESS;
   // no break here
   default:

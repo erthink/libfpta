@@ -3611,6 +3611,104 @@ TEST(Smoke, FilterAndRange) {
 
 //----------------------------------------------------------------------------
 
+TEST(SmokeIndex, MissingFieldOfCompositeKey) {
+  /* Тривиальный тест вставки NULL значения в nullable колонку, для которой
+   * присутствует составная не-nullable
+   *
+   * Сценарий:
+   *  - создаем/инициализируем описание колонок.
+   *  - пробуем добавить кортеж без записи
+   */
+  fpta_txn *txn = (fpta_txn *)&txn;
+  fpta_db *db = nullptr;
+
+  if (REMOVE_FILE(testdb_name) != 0)
+    ASSERT_EQ(ENOENT, errno);
+  if (REMOVE_FILE(testdb_name_lck) != 0)
+    ASSERT_EQ(ENOENT, errno);
+
+  // открываем/создаем базульку в 1 мегабайт
+
+  EXPECT_EQ(FPTA_SUCCESS,
+            fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,
+                         true, &db));
+  ASSERT_NE(nullptr, db);
+
+  // описываем простейшую таблицу с тремя колонками и одним PK
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("some_field", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("name", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe("age", fptu_cstr,
+                                          fpta_noindex_nullable, &def));
+
+  const char *const composite_names[2] = {"some_field", "name"};
+  EXPECT_EQ(FPTA_OK, fpta_describe_composite_index(
+                         "mycomposite", fpta_primary_unique_ordered_obverse,
+                         &def, composite_names, 2));
+
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+  ASSERT_NE(nullptr, txn);
+
+  EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "some_table", &def));
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+  txn = nullptr;
+
+  // инициализируем идентификаторы таблицы и её колонок
+  fpta_name some_field, age, table;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "some_table"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &age, "age"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &some_field, "some_field"));
+
+  // начинаем транзакцию для вставки данных
+  EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+  ASSERT_NE(nullptr, txn);
+  // ради теста делаем привязку вручную
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &some_field));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &some_field));
+  EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &age));
+
+  // создаем кортеж, который должен быть вставлен в таблицу
+  fptu_rw *pt1 = fptu_alloc(3, 1000);
+  ASSERT_NE(nullptr, pt1);
+  ASSERT_STREQ(nullptr, fptu_check(pt1));
+
+  // добавляем нормальные значения
+  EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &some_field,
+                                        fpta_value_cstr("composite_part_1")));
+  // пропускаем вставку значения в одну из входящих в mycomposite колонок ==
+  // null
+  // EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_a, fpta_value_sint(34)));
+  EXPECT_EQ(FPTA_OK,
+            fpta_upsert_column(pt1, &age, fpta_value_cstr("some data")));
+  ASSERT_STREQ(nullptr, fptu_check(pt1));
+
+  // вставляем
+  EXPECT_EQ(FPTA_OK, fpta_insert_row(txn, &table, fptu_take_noshrink(pt1)));
+
+  // фиксируем изменения
+  EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+
+  // разрушаем привязанные идентификаторы
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&some_field);
+  fpta_name_destroy(&age);
+  // закрываем базульку
+  EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+  db = nullptr;
+
+  // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
+  if (false) {
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+  }
+}
+
+//----------------------------------------------------------------------------
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
