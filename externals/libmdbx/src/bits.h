@@ -405,7 +405,7 @@ typedef struct MDBX_lockinfo {
   };
 
   union {
-    volatile uint32_t mti_reader_finished_flag;
+    volatile uint32_t mti_readers_refresh_flag;
     uint64_t align_reader_finished_flag;
   };
 
@@ -553,7 +553,8 @@ struct MDBX_txn {
 
 /* Transaction Flags */
 /* mdbx_txn_begin() flags */
-#define MDBX_TXN_BEGIN_FLAGS (MDBX_NOMETASYNC | MDBX_NOSYNC | MDBX_RDONLY)
+#define MDBX_TXN_BEGIN_FLAGS                                                   \
+  (MDBX_NOMETASYNC | MDBX_NOSYNC | MDBX_RDONLY | MDBX_TRYTXN)
 #define MDBX_TXN_NOMETASYNC                                                    \
   MDBX_NOMETASYNC                   /* don't sync meta for this txn on commit */
 #define MDBX_TXN_NOSYNC MDBX_NOSYNC /* don't sync this txn on commit */
