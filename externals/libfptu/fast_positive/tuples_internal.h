@@ -205,6 +205,18 @@
 #	endif
 #endif /* __flatten */
 
+#ifndef __noinline
+#	if defined(__GNUC__) || __has_attribute(noinline)
+#		define __noinline __attribute__((noinline))
+#	elif defined(_MSC_VER)
+#		define __noinline __declspec(noinline)
+#	elif defined(__SUNPRO_C) || defined(__sun) || defined(sun)
+#		define __noinline inline
+#	elif !defined(__INTEL_COMPILER)
+#		define __noinline /* FIXME ? */
+#	endif
+#endif /* __noinline */
+
 #ifdef __cplusplus
 #	define FPT_NONCOPYABLE(typename) \
 		typename(const typename&) = delete; \
@@ -215,23 +227,48 @@
 #	define __typeof(exp) decltype(exp)
 #endif
 
-#ifndef __noop
-#	define __noop() do {} while(0)
-#endif
+#if !defined(__noop) && !defined(_MSC_VER)
+#	ifdef __cplusplus
+		static inline void __noop_consume_args() {}
+		template <typename First, typename... Rest>
+		static inline void
+		__noop_consume_args(const First &first, const Rest &... rest) {
+			(void) first; __noop_consume_args(rest...);
+		}
+#		define __noop(...) __noop_consume_args(__VA_ARGS__)
+#	elif defined(__GNUC__) && (!defined(__STRICT_ANSI__) || !__STRICT_ANSI__)
+		static __inline void __noop_consume_args(void* anchor, ...) {
+			(void) anchor;
+		}
+#		define __noop(...) __noop_consume_args(0, ##__VA_ARGS__)
+#	else
+#		define __noop(...) do {} while(0)
+#	endif
+#endif /* __noop */
+
+#ifndef __fallthrough
+#	if __GNUC_PREREQ(7, 0) || __has_attribute(fallthrough)
+#		define __fallthrough __attribute__((fallthrough))
+#	else
+#		define __fallthrough __noop()
+#	endif
+#endif /* __fallthrough */
 
 #ifndef __unreachable
 #	if __GNUC_PREREQ(4,5)
 #		define __unreachable() __builtin_unreachable()
+#	elif defined(_MSC_VER)
+#		define __unreachable() __assume(0)
 #	else
 #		define __unreachable() __noop()
 #	endif
-#endif
+#endif /* __unreachable */
 
 #ifndef __prefetch
 #	if defined(__GNUC__) || defined(__clang__)
 #		define __prefetch(ptr) __builtin_prefetch(ptr)
 #	else
-#		define __prefetch(ptr) do {(void)(ptr)} while(0)
+#		define __prefetch(ptr) __noop(ptr)
 #	endif
 #endif /* __prefetch */
 
