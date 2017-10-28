@@ -197,6 +197,14 @@
 #	endif
 #endif /* __deprecated */
 
+#ifndef __fallthrough
+#   if __GNUC_PREREQ(7, 0) || __has_attribute(fallthrough)
+#       define __fallthrough __attribute__((fallthrough))
+#   else
+#       define __fallthrough do {} while(0)
+#   endif
+#endif /* __fallthrough */
+
 #ifdef _MSC_VER
 #	define FPT_PACKED_STRUCT(name) \
 		__pragma(pack(push, 1)) struct name __pragma(pack(pop))
