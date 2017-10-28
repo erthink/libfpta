@@ -268,8 +268,9 @@ TEST(Fetch, Variate) {
         EXPECT_EQ(origin_pt->head, fetched_pt->head);
         EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
       }
-      if (bytes == fptu_buffer_enough)
+      if (bytes == fptu_buffer_enough) {
         EXPECT_EQ(origin_pt->end, fetched_pt->end);
+      }
 
       // adds header-only fields and check
       for (unsigned n = 1; n < 11; ++n) {
@@ -317,8 +318,9 @@ TEST(Fetch, Variate) {
           EXPECT_EQ(origin_pt->head, fetched_pt->head);
           EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
         }
-        if (bytes == fptu_buffer_enough)
+        if (bytes == fptu_buffer_enough) {
           EXPECT_EQ(origin_pt->end, fetched_pt->end);
+        }
       }
 
       origin_pt =
@@ -372,8 +374,9 @@ TEST(Fetch, Variate) {
           EXPECT_EQ(origin_pt->head, fetched_pt->head);
           EXPECT_EQ(origin_pt->junk, fetched_pt->junk);
         }
-        if (bytes == fptu_buffer_enough)
+        if (bytes == fptu_buffer_enough) {
           EXPECT_EQ(origin_pt->end, fetched_pt->end);
+        }
       }
     }
   }
