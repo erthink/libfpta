@@ -50,6 +50,7 @@ include(TestBigEndian)
 include(CheckFunctionExists)
 include(FindPackageMessage)
 include(CheckStructHasMember)
+include(CMakeDependentOption)
 
 if(NOT CMAKE_VERSION VERSION_LESS 3.9)
   cmake_policy(SET CMP0069 NEW)
