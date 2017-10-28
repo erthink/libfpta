@@ -167,18 +167,6 @@
 #	endif
 #endif /* __alwaysinline */
 
-#ifndef __noinline
-#	if defined(__GNUC__) || __has_attribute(noinline)
-#		define __noinline __attribute__((noinline))
-#	elif defined(_MSC_VER)
-#		define __noinline __declspec(noinline)
-#	elif defined(__SUNPRO_C) || defined(__sun) || defined(sun)
-#		define __noinline inline
-#	elif !defined(__INTEL_COMPILER)
-#		define __noinline /* FIXME ? */
-#	endif
-#endif /* __noinline */
-
 #ifndef __must_check_result
 #	if defined(__GNUC__) || __has_attribute(warn_unused_result)
 #		define __must_check_result __attribute__((warn_unused_result))
@@ -196,14 +184,6 @@
 #		define __deprecated
 #	endif
 #endif /* __deprecated */
-
-#ifndef __fallthrough
-#   if __GNUC_PREREQ(7, 0) || __has_attribute(fallthrough)
-#       define __fallthrough __attribute__((fallthrough))
-#   else
-#       define __fallthrough do {} while(0)
-#   endif
-#endif /* __fallthrough */
 
 #ifdef _MSC_VER
 #	define FPT_PACKED_STRUCT(name) \
