@@ -42,7 +42,7 @@ endif()
 #
 # Check supported standards
 #
-if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
+if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99 AND NOT HAVE_STD_GNU11) OR
     (NOT HAVE_STD_CXX11 AND NOT HAVE_STD_GNUXX0X))
   set(CMAKE_REQUIRED_FLAGS "-std=c11")
   check_c_source_compiles("
@@ -57,6 +57,25 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
     int main(void) { return 0; }
     " HAVE_STD_C11)
 
+  set(CMAKE_REQUIRED_FLAGS "-std=gnu11")
+  check_c_source_compiles("
+    #if __STDC_VERSION__ < 201112L
+    #   error GNU C11 not available
+    #endif
+    /*
+    * FreeBSD 10 ctype.h header fail to compile on gcc4.8 in c11 mode.
+    * Make sure we aren't affected.
+    */
+    #include <ctype.h>
+    /* Check for GNU C extension for VA_ARGS */
+    static inline void probe(int anchor, ...) { (void) anchor; }
+    #define PROBE(...) probe(42, ##__VA_ARGS__)
+    int main(void) {
+    PROBE(); PROBE(1); PROBE(2,2); PROBE(3,3,3);
+    return 0;
+    }
+    " HAVE_STD_GNU11)
+
   set(CMAKE_REQUIRED_FLAGS "-std=c99")
   check_c_source_compiles("
     #if (__STDC_VERSION__ < 199901L) && (_MSC_FULL_VER < 180040629)
@@ -70,7 +89,13 @@ if((NOT HAVE_STD_C11 AND NOT HAVE_STD_C99 AND NOT HAVE_STD_GNU99) OR
     #if __STDC_VERSION__ < 199901L
     #   error C99 not available
     #endif
-    int main(void) { return 0; }
+    /* Check for GNU C extension for VA_ARGS */
+    static inline void probe(int anchor, ...) { (void) anchor; }
+    #define PROBE(...) probe(42, ##__VA_ARGS__)
+    int main(void) {
+    PROBE(); PROBE(1); PROBE(2,2); PROBE(3,3,3);
+    return 0;
+    }
     " HAVE_STD_GNU99)
 
   set(CMAKE_REQUIRED_FLAGS "-std=c++11")
@@ -391,7 +416,9 @@ macro(setup_compile_flags)
   endif()
 
   # Set standard
-  if(HAVE_STD_C11)
+  if(HAVE_STD_GNU11)
+    add_compile_flags("C" "-std=gnu11")
+  elseif(HAVE_STD_C11)
     add_compile_flags("C" "-std=c11")
   elseif(HAVE_STD_GNU99)
     add_compile_flags("C" "-std=gnu99")
