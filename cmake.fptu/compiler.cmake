@@ -131,6 +131,7 @@ else()
   check_c_compiler_flag("-ggdb" CC_HAS_GGDB)
   check_c_compiler_flag("-fvisibility=hidden" CC_HAS_VISIBILITY)
   check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
+  check_c_compiler_flag("-Og" CC_HAS_DEBUG_FRENDLY_OPTIMIZATION)
   check_c_compiler_flag("-Wall" CC_HAS_WALL)
 
   #
