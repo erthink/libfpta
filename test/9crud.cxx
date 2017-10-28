@@ -66,10 +66,12 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_val, "col_int"));
 
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -132,10 +134,12 @@ public:
     fpta_name_destroy(&col_val);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
@@ -233,16 +237,17 @@ TEST_P(CrudSimple, Nulls) {
     ASSERT_EQ(FPTA_OK,
               fpta_upsert_column(row, &col_val, fpta_value_sint(count_by)));
 
-    if (key_case == -1)
+    if (key_case == -1) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_pk, empty_string));
-    else
+    } else {
       ASSERT_EQ(FPTA_OK,
                 fpta_upsert_column(row, &col_pk,
                                    fpta_value_str(std::to_string(key_case))));
+    }
 
-    if (val_case == -1)
+    if (val_case == -1) {
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_se, empty_binary));
-    else {
+    } else {
       std::string value = std::to_string(val_case);
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(
                              row, &col_se,
@@ -345,10 +350,12 @@ TEST(Nullable, AsyncSchemaChange) {
   uint64_t db_initial_version;
   {
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
     EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
                                     0644, 1, true, &db_commander));
@@ -821,10 +828,12 @@ TEST(Nullable, SchemaReloadAfterAbort) {
   /* FIXME: Описание сценария теста */
 
   // чистим
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   fpta_db *db_correlator = nullptr;
   EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
@@ -1059,10 +1068,12 @@ TEST(CRUD, DISABLED_ExtraOps) {
   /* FIXME: Описание сценария теста */
 
   // чистим
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   fpta_db *db_correlator = nullptr;
   EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
@@ -1195,10 +1206,12 @@ TEST(Nullable, SchemaReload) {
   /* FIXME: Описание сценария теста */
 
   // чистим
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   fpta_db *db_correlator = nullptr;
   EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,

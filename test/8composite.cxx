@@ -50,10 +50,12 @@ TEST(SmokeComposite, Primary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -377,10 +379,12 @@ TEST(SmokeIndex, Secondary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;

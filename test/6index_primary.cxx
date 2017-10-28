@@ -120,10 +120,12 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
   }
 
   // чистим
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
 #ifdef FPTA_INDEX_UT_LONG
   // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -335,8 +337,9 @@ template <fptu_type type, fpta_index_type index> void TestPrimary() {
 
     auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (fpta_index_is_ordered(index))
+    if (fpta_index_is_ordered(index)) {
       ASSERT_EQ(order, tuple_order);
+    }
 
     auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);

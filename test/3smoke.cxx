@@ -52,10 +52,12 @@ TEST(SmokeIndex, Primary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -308,10 +310,12 @@ TEST(SmokeIndex, Secondary) {
    *     - проверяем кол-во записей и дубликатов, eof для курсора.
    *  5. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -724,10 +728,12 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &col_real, "real"));
 
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
     ndeleted = 0;
 
     // открываем/создаем базульку в 1 мегабайт
@@ -779,10 +785,12 @@ public:
     fpta_name_destroy(&col_real);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
@@ -916,12 +924,13 @@ TEST_F(SmokeCRUD, none) {
 
       /* теперь вставляем новую запись, но пока без поля `time`.
        * проверяем как insert, так и upsert. */
-      if (i & 1)
+      if (i & 1) {
         EXPECT_EQ(FPTA_OK,
                   fpta_insert_row(txn, &table, fptu_take_noshrink(row)));
-      else
+      } else {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_row(txn, &table, fptu_take_noshrink(row)));
+      }
 
       /* пробуем вставить дубликат */
       EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
@@ -938,12 +947,13 @@ TEST_F(SmokeCRUD, none) {
       datetime = NOW_FINE();
       ASSERT_EQ(FPTA_OK, fpta_upsert_column(row, &col_time,
                                             fpta_value_datetime(datetime)));
-      if (i & 2)
+      if (i & 2) {
         EXPECT_EQ(FPTA_OK, fpta_probe_and_update_row(txn, &table,
                                                      fptu_take_noshrink(row)));
-      else
+      } else {
         EXPECT_EQ(FPTA_OK, fpta_probe_and_upsert_row(txn, &table,
                                                      fptu_take_noshrink(row)));
+      }
 
       /* еще раз пробуем вставить дубликат */
       EXPECT_EQ(FPTA_KEYEXIST, fpta_probe_and_insert_row(
@@ -1121,9 +1131,9 @@ TEST_F(SmokeCRUD, none) {
           expected_dups++;
 
       fpta_value key = fpta_value_float(item->se_real);
-      if (expected_dups == 1)
+      if (expected_dups == 1) {
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
-      else {
+      } else {
         /* больше одного значения, точное позиционирование возможно
          * только по ключу не возможно, создаем фейковую строку с PK
          * и искомым значением для поиска */
@@ -1393,9 +1403,9 @@ TEST_F(SmokeCRUD, none) {
 
       fptu_ro row_value;
       fpta_value key = fpta_value_float(item->se_real);
-      if (expected_dups == 1)
+      if (expected_dups == 1) {
         ASSERT_EQ(FPTA_OK, fpta_cursor_locate(cursor, true, &key, nullptr));
-      else {
+      } else {
         /* больше одного значения, точное позиционирование возможно
          * только по ключу не возможно, создаем фейковую строку с PK
          * и искомым значением для поиска */
@@ -1553,10 +1563,12 @@ public:
     if (!valid_ops)
       return;
 
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
     // открываем/создаем базульку в 1 мегабайт
     fpta_db *db = nullptr;
@@ -1637,10 +1649,12 @@ public:
     fpta_name_destroy(&col_2);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
@@ -2049,10 +2063,12 @@ TEST(SmokeSelect, GoogleTestCombine_IS_NOT_Supported_OnThisPlatform) {}
 //----------------------------------------------------------------------------
 
 TEST(SmoceCrud, OneRowOneColumn) {
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базульку в 1 мегабайт
   fpta_db *db = nullptr;
@@ -2153,10 +2169,12 @@ TEST(Smoke, DirectDirtyDeletions) {
    *
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // создаем базу
   fpta_db *db = nullptr;
@@ -2381,10 +2399,12 @@ TEST(Smoke, UpdateViolateUnique) {
    *
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // создаем базу
   fpta_db *db = nullptr;
@@ -2497,28 +2517,34 @@ public:
 
     if (stepover >= 0) {
       // формируем не пустую строку, со скользящим NIL
-      if (stepover != 0)
+      if (stepover != 0) {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c0_uint64,
                                      fpta_value_uint((unsigned)stepover)));
-      if (stepover != 1)
+      }
+      if (stepover != 1) {
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c1_date,
                                               fpta_value_datetime(NOW_FINE())));
-      if (stepover != 2)
+      }
+      if (stepover != 2) {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c2_str,
                                      fpta_value_str(std::to_string(stepover))));
-      if (stepover != 3)
+      }
+      if (stepover != 3) {
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c3_int64,
                                               fpta_value_sint(-stepover)));
-      if (stepover != 4)
+      }
+      if (stepover != 4) {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c4_uint32,
                                      fpta_value_uint((unsigned)stepover)));
-      if (stepover != 5)
+      }
+      if (stepover != 5) {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c5_ip4,
                                      fpta_value_uint((unsigned)stepover + 42)));
+      }
       if (stepover != 6) {
         uint8_t sha1[160 / 8];
         memset(sha1, stepover + 1, sizeof(sha1));
@@ -2526,25 +2552,29 @@ public:
                   fpta_upsert_column(ptrw_guard.get(), &c6_sha1,
                                      fpta_value_binary(sha1, sizeof(sha1))));
       }
-      if (stepover != 7)
+      if (stepover != 7) {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c7_fp32,
                                      fpta_value_float(stepover * M_PI)));
-      if (stepover != 8)
+      }
+      if (stepover != 8) {
         EXPECT_EQ(FPTA_OK, fpta_upsert_column(ptrw_guard.get(), &c8_enum,
                                               fpta_value_sint(11 + stepover)));
-      if (stepover != 9)
+      }
+      if (stepover != 9) {
         EXPECT_EQ(FPTA_OK,
                   fpta_upsert_column(ptrw_guard.get(), &c9_fp64,
                                      fpta_value_float(M_E * stepover)));
+      }
     }
 
     return fptu_take_noshrink(ptrw_guard.get());
   }
 
   void OpenCursor(int colnum) {
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
+    }
 
     // выбираем колонку по номеру
     fpta_name *colptr = nullptr;
@@ -2606,10 +2636,12 @@ public:
     EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &c9_fp64, "c9_fp64"));
 
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
     // создаем базу
     fpta_db *db = nullptr;
@@ -2724,10 +2756,12 @@ public:
     fpta_name_destroy(&c9_fp64);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
@@ -2854,10 +2888,12 @@ TEST_F(SmokeNullable, Base) {
 
 TEST(Smoke, ReOpenAfterAbort) {
   // чистим
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базу
   fpta_db *db = nullptr;
@@ -2947,10 +2983,12 @@ TEST(Smoke, Kamerades) {
    *  3. Через хэндл "коммандера" получаем сведения о таблице.
    *  4. Завершаем операции и освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
   fpta_db *correlator_db = nullptr;
   fpta_db *commander_db = nullptr;
 
@@ -3086,10 +3124,12 @@ TEST(Smoke, Kamerades) {
 
   // пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
   if (false) {
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
   }
 }
 
@@ -3108,10 +3148,12 @@ TEST(Smoke, OverchargeOnCommit) {
    *     транзакции (при добавлении записи в garbage-таблицу  внутри libmdbx).
    */
 
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базу
   fpta_db *db = nullptr;
@@ -3203,14 +3245,15 @@ TEST(Smoke, OverchargeOnCommit) {
     err = fpta_probe_and_upsert_row(txn, &table_id, fptu_take(tuple));
     EXPECT_EQ(FPTA_OK, err);
 
-    if (err != FPTA_OK)
+    if (err != FPTA_OK) {
       // отменяем если была ошибка
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
-    else {
+    } else {
       // коммитим и ожидаем ошибку переполнения здесь
       err = fpta_transaction_end(txn, false);
-      if (err != FPTA_OK)
+      if (err != FPTA_OK) {
         ASSERT_EQ(FPTA_DB_FULL, err);
+      }
     }
   }
 
@@ -3246,10 +3289,12 @@ TEST(Smoke, AsyncSchemaChange) {
   // создаем исходную базу
   {
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
     fpta_db *db = nullptr;
     EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_regime_default,
@@ -3488,10 +3533,12 @@ TEST(Smoke, FilterAndRange) {
    *
    *  4. Освобождаем ресурсы.
    */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // создаем базу
   fpta_db *db = nullptr;
@@ -3622,10 +3669,12 @@ TEST(SmokeIndex, MissingFieldOfCompositeKey) {
   fpta_txn *txn = (fpta_txn *)&txn;
   fpta_db *db = nullptr;
 
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   // открываем/создаем базульку в 1 мегабайт
 

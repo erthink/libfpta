@@ -234,10 +234,12 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
 #ifdef FPTA_INDEX_UT_LONG
     // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -347,10 +349,12 @@ public:
     fpta_name_destroy(&col_t1ha);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));
@@ -445,8 +449,9 @@ TEST_P(IndexSecondary, basic) {
 
     auto tuple_order = (int)fptu_get_sint(tuple, col_order.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (fpta_index_is_ordered(se_index))
+    if (fpta_index_is_ordered(se_index)) {
       ASSERT_EQ(order, tuple_order);
+    }
 
     auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
@@ -486,10 +491,11 @@ TEST_P(IndexSecondary, basic) {
       ASSERT_EQ(2u, dups);
     }
 
-    if (++i < n)
+    if (++i < n) {
       ASSERT_EQ(FPTA_OK, fpta_cursor_move(cursor, fpta_next));
-    else
+    } else {
       EXPECT_EQ(FPTA_NODATA, fpta_cursor_move(cursor, fpta_next));
+    }
 
     if (fpta_index_is_unique(se_index) || (i & 1) == 0)
       ++order;

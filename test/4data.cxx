@@ -216,10 +216,12 @@ TEST(Data, UpsertColumn) {
 
   // для проверки требуются полноценные идентификаторы колонок,
   // поэтому необходимо открыть базу, создать таблицу и т.д.
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
   fpta_db *db = nullptr;
   EXPECT_EQ(FPTA_SUCCESS,
             fpta_db_open(testdb_name, fpta_weak, fpta_regime_default, 0644, 1,

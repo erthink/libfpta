@@ -25,10 +25,12 @@ static const char testdb_name_lck[] = "ut_open.fpta" MDBX_LOCK_SUFFIX;
 TEST(Open, Trivia) {
   /* Тривиальный тест открытия/создания БД во всех режимах durability.
    * Корректность самих режимов не проверяется. */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   fpta_db *db = (fpta_db *)&db;
   EXPECT_EQ(ENOENT, fpta_db_open(testdb_name, fpta_readonly,
