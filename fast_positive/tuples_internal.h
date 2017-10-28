@@ -215,9 +215,20 @@
 #	define __typeof(exp) decltype(exp)
 #endif
 
-#ifndef __noop
-#	define __noop() do {} while(0)
-#endif
+#if !defined(__noop) && !defined(_MSC_VER)
+    static __inline int __do_noop(void* crutch, ...) {
+      (void) crutch; return 0;
+    }
+#   define __noop(...) __do_noop(0, __VA_ARGS__)
+#endif /* __noop */
+
+#ifndef __fallthrough
+#   if __GNUC_PREREQ(7, 0) || __has_attribute(fallthrough)
+#       define __fallthrough __attribute__((fallthrough))
+#   else
+#       define __fallthrough do {} while(0)
+#   endif
+#endif /* __fallthrough */
 
 #ifndef __unreachable
 #	if __GNUC_PREREQ(4,5)
@@ -225,7 +236,7 @@
 #	else
 #		define __unreachable() __noop()
 #	endif
-#endif
+#endif /* __unreachable */
 
 #ifndef __prefetch
 #	if defined(__GNUC__) || defined(__clang__)
