@@ -28,6 +28,7 @@ static __hot fptu_lge fpta_cmp_null(const fptu_field *left) {
   case fptu_opaque:
     if (payload->other.varlen.opaque_bytes == 0)
       return fptu_eq;
+    __fallthrough;
   default:
     return fptu_ic;
   }
@@ -75,12 +76,14 @@ static __hot fptu_lge fpta_cmp_uint(const fptu_field *left, uint64_t right) {
   case fptu_int32:
     if (payload->i32 < 0)
       return fptu_lt;
+    __fallthrough;
   case fptu_uint32:
     return fptu_cmp2lge<uint64_t>(payload->u32, right);
 
   case fptu_int64:
     if (payload->i64 < 0)
       return fptu_lt;
+    __fallthrough;
   case fptu_uint64:
     return fptu_cmp2lge(payload->u64, right);
 
