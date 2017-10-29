@@ -77,8 +77,21 @@ if(NOT GTEST_FOUND)
 
     # Add googletest directly to our build. This defines
     # the gtest and gtest_main targets.
-    add_subdirectory(${gtest_root}
-      ${CMAKE_BINARY_DIR}/googletest-build)
+    add_subdirectory(${gtest_root} ${CMAKE_BINARY_DIR}/googletest-build EXCLUDE_FROM_ALL)
+    if(CMAKE_INTERPROCEDURAL_OPTIMIZATION AND NOT CMAKE_VERSION VERSION_LESS 3.9)
+      file(READ ${gtest_root}/CMakeLists.txt variable gtest_cmake_content)
+      string(TOLOWER "${gtest_cmake_content}" gtest_cmake_content)
+      string(FIND "${gtest_cmake_content}" "check_ipo_supported" gtest_ipo_supported)
+      if(NOT gtest_ipo_supported OR gtest_ipo_supported LESS 1)
+        message(STATUS "Disable INTERPROCEDURAL_OPTIMIZATION for GoogleTest (CMake-3.9's check_ipo_supported NOT FOUND inside)")
+        if(TARGET gtest)
+          set_property(TARGET gtest gtest_main PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+        endif()
+        if(TARGET gmock)
+          set_property(TARGET gmock gmock_main PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+        endif()
+      endif()
+    endif()
 
     if(CC_HAS_WERROR)
       if(MSVC)
