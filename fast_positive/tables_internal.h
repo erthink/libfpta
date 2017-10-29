@@ -52,6 +52,7 @@
 #pragma warning(disable : 4996) /* std::xyz::_Unchecked_iterators::_Deprecate. \
                                    Bla-bla-bla. See documentation on how to    \
                                    use Visual C++ 'Checked Iterators' */
+#pragma warning(disable : 4702) /* unreachable code */
 #endif                          /* _MSC_VER (warnings) */
 
 #include "fast_positive/config.h"
