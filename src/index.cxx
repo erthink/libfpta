@@ -589,6 +589,7 @@ int fpta_index_value2key(fpta_shove_t shove, const fpta_value &value,
     case FP_INFINITE:
       if (std::isinf(value.fp))
         break;
+      __fallthrough;
     case FP_NAN:
     default:
       return FPTA_EVALUE;
@@ -746,6 +747,7 @@ int fpta_index_key2value(fpta_shove_t shove, MDBX_val mdbx, fpta_value &value) {
     case fptu_nested:
       if (unlikely(mdbx.iov_len % sizeof(fptu_unit)))
         goto return_corrupted;
+      __fallthrough;
     case fptu_opaque:
       value.type = fpta_binary;
       value.binary_data = mdbx.iov_base;

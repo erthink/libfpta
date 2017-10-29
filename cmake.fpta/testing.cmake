@@ -1,19 +1,19 @@
-## Copyright 2010-2017 libfpta authors: please see AUTHORS file.
+##  Copyright 2010-2017 libfpta authors: please see AUTHORS file.
 ##
-## This file is part of libfpta, aka "Fast Positive Tables".
+##  This file is part of libfpta, aka "Fast Positive Tables".
 ##
-## libfpta is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
+##  libfpta is free software: you can redistribute it and/or modify
+##  it under the terms of the GNU General Public License as published by
+##  the Free Software Foundation, either version 3 of the License, or
+##  (at your option) any later version.
 ##
-## libfpta is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
+##  libfpta is distributed in the hope that it will be useful,
+##  but WITHOUT ANY WARRANTY; without even the implied warranty of
+##  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##  GNU General Public License for more details.
 ##
-## You should have received a copy of the GNU General Public License
-## along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
+##  You should have received a copy of the GNU General Public License
+##  along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
 # Expected GTest was already found and/or pointed via ${gtest_root},
@@ -77,8 +77,21 @@ if(NOT GTEST_FOUND)
 
     # Add googletest directly to our build. This defines
     # the gtest and gtest_main targets.
-    add_subdirectory(${gtest_root}
-      ${CMAKE_BINARY_DIR}/googletest-build)
+    add_subdirectory(${gtest_root} ${CMAKE_BINARY_DIR}/googletest-build EXCLUDE_FROM_ALL)
+    if(CMAKE_INTERPROCEDURAL_OPTIMIZATION AND NOT CMAKE_VERSION VERSION_LESS 3.9)
+      file(READ ${gtest_root}/CMakeLists.txt variable gtest_cmake_content)
+      string(TOLOWER "${gtest_cmake_content}" gtest_cmake_content)
+      string(FIND "${gtest_cmake_content}" "check_ipo_supported" gtest_ipo_supported)
+      if(NOT gtest_ipo_supported OR gtest_ipo_supported LESS 1)
+        message(STATUS "Disable INTERPROCEDURAL_OPTIMIZATION for GoogleTest (CMake-3.9's check_ipo_supported NOT FOUND inside)")
+        if(TARGET gtest)
+          set_property(TARGET gtest gtest_main PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+        endif()
+        if(TARGET gmock)
+          set_property(TARGET gmock gmock_main PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+        endif()
+      endif()
+    endif()
 
     if(CC_HAS_WERROR)
       if(MSVC)

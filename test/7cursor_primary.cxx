@@ -153,8 +153,9 @@ public:
     auto tuple_dup_id =
         (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
-    if (check_dup_id || fpta_index_is_unique(index))
+    if (check_dup_id || fpta_index_is_unique(index)) {
       EXPECT_EQ(expected_dup_id, tuple_dup_id);
+    }
 
     size_t dups = 100500;
     ASSERT_EQ(FPTA_OK, fpta_cursor_dups(cursor_guard.get(), &dups));
@@ -274,10 +275,12 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
 #ifdef FPTA_CURSOR_UT_LONG
     // пытаемся обойтись меньшей базой,
@@ -407,10 +410,11 @@ public:
 
       // проверяем упорядоченность
       if (fpta_cursor_is_ordered(ordering) && linear > 0) {
-        if (fpta_cursor_is_ascending(ordering))
+        if (fpta_cursor_is_ascending(ordering)) {
           ASSERT_LE(prev_order, tuple_order);
-        else
+        } else {
           ASSERT_GE(prev_order, tuple_order);
+        }
       }
       prev_order = tuple_order;
     }
@@ -426,10 +430,12 @@ public:
     fpta_name_destroy(&col_t1ha);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));

@@ -286,7 +286,8 @@ __cold string to_string(const fpta_index_type index) {
   }
 }
 
-__cold string to_string(const fpta_schema_item item) {
+/* LY: unused for now
+static __cold string to_string(const fpta_schema_item item) {
   switch (item) {
   default:
     return fptu::format("invalid(fpta_schema_item)%i", (int)item);
@@ -295,7 +296,7 @@ __cold string to_string(const fpta_schema_item item) {
   case fpta_column:
     return "column";
   }
-}
+} */
 
 __cold string to_string(const fpta_filter_bits bits) {
   switch (bits) {

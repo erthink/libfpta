@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2017 Leonid Yuriev <leo@yuriev.ru>
  * and other libmdbx authors: please see AUTHORS file.
  * All rights reserved.
@@ -104,9 +104,9 @@ protected:
   void db_prepare();
   void db_open();
   void db_close();
-  void txn_begin(bool readonly);
+  void txn_begin(bool readonly, unsigned flags = 0);
   void txn_end(bool abort);
-  void txn_restart(bool abort, bool readonly);
+  void txn_restart(bool abort, bool readonly, unsigned flags = 0);
   void fetch_canary();
   void update_canary(uint64_t increment);
   void kick_progress(bool active) const;
@@ -185,6 +185,17 @@ class testcase_jitter : public testcase {
 
 public:
   testcase_jitter(const actor_config &config, const mdbx_pid_t pid)
+      : testcase(config, pid) {}
+  bool setup();
+  bool run();
+  bool teardown();
+};
+
+class testcase_try : public testcase {
+  typedef testcase inherited;
+
+public:
+  testcase_try(const actor_config &config, const mdbx_pid_t pid)
       : testcase(config, pid) {}
   bool setup();
   bool run();

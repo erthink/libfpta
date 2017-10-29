@@ -330,6 +330,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     case fpta_signed_int:
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
+      __fallthrough;
     case fpta_unsigned_int:
       if (fpta_is_indexed_and_nullable(index)) {
         const uint_fast16_t denil = numeric_traits<fptu_uint16>::denil(index);
@@ -348,6 +349,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     case fpta_unsigned_int:
       if (unlikely(value.uint > INT32_MAX))
         return FPTA_EVALUE;
+      __fallthrough;
     case fpta_signed_int:
       if (fpta_is_indexed_and_nullable(index)) {
         const int_fast32_t denil = numeric_traits<fptu_int32>::denil(index);
@@ -366,6 +368,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     case fpta_signed_int:
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
+      __fallthrough;
     case fpta_unsigned_int:
       if (fpta_is_indexed_and_nullable(index)) {
         const uint_fast32_t denil = numeric_traits<fptu_uint32>::denil(index);
@@ -403,6 +406,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     case fpta_unsigned_int:
       if (unlikely(value.uint > INT64_MAX))
         return FPTA_EVALUE;
+      __fallthrough;
     case fpta_signed_int:
       if (fpta_is_indexed_and_nullable(index)) {
         const int64_t denil = numeric_traits<fptu_int64>::denil(index);
@@ -419,6 +423,7 @@ int fpta_upsert_column(fptu_rw *pt, const fpta_name *column_id,
     case fpta_signed_int:
       if (unlikely(value.sint < 0))
         return FPTA_EVALUE;
+      __fallthrough;
     case fpta_unsigned_int:
       if (fpta_is_indexed_and_nullable(index)) {
         const uint64_t denil = numeric_traits<fptu_uint64>::denil(index);
@@ -574,7 +579,8 @@ int fpta_validate_put(fpta_txn *txn, fpta_name *table_id, fptu_ro row_value,
     if (!present_row.sys.iov_base)
       /* нет записи с таким PK, обновлять нечего */
       return FPTA_NOTFOUND;
-  /* no break here */
+    /* no break here */
+    __fallthrough;
   case fpta_upsert:
     if (rows_with_same_key > 1)
       /* обновление НЕ возможно, если первичный ключ НЕ уникален */

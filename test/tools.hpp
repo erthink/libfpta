@@ -21,22 +21,25 @@
 
 struct db_deleter : public std::unary_function<void, fpta_db *> {
   void operator()(fpta_db *db) const {
-    if (db)
+    if (db) {
       EXPECT_EQ(FPTA_SUCCESS, fpta_db_close(db));
+    }
   }
 };
 
 struct txn_deleter : public std::unary_function<void, fpta_txn *> {
   void operator()(fpta_txn *txn) const {
-    if (txn)
+    if (txn) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+    }
   }
 };
 
 struct cursor_deleter : public std::unary_function<void, fpta_cursor *> {
   void operator()(fpta_cursor *cursor) const {
-    if (cursor)
+    if (cursor) {
       ASSERT_EQ(FPTA_OK, fpta_cursor_close(cursor));
+    }
   }
 };
 

@@ -143,10 +143,12 @@ TEST(Schema, Base) {
    *
    * Тест НЕ перебирает комбинации. Некий относительно полный перебор
    * происходит автоматически при тестировании индексов и курсоров. */
-  if (REMOVE_FILE(testdb_name) != 0)
+  if (REMOVE_FILE(testdb_name) != 0) {
     ASSERT_EQ(ENOENT, errno);
-  if (REMOVE_FILE(testdb_name_lck) != 0)
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
     ASSERT_EQ(ENOENT, errno);
+  }
 
   fpta_db *db = nullptr;
   /* открываем базу в режиме неизменяемой схемы */

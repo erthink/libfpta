@@ -128,8 +128,9 @@ public:
         (int)fptu_get_uint(tuple, col_dup_id.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
     if ((check_dup_id && fpta_index_is_ordered(pk_index)) ||
-        fpta_index_is_unique(se_index))
+        fpta_index_is_unique(se_index)) {
       EXPECT_EQ(expected_dup_id, tuple_dup_id);
+    }
 
     auto tuple_checksum = fptu_get_uint(tuple, col_t1ha.column.num, &error);
     ASSERT_EQ(FPTU_OK, error);
@@ -288,10 +289,12 @@ public:
     ASSERT_EQ(FPTA_OK, fpta_column_set_validate(&def));
 
     // чистим
-    if (REMOVE_FILE(testdb_name) != 0)
+    if (REMOVE_FILE(testdb_name) != 0) {
       ASSERT_EQ(ENOENT, errno);
-    if (REMOVE_FILE(testdb_name_lck) != 0)
+    }
+    if (REMOVE_FILE(testdb_name_lck) != 0) {
       ASSERT_EQ(ENOENT, errno);
+    }
 
 #ifdef FPTA_CURSOR_UT_LONG
     // пытаемся обойтись меньшей базой, но для строк потребуется больше места
@@ -474,10 +477,12 @@ public:
     fpta_name_destroy(&col_t1ha);
 
     // закрываем курсор и завершаем транзакцию
-    if (cursor_guard)
+    if (cursor_guard) {
       EXPECT_EQ(FPTA_OK, fpta_cursor_close(cursor_guard.release()));
-    if (txn_guard)
+    }
+    if (txn_guard) {
       ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn_guard.release(), true));
+    }
     if (db_quard) {
       // закрываем и удаляем базу
       ASSERT_EQ(FPTA_SUCCESS, fpta_db_close(db_quard.release()));

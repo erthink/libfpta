@@ -37,7 +37,8 @@ uint64_t confine_value<uint64_t>(const fpta_value &value, const uint64_t begin,
   case fpta_signed_int:
     if (value.sint < 0)
       return begin;
-  // no break here
+    // no break here
+    __fallthrough;
   case fpta_unsigned_int:
     if (value.uint < begin)
       return begin;
@@ -69,7 +70,8 @@ int64_t confine_value<int64_t>(const fpta_value &value, const int64_t begin,
   case fpta_unsigned_int:
     if (value.uint > (uint64_t)INT64_MAX)
       return end;
-  // no break here
+    // no break here
+    __fallthrough;
   case fpta_signed_int:
     if (value.sint < begin)
       return begin;
@@ -328,7 +330,8 @@ FPTA_API int fpta_confine_number(fpta_value *value, fpta_name *column_id) {
   case fpta_null:
     if (fpta_is_indexed_and_nullable(index))
       return FPTA_SUCCESS;
-  // no break here
+    // no break here
+    __fallthrough;
   default:
     return FPTA_EVALUE;
   case fpta_float_point:

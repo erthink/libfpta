@@ -149,8 +149,9 @@ template <fptu_type data_type> struct probe_triplet {
     // наборы должны содержать все значения
     EXPECT_EQ(expected, (int)unordered.size());
     EXPECT_EQ(expected, (int)obverse.size());
-    if (has_reverse())
+    if (has_reverse()) {
       EXPECT_EQ(expected, (int)reverse.size());
+    }
 
     // а ordered должны быть также упорядочены
     EXPECT_TRUE(is_properly_ordered(obverse));
