@@ -9,7 +9,7 @@ dependencies:
   pre:
     - sudo apt update -q
   override:
-    - sudo apt install cmake libgtest-dev
+    - sudo apt install cmake libgtest-dev clang-format-3.8
   post:
     - c++ --version
 
@@ -23,9 +23,17 @@ compile:
     - cmake --version
     - cmake .
   override:
-    - make all
+    - make --keep-going all
 
 test:
   override:
-    - make test
+    - make  --keep-going test
     - test/fptu_c_mode
+    - make reformat
+    - |
+      if [[ -n $(git diff) ]]; then
+        echo "You must run 'make reformat' before submitting a pull request"
+        echo ""
+        git diff
+        exit -1
+      fi
