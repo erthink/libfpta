@@ -13,7 +13,7 @@ dependencies:
   pre:
     - sudo apt update -q
   override:
-    - sudo apt install cmake libgtest-dev valgrind
+    - sudo apt install cmake libgtest-dev valgrind clang-format-3.8
   post:
     - c++ --version
     - cmake --version
@@ -37,3 +37,11 @@ test:
     - make --keep-going test
     - externals/libfptu/test/fptu_c_mode
     - test/fpta_c_mode
+    - make reformat
+    - |
+      if [[ -n $(git diff) ]]; then
+        echo "You must run 'make reformat' before submitting a pull request"
+        echo ""
+        git diff
+        exit -1
+      fi

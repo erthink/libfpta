@@ -16,6 +16,8 @@ addons:
       - cmake
       - libgtest-dev
       - valgrind
+      - clang-format-3.8
+
   coverity_scan:
     project:
       name: "leo-yuriev/libfpta"
@@ -42,6 +44,14 @@ script: >
     git fetch --unshallow --tags --prune &&
     git submodule foreach --recursive git fetch --unshallow --tags --prune &&
     cmake --version &&
-    cmake . && make --keep-going all && make --keep-going test &&
+    cmake . &&
+    make reformat && (if [[ -n $(git diff) ]];
+      then
+        echo "You must run 'make reformat' before submitting a pull request";
+        echo "";
+        git diff;
+        exit -1;
+      fi) &&
+    make --keep-going all && make --keep-going test &&
     externals/libfptu/test/fptu_c_mode && test/fpta_c_mode;
   fi

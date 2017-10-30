@@ -168,8 +168,6 @@ find_program(ECHO echo)
 find_program(CAT cat)
 find_program(GIT git)
 find_program(LD ld)
-find_program(CTAGS ctags)
-find_program(CLANG_FORMAT clang-format)
 
 check_function_exists(memmem HAVE_MEMMEM)
 check_function_exists(memrchr HAVE_MEMRCHR)
@@ -203,6 +201,7 @@ CHECK_INCLUDE_FILES(resolv.h HAVE_RESOLV_H)
 
 #
 # Enable 'make tags' target.
+find_program(CTAGS ctags)
 if(CTAGS)
   add_custom_target(tags COMMAND ${CTAGS} -R -f tags
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -211,12 +210,18 @@ endif(CTAGS)
 
 #
 # Enable 'make reformat' target.
-if(CLANG_FORMAT)
+find_program(CLANG_FORMAT
+  NAMES clang-format-6.0 clang-format-5.0 clang-format-4.0
+  clang-format-3.9 clang-format-3.8 clang-format-3.7 clang-format)
+if(CLANG_FORMAT AND UNIX)
   add_custom_target(reformat
     VERBATIM
-    COMMAND git ls-files | grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\$ | xargs clang-format -i --style=file
+    COMMAND
+      git ls-files |
+      grep -E \\.\(c|cxx|cc|cpp|h|hxx|hpp\)\(\\.in\)?\$ |
+      xargs ${CLANG_FORMAT} -i --style=file
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif(CLANG_FORMAT)
+endif()
 
 include(cmake.fpta/multilib.cmake)
 
@@ -259,7 +264,7 @@ option(FPTA_ENABLE_ABORT_ON_PANIC
   "Force abort of application process in case of unrecoverable error" ON)
 
 CMAKE_DEPENDENT_OPTION(T1HA_USE_FAST_ONESHOT_READ
-  "Enable oneshot memory reading for little bit faster hasing" ON
+  "Enable oneshot memory reading for little bit faster hashing" ON
   "NOT ENABLE_VALGRIND;NOT ENABLE_ASAN" OFF)
 
 if(BUILD_SHARED_LIBS)

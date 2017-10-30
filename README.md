@@ -1,4 +1,4 @@
-﻿libfpta
+libfpta
 ==============================================
 Fast Positive Tables, aka "Позитивные Таблицы"
 by [Positive Technologies](https://www.ptsecurity.ru).
