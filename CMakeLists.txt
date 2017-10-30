@@ -264,7 +264,7 @@ option(FPTA_ENABLE_ABORT_ON_PANIC
   "Force abort of application process in case of unrecoverable error" ON)
 
 CMAKE_DEPENDENT_OPTION(T1HA_USE_FAST_ONESHOT_READ
-  "Enable oneshot memory reading for little bit faster hasing" ON
+  "Enable oneshot memory reading for little bit faster hashing" ON
   "NOT ENABLE_VALGRIND;NOT ENABLE_ASAN" OFF)
 
 if(BUILD_SHARED_LIBS)
