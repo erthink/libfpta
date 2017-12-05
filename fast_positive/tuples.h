@@ -1047,6 +1047,7 @@ FPTU_API std::string format(const char *fmt, ...)
     __attribute__((format(printf, 1, 2)))
 #endif
     ;
+FPTU_API std::string format(const char *fmt, va_list ap);
 FPTU_API std::string hexadecimal(const void *data, size_t bytes);
 
 inline const fptu_field *begin(const fptu_ro &ro) { return fptu_begin_ro(ro); }
