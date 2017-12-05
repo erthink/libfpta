@@ -218,6 +218,14 @@
 #	endif
 #endif /* __noinline */
 
+#ifndef __maybe_unused
+#	if defined(__GNUC__) || __has_attribute(unused)
+#		define __maybe_unused __attribute__((unused))
+#	else
+#		define __maybe_unused
+#	endif
+#endif /* __maybe_unused */
+
 #ifdef __cplusplus
 #	define FPT_NONCOPYABLE(typename) \
 		typename(const typename&) = delete; \
