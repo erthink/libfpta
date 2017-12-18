@@ -1534,7 +1534,7 @@ TEST_P(CursorPrimary, update_and_KeyMismatch) {
 
 //----------------------------------------------------------------------------
 
-#if GTEST_HAS_COMBINE
+#if defined(GTEST_HAS_COMBINE) && GTEST_HAS_COMBINE
 
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorPrimary,
