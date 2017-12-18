@@ -832,8 +832,7 @@ FPTU_API const fptu_field *fptu_next(const fptu_field *from,
                                      int type_or_filter);
 
 /* Итерация полей кортежа с заданным внешним фильтром, при этом
- * удаленные поля пропускаются.
- * Семантика type_or_filter указана в описании fptu_erase(). */
+ * удаленные поля пропускаются. */
 typedef bool fptu_field_filter(const fptu_field *, void *context, void *param);
 FPTU_API const fptu_field *fptu_first_ex(const fptu_field *begin,
                                          const fptu_field *end,
@@ -844,7 +843,8 @@ FPTU_API const fptu_field *fptu_next_ex(const fptu_field *begin,
                                         fptu_field_filter filter, void *context,
                                         void *param);
 /* Подсчет количества полей по заданному номеру колонки и типу,
- * либо маски типов. */
+ * либо маски типов.
+ * Семантика type_or_filter указана в описании fptu_erase(). */
 FPTU_API size_t fptu_field_count(const fptu_rw *pt, unsigned column,
                                  int type_or_filter);
 FPTU_API size_t fptu_field_count_ro(fptu_ro ro, unsigned column,
