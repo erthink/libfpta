@@ -49,7 +49,7 @@ static const char testdb_name_lck[] =
 
 //----------------------------------------------------------------------------
 
-#if GTEST_HAS_COMBINE
+#if defined(GTEST_HAS_COMBINE) && GTEST_HAS_COMBINE
 
 INSTANTIATE_TEST_CASE_P(
     Combine, CursorSecondary,

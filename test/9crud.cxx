@@ -53,7 +53,7 @@ public:
     order_val = std::tr1::get<4>(GetParam());
 #else
     secondary = std::get<0>(GetParam());
-    nitems = std::get<1>(GetParam());
+    nitems = (unsigned)std::get<1>(GetParam());
     shift = std::get<2>(GetParam());
     order_key = std::get<3>(GetParam());
     order_val = std::get<4>(GetParam());
@@ -307,7 +307,7 @@ TEST_P(CrudSimple, Nulls) {
   }
 }
 
-#if GTEST_HAS_COMBINE
+#if defined(GTEST_HAS_COMBINE) && GTEST_HAS_COMBINE
 INSTANTIATE_TEST_CASE_P(
     Combine, CrudSimple,
     ::testing::Combine(::testing::Values(true, false),

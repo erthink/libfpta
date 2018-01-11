@@ -7,6 +7,8 @@
 - [ ] fpta: пробросить обновленный API управления размером.
 - [ ] fpta: add "Basic Exponential Smoothing" to inplace saturated ops.
 - [x] fpta, fptu: использовать "нативные" коды ошибок в Windows.
+- [ ] fpta: флажок O_CREATE при открытии БД.
+- [ ] fpta: контроль версии, плюс номер версии уровня приложения.
 
 Оперативное
 ===========
