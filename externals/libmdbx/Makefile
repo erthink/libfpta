@@ -35,9 +35,10 @@ LDFLAGS	?= -Wl,--gc-sections,-z,relro,-O,--no-as-needed,-lrt
 
 # LY: just for benchmarking
 IOARENA ?= $(shell \
-  (test -x ../ioarena/@RelWithDebInfo/src/ioarena && echo ../ioarena/@RelWithDebInfo/src/ioarena) || \
-  (test -x ../../@RelWithDebInfo/src/ioarena && echo ../../@RelWithDebInfo/src/ioarena) || \
+  (test -x ../ioarena/@BUILD/src/ioarena && echo ../ioarena/@BUILD/src/ioarena) || \
+  (test -x ../../@BUILD/src/ioarena && echo ../../@BUILD/src/ioarena) || \
   (test -x ../../src/ioarena && echo ../../src/ioarena) || which ioarena)
+NN	?= 25000000
 
 ########################################################################
 
@@ -116,9 +117,8 @@ clean-bench:
 
 re-bench: clean-bench bench
 
-NN := 25000000
 define bench-rule
-bench-$(1).txt: $(3) $(IOARENA) Makefile
+bench-$(1)_$(2).txt: $(3) $(IOARENA) Makefile
 	LD_LIBRARY_PATH="./:$$$${LD_LIBRARY_PATH}" \
 		$(IOARENA) -D $(1) -B crud -m nosync -n $(2) \
 		| tee $$@ | grep throughput && \
@@ -131,15 +131,27 @@ endef
 
 $(eval $(call bench-rule,mdbx,$(NN),libmdbx.so))
 
+$(eval $(call bench-rule,sophia,$(NN)))
+$(eval $(call bench-rule,leveldb,$(NN)))
+$(eval $(call bench-rule,rocksdb,$(NN)))
+$(eval $(call bench-rule,wiredtiger,$(NN)))
+$(eval $(call bench-rule,forestdb,$(NN)))
 $(eval $(call bench-rule,lmdb,$(NN)))
-
+$(eval $(call bench-rule,nessdb,$(NN)))
 $(eval $(call bench-rule,sqlite3,$(NN)))
-
+$(eval $(call bench-rule,ejdb,$(NN)))
+$(eval $(call bench-rule,vedisdb,$(NN)))
 $(eval $(call bench-rule,dummy,$(NN)))
 
 $(eval $(call bench-rule,debug,10))
 
-bench: bench-mdbx.txt
+bench: bench-mdbx_$(NN).txt
+
+.PHONY: bench-debug
+
+bench-debug: bench-debug_10.txt
+
+bench-quartet: bench-mdbx_$(NN).txt bench-lmdb_$(NN).txt bench-rocksdb_$(NN).txt bench-wiredtiger_$(NN).txt
 
 endif
 

@@ -424,7 +424,7 @@ typedef enum MDBX_cursor_op {
 #define MDBX_BAD_DBI (-30780)
 /* Unexpected problem - txn should abort */
 #define MDBX_PROBLEM (-30779)
-/* Unexpected problem - txn should abort */
+/* Another write transaction is running */
 #define MDBX_BUSY (-30778)
 /* The last defined error code */
 #define MDBX_LAST_ERRCODE MDBX_BUSY
@@ -754,7 +754,7 @@ LIBMDBX_API int mdbx_env_sync(MDBX_env *env, int force);
  *                 ignored on opening next time, and transactions since the
  *                 last non-weak checkpoint (meta-page update) will rolledback
  *                 for consistency guarantee. */
-LIBMDBX_API void mdbx_env_close(MDBX_env *env);
+LIBMDBX_API int mdbx_env_close(MDBX_env *env);
 
 /* Set environment flags.
  *
