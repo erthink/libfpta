@@ -218,6 +218,14 @@
 #	endif
 #endif /* __noinline */
 
+#ifndef __maybe_unused
+#	if defined(__GNUC__) || __has_attribute(unused)
+#		define __maybe_unused __attribute__((unused))
+#	else
+#		define __maybe_unused
+#	endif
+#endif /* __maybe_unused */
+
 #ifdef __cplusplus
 #	define FPT_NONCOPYABLE(typename) \
 		typename(const typename&) = delete; \
@@ -324,7 +332,7 @@
 //----------------------------------------------------------------------------
 
 #ifdef __cplusplus
-	template <typename T, size_t N> char(&__FPT_ArraySizeHelper(T(&)[N]))[N];
+	template <typename T, size_t N> char (&__FPT_ArraySizeHelper(T (&)[N]))[N];
 #	define FPT_ARRAY_LENGTH(array) (sizeof(::__FPT_ArraySizeHelper(array)))
 #else
 #	define FPT_ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
@@ -336,27 +344,27 @@
 #define FPT_STRINGIFY(x) FPT_STR(x)
 
 #ifndef offsetof
-#	define offsetof(type, member)  __builtin_offsetof(type, member)
+#	define offsetof(type, member) __builtin_offsetof(type, member)
 #endif
 
 #ifndef container_of
-#define container_of(ptr, type, member)                                      \
-    ({                                                                       \
-        const __typeof(((type *)nullptr)->member) *__ptr = (ptr);            \
-        (type *)((char *)__ptr - offsetof(type, member));                    \
-    })
+#define container_of(ptr, type, member)                                        \
+  ({                                                                           \
+    const __typeof(((type *)nullptr)->member) *__ptr = (ptr);                  \
+    (type *)((char *)__ptr - offsetof(type, member));                          \
+  })
 #endif /* container_of */
 
 #define FPT_IS_POWER2(value) (((value) & ((value)-1)) == 0 && (value) > 0)
 #define __FPT_FLOOR_MASK(type, value, mask) ((value) & ~(type)(mask))
-#define __FPT_CEIL_MASK(type, value, mask)                                   \
-    __FPT_FLOOR_MASK(type, (value) + (mask), mask)
-#define FPT_ALIGN_FLOOR(value, align)                                        \
-    __FPT_FLOOR_MASK(__typeof(value), value, (__typeof(value))(align)-1)
-#define FPT_ALIGN_CEIL(value, align)                                         \
-    __FPT_CEIL_MASK(__typeof(value), value, (__typeof(value))(align)-1)
-#define FPT_IS_ALIGNED(ptr, align)                                           \
-    ((((uintptr_t)(align)-1) & (uintptr_t)(ptr)) == 0)
+#define __FPT_CEIL_MASK(type, value, mask)                                     \
+  __FPT_FLOOR_MASK(type, (value) + (mask), mask)
+#define FPT_ALIGN_FLOOR(value, align)                                          \
+  __FPT_FLOOR_MASK(__typeof(value), value, (__typeof(value))(align)-1)
+#define FPT_ALIGN_CEIL(value, align)                                           \
+  __FPT_CEIL_MASK(__typeof(value), value, (__typeof(value))(align)-1)
+#define FPT_IS_ALIGNED(ptr, align)                                             \
+  ((((uintptr_t)(align)-1) & (uintptr_t)(ptr)) == 0)
 
 /* *INDENT-ON* */
 /* clang-format on */

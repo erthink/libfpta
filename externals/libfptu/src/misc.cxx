@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
@@ -38,9 +38,8 @@ bool fptu_is_under_valgrind(void) {
 
 namespace fptu {
 
-__cold std::string format(const char *fmt, ...) {
-  va_list ap, ones;
-  va_start(ap, fmt);
+__cold std::string format(const char *fmt, va_list ap) {
+  va_list ones;
   va_copy(ones, ap);
 #ifdef _MSC_VER
   int needed = _vscprintf(fmt, ap);
@@ -48,7 +47,6 @@ __cold std::string format(const char *fmt, ...) {
   int needed = vsnprintf(nullptr, 0, fmt, ap);
 #endif
   assert(needed >= 0);
-  va_end(ap);
   std::string result;
   result.reserve((size_t)needed + 1);
   result.resize((size_t)needed, '\0');
@@ -57,6 +55,14 @@ __cold std::string format(const char *fmt, ...) {
   assert(actual == needed);
   (void)actual;
   va_end(ones);
+  return result;
+}
+
+__cold std::string format(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  std::string result = format(fmt, ap);
+  va_end(ap);
   return result;
 }
 
