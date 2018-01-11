@@ -39,9 +39,9 @@ test:
     - test/fpta_c_mode
     - make reformat
     - |
-      if [[ -n $(git diff) ]]; then
+      if [[ -n $(git --no-pager diff) ]]; then
         echo "You must run 'make reformat' before submitting a pull request"
         echo ""
-        git diff
+        git --no-pager diff
         exit -1
       fi
