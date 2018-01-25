@@ -4,16 +4,16 @@ Fast Positive Hash, aka "Позитивный Хэш"
 by [Positive Technologies](https://www.ptsecurity.com).
 
 *The Future will Positive. Всё будет хорошо.*
-[![Build Status](https://travis-ci.org/leo-yuriev/t1ha.svg?branch=devel)](https://travis-ci.org/leo-yuriev/t1ha)
-[![Build status](https://ci.appveyor.com/api/projects/status/ptug5fl2ouxdo68h/branch/devel?svg=true)](https://ci.appveyor.com/project/leo-yuriev/t1ha/branch/devel)
-[![CircleCI](https://circleci.com/gh/leo-yuriev/t1ha/tree/devel.svg?style=svg)](https://circleci.com/gh/leo-yuriev/t1ha/tree/devel)
+[![Build Status](https://travis-ci.org/leo-yuriev/t1ha.svg?branch=master)](https://travis-ci.org/leo-yuriev/t1ha)
+[![Build status](https://ci.appveyor.com/api/projects/status/ptug5fl2ouxdo68h/branch/master?svg=true)](https://ci.appveyor.com/project/leo-yuriev/t1ha/branch/master)
+[![CircleCI](https://circleci.com/gh/leo-yuriev/t1ha/tree/master.svg?style=svg)](https://circleci.com/gh/leo-yuriev/t1ha/tree/master)
 [![Coverity Scan Status](https://scan.coverity.com/projects/12918/badge.svg)](https://scan.coverity.com/projects/leo-yuriev-t1ha)
 
 ## Briefly, it is a portable 64-bit hash function:
   1. Intended for 64-bit little-endian platforms, predominantly for x86_64,
-     but portable and without penalties could run on any 64-bit CPU.
+     but portable and without penalties it can run on any 64-bit CPU.
   2. In most cases up to 15% faster than City64, xxHash, mum-hash, metro-hash
-     and all others portable hash-functions (which are not uses specific hardware tricks).
+     and all others portable hash-functions (which do not use specific hardware tricks).
   3. Currently not suitable for cryptography.
 
 Also pay attention to [Erlang](https://github.com/lemenkov/erlang-t1ha)
@@ -36,7 +36,7 @@ Please, feel free to fill an issue or make pull request.
   Provides fast-as-possible hashing for current CPU, including 32-bit
   systems and engaging the available hardware acceleration.
   You can rest assured that t1ha0 faster than all other fast hashes
-  (with comparable quality) so, otherwise we will extending and refine it time-to-time.
+  (with comparable quality) so, otherwise we will extend and refine it time-to-time.
 
   On the other hand, without warranty that the hash result will be same
   for particular key on another machine or another version.
@@ -58,11 +58,12 @@ Please, feel free to fill an issue or make pull request.
  | Implementation          | Platform/CPU                           |
  | :---------------------- | :------------------------------------- |
  | `t1ha_ia32aes_avx()`    | x86 with AES-NI and AVX extensions     |
+ | `t1ha_ia32aes_avx2()`   | x86 with AES-NI and AVX2 extensions    |
  | `t1ha_ia32aes_noavx()`  | x86 with AES-NI without AVX extensions |
  | `t1ha_32le()`           | 32-bit little-endian                   |
  | `t1ha_32be()`           | 32-bit big-endian                      |
  | `t1ha1_le()`            | 64-bit little-endian                   |
- | `t1ha1_be()`            | 32-bit big-endian                      |
+ | `t1ha1_be()`            | 64-bit big-endian                      |
 
 
 `t1ha1` = 64 bits, fast portable hash
@@ -76,7 +77,7 @@ Please, feel free to fill an issue or make pull request.
   2. Efficiency on modern 64-bit CPUs, but not in a hardware.
   3. Strong as possible, until no penalties on performance.
 
-  The main version is intended for little-endian systems and will runs
+  The main version is intended for little-endian systems and will run
   slowly on big-endian. Therefore a dedicated big-endian version is also
   provided, but returns the different result than the main version.
 
@@ -113,7 +114,7 @@ Please, feel free to fill an issue or make pull request.
        - but unfortunately _t1ha_ could be dramatically slowly
          on architectures without native 64-bit operations.
   2. This implementation of _t1ha_ requires **modern GNU C compatible compiler**,
-     includes Clang/LLVM, or **Visual Studio 2015**.
+     including Clang/LLVM, or **Visual Studio 2015**.
 
 #### Acknowledgement:
 The _t1ha_ was originally developed by Leonid Yuriev (Леонид Юрьев)
@@ -149,7 +150,7 @@ at the worst Visual Studio 2015 (MSVC 19).
 
 ### Scores
 
-Please take in account that the results is significantly depends on actual CPU, compiler version and CFLAGS.
+Please take in account that the results is significantly depend on actual CPU, compiler version and CFLAGS.
 The results below were obtained on:
  - CPU: `Intel(R) Core(TM) i7-6700K CPU`;
  - Compiler: `gcc version 5.4.0 20160609 (Ubuntu 5.4.0-6ubuntu1~16.04.4)`;
