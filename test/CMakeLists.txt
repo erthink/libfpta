@@ -72,3 +72,4 @@ add_ut(fpta7_cursor_secondary_unique TIMEOUT ${fpta7_cursor_secondary_unique_tim
 add_ut(fpta7_cursor_secondary_withdups TIMEOUT ${fpta7_cursor_secondary_withdups_timeout} SOURCE 7cursor_secondary_withdups.cxx cursor_secondary.hpp LIBRARY fptu fpta testutils)
 add_ut(fpta8_composite TIMEOUT ${fpta8_composite} SOURCE 8composite.cxx LIBRARY fptu fpta testutils)
 add_ut(fpta9_crud TIMEOUT ${fpta9_crud_timeout} SOURCE 9crud.cxx LIBRARY fptu fpta testutils)
+add_ut(fpta9_thread TIMEOUT 10 SOURCE 9thread.cxx LIBRARY fptu fpta testutils)
