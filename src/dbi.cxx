@@ -36,21 +36,23 @@ static void fpta_shove2str(fpta_shove_t shove, fpta_dbi_name *name) {
   assert(buf < name->cstr + sizeof(name->cstr));
 }
 
-static __inline MDBX_dbi fpta_dbicache_peek(fpta_txn *txn,
+static __inline MDBX_dbi fpta_dbicache_peek(const fpta_txn *txn,
                                             const fpta_shove_t shove,
-                                            const unsigned cache_hint) {
+                                            const unsigned cache_hint,
+                                            const uint64_t csn) {
   if (likely(cache_hint < fpta_dbi_cache_size)) {
-    fpta_db *db = txn->db;
-    if (likely(db->dbi_shoves[cache_hint] == shove))
+    const fpta_db *db = txn->db;
+    if (likely(db->dbi_shoves[cache_hint] == shove &&
+               db->dbi_csns[cache_hint] == csn))
       return db->dbi_handles[cache_hint];
   }
   return 0;
 }
 
 static __hot MDBX_dbi fpta_dbicache_lookup(fpta_db *db, fpta_shove_t shove,
-                                           unsigned *cache_hint) {
-  if (*cache_hint < fpta_dbi_cache_size) {
-    if (db->dbi_shoves[*cache_hint] == shove)
+                                           unsigned *__restrict cache_hint) {
+  if (likely(*cache_hint < fpta_dbi_cache_size)) {
+    if (likely(db->dbi_shoves[*cache_hint] == shove))
       return db->dbi_handles[*cache_hint];
     *cache_hint = ~0u;
   }
@@ -69,7 +71,7 @@ static __hot MDBX_dbi fpta_dbicache_lookup(fpta_db *db, fpta_shove_t shove,
 }
 
 static unsigned fpta_dbicache_update(fpta_db *db, const fpta_shove_t shove,
-                                     const MDBX_dbi dbi) {
+                                     const MDBX_dbi dbi, const uint64_t csn) {
   assert(shove > 0);
 
   const size_t n = shove % fpta_dbi_cache_size;
@@ -78,6 +80,7 @@ static unsigned fpta_dbicache_update(fpta_db *db, const fpta_shove_t shove,
     assert(db->dbi_shoves[i] != shove);
     if (db->dbi_shoves[i] == 0) {
       db->dbi_handles[i] = dbi;
+      db->dbi_csns[i] = csn;
       db->dbi_shoves[i] = shove;
       return (unsigned)i;
     }
@@ -89,7 +92,7 @@ static unsigned fpta_dbicache_update(fpta_db *db, const fpta_shove_t shove,
 }
 
 __cold MDBX_dbi fpta_dbicache_remove(fpta_db *db, const fpta_shove_t shove,
-                                     unsigned *const cache_hint) {
+                                     unsigned *__restrict const cache_hint) {
   assert(shove > 0);
 
   if (cache_hint) {
@@ -120,7 +123,7 @@ __cold MDBX_dbi fpta_dbicache_remove(fpta_db *db, const fpta_shove_t shove,
 }
 
 __cold int fpta_dbi_close(fpta_txn *txn, const fpta_shove_t shove,
-                          unsigned *cache_hint) {
+                          unsigned *__restrict cache_hint) {
   int rc = FPTA_SUCCESS;
   MDBX_dbi handle = fpta_dbicache_lookup(txn->db, shove, cache_hint);
   if (handle) {
@@ -150,30 +153,52 @@ __cold int fpta_dbi_close(fpta_txn *txn, const fpta_shove_t shove,
 }
 
 __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
-                         MDBX_dbi &handle, const unsigned dbi_flags,
+                         MDBX_dbi &__restrict handle, const unsigned dbi_flags,
                          const fpta_shove_t key_shove,
                          const fpta_shove_t data_shove,
-                         unsigned *const cache_hint) {
+                         unsigned *const cache_hint, const uint64_t csn) {
   assert(fpta_txn_validate(txn, fpta_read) == FPTA_SUCCESS);
   fpta_db *db = txn->db;
 
   if (likely(cache_hint)) {
     handle = fpta_dbicache_lookup(db, dbi_shove, cache_hint);
-    if (likely(handle))
+    if (likely(handle && db->dbi_csns[*cache_hint] == csn))
       return FPTA_SUCCESS;
   }
 
   if (txn->level < fpta_schema) {
-    int err = fpta_mutex_lock(&db->dbi_mutex);
-    if (unlikely(err != 0))
-      return err;
+    int rc = fpta_mutex_lock(&db->dbi_mutex);
+    if (unlikely(rc != 0))
+      return rc;
     if (likely(cache_hint)) {
       handle = fpta_dbicache_lookup(db, dbi_shove, cache_hint);
-      if (unlikely(handle)) {
-        err = fpta_mutex_unlock(&db->dbi_mutex);
-        assert(err == 0);
-        (void)err;
-        return FPTA_SUCCESS;
+      if (handle) {
+        if (db->dbi_csns[*cache_hint] == csn) {
+        unlock_return_rc:
+          int err = fpta_mutex_unlock(&db->dbi_mutex);
+          assert(err == 0);
+          (void)err;
+          return rc;
+        }
+
+        unsigned flags, state;
+        rc = mdbx_dbi_flags_ex(txn->mdbx_txn, handle, &flags, &state);
+        if (rc != MDBX_SUCCESS && rc != MDBX_BAD_DBI)
+          goto unlock_return_rc;
+        if (rc == MDBX_SUCCESS && (state & MDBX_TBL_STALE) == 0 &&
+            flags == dbi_flags) {
+          db->dbi_csns[*cache_hint] = csn;
+          goto unlock_return_rc;
+        }
+
+        if (rc != MDBX_BAD_DBI) {
+          rc = mdbx_dbi_close(db->mdbx_env, handle);
+          if (rc != MDBX_SUCCESS && rc != MDBX_BAD_DBI)
+            goto unlock_return_rc;
+        }
+        handle = 0;
+        db->dbi_handles[*cache_hint] = 0;
+        db->dbi_shoves[*cache_hint] = 0;
       }
     }
   }
@@ -188,7 +213,7 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
   if (likely(rc == FPTA_SUCCESS)) {
     assert(handle != 0);
     if (cache_hint)
-      *cache_hint = fpta_dbicache_update(db, dbi_shove, handle);
+      *cache_hint = fpta_dbicache_update(db, dbi_shove, handle, csn);
   } else {
     assert(handle == 0);
   }
@@ -221,7 +246,7 @@ __cold int fpta_dbicache_flush(fpta_txn *txn) {
     }
 
     int err = mdbx_dbi_close(db->mdbx_env, db->dbi_handles[i]);
-    if (err != MDBX_BAD_DBI)
+    if (err != MDBX_SUCCESS && err != MDBX_BAD_DBI)
       rc = err;
     db->dbi_handles[i] = 0;
     db->dbi_shoves[i] = 0;
@@ -240,17 +265,19 @@ __cold int fpta_dbicache_flush(fpta_txn *txn) {
 
 int __hot fpta_open_table(fpta_txn *txn, fpta_table_schema *table_def,
                           MDBX_dbi &handle) {
+  const unsigned dbi_flags =
+      fpta_dbi_flags(table_def->column_shoves_array(), 0);
   const fpta_shove_t dbi_shove = fpta_dbi_shove(table_def->table_shove(), 0);
-  handle = fpta_dbicache_peek(txn, dbi_shove, table_def->handle_cache(0));
+  handle = fpta_dbicache_peek(txn, dbi_shove, table_def->handle_cache(0),
+                              table_def->version_csn());
   if (likely(handle > 0))
     return FPTA_OK;
 
-  const unsigned dbi_flags =
-      fpta_dbi_flags(table_def->column_shoves_array(), 0);
   const fpta_shove_t data_shove =
       fpta_data_shove(table_def->column_shoves_array(), 0);
   return fpta_dbi_open(txn, dbi_shove, handle, dbi_flags, table_def->table_pk(),
-                       data_shove, &table_def->handle_cache(0));
+                       data_shove, &table_def->handle_cache(0),
+                       table_def->version_csn());
 }
 
 int __hot fpta_open_column(fpta_txn *txn, fpta_name *column_id,
@@ -267,18 +294,20 @@ int __hot fpta_open_column(fpta_txn *txn, fpta_name *column_id,
     return FPTA_SUCCESS;
   }
 
+  const unsigned dbi_flags =
+      fpta_dbi_flags(table_def->column_shoves_array(), column_id->column.num);
   fpta_shove_t dbi_shove =
       fpta_dbi_shove(table_def->table_shove(), column_id->column.num);
   idx_handle = fpta_dbicache_peek(
-      txn, dbi_shove, table_def->handle_cache(column_id->column.num));
+      txn, dbi_shove, table_def->handle_cache(column_id->column.num),
+      table_def->version_csn());
   if (likely(idx_handle > 0))
     return FPTA_OK;
 
-  const unsigned dbi_flags =
-      fpta_dbi_flags(table_def->column_shoves_array(), column_id->column.num);
   return fpta_dbi_open(txn, dbi_shove, idx_handle, dbi_flags, column_id->shove,
                        table_def->table_pk(),
-                       &table_def->handle_cache(column_id->column.num));
+                       &table_def->handle_cache(column_id->column.num),
+                       table_def->version_csn());
 }
 
 int __hot fpta_open_secondaries(fpta_txn *txn, fpta_table_schema *table_def,
@@ -292,13 +321,19 @@ int __hot fpta_open_secondaries(fpta_txn *txn, fpta_table_schema *table_def,
     if (!fpta_is_indexed(shove))
       break;
 
-    const fpta_shove_t dbi_shove = fpta_dbi_shove(table_def->table_shove(), i);
     const unsigned dbi_flags =
         fpta_dbi_flags(table_def->column_shoves_array(), i);
-    rc = fpta_dbi_open(txn, dbi_shove, dbi_array[i], dbi_flags, shove,
-                       table_def->table_pk(), &table_def->handle_cache(i));
-    if (unlikely(rc != FPTA_SUCCESS))
-      return rc;
+    const fpta_shove_t dbi_shove = fpta_dbi_shove(table_def->table_shove(), i);
+
+    dbi_array[i] = fpta_dbicache_peek(
+        txn, dbi_shove, table_def->handle_cache(i), table_def->version_csn());
+    if (unlikely(dbi_array[i] == 0)) {
+      rc = fpta_dbi_open(txn, dbi_shove, dbi_array[i], dbi_flags, shove,
+                         table_def->table_pk(), &table_def->handle_cache(i),
+                         table_def->version_csn());
+      if (unlikely(rc != FPTA_SUCCESS))
+        return rc;
+    }
   }
 
   return FPTA_SUCCESS;

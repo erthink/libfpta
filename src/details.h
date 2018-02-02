@@ -40,6 +40,7 @@ struct fpta_db {
 
   fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
+  uint64_t dbi_csns[fpta_dbi_cache_size];
   MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
 
@@ -174,7 +175,8 @@ int fpta_dbi_close(fpta_txn *txn, const fpta_shove_t shove,
                    unsigned *cache_hint);
 int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove, MDBX_dbi &handle,
                   const unsigned dbi_flags, const fpta_shove_t key_shove,
-                  const fpta_shove_t data_shove, unsigned *const cache_hint);
+                  const fpta_shove_t data_shove, unsigned *const cache_hint,
+                  const uint64_t csn);
 
 MDBX_dbi fpta_dbicache_remove(fpta_db *db, const fpta_shove_t shove,
                               unsigned *const cache_hint = nullptr);
