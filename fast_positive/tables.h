@@ -1802,6 +1802,7 @@ FPTA_API int fpta_composite_column_get(const fpta_name *composite_id,
  * Поэтому рекомендуется абстрагироваться и для разрушения всегда использовать
  * деструктор fpta_schema_destroy(). Накладные расходы при этом минимальны. */
 typedef struct fpta_schema_info {
+  uint64_t version;
   unsigned tables_count;
   fpta_name tables_names[fpta_tables_max];
 } fpta_schema_info;

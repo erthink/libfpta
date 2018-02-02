@@ -169,7 +169,7 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
       return err;
     if (likely(cache_hint)) {
       handle = fpta_dbicache_lookup(db, dbi_shove, cache_hint);
-      if (likely(handle)) {
+      if (unlikely(handle)) {
         err = fpta_mutex_unlock(&db->dbi_mutex);
         assert(err == 0);
         (void)err;

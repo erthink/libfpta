@@ -560,6 +560,10 @@ int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
       return rc;
   }
 
+  rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, &info->version, 0);
+  if (rc != MDBX_SUCCESS)
+    return rc;
+
   MDBX_cursor *mdbx_cursor;
   rc = mdbx_cursor_open(txn->mdbx_txn, db->schema_dbi, &mdbx_cursor);
   if (rc != MDBX_SUCCESS)
@@ -719,8 +723,8 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
       rc = fpta_dbicache_flush(txn);
       if (unlikely(rc != FPTA_SUCCESS))
         return rc;
-    }
 #endif /* LY: hotfix until libmdbx update */
+    }
 
     rc = fpta_schema_read(txn, table_id->shove, &table_id->table_schema);
     if (unlikely(rc != FPTA_SUCCESS)) {
@@ -869,6 +873,10 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
              FTPA_SCHEMA_CHECKSEED);
     assert(fpta_schema_validate(table_shove, data));
 
+    rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, nullptr, 1);
+    if (rc != MDBX_SUCCESS)
+      return rc;
+
     txn->schema_version() = txn->db_version;
     return FPTA_SUCCESS;
   }
@@ -928,6 +936,10 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   }
 
   rc = mdbx_del(txn->mdbx_txn, db->schema_dbi, &key, nullptr);
+  if (rc != MDBX_SUCCESS)
+    return rc;
+
+  rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, nullptr, 1);
   if (rc != MDBX_SUCCESS)
     return rc;
 
