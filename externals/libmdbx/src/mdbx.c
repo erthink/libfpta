@@ -2735,7 +2735,8 @@ int mdbx_txn_begin(MDBX_env *env, MDBX_txn *parent, unsigned flags,
                    MDBX_txn **ret) {
   MDBX_txn *txn;
   MDBX_ntxn *ntxn;
-  int rc, size, tsize;
+  int rc;
+  unsigned size, tsize;
 
   if (unlikely(!env || !ret))
     return MDBX_EINVAL;
@@ -2787,10 +2788,11 @@ int mdbx_txn_begin(MDBX_env *env, MDBX_txn *parent, unsigned flags,
       return MDBX_BUSY;
     goto renew;
   }
-  if (unlikely((txn = calloc(1, size)) == NULL)) {
+  if (unlikely((txn = malloc(size)) == NULL)) {
     mdbx_debug("calloc: %s", "failed");
     return MDBX_ENOMEM;
   }
+  memset(txn, 0, tsize);
   txn->mt_dbxs = env->me_dbxs; /* static */
   txn->mt_dbs = (MDBX_db *)((char *)txn + tsize);
   txn->mt_dbflags = (uint8_t *)txn + size - env->me_maxdbs;
@@ -5282,8 +5284,8 @@ int __cold mdbx_env_open_ex(MDBX_env *env, const char *path, unsigned flags,
 
   env->me_path = mdbx_strdup(path);
   env->me_dbxs = calloc(env->me_maxdbs, sizeof(MDBX_dbx));
-  env->me_dbflags = calloc(env->me_maxdbs, sizeof(uint16_t));
-  env->me_dbiseqs = calloc(env->me_maxdbs, sizeof(unsigned));
+  env->me_dbflags = calloc(env->me_maxdbs, sizeof(env->me_dbflags[0]));
+  env->me_dbiseqs = calloc(env->me_maxdbs, sizeof(env->me_dbiseqs[0]));
   if (!(env->me_dbxs && env->me_path && env->me_dbflags && env->me_dbiseqs)) {
     rc = MDBX_ENOMEM;
     goto bailout;
@@ -10363,8 +10365,8 @@ static int mdbx_dbi_close_locked(MDBX_env *env, MDBX_dbi dbi) {
 
   env->me_dbxs[dbi].md_name.iov_base = NULL;
   env->me_dbxs[dbi].md_name.iov_len = 0;
-  env->me_dbflags[dbi] = 0;
   env->me_dbiseqs[dbi]++;
+  env->me_dbflags[dbi] = 0;
   free(ptr);
   return MDBX_SUCCESS;
 }
