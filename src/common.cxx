@@ -385,7 +385,7 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
       if (shove && dbi) {
         unsigned tbl_flags, tbl_state;
         int err = mdbx_dbi_flags_ex(txn->mdbx_txn, dbi, &tbl_flags, &tbl_state);
-        if (err != MDBX_SUCCESS || (tbl_state & MDBX_TBL_NEW)) {
+        if (err != MDBX_SUCCESS || (tbl_state & MDBX_TBL_CREAT)) {
           if (!dbi_locked && txn->level < fpta_schema) {
             err = fpta_mutex_lock(&db->dbi_mutex);
             if (unlikely(err != 0))
@@ -405,7 +405,7 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
       unsigned tbl_flags, tbl_state;
       int err = mdbx_dbi_flags_ex(txn->mdbx_txn, db->schema_dbi, &tbl_flags,
                                   &tbl_state);
-      if (err != MDBX_SUCCESS || (tbl_state & MDBX_TBL_NEW)) {
+      if (err != MDBX_SUCCESS || (tbl_state & MDBX_TBL_CREAT)) {
         if (!dbi_locked && txn->level < fpta_schema) {
           err = fpta_mutex_lock(&db->dbi_mutex);
           if (unlikely(err != 0))

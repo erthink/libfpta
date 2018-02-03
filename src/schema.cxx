@@ -894,7 +894,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
 
   fpta_db *db = txn->db;
   if (db->schema_dbi < 1) {
-    rc = fpta_schema_open(txn, true);
+    rc = fpta_schema_open(txn, false);
     if (rc != MDBX_SUCCESS)
       return rc;
   }
