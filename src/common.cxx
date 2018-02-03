@@ -425,13 +425,21 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
   }
 
   int rc = mdbx_txn_abort(txn->mdbx_txn);
-  if (unlikely(
-          rc != MDBX_SUCCESS &&
-          !(txn_maybe_dead && rc == /* already aborted */ MDBX_EBADSIGN))) {
-    if (!fpta_panic(errnum, rc))
-      abort();
-    errnum = FPTA_WANNA_DIE;
+  if (unlikely(rc != MDBX_SUCCESS)) {
+    switch (rc) {
+    case MDBX_EBADSIGN /* already aborted txn */:
+    /* fallthrough */
+    case MDBX_THREAD_MISMATCH /* already aborted and started in other thread */:
+      if (txn_maybe_dead)
+        break;
+    /* fallthrough */
+    default:
+      if (!fpta_panic(errnum, rc))
+        abort();
+      errnum = FPTA_WANNA_DIE;
+    }
   }
+
   txn->mdbx_txn = nullptr;
   return errnum;
 }
