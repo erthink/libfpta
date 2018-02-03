@@ -282,6 +282,10 @@ endif()
 set(HAVE_FPTU_VERSIONINFO FALSE)
 set(LIBFPTU_STATIC TRUE)
 
+if(CI)
+  add_definitions("-DCI=\"${CI}\"")
+endif()
+
 set(FAST_POSITIVE_CONFIG_H "${CMAKE_CURRENT_BINARY_DIR}/fast_positive/config.h")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fast_positive/config.h.in ${FAST_POSITIVE_CONFIG_H})
 

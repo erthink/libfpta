@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -38,10 +38,11 @@ static std::string random_string(int len, int seed) {
 
 //------------------------------------------------------------------------------
 
-static void write_thread_proc(fpta_db *db, const int thread_num) {
+static void write_thread_proc(fpta_db *db, const int thread_num,
+                              const int reps) {
   SCOPED_TRACE("Thread " + std::to_string(thread_num) + " started");
 
-  for (int i = 0; i < 500; ++i) {
+  for (int i = 0; i < reps; ++i) {
     fpta_txn *txn = nullptr;
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
     ASSERT_NE(nullptr, txn);
@@ -153,12 +154,18 @@ TEST(Threaded, SimpleConcurence) {
   ASSERT_NE(db, (fpta_db *)nullptr);
   SCOPED_TRACE("Database reopened");
 
-  write_thread_proc(db, 42);
+  write_thread_proc(db, 42, 50);
+
+#ifdef CI
+  const int reps = 250;
+#else
+  const int reps = 500;
+#endif
 
   const int threadNum = 2;
   vector<std::thread> threads;
   for (int16_t i = 1; i <= threadNum; ++i)
-    threads.push_back(std::thread(write_thread_proc, db, i));
+    threads.push_back(std::thread(write_thread_proc, db, i, reps));
 
   for (auto &it : threads)
     it.join();
@@ -323,10 +330,16 @@ TEST(Threaded, SimpleSelect) {
   EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
   SCOPED_TRACE("Record written");
 
-  const int threadNum = 42;
+#ifdef CI
+  const int reps = 1000;
+#else
+  const int reps = 100000;
+#endif
+
+  const int threadNum = 16;
   vector<std::thread> threads;
   for (int i = 0; i < threadNum; ++i)
-    threads.push_back(std::thread(read_thread_proc, db, i, 42 * 1000));
+    threads.push_back(std::thread(read_thread_proc, db, i, reps));
 
   for (auto &thread : threads)
     thread.join();
