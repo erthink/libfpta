@@ -25,6 +25,13 @@ static const char testdb_name[] = TEST_DB_DIR "ut_thread.fpta";
 static const char testdb_name_lck[] =
     TEST_DB_DIR "ut_thread.fpta" MDBX_LOCK_SUFFIX;
 
+#ifdef CI
+#define REMOVE_DB_FILES true
+#else
+// пока не удялем файлы чтобы можно было посмотреть и натравить mdbx_chk
+#define REMOVE_DB_FILES false
+#endif
+
 using namespace std;
 
 static std::string random_string(int len, int seed) {
@@ -172,6 +179,11 @@ TEST(Threaded, SimpleConcurence) {
 
   SCOPED_TRACE("All threads are stopped");
   EXPECT_EQ(FPTA_OK, fpta_db_close(db));
+
+  if (REMOVE_DB_FILES) {
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -204,7 +216,6 @@ static void read_thread_proc(fpta_db *db, const int thread_num,
     fpta_txn *txn = nullptr;
     EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
     ASSERT_NE(nullptr, txn);
-    // assert(txn->mdbx_txn->mt_dbflags[3] != 0);
 
     EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
     fpta_name column;
@@ -346,6 +357,205 @@ TEST(Threaded, SimpleSelect) {
 
   SCOPED_TRACE("All threads are stopped");
   EXPECT_EQ(FPTA_OK, fpta_db_close(db));
+
+  if (REMOVE_DB_FILES) {
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+  }
+}
+
+//------------------------------------------------------------------------------
+
+static int visitor(const fptu_ro *row, void *context, void *arg) {
+  fpta_value val;
+  fpta_name *name = (fpta_name *)arg;
+  int rc = fpta_get_column(*row, name, &val);
+  if (rc != FPTA_OK)
+    return rc;
+
+  if (val.type != fpta_signed_int)
+    return (int)FPTA_DEADBEEF;
+  int64_t *max_val = (int64_t *)context;
+  if (val.sint > *max_val)
+    *max_val = val.sint;
+
+  return FPTA_OK;
+}
+
+static void visitor_thread_proc(fpta_db *db, const int thread_num,
+                                const int reps, int *counter) {
+  SCOPED_TRACE("Thread " + std::to_string(thread_num) + " started");
+  *counter = 0;
+
+  fpta_name table, key, host, date, id;
+  EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "Counting"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &key, "key"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &host, "host"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &date, "_last_changed"));
+  EXPECT_EQ(FPTA_OK, fpta_column_init(&table, &id, "_id"));
+
+  fpta_filter filter;
+  memset(&filter, 0, sizeof(fpta_filter));
+  filter.type = fpta_node_gt;
+  filter.node_cmp.left_id = &key;
+  filter.node_cmp.right_value = fpta_value_sint(0);
+
+  for (int i = 0; i < reps; ++i) {
+
+    // start read-transaction and get max_value
+    int64_t max_value = 0;
+    {
+      fpta_txn *txn = nullptr;
+      EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_read, &txn));
+      ASSERT_NE(nullptr, txn);
+
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &key));
+
+      fpta_name column;
+      EXPECT_EQ(FPTA_OK, fpta_table_column_get(&table, 0, &column));
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &column));
+      size_t count = 0;
+
+      int err = fpta_apply_visitor(txn, &column, fpta_value_begin(),
+                                   fpta_value_end(), &filter, fpta_unsorted, 0,
+                                   10000, nullptr, nullptr, &count, &visitor,
+                                   &max_value /* context */, &key /* arg */);
+      if (err != FPTA_OK) {
+        EXPECT_EQ(FPTA_NODATA, err);
+      }
+
+      fpta_name_destroy(&column);
+      EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    }
+
+    // start write-transaction and insert max_value + 1
+    {
+      fpta_txn *txn = nullptr;
+      EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_write, &txn));
+      ASSERT_NE(nullptr, txn);
+
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh(txn, &table));
+
+      fptu_rw *tuple = fptu_alloc(4, 1000);
+      ASSERT_NE(nullptr, tuple);
+
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &id));
+      uint64_t result = 0;
+      EXPECT_EQ(FPTA_OK, fpta_table_sequence(txn, &table, &result, 1));
+      EXPECT_EQ(FPTA_OK,
+                fpta_upsert_column(tuple, &id, fpta_value_uint(result)));
+
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &host));
+      std::string str = random_string(15, i);
+      EXPECT_EQ(FPTA_OK,
+                fpta_upsert_column(tuple, &host, fpta_value_cstr(str.c_str())));
+
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &date));
+      EXPECT_EQ(FPTA_OK,
+                fpta_upsert_column(tuple, &date,
+                                   fpta_value_datetime(fptu_now_fine())));
+
+      EXPECT_EQ(FPTA_OK, fpta_name_refresh_couple(txn, &table, &key));
+      EXPECT_EQ(FPTA_OK, fpta_upsert_column(tuple, &key,
+                                            fpta_value_sint(max_value + 1)));
+
+      int err = fpta_probe_and_upsert_row(txn, &table, fptu_take(tuple));
+      fptu_clear(tuple);
+      free(tuple);
+
+      if (err != FPTA_OK) {
+        // отменяем если была ошибка
+        ASSERT_EQ(FPTA_OK, fpta_transaction_end(txn, true));
+      } else {
+        // коммитим и ожидаем ошибку переполнения здесь
+        err = fpta_transaction_end(txn, false);
+        if (err != FPTA_OK) {
+          ASSERT_EQ(FPTA_DB_FULL, err);
+        }
+      }
+    }
+  }
+
+  fpta_name_destroy(&table);
+  fpta_name_destroy(&id);
+  fpta_name_destroy(&host);
+  fpta_name_destroy(&key);
+  fpta_name_destroy(&date);
+  SCOPED_TRACE("Thread " + std::to_string(thread_num) + " finished");
+}
+
+TEST(Threaded, SimpleVisitor) {
+  if (REMOVE_FILE(testdb_name) != 0) {
+    ASSERT_EQ(ENOENT, errno);
+  }
+  if (REMOVE_FILE(testdb_name_lck) != 0) {
+    ASSERT_EQ(ENOENT, errno);
+  }
+
+  fpta_db *db = nullptr;
+  fpta_db_open(testdb_name, fpta_weak, fpta_saferam, 0644, 1, true, &db);
+  ASSERT_NE(db, (fpta_db *)nullptr);
+  SCOPED_TRACE("Database opened");
+
+  { // create table
+    fpta_column_set def;
+    fpta_column_set_init(&def);
+    EXPECT_EQ(FPTA_OK,
+              fpta_column_describe("key", fptu_int64,
+                                   fpta_primary_unique_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "host", fptu_cstr,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "_last_changed", fptu_datetime,
+                           fpta_secondary_withdups_ordered_obverse, &def));
+    EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                           "_id", fptu_uint64,
+                           fpta_secondary_unique_ordered_obverse, &def));
+
+    fpta_txn *txn = nullptr;
+    EXPECT_EQ(FPTA_OK, fpta_transaction_begin(db, fpta_schema, &txn));
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(FPTA_OK, fpta_table_create(txn, "Counting", &def));
+    EXPECT_EQ(FPTA_OK, fpta_transaction_end(txn, false));
+    SCOPED_TRACE("Table created");
+  }
+  ASSERT_EQ(FPTA_OK, fpta_db_close(db));
+  db = nullptr;
+  SCOPED_TRACE("Database closed");
+
+  EXPECT_EQ(FPTA_OK, fpta_db_open(testdb_name, fpta_weak, fpta_saferam, 0644, 1,
+                                  false, &db));
+  ASSERT_NE(db, (fpta_db *)nullptr);
+  SCOPED_TRACE("Database reopened");
+
+#ifdef CI
+  const int reps = 1000;
+#else
+  const int reps = 10000;
+#endif
+
+  const int threadNum = 16;
+  int counters[threadNum] = {0};
+  vector<std::thread> threads;
+  for (int i = 0; i < threadNum; ++i)
+    threads.push_back(
+        std::thread(visitor_thread_proc, db, i, reps, &counters[i]));
+
+  int i = 0;
+  for (auto &thread : threads) {
+    SCOPED_TRACE("Thread " + std::to_string(i) + ": counter = " +
+                 std::to_string(counters[i]));
+    thread.join();
+  }
+
+  SCOPED_TRACE("All threads are stopped");
+  EXPECT_EQ(FPTA_OK, fpta_db_close(db));
+
+  if (REMOVE_DB_FILES) {
+    ASSERT_TRUE(REMOVE_FILE(testdb_name) == 0);
+    ASSERT_TRUE(REMOVE_FILE(testdb_name_lck) == 0);
+  }
 }
 
 //------------------------------------------------------------------------------
