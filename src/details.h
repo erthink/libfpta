@@ -201,11 +201,15 @@ static __inline fpta_shove_t fpta_data_shove(const fpta_shove_t *shoves_defs,
   return data_shove;
 }
 
-int fpta_dbi_close(fpta_txn *txn, const fpta_shove_t shove,
-                   unsigned *cache_hint);
-int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove, MDBX_dbi &handle,
-                  const unsigned dbi_flags, const fpta_shove_t key_shove,
-                  const fpta_shove_t data_shove, unsigned *const cache_hint);
+int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
+                  MDBX_dbi &__restrict handle, const unsigned dbi_flags,
+                  const fpta_shove_t key_shove, const fpta_shove_t data_shove);
+
+int fpta_dbicache_open(fpta_txn *txn, const fpta_shove_t shove,
+                       MDBX_dbi &handle, const unsigned dbi_flags,
+                       const fpta_shove_t key_shove,
+                       const fpta_shove_t data_shove,
+                       unsigned *const cache_hint);
 
 MDBX_dbi fpta_dbicache_remove(fpta_db *db, const fpta_shove_t shove,
                               unsigned *const cache_hint = nullptr);
