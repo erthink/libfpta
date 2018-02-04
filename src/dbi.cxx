@@ -226,13 +226,22 @@ __cold int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
   return rc;
 }
 
-__cold int fpta_dbicache_flush(fpta_txn *txn) {
+__cold int fpta_dbicache_cleanup(fpta_txn *txn) {
   fpta_db *db = txn->db;
-  bool locked = false;
 
-  int rc = FPTA_SUCCESS;
+  MDBX_envinfo info;
+  int rc = mdbx_env_info(db->mdbx_env, &info, sizeof(info));
+  if (unlikely(rc != FPTA_SUCCESS))
+    return rc;
+
+  const uint64_t tail_csn = (info.mi_latter_reader_txnid &&
+                             info.mi_latter_reader_txnid < txn->schema_csn())
+                                ? info.mi_latter_reader_txnid
+                                : txn->schema_csn();
+
+  bool locked = false;
   for (size_t i = 0; i < fpta_dbi_cache_size && rc == FPTA_SUCCESS; ++i) {
-    if (!db->dbi_handles[i])
+    if (!db->dbi_handles[i] || db->dbi_csns[i] >= tail_csn)
       continue;
 
     if (txn->level < fpta_schema && !locked) {
@@ -241,7 +250,7 @@ __cold int fpta_dbicache_flush(fpta_txn *txn) {
         return err;
 
       locked = true;
-      if (!db->dbi_handles[i])
+      if (!db->dbi_handles[i] || db->dbi_csns[i] >= tail_csn)
         continue;
     }
 

@@ -270,8 +270,11 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
     goto bailout;
 
   txn->db_version = mdbx_txn_id(txn->mdbx_txn);
-  assert(txn->schema_version() <=
+  assert(txn->schema_csn() <=
          ((level > fpta_read) ? txn->db_version - 1 : txn->db_version));
+
+  if (unlikely(level >= fpta_schema))
+    fpta_dbicache_cleanup(txn);
 
   *ptxn = txn;
   return FPTA_SUCCESS;
@@ -325,7 +328,7 @@ int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
   if (likely(db_version))
     *db_version = txn->db_version;
   if (likely(schema_version))
-    *schema_version = txn->schema_version();
+    *schema_version = txn->schema_csn();
   return FPTA_SUCCESS;
 }
 
