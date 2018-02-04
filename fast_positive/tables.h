@@ -342,6 +342,8 @@ enum fpta_error {
   /* Transaction already cancelled */,
   FPTA_SIMILAR_INDEX
   /* Adding index which is similar to one of the existing */,
+  FPTA_TARDY_DBI
+  /* Another thread still use handle(s) that should be reopened. */,
 
   FPTA_NODATA = -1 /* No data or EOF was reached */,
   FPTA_DEADBEEF = UINT32_C(0xDeadBeef) /* Pseudo error for results by refs,
