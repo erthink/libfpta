@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -37,9 +37,11 @@ struct fpta_db {
   bool alterable_schema;
   MDBX_dbi schema_dbi;
   fpta_rwl_t schema_rwlock;
+  uint64_t schema_csn;
 
   fpta_mutex_t dbi_mutex /* TODO: убрать мьютекс и перевести на atomic */;
   fpta_shove_t dbi_shoves[fpta_dbi_cache_size];
+  uint64_t dbi_csns[fpta_dbi_cache_size];
   MDBX_dbi dbi_handles[fpta_dbi_cache_size];
 };
 
@@ -52,6 +54,35 @@ enum fpta_schema_item {
   fpta_column,
   fpta_table_with_schema,
   fpta_column_with_schema
+};
+
+//----------------------------------------------------------------------------
+
+class fpta_lock_guard {
+  fpta_lock_guard(const fpta_lock_guard &) = delete;
+  fpta_mutex_t *_mutex;
+
+public:
+  fpta_lock_guard() : _mutex(nullptr) {}
+
+  int lock(fpta_mutex_t *mutex) {
+    assert(_mutex == nullptr);
+    int err = fpta_mutex_lock(mutex);
+    if (likely(err == 0))
+      _mutex = mutex;
+    return err;
+  }
+
+  void unlock() {
+    if (_mutex) {
+      int err = fpta_mutex_unlock(_mutex);
+      assert(err == 0);
+      _mutex = nullptr;
+      (void)err;
+    }
+  }
+
+  ~fpta_lock_guard() { unlock(); }
 };
 
 //----------------------------------------------------------------------------
@@ -170,15 +201,19 @@ static __inline fpta_shove_t fpta_data_shove(const fpta_shove_t *shoves_defs,
   return data_shove;
 }
 
-int fpta_dbi_close(fpta_txn *txn, const fpta_shove_t shove,
-                   unsigned *cache_hint);
-int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t shove, MDBX_dbi &handle,
-                  const unsigned dbi_flags, const fpta_shove_t key_shove,
-                  const fpta_shove_t data_shove, unsigned *const cache_hint);
+int fpta_dbi_open(fpta_txn *txn, const fpta_shove_t dbi_shove,
+                  MDBX_dbi &__restrict handle, const unsigned dbi_flags,
+                  const fpta_shove_t key_shove, const fpta_shove_t data_shove);
+
+int fpta_dbicache_open(fpta_txn *txn, const fpta_shove_t shove,
+                       MDBX_dbi &handle, const unsigned dbi_flags,
+                       const fpta_shove_t key_shove,
+                       const fpta_shove_t data_shove,
+                       unsigned *const cache_hint);
 
 MDBX_dbi fpta_dbicache_remove(fpta_db *db, const fpta_shove_t shove,
                               unsigned *const cache_hint = nullptr);
-int fpta_dbicache_flush(fpta_txn *txn);
+int fpta_dbicache_cleanup(fpta_txn *txn, fpta_table_schema *def, bool locked);
 
 //----------------------------------------------------------------------------
 

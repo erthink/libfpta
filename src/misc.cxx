@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -90,10 +90,13 @@ static const char *__fpta_errstr(int errnum) {
     return "FPTA: Failure while transaction rollback (wanna die)";
 
   case FPTA_TXN_CANCELLED:
-    return "Transaction already cancelled";
+    return "FPTA: Transaction already cancelled";
 
   case FPTA_SIMILAR_INDEX:
-    return "Adding index which is similar to one of the existing";
+    return "FPTA: Adding index which is similar to one of the existing";
+
+  case FPTA_TARDY_DBI:
+    return "FPTA: Another thread still use handle(s) that should be reopened";
 
   case FPTA_NODATA /* -1, EOF */:
     return "FPTA: No data or EOF was reached";

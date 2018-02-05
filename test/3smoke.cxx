@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -3728,8 +3728,7 @@ TEST(SmokeIndex, MissingFieldOfCompositeKey) {
   // добавляем нормальные значения
   EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &some_field,
                                         fpta_value_cstr("composite_part_1")));
-  // пропускаем вставку значения в одну из входящих в mycomposite колонок ==
-  // null
+  // пропускаем вставку значения в одну из входящих в mycomposite колонок
   // EXPECT_EQ(FPTA_OK, fpta_upsert_column(pt1, &col_a, fpta_value_sint(34)));
   EXPECT_EQ(FPTA_OK,
             fpta_upsert_column(pt1, &age, fpta_value_cstr("some data")));

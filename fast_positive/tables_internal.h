@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -318,11 +318,11 @@ struct fpta_txn {
   uint64_t db_version;
   mdbx_canary canary;
 
-  uint64_t &schema_version() { return canary.x; }
+  uint64_t &schema_csn() { return canary.x; }
   uint64_t &db_sequence() { return canary.y; }
   uint64_t &manna() { return canary.z; }
 
-  uint64_t schema_version() const { return canary.x; }
+  uint64_t schema_csn() const { return canary.x; }
   uint64_t db_sequence() const { return canary.y; }
   uint64_t manna() const { return canary.z; }
 };

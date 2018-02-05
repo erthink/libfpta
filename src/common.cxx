@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -265,16 +265,45 @@ int fpta_transaction_begin(fpta_db *db, fpta_level level, fpta_txn **ptxn) {
   if (unlikely(rc != MDBX_SUCCESS))
     goto bailout;
 
+retry:
   rc = mdbx_canary_get(txn->mdbx_txn, &txn->canary);
   if (unlikely(rc != MDBX_SUCCESS))
-    goto bailout;
+    goto bailout_abort;
 
   txn->db_version = mdbx_txn_id(txn->mdbx_txn);
-  assert(txn->schema_version() <=
+  assert(txn->schema_csn() <=
          ((level > fpta_read) ? txn->db_version - 1 : txn->db_version));
+
+  if (unlikely(db->schema_csn != txn->schema_csn())) {
+    fpta_lock_guard guard;
+    if (txn->level < fpta_schema) {
+      rc = guard.lock(&db->dbi_mutex);
+      if (unlikely(rc != 0))
+        goto bailout_abort;
+    }
+
+    if (db->schema_csn > txn->schema_csn() && level == fpta_read) {
+      rc = mdbx_txn_reset(txn->mdbx_txn);
+      if (likely(rc == MDBX_SUCCESS))
+        rc = mdbx_txn_renew(txn->mdbx_txn);
+      if (likely(rc == MDBX_SUCCESS))
+        goto retry;
+      rc = fpta_internal_abort(txn, rc, true);
+      goto bailout;
+    }
+
+    rc = fpta_dbicache_cleanup(txn, nullptr, true);
+    if (unlikely(rc != FPTA_SUCCESS))
+      goto bailout_abort;
+
+    db->schema_csn = txn->schema_csn();
+  }
 
   *ptxn = txn;
   return FPTA_SUCCESS;
+
+bailout_abort:
+  rc = fpta_internal_abort(txn, rc, false);
 
 bailout:
   err = fpta_db_unlock(db, level);
@@ -325,7 +354,7 @@ int fpta_transaction_versions(fpta_txn *txn, uint64_t *db_version,
   if (likely(db_version))
     *db_version = txn->db_version;
   if (likely(schema_version))
-    *schema_version = txn->schema_version();
+    *schema_version = txn->schema_csn();
   return FPTA_SUCCESS;
 }
 
@@ -375,63 +404,70 @@ int fpta_internal_abort(fpta_txn *txn, int errnum, bool txn_maybe_dead) {
    * Однако, могут быть ошибки отката транзакции, что потенциально является
    * более серьезной проблемой. */
 
-  /* Чистим кеш dbi-хендлов покалеченных таблиц */
-  bool dbi_locked = false;
-  fpta_db *db = txn->db;
-  for (size_t i = 0; i < fpta_dbi_cache_size; ++i) {
-    const MDBX_dbi dbi = db->dbi_handles[i];
-    const fpta_shove_t shove = db->dbi_shoves[i];
-    if (shove && dbi) {
-      unsigned tbl_flags, tbl_state;
-      int err = mdbx_dbi_flags_ex(txn->mdbx_txn, dbi, &tbl_flags, &tbl_state);
-      if (err != MDBX_SUCCESS ||
-          (tbl_state & (MDBX_TBL_NEW | MDBX_TBL_STALE)) != 0) {
+  if (txn->level > fpta_read) {
+    /* Чистим кеш dbi-хендлов покалеченных таблиц */
+    bool dbi_locked = false;
+    fpta_db *db = txn->db;
+    for (size_t i = 0; i < fpta_dbi_cache_size; ++i) {
+      const MDBX_dbi dbi = db->dbi_handles[i];
+      const fpta_shove_t shove = db->dbi_shoves[i];
+      if (shove && dbi) {
+        unsigned tbl_flags, tbl_state;
+        int err = mdbx_dbi_flags_ex(txn->mdbx_txn, dbi, &tbl_flags, &tbl_state);
+        if (err != MDBX_SUCCESS || (tbl_state & MDBX_TBL_CREAT)) {
+          if (!dbi_locked && txn->level < fpta_schema) {
+            err = fpta_mutex_lock(&db->dbi_mutex);
+            if (unlikely(err != 0))
+              return err;
+            dbi_locked = true;
+          }
 
+          if (shove == db->dbi_shoves[i] && dbi == db->dbi_handles[i]) {
+            db->dbi_shoves[i] = 0;
+            db->dbi_handles[i] = 0;
+          }
+        }
+      }
+    }
+
+    if (db->schema_dbi > 0) {
+      unsigned tbl_flags, tbl_state;
+      int err = mdbx_dbi_flags_ex(txn->mdbx_txn, db->schema_dbi, &tbl_flags,
+                                  &tbl_state);
+      if (err != MDBX_SUCCESS || (tbl_state & MDBX_TBL_CREAT)) {
         if (!dbi_locked && txn->level < fpta_schema) {
           err = fpta_mutex_lock(&db->dbi_mutex);
           if (unlikely(err != 0))
             return err;
           dbi_locked = true;
         }
-
-        if (shove == db->dbi_shoves[i] && dbi == db->dbi_handles[i]) {
-          db->dbi_shoves[i] = 0;
-          db->dbi_handles[i] = 0;
-        }
+        db->schema_dbi = 0;
       }
     }
-  }
 
-  if (db->schema_dbi > 0) {
-    unsigned tbl_flags, tbl_state;
-    int err = mdbx_dbi_flags_ex(txn->mdbx_txn, db->schema_dbi, &tbl_flags,
-                                &tbl_state);
-    if (err != MDBX_SUCCESS ||
-        (tbl_state & (MDBX_TBL_NEW | MDBX_TBL_STALE)) != 0) {
-      if (!dbi_locked && txn->level < fpta_schema) {
-        err = fpta_mutex_lock(&db->dbi_mutex);
-        if (unlikely(err != 0))
-          return err;
-        dbi_locked = true;
-      }
-      db->schema_dbi = 0;
+    if (dbi_locked) {
+      int err = fpta_mutex_unlock(&db->dbi_mutex);
+      assert(err == 0);
+      (void)err;
     }
-  }
-
-  if (dbi_locked) {
-    int err = fpta_mutex_unlock(&db->dbi_mutex);
-    assert(err == 0);
-    (void)err;
   }
 
   int rc = mdbx_txn_abort(txn->mdbx_txn);
-  if (unlikely(
-          rc != MDBX_SUCCESS &&
-          !(txn_maybe_dead && rc == /* already aborted */ MDBX_EBADSIGN))) {
-    if (!fpta_panic(errnum, rc))
-      abort();
-    errnum = FPTA_WANNA_DIE;
+  if (unlikely(rc != MDBX_SUCCESS)) {
+    switch (rc) {
+    case MDBX_EBADSIGN /* already aborted txn */:
+    /* fallthrough */
+    case MDBX_THREAD_MISMATCH /* already aborted and started in other thread */:
+      if (txn_maybe_dead)
+        break;
+    /* fallthrough */
+    default:
+      if (!fpta_panic(errnum, rc))
+        abort();
+      errnum = FPTA_WANNA_DIE;
+    }
   }
+
   txn->mdbx_txn = nullptr;
   return errnum;
 }

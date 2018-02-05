@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -76,7 +76,7 @@ static int fpta_schema_open(fpta_txn *txn, bool create) {
       fpta_column_shove(0, fptu_opaque, fpta_primary_unique_ordered_obverse);
   return fpta_dbi_open(txn, 0, txn->db->schema_dbi,
                        create ? MDBX_INTEGERKEY | MDBX_CREATE : MDBX_INTEGERKEY,
-                       key_shove, data_shove, nullptr);
+                       key_shove, data_shove);
 }
 
 //----------------------------------------------------------------------------
@@ -560,6 +560,10 @@ int fpta_schema_fetch(fpta_txn *txn, fpta_schema_info *info) {
       return rc;
   }
 
+  rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, &info->version, 0);
+  if (rc != MDBX_SUCCESS)
+    return rc;
+
   MDBX_cursor *mdbx_cursor;
   rc = mdbx_cursor_open(txn->mdbx_txn, db->schema_dbi, &mdbx_cursor);
   if (rc != MDBX_SUCCESS)
@@ -694,33 +698,9 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
   if (unlikely(rc != FPTA_SUCCESS))
     return rc;
 
-  if (unlikely(table_id->version > txn->schema_version()))
-    return FPTA_SCHEMA_CHANGED;
-
-  if (unlikely(table_id->version != txn->schema_version())) {
-    if (table_id->table_schema) {
-      rc = fpta_dbi_close(txn, table_id->shove,
-                          &table_id->table_schema->handle_cache(0));
-      if (unlikely(rc != FPTA_SUCCESS))
-        return rc;
-      for (size_t i = 1; i < table_id->table_schema->column_count(); ++i) {
-        const fpta_shove_t shove = table_id->table_schema->column_shove(i);
-        if (!fpta_is_indexed(shove))
-          break;
-
-        const fpta_shove_t dbi_shove = fpta_dbi_shove(table_id->shove, i);
-        rc = fpta_dbi_close(txn, dbi_shove,
-                            &table_id->table_schema->handle_cache(i));
-        if (unlikely(rc != FPTA_SUCCESS))
-          return rc;
-      }
-#if 1 /* LY: hotfix until libmdbx update */
-    } else {
-      rc = fpta_dbicache_flush(txn);
-      if (unlikely(rc != FPTA_SUCCESS))
-        return rc;
-    }
-#endif /* LY: hotfix until libmdbx update */
+  if (unlikely(table_id->version != txn->schema_csn())) {
+    if (table_id->version > txn->schema_csn())
+      return FPTA_SCHEMA_CHANGED;
 
     rc = fpta_schema_read(txn, table_id->shove, &table_id->table_schema);
     if (unlikely(rc != FPTA_SUCCESS)) {
@@ -730,9 +710,13 @@ int fpta_name_refresh_couple(fpta_txn *txn, fpta_name *table_id,
       table_id->table_schema = nullptr;
     }
 
+    rc = fpta_dbicache_cleanup(txn, table_id->table_schema, false);
+    if (unlikely(rc != FPTA_SUCCESS))
+      return rc;
+
     assert(table_id->table_schema == nullptr ||
-           txn->schema_version() >= table_id->table_schema->version_csn());
-    table_id->version = txn->schema_version();
+           txn->schema_csn() >= table_id->table_schema->version_csn());
+    table_id->version = txn->schema_csn();
   }
 
   if (unlikely(table_id->table_schema == nullptr))
@@ -821,7 +805,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
     const unsigned dbi_flags = fpta_dbi_flags(column_set->shoves, i);
     const fpta_shove_t data_shove = fpta_data_shove(column_set->shoves, i);
     int err = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), dbi[i],
-                            dbi_flags, shove, data_shove, nullptr);
+                            dbi_flags, shove, data_shove);
     if (err != MDBX_NOTFOUND)
       return FPTA_EEXIST;
   }
@@ -836,7 +820,7 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
         MDBX_CREATE | fpta_dbi_flags(column_set->shoves, i);
     const fpta_shove_t data_shove = fpta_data_shove(column_set->shoves, i);
     rc = fpta_dbi_open(txn, fpta_dbi_shove(table_shove, i), dbi[i], dbi_flags,
-                       shove, data_shove, nullptr);
+                       shove, data_shove);
     if (rc != MDBX_SUCCESS)
       goto bailout;
   }
@@ -869,7 +853,11 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
              FTPA_SCHEMA_CHECKSEED);
     assert(fpta_schema_validate(table_shove, data));
 
-    txn->schema_version() = txn->db_version;
+    rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, nullptr, 1);
+    if (rc != MDBX_SUCCESS)
+      return rc;
+
+    txn->schema_csn() = txn->db_version;
     return FPTA_SUCCESS;
   }
 
@@ -892,7 +880,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
 
   fpta_db *db = txn->db;
   if (db->schema_dbi < 1) {
-    rc = fpta_schema_open(txn, true);
+    rc = fpta_schema_open(txn, false);
     if (rc != MDBX_SUCCESS)
       return rc;
   }
@@ -922,7 +910,7 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
     const unsigned dbi_flags = fpta_dbi_flags(stored_schema->columns, i);
     const fpta_shove_t data_shove = fpta_data_shove(stored_schema->columns, i);
     rc = fpta_dbi_open(txn, fpta_dbi_shove(schema_key, i), dbi[i], dbi_flags,
-                       shove, data_shove, nullptr);
+                       shove, data_shove);
     if (rc != MDBX_SUCCESS && rc != MDBX_NOTFOUND)
       return rc;
   }
@@ -931,7 +919,11 @@ int fpta_table_drop(fpta_txn *txn, const char *table_name) {
   if (rc != MDBX_SUCCESS)
     return rc;
 
-  txn->schema_version() = txn->db_version;
+  rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, nullptr, 1);
+  if (rc != MDBX_SUCCESS)
+    return rc;
+
+  txn->schema_csn() = txn->db_version;
   for (size_t i = 0; i < stored_schema->count; ++i) {
     if (dbi[i] > 0) {
       fpta_dbicache_remove(db, fpta_dbi_shove(schema_key, i));

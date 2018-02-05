@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
  *
@@ -342,6 +342,8 @@ enum fpta_error {
   /* Transaction already cancelled */,
   FPTA_SIMILAR_INDEX
   /* Adding index which is similar to one of the existing */,
+  FPTA_TARDY_DBI
+  /* Another thread still use handle(s) that should be reopened. */,
 
   FPTA_NODATA = -1 /* No data or EOF was reached */,
   FPTA_DEADBEEF = UINT32_C(0xDeadBeef) /* Pseudo error for results by refs,
@@ -1802,6 +1804,7 @@ FPTA_API int fpta_composite_column_get(const fpta_name *composite_id,
  * Поэтому рекомендуется абстрагироваться и для разрушения всегда использовать
  * деструктор fpta_schema_destroy(). Накладные расходы при этом минимальны. */
 typedef struct fpta_schema_info {
+  uint64_t version;
   unsigned tables_count;
   fpta_name tables_names[fpta_tables_max];
 } fpta_schema_info;

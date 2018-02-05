@@ -1,5 +1,5 @@
 ##
-##  Copyright 2016-2017 libfpta authors: please see AUTHORS file.
+##  Copyright 2016-2018 libfpta authors: please see AUTHORS file.
 ##
 ##  This file is part of libfpta, aka "Fast Positive Tables".
 ##
@@ -42,6 +42,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(fpta7_cursor_secondary_withdups_timeout 3000)
   set(fpta8_composite 300)
   set(fpta9_crud_timeout 300)
+  set(fpta9_thread_timeout 600)
 else()
   set(fpta_small_timeout 3)
   set(fpta3_smoke_timeout 10)
@@ -53,6 +54,7 @@ else()
   set(fpta7_cursor_secondary_withdups_timeout 600)
   set(fpta8_composite 120)
   set(fpta9_crud_timeout 120)
+  set(fpta9_thread_timeout 150)
 endif()
 
 add_executable(fpta_c_mode c_mode.c)
@@ -72,4 +74,4 @@ add_ut(fpta7_cursor_secondary_unique TIMEOUT ${fpta7_cursor_secondary_unique_tim
 add_ut(fpta7_cursor_secondary_withdups TIMEOUT ${fpta7_cursor_secondary_withdups_timeout} SOURCE 7cursor_secondary_withdups.cxx cursor_secondary.hpp LIBRARY fptu fpta testutils)
 add_ut(fpta8_composite TIMEOUT ${fpta8_composite} SOURCE 8composite.cxx LIBRARY fptu fpta testutils)
 add_ut(fpta9_crud TIMEOUT ${fpta9_crud_timeout} SOURCE 9crud.cxx LIBRARY fptu fpta testutils)
-add_ut(fpta9_thread TIMEOUT 10 SOURCE 9thread.cxx LIBRARY fptu fpta testutils)
+add_ut(fpta9_thread TIMEOUT ${fpta9_thread_timeout} SOURCE 9thread.cxx LIBRARY fptu fpta testutils)
