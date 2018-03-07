@@ -753,6 +753,34 @@ TEST(Schema, TriviaWithNullable) {
   EXPECT_EQ(FPTA_EINVAL, fpta_column_set_destroy(&def));
 }
 
+TEST(Schema, NonUniqPrimary_with_Secondary) {
+  fpta_column_set def;
+  fpta_column_set_init(&def);
+  EXPECT_NE(FPTA_SUCCESS, fpta_column_set_validate(&def));
+
+  //------------------------------------------------------------------------
+
+  EXPECT_EQ(FPTA_OK,
+            fpta_column_describe("_id", fptu_uint64,
+                                 fpta_secondary_unique_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "_last_changed", fptu_datetime,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "port", fptu_int64,
+                         fpta_secondary_withdups_ordered_obverse, &def));
+  EXPECT_EQ(FPTA_EFLAG,
+            fpta_column_describe("host", fptu_cstr,
+                                 fpta_primary_withdups_ordered_obverse, &def));
+  EXPECT_NE(FPTA_SUCCESS, fpta_column_set_validate(&def));
+
+  //------------------------------------------------------------------------
+
+  EXPECT_EQ(FPTA_OK, fpta_column_set_destroy(&def));
+  EXPECT_NE(FPTA_OK, fpta_column_set_validate(&def));
+  EXPECT_EQ(FPTA_EINVAL, fpta_column_set_destroy(&def));
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
