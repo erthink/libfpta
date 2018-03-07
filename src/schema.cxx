@@ -421,9 +421,11 @@ int fpta_schema_add(fpta_column_set *column_set, const char *id_name,
   if (fpta_is_indexed(index_type) && fpta_index_is_primary(index_type)) {
     if (column_set->shoves[0])
       return FPTA_EEXIST;
-    column_set->shoves[0] = shove;
     if (column_set->count < 1)
       column_set->count = 1;
+    else if (!fpta_index_is_unique(shove))
+      return FPTA_EFLAG;
+    column_set->shoves[0] = shove;
   } else {
     if (fpta_index_is_secondary(index_type) && column_set->shoves[0] &&
         !fpta_index_is_unique(column_set->shoves[0]))
