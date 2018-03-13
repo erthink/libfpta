@@ -33,9 +33,16 @@ endif()
 # only in version 4.5 https://gcc.gnu.org/projects/cxx0x.html
 #
 if(CMAKE_COMPILER_IS_GNUCC)
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.5)
+    message(FATAL_ERROR "
+      Your GCC version is ${CMAKE_C_COMPILER_VERSION}, please update")
+  endif()
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
     message(FATAL_ERROR "
-      Your GCC version is ${CMAKE_CXX_COMPILER_VERSION}, please update")
+      Your G++ version is ${CMAKE_CXX_COMPILER_VERSION}, please update")
   endif()
 endif()
 
