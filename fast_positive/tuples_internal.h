@@ -164,13 +164,15 @@
 #			define __optimize(ops)
 #		endif
 #	else
-#			define __optimize(ops)
+#		define __optimize(ops)
 #	endif
 #endif /* __optimize */
 
 #ifndef __hot
 #	if defined(__OPTIMIZE__)
-#		if defined(__clang__) && !__has_attribute(hot)
+#		if defined(__e2k__)
+#			define __hot __attribute__((hot)) __optimize(3)
+#		elif defined(__clang__) && !__has_attribute(hot)
 			/* just put frequently used functions in separate section */
 #			define __hot __attribute__((section("text.hot"))) __optimize("O3")
 #		elif defined(__GNUC__) || __has_attribute(hot)
@@ -185,7 +187,9 @@
 
 #ifndef __cold
 #	if defined(__OPTIMIZE__)
-#		if defined(__clang__) && !__has_attribute(cold)
+#		if defined(__e2k__)
+#			define __cold __optimize(1) __attribute__((cold))
+#		elif defined(__clang__) && !__has_attribute(cold)
 			/* just put infrequently used functions in separate section */
 #			define __cold __attribute__((section("text.unlikely"))) __optimize("Os")
 #		elif defined(__GNUC__) || __has_attribute(cold)
