@@ -87,35 +87,29 @@ static int __hot fpta_idxcmp_binary_first2last(const MDBX_val *a,
 template <typename T>
 static int __hot fpta_idxcmp_type(const MDBX_val *a, const MDBX_val *b) {
   assert(a->iov_len == sizeof(T) && b->iov_len == sizeof(T));
-  if (UNALIGNED_OK || sizeof(T) < 4) {
-    const T va = *(const T *)a->iov_base;
-    const T vb = *(const T *)b->iov_base;
-    return fptu_cmp2int(va, vb);
-  } else if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) {
-    const uint8_t *pa = (const uint8_t *)a->iov_base;
-    const uint8_t *pb = (const uint8_t *)b->iov_base;
-    int diff, i = sizeof(T) - 1;
-    do
-      diff = pa[i] - pb[i];
-    while (diff == 0 && --i >= 0);
-    return diff;
-  } else if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) {
-    return memcmp(a->iov_base, b->iov_base, sizeof(T));
+
+  T va, vb;
+  if (UNALIGNED_OK) {
+    va = *(const T *)a->iov_base;
+    vb = *(const T *)b->iov_base;
+  } else {
+    memcpy(&va, a->iov_base, sizeof(T));
+    memcpy(&vb, b->iov_base, sizeof(T));
   }
-  return 0;
+  return fptu_cmp2int(va, vb);
 }
 
 static int __hot fpta_idxcmp_fp32(const MDBX_val *a, const MDBX_val *b) {
   assert(a->iov_len == 4 && b->iov_len == 4);
-  int32_t va, vb;
 
-#if UNALIGNED_OK
-  va = *(const int32_t *)a->iov_base;
-  vb = *(const int32_t *)b->iov_base;
-#else
-  memcpy(&va, a->iov_base, 4);
-  memcpy(&vb, b->iov_base, 4);
-#endif
+  int32_t va, vb;
+  if (UNALIGNED_OK) {
+    va = *(const int32_t *)a->iov_base;
+    vb = *(const int32_t *)b->iov_base;
+  } else {
+    memcpy(&va, a->iov_base, 4);
+    memcpy(&vb, b->iov_base, 4);
+  }
 
   int32_t negative = va & (1 << 31);
   if ((negative ^ vb) < 0)
@@ -127,15 +121,15 @@ static int __hot fpta_idxcmp_fp32(const MDBX_val *a, const MDBX_val *b) {
 
 static int __hot fpta_idxcmp_fp64(const MDBX_val *a, const MDBX_val *b) {
   assert(a->iov_len == 8 && b->iov_len == 8);
-  int64_t va, vb;
 
-#if UNALIGNED_OK
-  va = *(const int64_t *)a->iov_base;
-  vb = *(const int64_t *)b->iov_base;
-#else
-  memcpy(&va, a->iov_base, 8);
-  memcpy(&vb, b->iov_base, 8);
-#endif
+  int64_t va, vb;
+  if (UNALIGNED_OK) {
+    va = *(const int64_t *)a->iov_base;
+    vb = *(const int64_t *)b->iov_base;
+  } else {
+    memcpy(&va, a->iov_base, 8);
+    memcpy(&vb, b->iov_base, 8);
+  }
 
   int64_t negative = va & UINT64_C(0x8000000000000000);
   if ((negative ^ vb) < 0)
