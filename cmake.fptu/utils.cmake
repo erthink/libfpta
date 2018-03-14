@@ -52,7 +52,7 @@ macro(fetch_version name version_file)
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE rc)
     if(rc OR "${name}_GIT_DESCRIBE" STREQUAL "")
-      message(FATAL_ERROR "Please install latest version of git ('describe --tags --long --dirty' failed)")
+      message(FATAL_ERROR "Please fetch tags and/or install latest version of git ('describe --tags --long --dirty' failed)")
     endif()
 
     execute_process(COMMAND ${GIT} show --no-patch --format=%cI HEAD
