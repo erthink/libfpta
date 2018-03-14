@@ -155,37 +155,6 @@ static int fpta_schema_clone(const fpta_shove_t schema_key,
   return FPTA_SUCCESS;
 }
 
-/* int fpta_table_schema::composite_list(
-    size_t number, fpta_table_schema::composite_iter_t &list_begin,
-    fpta_table_schema::composite_iter_t &list_end) const {
-  auto composites =
-      (const composite_item_t *)&this->_stored.columns[this->_stored.count];
-  const auto composites_end = this->_composite_offsets;
-  for (size_t i = 0; i < column_count(); ++i) {
-    const fpta_shove_t column_shove = this->_stored.columns[i];
-    if (!fpta_is_indexed(column_shove))
-      break;
-    if (!fpta_is_composite(column_shove))
-      continue;
-    if (unlikely(composites >= composites_end || *composites == 0))
-      return FPTA_SCHEMA_CORRUPTED;
-
-    const auto first = composites + 1;
-    const auto last = first + *composites;
-    if (unlikely(last > composites_end))
-      return FPTA_SCHEMA_CORRUPTED;
-
-    if (i == number) {
-      list_begin = first;
-      list_end = last;
-      return FPTA_SUCCESS;
-    }
-    composites = last;
-  }
-
-  return FPTA_EOOPS;
-} */
-
 static int index2prio(const fpta_shove_t index) {
   /* primary, secondary, non-indexed non-nullable, non-indexed nullable */
   if (fpta_is_indexed(index))
