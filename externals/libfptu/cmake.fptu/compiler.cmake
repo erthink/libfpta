@@ -33,11 +33,62 @@ endif()
 # only in version 4.5 https://gcc.gnu.org/projects/cxx0x.html
 #
 if(CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.5)
     message(FATAL_ERROR "
-      Your GCC version is ${CMAKE_CXX_COMPILER_VERSION}, please update")
+      Your GCC version is ${CMAKE_C_COMPILER_VERSION}, please update")
   endif()
 endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.5)
+    message(FATAL_ERROR "
+      Your G++ version is ${CMAKE_CXX_COMPILER_VERSION}, please update")
+  endif()
+endif()
+
+# Check for Elbrus lcc
+execute_process(COMMAND ${CMAKE_C_COMPILER} --version
+  OUTPUT_VARIABLE tmp_lcc_probe_version
+  RESULT_VARIABLE tmp_lcc_probe_result ERROR_QUIET)
+if(tmp_lcc_probe_result EQUAL 0)
+  string(FIND "${tmp_lcc_probe_version}" "lcc:" tmp_lcc_marker)
+  string(FIND "${tmp_lcc_probe_version}" ":e2k-" tmp_e2k_marker)
+  if(tmp_lcc_marker GREATER -1 AND tmp_e2k_marker GREATER tmp_lcc_marker)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -print-version
+      OUTPUT_VARIABLE CMAKE_C_COMPILER_VERSION
+      RESULT_VARIABLE tmp_lcc_probe_result)
+    set(CMAKE_COMPILER_IS_ELBRUSC ON)
+    set(CMAKE_C_COMPILER_ID "Elbrus")
+  else()
+    set(CMAKE_COMPILER_IS_ELBRUSC OFF)
+  endif()
+  unset(tmp_lcc_marker)
+  unset(tmp_e2k_marker)
+endif()
+unset(tmp_lcc_probe_version)
+unset(tmp_lcc_probe_result)
+
+# Check for Elbrus l++
+execute_process(COMMAND ${CMAKE_CXX_COMPILER} --version
+  OUTPUT_VARIABLE tmp_lxx_probe_version
+  RESULT_VARIABLE tmp_lxx_probe_result ERROR_QUIET)
+if(tmp_lxx_probe_result EQUAL 0)
+  string(FIND "${tmp_lxx_probe_version}" "lcc:" tmp_lcc_marker)
+  string(FIND "${tmp_lxx_probe_version}" ":e2k-" tmp_e2k_marker)
+  if(tmp_lcc_marker GREATER -1 AND tmp_e2k_marker GREATER tmp_lcc_marker)
+    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-version
+      OUTPUT_VARIABLE CMAKE_CXX_COMPILER_VERSION
+      RESULT_VARIABLE tmp_lxx_probe_result)
+    set(CMAKE_COMPILER_IS_ELBRUSCXX ON)
+    set(CMAKE_CXX_COMPILER_ID "Elbrus")
+  else()
+    set(CMAKE_COMPILER_IS_ELBRUSCXX OFF)
+  endif()
+  unset(tmp_lcc_marker)
+  unset(tmp_e2k_marker)
+endif()
+unset(tmp_lxx_probe_version)
+unset(tmp_lxx_probe_result)
 
 #
 # Check supported standards
@@ -197,7 +248,11 @@ if(CMAKE_COMPILER_IS_GNUCC)
       endif()
     endif()
 
-    get_filename_component(gcc_dir ${CMAKE_C_COMPILER} DIRECTORY)
+    if(CMAKE_VERSION VERSION_GREATER 2.8.11)
+      get_filename_component(gcc_dir ${CMAKE_C_COMPILER} DIRECTORY)
+    else()
+      get_filename_component(gcc_dir ${CMAKE_C_COMPILER} PATH)
+    endif()
     if(NOT CMAKE_GCC_AR)
       find_program(CMAKE_GCC_AR NAMES gcc${gcc_suffix}-ar gcc-ar${gcc_suffix} PATHS ${gcc_dir} NO_DEFAULT_PATH)
     endif()
