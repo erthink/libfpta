@@ -220,7 +220,7 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
 
   if (!fpta_index_is_ordered(index)) {
     // хешируем ключ для неупорядоченного индекса
-    key.place.u64 = t1ha(key.mdbx.iov_base, key.mdbx.iov_len, 2017);
+    key.place.u64 = t1ha2_atonce(key.mdbx.iov_base, key.mdbx.iov_len, 2018);
     key.mdbx.iov_base = &key.place.u64;
     key.mdbx.iov_len = sizeof(key.place.u64);
     return FPTA_SUCCESS;
@@ -267,8 +267,8 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
       nillable += fpta_notnil_prefix_length;
       memcpy(nillable, key.mdbx.iov_base, chunk);
       key.place.longkey_obverse.tailhash =
-          t1ha((const uint8_t *)key.mdbx.iov_base + chunk,
-               key.mdbx.iov_len - chunk, 0);
+          t1ha2_atonce((const uint8_t *)key.mdbx.iov_base + chunk,
+                       key.mdbx.iov_len - chunk, 0);
     } else {
       /* ключ сравнивается от хвоста к голове,
        * копируем хвост и хэшируем начало. */
@@ -277,8 +277,8 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
       memcpy(nillable,
              (const uint8_t *)key.mdbx.iov_base + key.mdbx.iov_len - chunk,
              chunk);
-      key.place.longkey_reverse.headhash =
-          t1ha((const uint8_t *)key.mdbx.iov_base, key.mdbx.iov_len - chunk, 0);
+      key.place.longkey_reverse.headhash = t1ha2_atonce(
+          (const uint8_t *)key.mdbx.iov_base, key.mdbx.iov_len - chunk, 0);
     }
     key.mdbx.iov_len = sizeof(key.place);
     key.mdbx.iov_base = &key.place;
@@ -301,14 +301,14 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
      * копируем начало и хэшируем хвост. */
     memcpy(key.place.longkey_obverse.head, key.mdbx.iov_base, fpta_max_keylen);
     key.place.longkey_obverse.tailhash =
-        t1ha((const uint8_t *)key.mdbx.iov_base + fpta_max_keylen,
-             key.mdbx.iov_len - fpta_max_keylen, 0);
+        t1ha2_atonce((const uint8_t *)key.mdbx.iov_base + fpta_max_keylen,
+                     key.mdbx.iov_len - fpta_max_keylen, 0);
   } else {
     /* ключ сравнивается от хвоста к голове,
      * копируем хвост и хэшируем начало. */
     key.place.longkey_reverse.headhash =
-        t1ha((const uint8_t *)key.mdbx.iov_base,
-             key.mdbx.iov_len - fpta_max_keylen, 0);
+        t1ha2_atonce((const uint8_t *)key.mdbx.iov_base,
+                     key.mdbx.iov_len - fpta_max_keylen, 0);
     memcpy(key.place.longkey_reverse.tail,
            (const uint8_t *)key.mdbx.iov_base + key.mdbx.iov_len -
                fpta_max_keylen,

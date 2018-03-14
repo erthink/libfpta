@@ -27,7 +27,7 @@ __hot fpta_shove_t fpta_shove_name(const char *name,
   for (i = 0; i < len && i < sizeof(uppercase); ++i)
     uppercase[i] = (char)toupper(name[i]);
 
-  fpta_shove_t shove = t1ha(uppercase, i, type) << fpta_name_hash_shift;
+  fpta_shove_t shove = t1ha2_atonce(uppercase, i, type) << fpta_name_hash_shift;
   if (type == fpta_table)
     shove |= fpta_flag_table;
   return shove;
@@ -470,8 +470,8 @@ static bool fpta_schema_validate(const fpta_shove_t schema_key,
     return false;
 
   uint64_t checksum =
-      t1ha(&schema->signature, schema_data.iov_len - sizeof(checksum),
-           FTPA_SCHEMA_CHECKSEED);
+      t1ha2_atonce(&schema->signature, schema_data.iov_len - sizeof(checksum),
+                   FTPA_SCHEMA_CHECKSEED);
   if (unlikely(checksum != schema->checksum))
     return false;
 
@@ -851,8 +851,8 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
     assert((uint8_t *)ptr + composites_bytes == (uint8_t *)record + bytes);
 
     record->checksum =
-        t1ha(&record->signature, bytes - sizeof(record->checksum),
-             FTPA_SCHEMA_CHECKSEED);
+        t1ha2_atonce(&record->signature, bytes - sizeof(record->checksum),
+                     FTPA_SCHEMA_CHECKSEED);
     assert(fpta_schema_validate(table_shove, data));
 
     rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, nullptr, 1);
