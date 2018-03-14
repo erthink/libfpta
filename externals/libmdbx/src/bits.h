@@ -25,7 +25,7 @@
 
 /* Features under development */
 #ifndef MDBX_DEVEL
-#   define MDBX_DEVEL 1
+#   define MDBX_DEVEL 0
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -89,26 +89,29 @@
 #endif /* __SANITIZE_THREAD__ */
 
 #if __has_warning("-Wconstant-logical-operand")
-#if defined(__clang__)
-#pragma clang diagnostic ignored "-Wconstant-logical-operand"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wconstant-logical-operand"
-#else
-#pragma warning disable "constant-logical-operand"
-#endif
+#   if defined(__clang__)
+#       pragma clang diagnostic ignored "-Wconstant-logical-operand"
+#   elif defined(__GNUC__)
+#       pragma GCC diagnostic ignored "-Wconstant-logical-operand"
+#   else
+#      pragma warning disable "constant-logical-operand"
+#   endif
 #endif /* -Wconstant-logical-operand */
 
-#if __has_warning("-Walignment-reduction-ignored") || defined(__e2k__) || defined(__ICC)
-#if defined(__ICC)
-#pragma warning(disable: 3453 1366)
-#elif defined(__clang__)
-#pragma clang diagnostic ignored "-Walignment-reduction-ignored"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Walignment-reduction-ignored"
-#else
-#pragma warning disable "alignment-reduction-ignored"
-#endif
-#endif /* -Wno-constant-logical-operand */
+#if defined(__LCC__) && (__LCC__ <= 121)
+    /* bug #2798 */
+#   pragma diag_suppress alignment_reduction_ignored
+#elif defined(__ICC)
+#   pragma warning(disable: 3453 1366)
+#elif __has_warning("-Walignment-reduction-ignored")
+#   if defined(__clang__)
+#       pragma clang diagnostic ignored "-Walignment-reduction-ignored"
+#   elif defined(__GNUC__)
+#       pragma GCC diagnostic ignored "-Walignment-reduction-ignored"
+#   else
+#       pragma warning disable "alignment-reduction-ignored"
+#   endif
+#endif /* -Walignment-reduction-ignored */
 
 #include "./osal.h"
 
@@ -445,9 +448,7 @@ typedef struct MDBX_lockinfo {
   MDBX_reader __cache_aligned mti_readers[1];
 } MDBX_lockinfo;
 
-#ifdef _MSC_VER
 #pragma pack(pop)
-#endif /* MSVC: Enable aligment */
 
 #define MDBX_LOCKINFO_WHOLE_SIZE                                               \
   ((sizeof(MDBX_lockinfo) + MDBX_CACHELINE_SIZE - 1) &                         \
