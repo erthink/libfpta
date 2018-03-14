@@ -46,6 +46,50 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   endif()
 endif()
 
+# Check for Elbrus lcc
+execute_process(COMMAND ${CMAKE_C_COMPILER} --version
+  OUTPUT_VARIABLE tmp_lcc_probe_version
+  RESULT_VARIABLE tmp_lcc_probe_result ERROR_QUIET)
+if(tmp_lcc_probe_result EQUAL 0)
+  string(FIND "${tmp_lcc_probe_version}" "lcc:" tmp_lcc_marker)
+  string(FIND "${tmp_lcc_probe_version}" ":e2k-" tmp_e2k_marker)
+  if(tmp_lcc_marker GREATER -1 AND tmp_e2k_marker GREATER tmp_lcc_marker)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -print-version
+      OUTPUT_VARIABLE CMAKE_C_COMPILER_VERSION
+      RESULT_VARIABLE tmp_lcc_probe_result)
+    set(CMAKE_COMPILER_IS_ELBRUSC ON)
+    set(CMAKE_C_COMPILER_ID "Elbrus")
+  else()
+    set(CMAKE_COMPILER_IS_ELBRUSC OFF)
+  endif()
+  unset(tmp_lcc_marker)
+  unset(tmp_e2k_marker)
+endif()
+unset(tmp_lcc_probe_version)
+unset(tmp_lcc_probe_result)
+
+# Check for Elbrus l++
+execute_process(COMMAND ${CMAKE_CXX_COMPILER} --version
+  OUTPUT_VARIABLE tmp_lxx_probe_version
+  RESULT_VARIABLE tmp_lxx_probe_result ERROR_QUIET)
+if(tmp_lxx_probe_result EQUAL 0)
+  string(FIND "${tmp_lxx_probe_version}" "lcc:" tmp_lcc_marker)
+  string(FIND "${tmp_lxx_probe_version}" ":e2k-" tmp_e2k_marker)
+  if(tmp_lcc_marker GREATER -1 AND tmp_e2k_marker GREATER tmp_lcc_marker)
+    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-version
+      OUTPUT_VARIABLE CMAKE_CXX_COMPILER_VERSION
+      RESULT_VARIABLE tmp_lxx_probe_result)
+    set(CMAKE_COMPILER_IS_ELBRUSCXX ON)
+    set(CMAKE_CXX_COMPILER_ID "Elbrus")
+  else()
+    set(CMAKE_COMPILER_IS_ELBRUSCXX OFF)
+  endif()
+  unset(tmp_lcc_marker)
+  unset(tmp_e2k_marker)
+endif()
+unset(tmp_lxx_probe_version)
+unset(tmp_lxx_probe_result)
+
 #
 # Check supported standards
 #
