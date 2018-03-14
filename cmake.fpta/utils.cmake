@@ -60,7 +60,7 @@ macro(fetch_version name version_file)
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE rc)
-    if(rc)
+    if(rc OR "${name}_GIT_TIMESTAMP" STREQUAL "%cI")
       message(FATAL_ERROR "Please install latest version of git ('show --no-patch --format=%cI HEAD' failed)")
     endif()
 
