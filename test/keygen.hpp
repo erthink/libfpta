@@ -314,7 +314,7 @@ struct scalar_range_stepper {
 #endif                          /* _MSC_VER */
 
 #ifdef __LCC__
-#pragma push
+#pragma GCC diagnostic push
 #pragma diag_suppress divide_by_zero
 #endif /* __LCC__ */
 
@@ -389,7 +389,7 @@ struct scalar_range_stepper {
 #endif /* _MSC_VER */
 
 #ifdef __LCC__
-#pragma pop
+#pragma GCC diagnostic pop
 #endif /* __LCC__ */
 
     EXPECT_EQ(N, (int)probe.size());
