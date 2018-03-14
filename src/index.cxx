@@ -113,8 +113,8 @@ static int __hot fpta_idxcmp_fp32(const MDBX_val *a, const MDBX_val *b) {
   va = *(const int32_t *)a->iov_base;
   vb = *(const int32_t *)b->iov_base;
 #else
-  memcpy(va, a->iov_base, 4);
-  memcpy(vb, b->iov_base, 4);
+  memcpy(&va, a->iov_base, 4);
+  memcpy(&vb, b->iov_base, 4);
 #endif
 
   int32_t negative = va & (1 << 31);
@@ -133,8 +133,8 @@ static int __hot fpta_idxcmp_fp64(const MDBX_val *a, const MDBX_val *b) {
   va = *(const int64_t *)a->iov_base;
   vb = *(const int64_t *)b->iov_base;
 #else
-  memcpy(va, a->iov_base, 8);
-  memcpy(vb, b->iov_base, 8);
+  memcpy(&va, a->iov_base, 8);
+  memcpy(&vb, b->iov_base, 8);
 #endif
 
   int64_t negative = va & UINT64_C(0x8000000000000000);
