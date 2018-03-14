@@ -19,6 +19,10 @@
 
 #include "details.h"
 
+#ifdef __LCC__
+#pragma diag_suppress unsigned_compare_with_zero
+#endif /* __LCC__ */
+
 template <typename TYPE>
 static TYPE confine_value(const fpta_value &value, const TYPE begin,
                           const TYPE end) {
