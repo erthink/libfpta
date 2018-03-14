@@ -51,8 +51,8 @@ macro(fetch_version name version_file)
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE rc)
-    if(rc)
-      message(FATAL_ERROR "Please install latest version of git ('describe --tags --long --dirty' failed)")
+    if(rc OR "${name}_GIT_DESCRIBE" STREQUAL "")
+      message(FATAL_ERROR "Please fetch tags and/or install latest version of git ('describe --tags --long --dirty' failed)")
     endif()
 
     execute_process(COMMAND ${GIT} show --no-patch --format=%cI HEAD
@@ -76,7 +76,7 @@ macro(fetch_version name version_file)
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE rc)
-    if(rc)
+    if(rc OR "${name}_GIT_TREE" STREQUAL "")
       message(FATAL_ERROR "Please install latest version of git ('show --no-patch --format=%T HEAD' failed)")
     endif()
 
@@ -85,7 +85,7 @@ macro(fetch_version name version_file)
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE rc)
-    if(rc)
+    if(rc OR "${name}_GIT_COMMIT" STREQUAL "")
       message(FATAL_ERROR "Please install latest version of git ('show --no-patch --format=%H HEAD' failed)")
     endif()
 
@@ -94,7 +94,7 @@ macro(fetch_version name version_file)
       OUTPUT_STRIP_TRAILING_WHITESPACE
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE rc)
-    if(rc)
+    if(rc OR "${name}_GIT_REVISION" STREQUAL "")
       message(FATAL_ERROR "Please install latest version of git ('rev-list --count --no-merges HEAD' failed)")
     endif()
 
