@@ -540,3 +540,29 @@ fptu_depleted2lge(const iterator &left_pos, const iterator &left_end,
 #define PRIdSIZE PRIdPTR
 #define PRIxSIZE PRIxPTR
 #endif /* PRI*SIZE macros */
+
+/*----------------------------------------------------------------------------*/
+/* LY: temporary workaround for Elbrus's memcmp() bug. */
+#if defined(__e2k__) && !__GLIBC_PREREQ(2, 24)
+extern "C" int mdbx_e2k_memcmp_bug_workaround(const void *s1, const void *s2,
+                                              size_t n);
+extern "C" int mdbx_e2k_strcmp_bug_workaround(const char *s1, const char *s2);
+extern "C" int mdbx_e2k_strncmp_bug_workaround(const char *s1, const char *s2,
+                                               size_t n);
+extern "C" size_t mdbx_e2k_strlen_bug_workaround(const char *s);
+extern "C" size_t mdbx_e2k_strnlen_bug_workaround(const char *s, size_t maxlen);
+#include <string.h>
+#include <strings.h>
+#undef memcmp
+#define memcmp mdbx_e2k_memcmp_bug_workaround
+#undef bcmp
+#define bcmp mdbx_e2k_memcmp_bug_workaround
+#undef strcmp
+#define strcmp mdbx_e2k_strcmp_bug_workaround
+#undef strncmp
+#define strncmp mdbx_e2k_strncmp_bug_workaround
+#undef strlen
+#define strlen mdbx_e2k_strlen_bug_workaround
+#undef strnlen
+#define strnlen mdbx_e2k_strnlen_bug_workaround
+#endif /* Elbrus's memcmp() bug. */
