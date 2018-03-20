@@ -71,13 +71,18 @@
 #endif
 
 #if !defined(UNALIGNED_OK)
-#if defined(__ia32__) || defined(__e2k__)
+#if (defined(__ia32__) || defined(__e2k__) ||                                  \
+     defined(__ARM_FEATURE_UNALIGNED)) &&                                      \
+    !defined(__ALIGNED__)
 #define UNALIGNED_OK 1
-#define PAGESIZE 4096
 #else
 #define UNALIGNED_OK 0
 #endif
-#endif
+#endif /* UNALIGNED_OK */
+
+#if UNALIGNED_OK && !defined(PAGESIZE)
+#define PAGESIZE 4096
+#endif /* PAGESIZE */
 
 /***************************************************************************/
 
@@ -93,6 +98,10 @@
 
 #if defined(__ia32__)
 #include <cpuid.h>
+#endif
+
+#if defined(__e2k__)
+#include <e2kbuiltin.h>
 #endif
 
 #ifndef likely
@@ -121,6 +130,48 @@
     (__GNUC_PREREQ(3, 2) || __has_attribute(always_inline))
 #define __always_inline __inline __attribute__((always_inline))
 #endif
+
+#if defined(__e2k__)
+
+#if __iset__ >= 3
+#define mul_64x64_high(a, b) __builtin_e2k_umulhd(a, b)
+#endif /* __iset__ >= 3 */
+
+#if __iset__ >= 5
+static __maybe_unused __always_inline unsigned
+e2k_add64carry_first(uint64_t base, uint64_t addend, uint64_t *sum) {
+  *sum = base + addend;
+  *sum = __builtin_e2k_addcd(base, addend, carry);
+  return (unsigned)__builtin_e2k_addcd_c(base, addend, carry);
+}
+#define add64carry_first(base, addend, sum)                                    \
+  e2k_add64carry_first(base, addend, sum)
+
+static __maybe_unused __always_inline unsigned
+e2k_add64carry_next(unsigned carry, uint64_t base, uint64_t addend,
+                    uint64_t *sum) {
+  *sum = __builtin_e2k_addcd(base, addend, carry);
+  return (unsigned)__builtin_e2k_addcd_c(base, addend, carry);
+}
+#define add64carry_next(carry, base, addend, sum)                              \
+  e2k_add64carry_next(carry, base, addend, sum)
+
+static __maybe_unused __always_inline void e2k_add64carry_last(unsigned carry,
+                                                               uint64_t base,
+                                                               uint64_t addend,
+                                                               uint64_t *sum) {
+  *sum = __builtin_e2k_addcd(base, addend, carry);
+}
+#define add64carry_last(carry, base, addend, sum)                              \
+  e2k_add64carry_last(carry, base, addend, sum)
+#endif /* __iset__ >= 5 */
+
+#if 0 /* LY: unreasonable, because alignment is required :( */
+#define fetch64_be(ptr) ((uint64_t)__builtin_e2k_ld_64s_be(ptr))
+#define fetch32_be(ptr) ((uint32_t)__builtin_e2k_ld_32u_be(ptr))
+#endif
+
+#endif /* __e2k__ Elbrus */
 
 #elif defined(_MSC_VER)
 
@@ -153,6 +204,12 @@
 #if defined(_M_X64) || defined(_M_IA64)
 #pragma intrinsic(_umul128)
 #define mul_64x64_128(a, b, ph) _umul128(a, b, ph)
+#pragma intrinsic(_addcarry_u64)
+#define add64carry_first(base, addend, sum) _addcarry_u64(0, base, addend, sum)
+#define add64carry_next(carry, base, addend, sum)                              \
+  _addcarry_u64(carry, base, addend, sum)
+#define add64carry_last(carry, base, addend, sum)                              \
+  (void)_addcarry_u64(carry, base, addend, sum)
 #endif
 
 #if defined(_M_ARM64) || defined(_M_X64) || defined(_M_IA64)
@@ -163,6 +220,57 @@
 #if defined(_M_IX86)
 #pragma intrinsic(__emulu)
 #define mul_32x32_64(a, b) __emulu(a, b)
+
+#if _MSC_FULL_VER >= 190024231 /* LY: workaround for optimizer bug */
+#pragma intrinsic(_addcarry_u32)
+#define add32carry_first(base, addend, sum) _addcarry_u32(0, base, addend, sum)
+#define add32carry_next(carry, base, addend, sum)                              \
+  _addcarry_u32(carry, base, addend, sum)
+#define add32carry_last(carry, base, addend, sum)                              \
+  (void)_addcarry_u32(carry, base, addend, sum)
+
+static __forceinline char
+msvc32_add64carry_first(uint64_t base, uint64_t addend, uint64_t *sum) {
+  uint32_t *const sum32 = (uint32_t *)sum;
+  const uint32_t base_32l = (uint32_t)base;
+  const uint32_t base_32h = (uint32_t)(base >> 32);
+  const uint32_t addend_32l = (uint32_t)addend;
+  const uint32_t addend_32h = (uint32_t)(addend >> 32);
+  return add32carry_next(add32carry_first(base_32l, addend_32l, sum32),
+                         base_32h, addend_32h, sum32 + 1);
+}
+#define add64carry_first(base, addend, sum)                                    \
+  msvc32_add64carry_first(base, addend, sum)
+
+static __forceinline char msvc32_add64carry_next(char carry, uint64_t base,
+                                                 uint64_t addend,
+                                                 uint64_t *sum) {
+  uint32_t *const sum32 = (uint32_t *)sum;
+  const uint32_t base_32l = (uint32_t)base;
+  const uint32_t base_32h = (uint32_t)(base >> 32);
+  const uint32_t addend_32l = (uint32_t)addend;
+  const uint32_t addend_32h = (uint32_t)(addend >> 32);
+  return add32carry_next(add32carry_next(carry, base_32l, addend_32l, sum32),
+                         base_32h, addend_32h, sum32 + 1);
+}
+#define add64carry_next(carry, base, addend, sum)                              \
+  msvc32_add64carry_next(carry, base, addend, sum)
+
+static __forceinline void msvc32_add64carry_last(char carry, uint64_t base,
+                                                 uint64_t addend,
+                                                 uint64_t *sum) {
+  uint32_t *const sum32 = (uint32_t *)sum;
+  const uint32_t base_32l = (uint32_t)base;
+  const uint32_t base_32h = (uint32_t)(base >> 32);
+  const uint32_t addend_32l = (uint32_t)addend;
+  const uint32_t addend_32h = (uint32_t)(addend >> 32);
+  add32carry_last(add32carry_next(carry, base_32l, addend_32l, sum32), base_32h,
+                  addend_32h, sum32 + 1);
+}
+#define add64carry_last(carry, base, addend, sum)                              \
+  msvc32_add64carry_last(carry, base, addend, sum)
+#endif /* _MSC_FULL_VER >= 190024231 */
+
 #elif defined(_M_ARM)
 #define mul_32x32_64(a, b) _arm_umull(a, b)
 #endif
@@ -235,8 +343,29 @@ static __always_inline uint16_t bswap16(uint16_t v) { return v << 8 | v >> 8; }
 #endif
 #endif /* bswap16 */
 
+#ifndef unaligned
+#if defined(__LCC__)
+#pragma diag_suppress wrong_entity_for_attribute
+#define unaligned(ptr) ((const char __attribute__((packed, aligned(1))) *)(ptr))
+#elif defined(__clang__)
+#pragma clang diagnostic ignored "-Wignored-attributes"
+#define unaligned(ptr) ((const char __attribute__((packed, aligned(1))) *)(ptr))
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wpacked"
+#define unaligned(ptr) ((const char __attribute__((packed, aligned(1))) *)(ptr))
+#elif defined(_MSC_VER)
+#pragma warning(                                                               \
+    disable : 4235) /* nonstandard extension used: '__unaligned'               \
+                     * keyword not supported on this architecture */
+#define unaligned(ptr) ((const char __unaligned *)(ptr))
+#else
+#define unaligned(ptr) ((const char *)(ptr))
+#endif
+#endif /* unaligned */
+
 /***************************************************************************/
 
+#ifndef fetch64_le
 static __always_inline uint64_t fetch64_le(const void *v) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   return *(const uint64_t *)v;
@@ -244,7 +373,9 @@ static __always_inline uint64_t fetch64_le(const void *v) {
   return bswap64(*(const uint64_t *)v);
 #endif
 }
+#endif /* fetch64_le */
 
+#ifndef fetch32_le
 static __always_inline uint32_t fetch32_le(const void *v) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   return *(const uint32_t *)v;
@@ -252,7 +383,9 @@ static __always_inline uint32_t fetch32_le(const void *v) {
   return bswap32(*(const uint32_t *)v);
 #endif
 }
+#endif /* fetch32_le */
 
+#ifndef fetch16_le
 static __always_inline uint16_t fetch16_le(const void *v) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   return *(const uint16_t *)v;
@@ -260,9 +393,10 @@ static __always_inline uint16_t fetch16_le(const void *v) {
   return bswap16(*(const uint16_t *)v);
 #endif
 }
+#endif /* fetch16_le */
 
 #if T1HA_USE_FAST_ONESHOT_READ && UNALIGNED_OK && defined(PAGESIZE) &&         \
-    PAGESIZE > 0
+    PAGESIZE > 0 && !defined(__SANITIZE_ADDRESS__)
 #define can_read_underside(ptr, size)                                          \
   ((size) <= sizeof(uintptr_t) && ((PAGESIZE - (size)) & (uintptr_t)(ptr)) != 0)
 #endif /* can_fast_read */
@@ -346,6 +480,7 @@ static __always_inline uint64_t tail64_le(const void *v, size_t tail) {
   unreachable();
 }
 
+#ifndef fetch64_be
 static __maybe_unused __always_inline uint64_t fetch64_be(const void *v) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
   return *(const uint64_t *)v;
@@ -353,7 +488,9 @@ static __maybe_unused __always_inline uint64_t fetch64_be(const void *v) {
   return bswap64(*(const uint64_t *)v);
 #endif
 }
+#endif /* fetch64_be */
 
+#ifndef fetch32_be
 static __maybe_unused __always_inline uint32_t fetch32_be(const void *v) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
   return *(const uint32_t *)v;
@@ -361,7 +498,9 @@ static __maybe_unused __always_inline uint32_t fetch32_be(const void *v) {
   return bswap32(*(const uint32_t *)v);
 #endif
 }
+#endif /* fetch32_be */
 
+#ifndef fetch16_be
 static __maybe_unused __always_inline uint16_t fetch16_be(const void *v) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
   return *(const uint16_t *)v;
@@ -369,6 +508,7 @@ static __maybe_unused __always_inline uint16_t fetch16_be(const void *v) {
   return bswap16(*(const uint16_t *)v);
 #endif
 }
+#endif /* fetch16_be */
 
 static __maybe_unused __always_inline uint64_t tail64_be(const void *v,
                                                          size_t tail) {
@@ -452,14 +592,48 @@ static __always_inline uint64_t mul_32x32_64(uint32_t a, uint32_t b) {
 }
 #endif /* mul_32x32_64 */
 
-#ifndef mul_64x64_128
-
-static __maybe_unused __always_inline unsigned add_with_carry(uint64_t *sum,
-                                                              uint64_t addend) {
-  *sum += addend;
+#ifndef add64carry_first
+static __maybe_unused __always_inline unsigned
+add64carry_first(uint64_t base, uint64_t addend, uint64_t *sum) {
+#if __has_builtin(__builtin_addcll)
+  unsigned long long carryout;
+  *sum = __builtin_addcll(base, addend, 0, &carryout);
+  return (unsigned)carryout;
+#else
+  *sum = base + addend;
   return *sum < addend;
+#endif /* __has_builtin(__builtin_addcll) */
 }
+#endif /* add64carry_fist */
 
+#ifndef add64carry_next
+static __maybe_unused __always_inline unsigned
+add64carry_next(unsigned carry, uint64_t base, uint64_t addend, uint64_t *sum) {
+#if __has_builtin(__builtin_addcll)
+  unsigned long long carryout;
+  *sum = __builtin_addcll(base, addend, carry, &carryout);
+  return (unsigned)carryout;
+#else
+  *sum = base + addend + carry;
+  return *sum < addend || (carry && *sum == addend);
+#endif /* __has_builtin(__builtin_addcll) */
+}
+#endif /* add64carry_next */
+
+#ifndef add64carry_last
+static __maybe_unused __always_inline void
+add64carry_last(unsigned carry, uint64_t base, uint64_t addend, uint64_t *sum) {
+#if __has_builtin(__builtin_addcll)
+  unsigned long long carryout;
+  *sum = __builtin_addcll(base, addend, carry, &carryout);
+  (void)carryout;
+#else
+  *sum = base + addend + carry;
+#endif /* __has_builtin(__builtin_addcll) */
+}
+#endif /* add64carry_last */
+
+#ifndef mul_64x64_128
 static __maybe_unused __always_inline uint64_t mul_64x64_128(uint64_t a,
                                                              uint64_t b,
                                                              uint64_t *h) {
@@ -474,19 +648,21 @@ static __maybe_unused __always_inline uint64_t mul_64x64_128(uint64_t a,
   return a * b;
 #else
   /* performs 64x64 to 128 bit multiplication */
-  uint64_t ll = mul_32x32_64((uint32_t)a, (uint32_t)b);
-  uint64_t lh = mul_32x32_64(a >> 32, (uint32_t)b);
-  uint64_t hl = mul_32x32_64((uint32_t)a, b >> 32);
-  *h = mul_32x32_64(a >> 32, b >> 32) + (lh >> 32) + (hl >> 32) +
-       /* Few simplification are possible here for 32-bit architectures,
-        * but thus we would lost compatibility with the original 64-bit
-        * version.  Think is very bad idea, because then 32-bit t1ha will
-        * still (relatively) very slowly and well yet not compatible. */
-       add_with_carry(&ll, lh << 32) + add_with_carry(&ll, hl << 32);
-  return ll;
+  const uint64_t ll = mul_32x32_64((uint32_t)a, (uint32_t)b);
+  const uint64_t lh = mul_32x32_64(a >> 32, (uint32_t)b);
+  const uint64_t hl = mul_32x32_64((uint32_t)a, b >> 32);
+  const uint64_t hh = mul_32x32_64(a >> 32, b >> 32);
+
+  /* Few simplification are possible here for 32-bit architectures,
+   * but thus we would lost compatibility with the original 64-bit
+   * version.  Think is very bad idea, because then 32-bit t1ha will
+   * still (relatively) very slowly and well yet not compatible. */
+  uint64_t l;
+  add64carry_last(add64carry_first(ll, lh << 32, &l), hh, lh >> 32, h);
+  add64carry_last(add64carry_first(l, hl << 32, &l), *h, hl >> 32, h);
+  return l;
 #endif
 }
-
 #endif /* mul_64x64_128() */
 
 #ifndef mul_64x64_high
@@ -631,8 +807,7 @@ static __always_inline t1ha_uint128_t add128(t1ha_uint128_t x,
     (defined(_INTEGRAL_MAX_BITS) && _INTEGRAL_MAX_BITS >= 128)
   r.v = x.v + y.v;
 #else
-  r.l = x.l + y.l;
-  r.h = (r.l < x.l) + x.h + y.h;
+  add64carry_last(add64carry_first(x.l, y.l, &r.l), x.h, y.h, &r.h);
 #endif
   return r;
 }
