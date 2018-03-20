@@ -37,6 +37,117 @@
 
 #include "./bits.h"
 
+/* LY: temporary workaround for Elbrus's memcmp() bug. */
+#if defined(__e2k__) && !__GLIBC_PREREQ(2, 24)
+int __hot mdbx_e2k_memcmp_bug_workaround(const void *s1, const void *s2,
+                                         size_t n) {
+  if (unlikely(n > 42
+               /* LY: align followed access if reasonable possible */ &&
+               (((uintptr_t)s1) & 7) != 0 &&
+               (((uintptr_t)s1) & 7) == (((uintptr_t)s2) & 7))) {
+    if (((uintptr_t)s1) & 1) {
+      const int diff = *(uint8_t *)s1 - *(uint8_t *)s2;
+      if (diff)
+        return diff;
+      s1 = (char *)s1 + 1;
+      s2 = (char *)s2 + 1;
+      n -= 1;
+    }
+
+    if (((uintptr_t)s1) & 2) {
+      const uint16_t a = *(uint16_t *)s1;
+      const uint16_t b = *(uint16_t *)s2;
+      if (likely(a != b))
+        return (__builtin_bswap16(a) > __builtin_bswap16(b)) ? 1 : -1;
+      s1 = (char *)s1 + 2;
+      s2 = (char *)s2 + 2;
+      n -= 2;
+    }
+
+    if (((uintptr_t)s1) & 4) {
+      const uint32_t a = *(uint32_t *)s1;
+      const uint32_t b = *(uint32_t *)s2;
+      if (likely(a != b))
+        return (__builtin_bswap32(a) > __builtin_bswap32(b)) ? 1 : -1;
+      s1 = (char *)s1 + 4;
+      s2 = (char *)s2 + 4;
+      n -= 4;
+    }
+  }
+
+  while (n >= 8) {
+    const uint64_t a = *(uint64_t *)s1;
+    const uint64_t b = *(uint64_t *)s2;
+    if (likely(a != b))
+      return (__builtin_bswap64(a) > __builtin_bswap64(b)) ? 1 : -1;
+    s1 = (char *)s1 + 8;
+    s2 = (char *)s2 + 8;
+    n -= 8;
+  }
+
+  if (n & 4) {
+    const uint32_t a = *(uint32_t *)s1;
+    const uint32_t b = *(uint32_t *)s2;
+    if (likely(a != b))
+      return (__builtin_bswap32(a) > __builtin_bswap32(b)) ? 1 : -1;
+    s1 = (char *)s1 + 4;
+    s2 = (char *)s2 + 4;
+  }
+
+  if (n & 2) {
+    const uint16_t a = *(uint16_t *)s1;
+    const uint16_t b = *(uint16_t *)s2;
+    if (likely(a != b))
+      return (__builtin_bswap16(a) > __builtin_bswap16(b)) ? 1 : -1;
+    s1 = (char *)s1 + 2;
+    s2 = (char *)s2 + 2;
+  }
+
+  return (n & 1) ? *(uint8_t *)s1 - *(uint8_t *)s2 : 0;
+}
+
+int __hot mdbx_e2k_strcmp_bug_workaround(const char *s1, const char *s2) {
+  while (true) {
+    int diff = *(uint8_t *)s1 - *(uint8_t *)s2;
+    if (likely(diff != 0) || *s1 == '\0')
+      return diff;
+    s1 += 1;
+    s2 += 1;
+  }
+}
+
+int __hot mdbx_e2k_strncmp_bug_workaround(const char *s1, const char *s2,
+                                          size_t n) {
+  while (n > 0) {
+    int diff = *(uint8_t *)s1 - *(uint8_t *)s2;
+    if (likely(diff != 0) || *s1 == '\0')
+      return diff;
+    s1 += 1;
+    s2 += 1;
+    n -= 1;
+  }
+  return 0;
+}
+
+size_t __hot mdbx_e2k_strlen_bug_workaround(const char *s) {
+  size_t n = 0;
+  while (*s) {
+    s += 1;
+    n += 1;
+  }
+  return n;
+}
+
+size_t __hot mdbx_e2k_strnlen_bug_workaround(const char *s, size_t maxlen) {
+  size_t n = 0;
+  while (maxlen > n && *s) {
+    s += 1;
+    n += 1;
+  }
+  return n;
+}
+#endif /* Elbrus's memcmp() bug. */
+
 /*----------------------------------------------------------------------------*/
 /* rthc (tls keys and destructors) */
 
@@ -2876,6 +2987,13 @@ uint64_t mdbx_txn_id(MDBX_txn *txn) {
   return txn->mt_txnid;
 }
 
+int mdbx_txn_flags(MDBX_txn *txn) {
+  if (unlikely(!txn || txn->mt_signature != MDBX_MT_SIGNATURE))
+    return -1;
+
+  return txn->mt_flags;
+}
+
 /* Export or close DBI handles opened in this txn. */
 static void mdbx_dbis_update(MDBX_txn *txn, int keep) {
   MDBX_dbi n = txn->mt_numdbs;
@@ -5048,15 +5166,30 @@ static int __cold mdbx_setup_dxb(MDBX_env *env, int lck_rc) {
         return MDBX_WANNA_RECOVERY /* LY: could not recovery/rollback */;
       }
 
+      const MDBX_meta *const meta0 = METAPAGE(env, 0);
+      const MDBX_meta *const meta1 = METAPAGE(env, 1);
+      const MDBX_meta *const meta2 = METAPAGE(env, 2);
+      txnid_t undo_txnid = 0;
+      while (
+          (head != meta0 && mdbx_meta_txnid_fluid(env, meta0) == undo_txnid) ||
+          (head != meta1 && mdbx_meta_txnid_fluid(env, meta1) == undo_txnid) ||
+          (head != meta2 && mdbx_meta_txnid_fluid(env, meta2) == undo_txnid))
+        undo_txnid += 1;
+      if (unlikely(undo_txnid >= meta.mm_txnid_a)) {
+        mdbx_fatal("rollback failed: no suitable txnid (0,1,2) < %" PRIaTXN,
+                   meta.mm_txnid_a);
+        return MDBX_PANIC /* LY: could not recovery/rollback */;
+      }
+
       /* LY: rollback weak checkpoint */
-      mdbx_trace("rollback: from %" PRIaTXN ", to %" PRIaTXN, head_txnid,
-                 meta.mm_txnid_a);
+      mdbx_trace("rollback: from %" PRIaTXN ", to %" PRIaTXN " as %" PRIaTXN,
+                 head_txnid, meta.mm_txnid_a, undo_txnid);
       mdbx_ensure(env, head_txnid == mdbx_meta_txnid_stable(env, head));
 
       if (env->me_flags & MDBX_WRITEMAP) {
-        head->mm_txnid_a = 0;
+        head->mm_txnid_a = undo_txnid;
         head->mm_datasync_sign = MDBX_DATASIGN_WEAK;
-        head->mm_txnid_b = 0;
+        head->mm_txnid_b = undo_txnid;
         const size_t offset =
             ((uint8_t *)container_of(head, MDBX_page, mp_meta)) -
             env->me_dxb_mmap.dxb;
@@ -5066,7 +5199,7 @@ static int __cold mdbx_setup_dxb(MDBX_env *env, int lck_rc) {
         err = mdbx_msync(&env->me_dxb_mmap, paged_offset, paged_length, false);
       } else {
         MDBX_meta rollback = *head;
-        mdbx_meta_set_txnid(env, &rollback, 0);
+        mdbx_meta_set_txnid(env, &rollback, undo_txnid);
         rollback.mm_datasync_sign = MDBX_DATASIGN_WEAK;
         err = mdbx_pwrite(env->me_fd, &rollback, sizeof(MDBX_meta),
                           (uint8_t *)head - (uint8_t *)env->me_map);
@@ -5075,7 +5208,7 @@ static int __cold mdbx_setup_dxb(MDBX_env *env, int lck_rc) {
         return err;
 
       mdbx_invalidate_cache(env->me_map, pgno2bytes(env, NUM_METAS));
-      mdbx_ensure(env, 0 == mdbx_meta_txnid_fluid(env, head));
+      mdbx_ensure(env, undo_txnid == mdbx_meta_txnid_fluid(env, head));
       mdbx_ensure(env, 0 == mdbx_meta_eq_mask(env));
       continue;
     }
@@ -10349,13 +10482,13 @@ int mdbx_dbi_open_ex(MDBX_txn *txn, const char *table_name, unsigned user_flags,
         !strncmp(table_name, txn->mt_dbxs[scan].md_name.iov_base, len)) {
       *dbi = scan;
       rc = mdbx_dbi_bind(txn, scan, user_flags, keycmp, datacmp);
-      goto unlock_return_rc;
+      goto bailout;
     }
   }
 
   if (unlikely(slot >= env->me_maxdbs)) {
     rc = MDBX_DBS_FULL;
-    goto unlock_return_rc;
+    goto bailout;
   }
 
   unsigned dbflag = DB_FRESH | DB_VALID | DB_USRVALID;
@@ -10405,7 +10538,6 @@ int mdbx_dbi_open_ex(MDBX_txn *txn, const char *table_name, unsigned user_flags,
     *dbi = slot;
   }
 
-unlock_return_rc:
   mdbx_ensure(env, mdbx_fastmutex_release(&env->me_dbi_lock) == MDBX_SUCCESS);
   return rc;
 }

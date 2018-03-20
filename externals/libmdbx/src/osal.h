@@ -120,7 +120,7 @@ typedef pthread_mutex_t mdbx_fastmutex_t;
 #if !defined(UNALIGNED_OK)
 #if defined(__i386) || defined(__x86_64__) || defined(_M_IX86) ||              \
     defined(_M_X64) || defined(i386) || defined(_X86_) || defined(__i386__) || \
-    defined(_X86_64_)
+    defined(_X86_64_) || defined(__ARM_FEATURE_UNALIGNED) || defined(__e2k__)
 #define UNALIGNED_OK 1
 #else
 #define UNALIGNED_OK 0
@@ -516,8 +516,8 @@ void mdbx_lck_destroy(MDBX_env *env);
 int mdbx_rdt_lock(MDBX_env *env);
 void mdbx_rdt_unlock(MDBX_env *env);
 
-int mdbx_txn_lock(MDBX_env *env, bool dontwait);
-void mdbx_txn_unlock(MDBX_env *env);
+LIBMDBX_API int mdbx_txn_lock(MDBX_env *env, bool dontwait);
+LIBMDBX_API void mdbx_txn_unlock(MDBX_env *env);
 
 int mdbx_rpid_set(MDBX_env *env);
 int mdbx_rpid_clear(MDBX_env *env);
