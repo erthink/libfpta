@@ -38,7 +38,7 @@
 
 /* LY: temporary workaround for Elbrus's memcmp() bug. */
 #if defined(__e2k__) && !__GLIBC_PREREQ(2, 24)
-int __hot __attribute__((weak))
+FPTU_API int __hot __attribute__((weak))
 mdbx_e2k_memcmp_bug_workaround(const void *s1, const void *s2, size_t n) {
   if (unlikely(n > 42
                /* LY: align followed access if reasonable possible */ &&
@@ -105,7 +105,7 @@ mdbx_e2k_memcmp_bug_workaround(const void *s1, const void *s2, size_t n) {
   return (n & 1) ? *(uint8_t *)s1 - *(uint8_t *)s2 : 0;
 }
 
-int __hot __attribute__((weak))
+FPTU_API int __hot __attribute__((weak))
 mdbx_e2k_strcmp_bug_workaround(const char *s1, const char *s2) {
   while (true) {
     int diff = *(uint8_t *)s1 - *(uint8_t *)s2;
@@ -116,7 +116,7 @@ mdbx_e2k_strcmp_bug_workaround(const char *s1, const char *s2) {
   }
 }
 
-int __hot __attribute__((weak))
+FPTU_API int __hot __attribute__((weak))
 mdbx_e2k_strncmp_bug_workaround(const char *s1, const char *s2, size_t n) {
   while (n > 0) {
     int diff = *(uint8_t *)s1 - *(uint8_t *)s2;
@@ -129,7 +129,7 @@ mdbx_e2k_strncmp_bug_workaround(const char *s1, const char *s2, size_t n) {
   return 0;
 }
 
-size_t __hot __attribute__((weak))
+FPTU_API size_t __hot __attribute__((weak))
 mdbx_e2k_strlen_bug_workaround(const char *s) {
   size_t n = 0;
   while (*s) {
@@ -139,7 +139,7 @@ mdbx_e2k_strlen_bug_workaround(const char *s) {
   return n;
 }
 
-size_t __hot __attribute__((weak))
+FPTU_API size_t __hot __attribute__((weak))
 mdbx_e2k_strnlen_bug_workaround(const char *s, size_t maxlen) {
   size_t n = 0;
   while (maxlen > n && *s) {
