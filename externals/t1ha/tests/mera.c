@@ -563,13 +563,7 @@ static unsigned clock_powerpc_mftb(timestamp_t *now) {
     defined(__sparc_v8plusa) || defined(__sparc_v9__) || defined(__sparc_v9)
 static unsigned clock_sparc(timestamp_t *now) {
   compiler_barrier();
-  union {
-    uint64_t i64;
-    struct {
-      uint32_t high;
-      uint32_t low;
-    } i32;
-  } cycles;
+  union timestamp cycles;
 #ifndef __GNUC__
 #warning FIXME
 #else
@@ -580,20 +574,20 @@ static unsigned clock_sparc(timestamp_t *now) {
 
 #if UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul ||                  \
     defined(__sparc64__) || defined(__sparc64)
-  __asm __volatile("rd %%tick, %0" : "=r"(cycles.i64));
+  __asm __volatile("rd %%tick, %0" : "=r"(cycles.u64));
 #else
   __asm __volatile("rd %%tick, %1; srlx %1, 32, %0"
-                   : "=r"(cycles.i32.high), "=r"(cycles.i32.low));
+                   : "=r"(cycles.u32.h), "=r"(cycles.u32.l));
 #endif /* __sparc64__ */
 
 #else
   __asm __volatile(".byte 0x83, 0x41, 0x00, 0x00; mov %%g1, %0"
-                   : "=r"(cycles.ia64)
+                   : "=r"(cycles.u64)
                    :
                    : "%g1");
 #endif /* __sparc8plus__ || __sparc_v9__ */
 #endif /* GCC */
-  *now = cycles.i64;
+  *now = cycles.u64;
   compiler_barrier();
   return 0;
 }
@@ -634,7 +628,8 @@ static unsigned clock_hppa(timestamp_t *now) {
 }
 #endif /* __hppa__ */
 
-#if defined(__s390__) || defined(__s390)
+#if defined(__s390__) || defined(__s390) || defined(__zarch__) ||              \
+    defined(__zarch)
 static unsigned clock_stcke(timestamp_t *now) {
   compiler_barrier();
   uint8_t clk[16];
@@ -1209,7 +1204,8 @@ bool mera_init(void) {
         "MFCTL(16)", "cycle");
 #endif /* __hppa__ */
 
-#if defined(__s390__) || defined(__s390)
+#if defined(__s390__) || defined(__s390) || defined(__zarch__) ||              \
+    defined(__zarch)
   probe(clock_stcke, clock_stcke, convert_1to1,
         timestamp_clock_cheap | timestamp_cycles | timestamp_clock_stable,
         "STCKE", "cycle");
@@ -1354,7 +1350,7 @@ bool mera_init(void) {
   }
 #endif /* __ia32__ */
 
-#if __NR_perf_event_open
+#if defined(__NR_perf_event_open)
   if (perf_setup() == 0) {
     bool perf_used = probe(clock_perf, clock_perf, convert_1to1,
                            timestamp_cycles | timestamp_clock_stable,
