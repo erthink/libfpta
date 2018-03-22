@@ -209,6 +209,7 @@ else()
   check_c_compiler_flag("-march=native" CC_HAS_ARCH_NATIVE)
   check_c_compiler_flag("-Og" CC_HAS_DEBUG_FRENDLY_OPTIMIZATION)
   check_c_compiler_flag("-Wall" CC_HAS_WALL)
+  check_c_compiler_flag("-Ominimal" CC_HAS_OMINIMAL)
 
   #
   # Check for an omp support
