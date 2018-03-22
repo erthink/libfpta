@@ -17,6 +17,8 @@
  * along with libfpta.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "fpta_test.h"
+
 class CursorSecondary
     : public ::testing::TestWithParam<
 #if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
@@ -829,8 +831,9 @@ TEST_P(CursorSecondary, locate_and_delele) {
           const auto lower_bound = dups_countdown.lower_bound(linear);
           if (fpta_cursor_is_ordered(ordering) &&
               lower_bound != dups_countdown.end()) {
-            const auto expected_linear = lower_bound->first;
-            const auto expected_order = reorder[expected_linear];
+            const auto SCOPED_TRACE_ONLY expected_linear = lower_bound->first;
+            const auto SCOPED_TRACE_ONLY expected_order =
+                reorder[expected_linear];
             expected_dups = lower_bound->second;
             SCOPED_TRACE("lower-bound: linear " +
                          std::to_string(expected_linear) + ", order " +
@@ -980,8 +983,9 @@ TEST_P(CursorSecondary, locate_and_delele) {
       } else if (fpta_cursor_is_ordered(ordering)) {
         const auto lower_bound = dups_countdown.lower_bound(linear);
         if (lower_bound != dups_countdown.end()) {
-          const auto expected_linear = lower_bound->first;
-          const auto expected_order = reorder[expected_linear];
+          const auto SCOPED_TRACE_ONLY expected_linear = lower_bound->first;
+          const auto SCOPED_TRACE_ONLY expected_order =
+              reorder[expected_linear];
           expected_dups = lower_bound->second;
           SCOPED_TRACE("after-delete: linear " +
                        std::to_string(expected_linear) + ", order " +

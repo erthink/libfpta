@@ -19,6 +19,10 @@
 
 #include "fpta_test.h"
 
+#ifdef __LCC__
+#pragma diag_suppress float_to_float_conversion
+#endif
+
 static const char testdb_name[] = "ut_data.fpta";
 static const char testdb_name_lck[] = "ut_data.fpta" MDBX_LOCK_SUFFIX;
 
@@ -1254,7 +1258,7 @@ TEST(Data, Compare_fp32) {
   EXPECT_EQ(fptu_lt, filter_cmp(pf, fpta_value_float(HUGE_VAL)));
 
 #if !FPTA_PROHIBIT_LOSS_PRECISION
-  EXPECT_EQ(FPTU_OK, fptu_upsert_fp32(pt, 0, (float_t)-DBL_MIN));
+  EXPECT_EQ(FPTU_OK, fptu_upsert_fp32(pt, 0, static_cast<float_t>(-DBL_MIN)));
   ASSERT_EQ(pf, fptu_lookup(pt, 0, fptu_fp32));
   EXPECT_EQ(fptu_lt, filter_cmp(pf, fpta_value_float(1)));
   EXPECT_EQ(fptu_eq, filter_cmp(pf, fpta_value_float(0)));

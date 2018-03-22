@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -177,8 +177,11 @@ TEST(Schema, Base) {
   EXPECT_EQ(FPTA_OK,
             fpta_column_describe("pk_str_uniq", fptu_cstr,
                                  fpta_primary_unique_ordered_obverse, &def));
-  EXPECT_EQ(FPTA_OK, fpta_column_describe("first_uint", fptu_uint64,
-                                          fpta_index_none, &def));
+  /* LY: было упущение, порядок колонок с одинаковыми индексами/опциями
+   * может отличаться от добавленного */
+  EXPECT_EQ(FPTA_OK, fpta_column_describe(
+                         "first_uint", fptu_uint64,
+                         fpta_secondary_withdups_ordered_obverse, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_describe("second_fp", fptu_fp64,
                                           fpta_index_none, &def));
   EXPECT_EQ(FPTA_OK, fpta_column_set_validate(&def));
@@ -254,7 +257,8 @@ TEST(Schema, Base) {
   EXPECT_EQ(0u, col_pk.column.num);
 
   EXPECT_EQ(fptu_uint64, fpta_shove2type(col_a.shove));
-  EXPECT_EQ(fpta_index_none, fpta_name_colindex(&col_a));
+  EXPECT_EQ(fpta_secondary_withdups_ordered_obverse,
+            fpta_name_colindex(&col_a));
   EXPECT_EQ(fptu_uint64, fpta_name_coltype(&col_a));
   EXPECT_EQ(1u, col_a.column.num);
 

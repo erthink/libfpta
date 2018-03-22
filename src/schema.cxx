@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -27,7 +27,7 @@ __hot fpta_shove_t fpta_shove_name(const char *name,
   for (i = 0; i < len && i < sizeof(uppercase); ++i)
     uppercase[i] = (char)toupper(name[i]);
 
-  fpta_shove_t shove = t1ha(uppercase, i, type) << fpta_name_hash_shift;
+  fpta_shove_t shove = t1ha2_atonce(uppercase, i, type) << fpta_name_hash_shift;
   if (type == fpta_table)
     shove |= fpta_flag_table;
   return shove;
@@ -154,37 +154,6 @@ static int fpta_schema_clone(const fpta_shove_t schema_key,
   }
   return FPTA_SUCCESS;
 }
-
-/* int fpta_table_schema::composite_list(
-    size_t number, fpta_table_schema::composite_iter_t &list_begin,
-    fpta_table_schema::composite_iter_t &list_end) const {
-  auto composites =
-      (const composite_item_t *)&this->_stored.columns[this->_stored.count];
-  const auto composites_end = this->_composite_offsets;
-  for (size_t i = 0; i < column_count(); ++i) {
-    const fpta_shove_t column_shove = this->_stored.columns[i];
-    if (!fpta_is_indexed(column_shove))
-      break;
-    if (!fpta_is_composite(column_shove))
-      continue;
-    if (unlikely(composites >= composites_end || *composites == 0))
-      return FPTA_SCHEMA_CORRUPTED;
-
-    const auto first = composites + 1;
-    const auto last = first + *composites;
-    if (unlikely(last > composites_end))
-      return FPTA_SCHEMA_CORRUPTED;
-
-    if (i == number) {
-      list_begin = first;
-      list_end = last;
-      return FPTA_SUCCESS;
-    }
-    composites = last;
-  }
-
-  return FPTA_EOOPS;
-} */
 
 static int index2prio(const fpta_shove_t index) {
   /* primary, secondary, non-indexed non-nullable, non-indexed nullable */
@@ -470,8 +439,8 @@ static bool fpta_schema_validate(const fpta_shove_t schema_key,
     return false;
 
   uint64_t checksum =
-      t1ha(&schema->signature, schema_data.iov_len - sizeof(checksum),
-           FTPA_SCHEMA_CHECKSEED);
+      t1ha2_atonce(&schema->signature, schema_data.iov_len - sizeof(checksum),
+                   FTPA_SCHEMA_CHECKSEED);
   if (unlikely(checksum != schema->checksum))
     return false;
 
@@ -851,8 +820,8 @@ int fpta_table_create(fpta_txn *txn, const char *table_name,
     assert((uint8_t *)ptr + composites_bytes == (uint8_t *)record + bytes);
 
     record->checksum =
-        t1ha(&record->signature, bytes - sizeof(record->checksum),
-             FTPA_SCHEMA_CHECKSEED);
+        t1ha2_atonce(&record->signature, bytes - sizeof(record->checksum),
+                     FTPA_SCHEMA_CHECKSEED);
     assert(fpta_schema_validate(table_shove, data));
 
     rc = mdbx_dbi_sequence(txn->mdbx_txn, txn->db->schema_dbi, nullptr, 1);

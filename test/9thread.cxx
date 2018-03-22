@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -188,7 +188,8 @@ TEST(Threaded, SimpleConcurence) {
 
 //------------------------------------------------------------------------------
 
-static void read_thread_proc(fpta_db *db, const int thread_num,
+static void read_thread_proc(fpta_db *db,
+                             const int SCOPED_TRACE_ONLY thread_num,
                              const int reps) {
   SCOPED_TRACE("Thread " + std::to_string(thread_num) + " started");
 
@@ -382,7 +383,8 @@ static int visitor(const fptu_ro *row, void *context, void *arg) {
   return FPTA_OK;
 }
 
-static void visitor_thread_proc(fpta_db *db, const int thread_num,
+static void visitor_thread_proc(fpta_db *db,
+                                const int SCOPED_TRACE_ONLY thread_num,
                                 const int reps, int *counter) {
   SCOPED_TRACE("Thread " + std::to_string(thread_num) + " started");
   *counter = 0;
@@ -542,7 +544,7 @@ TEST(Threaded, SimpleVisitor) {
     threads.push_back(
         std::thread(visitor_thread_proc, db, i, reps, &counters[i]));
 
-  int i = 0;
+  int SCOPED_TRACE_ONLY i = 0;
   for (auto &thread : threads) {
     SCOPED_TRACE("Thread " + std::to_string(i) + ": counter = " +
                  std::to_string(counters[i]));

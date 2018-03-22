@@ -5,15 +5,11 @@ add_subdirectory(libfptu/test)
 ###############################################################################
 
 add_library(t1ha STATIC
-  t1ha/src/t1ha0.c
   t1ha/src/t1ha1.c
+  t1ha/src/t1ha2.c
   )
 
 target_compile_definitions(t1ha PRIVATE T1HA_USE_FAST_ONESHOT_READ=$<BOOL:${T1HA_USE_FAST_ONESHOT_READ}>)
-
-if(CC_HAS_ARCH_NATIVE)
-  target_compile_options(t1ha PRIVATE "-march=native")
-endif()
 
 set_target_properties(t1ha PROPERTIES
   PROJECT_LABEL "Fast Positive Hash"
@@ -52,11 +48,19 @@ set_target_properties(mdbx PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION $<BOOL:${INTERPROCEDURAL_OPTIMIZATION}>
   )
 
-install(TARGETS t1ha mdbx
-  ARCHIVE DESTINATION lib/static COMPONENT devel
-  PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
-  PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+if(CMAKE_VERSION VERSION_GREATER 2.8.11)
+  install(TARGETS t1ha mdbx
+    ARCHIVE DESTINATION lib/static COMPONENT devel
+    PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+    PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
   )
+else()
+  install(TARGETS t1ha mdbx
+    ARCHIVE DESTINATION lib/static COMPONENT devel
+    PUBLIC_HEADER DESTINATION include/fast_positive COMPONENT devel
+    PRIVATE_HEADER DESTINATION include/fast_positive COMPONENT devel
+  )
+endif()
 
 ###############################################################################
 

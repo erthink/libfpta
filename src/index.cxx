@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -87,35 +87,29 @@ static int __hot fpta_idxcmp_binary_first2last(const MDBX_val *a,
 template <typename T>
 static int __hot fpta_idxcmp_type(const MDBX_val *a, const MDBX_val *b) {
   assert(a->iov_len == sizeof(T) && b->iov_len == sizeof(T));
-  if (UNALIGNED_OK || sizeof(T) < 4) {
-    const T va = *(const T *)a->iov_base;
-    const T vb = *(const T *)b->iov_base;
-    return fptu_cmp2int(va, vb);
-  } else if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) {
-    const uint8_t *pa = (const uint8_t *)a->iov_base;
-    const uint8_t *pb = (const uint8_t *)b->iov_base;
-    int diff, i = sizeof(T) - 1;
-    do
-      diff = pa[i] - pb[i];
-    while (diff == 0 && --i >= 0);
-    return diff;
-  } else if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) {
-    return memcmp(a->iov_base, b->iov_base, sizeof(T));
+
+  T va, vb;
+  if (UNALIGNED_OK) {
+    va = *(const T *)a->iov_base;
+    vb = *(const T *)b->iov_base;
+  } else {
+    memcpy(&va, a->iov_base, sizeof(T));
+    memcpy(&vb, b->iov_base, sizeof(T));
   }
-  return 0;
+  return fptu_cmp2int(va, vb);
 }
 
 static int __hot fpta_idxcmp_fp32(const MDBX_val *a, const MDBX_val *b) {
   assert(a->iov_len == 4 && b->iov_len == 4);
-  int32_t va, vb;
 
-#if UNALIGNED_OK
-  va = *(const int32_t *)a->iov_base;
-  vb = *(const int32_t *)b->iov_base;
-#else
-  memcpy(va, a->iov_base, 4);
-  memcpy(vb, b->iov_base, 4);
-#endif
+  int32_t va, vb;
+  if (UNALIGNED_OK) {
+    va = *(const int32_t *)a->iov_base;
+    vb = *(const int32_t *)b->iov_base;
+  } else {
+    memcpy(&va, a->iov_base, 4);
+    memcpy(&vb, b->iov_base, 4);
+  }
 
   int32_t negative = va & (1 << 31);
   if ((negative ^ vb) < 0)
@@ -127,15 +121,15 @@ static int __hot fpta_idxcmp_fp32(const MDBX_val *a, const MDBX_val *b) {
 
 static int __hot fpta_idxcmp_fp64(const MDBX_val *a, const MDBX_val *b) {
   assert(a->iov_len == 8 && b->iov_len == 8);
-  int64_t va, vb;
 
-#if UNALIGNED_OK
-  va = *(const int64_t *)a->iov_base;
-  vb = *(const int64_t *)b->iov_base;
-#else
-  memcpy(va, a->iov_base, 8);
-  memcpy(vb, b->iov_base, 8);
-#endif
+  int64_t va, vb;
+  if (UNALIGNED_OK) {
+    va = *(const int64_t *)a->iov_base;
+    vb = *(const int64_t *)b->iov_base;
+  } else {
+    memcpy(&va, a->iov_base, 8);
+    memcpy(&vb, b->iov_base, 8);
+  }
 
   int64_t negative = va & UINT64_C(0x8000000000000000);
   if ((negative ^ vb) < 0)
@@ -220,7 +214,7 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
 
   if (!fpta_index_is_ordered(index)) {
     // хешируем ключ для неупорядоченного индекса
-    key.place.u64 = t1ha(key.mdbx.iov_base, key.mdbx.iov_len, 2017);
+    key.place.u64 = t1ha2_atonce(key.mdbx.iov_base, key.mdbx.iov_len, 2018);
     key.mdbx.iov_base = &key.place.u64;
     key.mdbx.iov_len = sizeof(key.place.u64);
     return FPTA_SUCCESS;
@@ -267,8 +261,8 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
       nillable += fpta_notnil_prefix_length;
       memcpy(nillable, key.mdbx.iov_base, chunk);
       key.place.longkey_obverse.tailhash =
-          t1ha((const uint8_t *)key.mdbx.iov_base + chunk,
-               key.mdbx.iov_len - chunk, 0);
+          t1ha2_atonce((const uint8_t *)key.mdbx.iov_base + chunk,
+                       key.mdbx.iov_len - chunk, 0);
     } else {
       /* ключ сравнивается от хвоста к голове,
        * копируем хвост и хэшируем начало. */
@@ -277,8 +271,8 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
       memcpy(nillable,
              (const uint8_t *)key.mdbx.iov_base + key.mdbx.iov_len - chunk,
              chunk);
-      key.place.longkey_reverse.headhash =
-          t1ha((const uint8_t *)key.mdbx.iov_base, key.mdbx.iov_len - chunk, 0);
+      key.place.longkey_reverse.headhash = t1ha2_atonce(
+          (const uint8_t *)key.mdbx.iov_base, key.mdbx.iov_len - chunk, 0);
     }
     key.mdbx.iov_len = sizeof(key.place);
     key.mdbx.iov_base = &key.place;
@@ -301,14 +295,14 @@ static __hot int fpta_normalize_key(const fpta_index_type index, fpta_key &key,
      * копируем начало и хэшируем хвост. */
     memcpy(key.place.longkey_obverse.head, key.mdbx.iov_base, fpta_max_keylen);
     key.place.longkey_obverse.tailhash =
-        t1ha((const uint8_t *)key.mdbx.iov_base + fpta_max_keylen,
-             key.mdbx.iov_len - fpta_max_keylen, 0);
+        t1ha2_atonce((const uint8_t *)key.mdbx.iov_base + fpta_max_keylen,
+                     key.mdbx.iov_len - fpta_max_keylen, 0);
   } else {
     /* ключ сравнивается от хвоста к голове,
      * копируем хвост и хэшируем начало. */
     key.place.longkey_reverse.headhash =
-        t1ha((const uint8_t *)key.mdbx.iov_base,
-             key.mdbx.iov_len - fpta_max_keylen, 0);
+        t1ha2_atonce((const uint8_t *)key.mdbx.iov_base,
+                     key.mdbx.iov_len - fpta_max_keylen, 0);
     memcpy(key.place.longkey_reverse.tail,
            (const uint8_t *)key.mdbx.iov_base + key.mdbx.iov_len -
                fpta_max_keylen,

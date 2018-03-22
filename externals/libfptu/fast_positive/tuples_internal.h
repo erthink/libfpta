@@ -1,5 +1,5 @@
-﻿/*
- * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
+/*
+ * Copyright 2016-2018 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
  *
@@ -164,13 +164,15 @@
 #			define __optimize(ops)
 #		endif
 #	else
-#			define __optimize(ops)
+#		define __optimize(ops)
 #	endif
 #endif /* __optimize */
 
 #ifndef __hot
 #	if defined(__OPTIMIZE__)
-#		if defined(__clang__) && !__has_attribute(hot)
+#		if defined(__e2k__)
+#			define __hot __attribute__((hot)) __optimize(3)
+#		elif defined(__clang__) && !__has_attribute(hot)
 			/* just put frequently used functions in separate section */
 #			define __hot __attribute__((section("text.hot"))) __optimize("O3")
 #		elif defined(__GNUC__) || __has_attribute(hot)
@@ -185,7 +187,9 @@
 
 #ifndef __cold
 #	if defined(__OPTIMIZE__)
-#		if defined(__clang__) && !__has_attribute(cold)
+#		if defined(__e2k__)
+#			define __cold __optimize(1) __attribute__((cold))
+#		elif defined(__clang__) && !__has_attribute(cold)
 			/* just put infrequently used functions in separate section */
 #			define __cold __attribute__((section("text.unlikely"))) __optimize("Os")
 #		elif defined(__GNUC__) || __has_attribute(cold)
@@ -536,3 +540,29 @@ fptu_depleted2lge(const iterator &left_pos, const iterator &left_end,
 #define PRIdSIZE PRIdPTR
 #define PRIxSIZE PRIxPTR
 #endif /* PRI*SIZE macros */
+
+/*----------------------------------------------------------------------------*/
+/* LY: temporary workaround for Elbrus's memcmp() bug. */
+#if defined(__e2k__) && !__GLIBC_PREREQ(2, 24)
+extern "C" int mdbx_e2k_memcmp_bug_workaround(const void *s1, const void *s2,
+                                              size_t n);
+extern "C" int mdbx_e2k_strcmp_bug_workaround(const char *s1, const char *s2);
+extern "C" int mdbx_e2k_strncmp_bug_workaround(const char *s1, const char *s2,
+                                               size_t n);
+extern "C" size_t mdbx_e2k_strlen_bug_workaround(const char *s);
+extern "C" size_t mdbx_e2k_strnlen_bug_workaround(const char *s, size_t maxlen);
+#include <string.h>
+#include <strings.h>
+#undef memcmp
+#define memcmp mdbx_e2k_memcmp_bug_workaround
+#undef bcmp
+#define bcmp mdbx_e2k_memcmp_bug_workaround
+#undef strcmp
+#define strcmp mdbx_e2k_strcmp_bug_workaround
+#undef strncmp
+#define strncmp mdbx_e2k_strncmp_bug_workaround
+#undef strlen
+#define strlen mdbx_e2k_strlen_bug_workaround
+#undef strnlen
+#define strnlen mdbx_e2k_strnlen_bug_workaround
+#endif /* Elbrus's memcmp() bug. */

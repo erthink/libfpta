@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -311,7 +311,12 @@ struct scalar_range_stepper {
 #pragma warning(disable : 4723) /* potential divide by 0 */
 #pragma warning(disable : 4146) /* unary minus operator applied to unsigned    \
                                    type, result still unsigned */
-#endif
+#endif                          /* _MSC_VER */
+
+#ifdef __LCC__
+#pragma GCC diagnostic push
+#pragma diag_suppress divide_by_zero
+#endif /* __LCC__ */
 
   static type value(int order, int const N) {
     assert(N > 0);
@@ -381,7 +386,11 @@ struct scalar_range_stepper {
 
 #ifdef _MSC_VER
 #pragma warning(pop)
-#endif
+#endif /* _MSC_VER */
+
+#ifdef __LCC__
+#pragma GCC diagnostic pop
+#endif /* __LCC__ */
 
     EXPECT_EQ(N, (int)probe.size());
     EXPECT_EQ(1u, probe.count(type(0)));

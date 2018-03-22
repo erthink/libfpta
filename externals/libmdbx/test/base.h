@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2017-2018 Leonid Yuriev <leo@yuriev.ru>
  * and other libmdbx authors: please see AUTHORS file.
  * All rights reserved.
@@ -75,14 +75,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
-
-#if defined(__i386__) || defined(__x86_64__)
-#include <x86intrin.h>
-#endif
 
 #include "../mdbx.h"
 #include "../src/defs.h"

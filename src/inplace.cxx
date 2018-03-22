@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2016-2018 libfpta authors: please see AUTHORS file.
  *
  * This file is part of libfpta, aka "Fast Positive Tables".
@@ -18,6 +18,10 @@
  */
 
 #include "details.h"
+
+#ifdef __LCC__
+#pragma diag_suppress unsigned_compare_with_zero
+#endif /* __LCC__ */
 
 template <typename TYPE>
 static TYPE confine_value(const fpta_value &value, const TYPE begin,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 libfptu authors: please see AUTHORS file.
+ * Copyright 2016-2018 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
  *
@@ -100,7 +100,7 @@ TEST(Compare, FetchTags) {
   }
 }
 
-void probe(const fptu_rw *major_rw, const fptu_rw *minor_rw) {
+static void probe(const fptu_rw *major_rw, const fptu_rw *minor_rw) {
   ASSERT_STREQ(nullptr, fptu_check(major_rw));
   ASSERT_STREQ(nullptr, fptu_check(minor_rw));
 
@@ -216,6 +216,7 @@ TEST(Compare, DISABLED_Shuffle)
   ASSERT_NE(nullptr, major);
   ASSERT_STREQ(nullptr, fptu_check(major));
 
+  std::string minor_pattern, major_pattern;
   time_t start_timestamp = time(nullptr);
   // 64 * 64/2 * 720 * 720 = порядка 1,061,683,200 комбинаций
   for (unsigned minor_mask = 0; minor_mask < 64; ++minor_mask) {
@@ -223,7 +224,7 @@ TEST(Compare, DISABLED_Shuffle)
          ++minor_order) {
       ASSERT_EQ(FPTU_OK, fptu_clear(minor));
 
-      std::string minor_pattern;
+      minor_pattern.clear();
       shuffle6 minor_shuffle(minor_order);
       auto pending_mask = minor_mask;
       while (pending_mask && !minor_shuffle.empty()) {
@@ -267,8 +268,9 @@ TEST(Compare, DISABLED_Shuffle)
       }
 
       if (pending_mask == 0) {
-        SCOPED_TRACE("minor: present-mask " + std::to_string(minor_mask) +
-                     ", shuffle # " + std::to_string(minor_order));
+        SCOPED_TRACE(fptu::format("minor: present-mask %u, shuffle # %u, [%s ]",
+                                  minor_mask, minor_order,
+                                  minor_pattern.c_str()));
         for (unsigned major_mask = minor_mask + 1; major_mask < 64;
              ++major_mask) {
 
@@ -284,7 +286,7 @@ TEST(Compare, DISABLED_Shuffle)
                ++major_order) {
             ASSERT_EQ(FPTU_OK, fptu_clear(major));
 
-            std::string major_pattern;
+            major_pattern.clear();
             shuffle6 major_shuffle(major_order);
             pending_mask = major_mask;
             while (pending_mask && !major_shuffle.empty()) {
@@ -328,10 +330,9 @@ TEST(Compare, DISABLED_Shuffle)
             }
 
             if (pending_mask == 0) {
-              SCOPED_TRACE("major: present-mask " + std::to_string(major_mask) +
-                           ", shuffle # " + std::to_string(major_order));
-              SCOPED_TRACE("patterns: minor [" + minor_pattern + " ], major [" +
-                           major_pattern + " ]");
+              SCOPED_TRACE(
+                  fptu::format("major: present-mask %u, shuffle # %u, [%s ]",
+                               major_mask, major_order, major_pattern.c_str()));
               ASSERT_NO_FATAL_FAILURE(probe(major, minor));
 
               time_t now_timestamp = time(nullptr);

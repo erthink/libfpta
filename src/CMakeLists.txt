@@ -91,8 +91,12 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(CC_HAS_VISIBILITY)
-  target_compile_options(fpta PRIVATE "-fvisibility=hidden")
-  if(LTO_ENABLED OR LTO_ENABLED)
+  if(CMAKE_VERSION VERSION_GREATER 2.8.11)
+    target_compile_options(fpta PRIVATE "-fvisibility=hidden")
+  else()
+    set_target_properties(fpta PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+  endif()
+  if(LTO_ENABLED OR INTERPROCEDURAL_OPTIMIZATION)
     set_target_properties(fpta PROPERTIES LINK_FLAGS "-fvisibility=hidden")
   endif()
 endif()
@@ -103,13 +107,23 @@ else()
   target_compile_definitions(fpta PRIVATE "-Dfpta_STATIC")
 endif()
 
-install(TARGETS fpta
-  LIBRARY DESTINATION lib COMPONENT runtime
-  RUNTIME DESTINATION lib COMPONENT runtime
-  ARCHIVE DESTINATION lib/static COMPONENT devel
-  PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
-  PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+if(CMAKE_VERSION VERSION_GREATER 2.8.11)
+  install(TARGETS fpta
+    LIBRARY DESTINATION lib COMPONENT runtime
+    RUNTIME DESTINATION lib COMPONENT runtime
+    ARCHIVE DESTINATION lib/static COMPONENT devel
+    PUBLIC_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
+    PRIVATE_HEADER DESTINATION include/fast_positive INCLUDES DESTINATION include COMPONENT devel
   )
+else()
+  install(TARGETS fpta
+    LIBRARY DESTINATION lib COMPONENT runtime
+    RUNTIME DESTINATION lib COMPONENT runtime
+    ARCHIVE DESTINATION lib/static COMPONENT devel
+    PUBLIC_HEADER DESTINATION include/fast_positive COMPONENT devel
+    PRIVATE_HEADER DESTINATION include/fast_positive COMPONENT devel
+  )
+endif()
 
 ###############################################################################
 #

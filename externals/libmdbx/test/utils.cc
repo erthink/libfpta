@@ -14,7 +14,7 @@
 
 #include "test.h"
 #include <float.h>
-#ifdef HAVE_IEEE754_H
+#if defined(HAVE_IEEE754_H) || __has_include(<ieee754.h>)
 #include <ieee754.h>
 #endif
 
@@ -93,21 +93,22 @@ bool hex2data(const char *hex_begin, const char *hex_end, void *ptr,
 
 //-----------------------------------------------------------------------------
 
-#ifdef __mips__
-static uint64_t *mips_tsc_addr;
-
-__cold static void mips_rdtsc_init() {
-  int mem_fd = open("/dev/mem", O_RDONLY | O_SYNC, 0);
-  HIPPEUS_ENSURE(mem_fd >= 0);
-
-  mips_tsc_addr = mmap(nullptr, pagesize, PROT_READ, MAP_SHARED, mem_fd,
-                       0x10030000 /* MIPS_ZBUS_TIMER */);
-  close(mem_fd);
-}
-#endif /* __mips__ */
-
+/* TODO: replace my 'libmera' fomr t1ha. */
 uint64_t entropy_ticks(void) {
+#if defined(EMSCRIPTEN)
+  return (uint64_t)emscripten_get_now();
+#endif /* EMSCRIPTEN */
+
+#if defined(__APPLE__) || defined(__MACH__)
+  return mach_absolute_time();
+#endif /* defined(__APPLE__) || defined(__MACH__) */
+
+#if defined(__sun__) || defined(__sun)
+  return gethrtime();
+#endif /* __sun__ */
+
 #if defined(__GNUC__) || defined(__clang__)
+
 #if defined(__ia64__)
   uint64_t ticks;
   __asm __volatile("mov %0=ar.itc" : "=r"(ticks));
@@ -124,49 +125,81 @@ uint64_t entropy_ticks(void) {
   uint64_t ticks;
   __asm __volatile("rpcc %0" : "=r"(ticks));
   return ticks;
-#elif defined(__sparc_v9__)
-  uint64_t ticks;
-  __asm __volatile("rd %%tick, %0" : "=r"(ticks));
-  return ticks;
-#elif defined(__powerpc64__) || defined(__ppc64__)
+#elif defined(__sparc__) || defined(__sparc) || defined(__sparc64__) ||        \
+    defined(__sparc64) || defined(__sparc_v8plus__) ||                         \
+    defined(__sparc_v8plus) || defined(__sparc_v8plusa__) ||                   \
+    defined(__sparc_v8plusa) || defined(__sparc_v9__) || defined(__sparc_v9)
+
+  union {
+    uint64_t u64;
+    struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+      uint32_t h, l;
+#else
+      uint32_t l, h;
+#endif
+    } u32;
+  } cycles;
+
+#if defined(__sparc_v8plus__) || defined(__sparc_v8plusa__) ||                 \
+    defined(__sparc_v9__) || defined(__sparc_v8plus) ||                        \
+    defined(__sparc_v8plusa) || defined(__sparc_v9)
+
+#if UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul ||                  \
+    defined(__sparc64__) || defined(__sparc64)
+  __asm __volatile("rd %%tick, %0" : "=r"(cycles.u64));
+#else
+  __asm __volatile("rd %%tick, %1; srlx %1, 32, %0"
+                   : "=r"(cycles.u32.h), "=r"(cycles.u32.l));
+#endif /* __sparc64__ */
+
+#else
+  __asm __volatile(".byte 0x83, 0x41, 0x00, 0x00; mov %%g1, %0"
+                   : "=r"(cycles.u64)
+                   :
+                   : "%g1");
+#endif /* __sparc8plus__ || __sparc_v9__ */
+  return cycles.u64;
+
+#elif (defined(__powerpc64__) || defined(__ppc64__) || defined(__ppc64) ||     \
+       defined(__powerpc64))
   uint64_t ticks;
   __asm __volatile("mfspr %0, 268" : "=r"(ticks));
   return ticks;
-#elif defined(__ppc__) || defined(__powerpc__)
-  unsigned tbl, tbu;
-
-  /* LY: Here not a problem if a high-part (tbu)
-   * would been updated during reading. */
-  __asm __volatile("mftb %0" : "=r"(tbl));
-  __asm __volatile("mftbu %0" : "=r"(tbu));
-
-  return (((uin64_t)tbu0) << 32) | tbl;
-#elif defined(__mips__)
-  if (mips_tsc_addr != MAP_FAILED) {
-    if (unlikely(!mips_tsc_addr)) {
-      static pthread_once_t is_initialized = PTHREAD_ONCE_INIT;
-      int rc = pthread_once(&is_initialized, mips_rdtsc_init);
-      if (unlikely(rc))
-        failure_perror("pthread_once()", rc);
-    }
-    if (mips_tsc_addr != MAP_FAILED)
-      return *mips_tsc_addr;
-  }
-#elif defined(__x86_64__) || defined(__i386__)
-#if __GNUC_PREREQ(4, 7) || __has_builtin(__builtin_ia32_rdtsc)
-  return __builtin_ia32_rdtsc();
+#elif (defined(__powerpc__) || defined(__ppc__) || defined(__powerpc) ||       \
+       defined(__ppc))
+#if UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul
+  uint64_t ticks;
+  __asm __volatile("mftb  %0" : "=r"(ticks));
+  *now = ticks;
 #else
-  unsigned lo, hi;
-
-  /* LY: Using the "a" and "d" constraints is important for correct code. */
-  __asm __volatile("rdtsc" : "=a"(lo), "=d"(hi));
-
-  return (((uint64_t)hi) << 32) + lo;
+  uint64_t ticks;
+  uint32_t low, high_before, high_after;
+  __asm __volatile("mftbu %0; mftb  %1; mftbu %2"
+                   : "=r"(high_before), "=r"(low), "=r"(high_after));
+  ticks = (uint64_t)high_after << 32;
+  ticks |= low & /* zeroes if high part has changed */
+           ~(high_before - high_after);
 #endif
+#elif defined(__aarch64__) || (defined(__ARM_ARCH) && __ARM_ARCH > 7)
+  uint64_t virtual_timer;
+  __asm __volatile("mrs %0, cntvct_el0" : "=r"(virtual_timer));
+  return virtual_timer;
+#elif defined(__ARM_ARCH) && __ARM_ARCH > 5 && __ARM_ARCH < 8
+  unsigned long pmccntr;
+  __asm __volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(pmccntr));
+  return pmccntr;
+#elif defined(__mips__) || defined(__mips) || defined(_R4000)
+  unsigned count;
+  __asm __volatile("rdhwr %0, $2" : "=r"(count));
+  return count;
 #endif /* arch selector */
+#endif /* __GNUC__ || __clang__ */
 
-#elif defined(_M_IX86) || defined(_M_X64)
+#if defined(__e2k__) || defined(__ia32__)
   return __rdtsc();
+#elif defined(_M_ARM)
+  return __rdpmccntr64();
 #elif defined(_WIN32) || defined(_WIN64) || defined(_WINDOWS)
   LARGE_INTEGER PerformanceCount;
   if (QueryPerformanceCounter(&PerformanceCount))
