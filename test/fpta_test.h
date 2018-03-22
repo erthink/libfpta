@@ -68,6 +68,13 @@
 #pragma warning(pop)
 #endif
 
+/* LY: reduce test runtime (significantly on Elbrus) */
+#if defined(__LCC__) && defined(NDEBUG) && defined(__OPTIMIZE__) &&            \
+    !defined(ENABLE_GPROF)
+#undef SCOPED_TRACE
+#define SCOPED_TRACE(message) __noop()
+#endif /* __LCC__ */
+
 //----------------------------------------------------------------------------
 
 #if defined(_WIN32) || defined(_WIN64)
