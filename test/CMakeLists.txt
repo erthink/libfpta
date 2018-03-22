@@ -23,6 +23,24 @@ if(BUILD_SHARED_LIBS)
   add_definitions("-DGTEST_LINKED_AS_SHARED_LIBRARY=1")
 endif()
 
+# LY: reduce compilation time (significantly on Elbrus)
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
+    AND NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION AND NOT LTO_ENABLED)
+  if (CC_HAS_OMINIMAL)
+    if (CMAKE_VERSION VERSION_GREATER 2.8.11)
+      add_compile_options("-Ominimal")
+    else()
+      add_definitions("-Ominimal")
+    endif()
+  elseif(CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_GNUCC)
+    if (CMAKE_VERSION VERSION_GREATER 2.8.11)
+      add_compile_options("-O1")
+    else()
+      add_definitions("-O1")
+    endif()
+  endif()
+endif()
+
 add_library(testutils STATIC
   keygen.cxx
   keygen.hpp
