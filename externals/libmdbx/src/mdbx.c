@@ -2618,6 +2618,12 @@ static int mdbx_txn_renew0(MDBX_txn *txn, unsigned flags) {
     return MDBX_PANIC;
   }
 
+  STATIC_ASSERT(sizeof(MDBX_reader) == MDBX_CACHELINE_SIZE);
+  STATIC_ASSERT(offsetof(MDBX_lockinfo, mti_numreaders) % MDBX_CACHELINE_SIZE ==
+                0);
+  STATIC_ASSERT(offsetof(MDBX_lockinfo, mti_readers) % MDBX_CACHELINE_SIZE ==
+                0);
+
   pgno_t upper_pgno = 0;
   if (flags & MDBX_TXN_RDONLY) {
     txn->mt_flags = MDBX_TXN_RDONLY;
@@ -2673,9 +2679,6 @@ static int mdbx_txn_renew0(MDBX_txn *txn, unsigned flags) {
         }
       }
 
-      STATIC_ASSERT(sizeof(MDBX_reader) == MDBX_CACHELINE_SIZE);
-      STATIC_ASSERT(
-          offsetof(MDBX_lockinfo, mti_readers) % MDBX_CACHELINE_SIZE == 0);
       r = &env->me_lck->mti_readers[slot];
       /* Claim the reader slot, carefully since other code
        * uses the reader table un-mutexed: First reset the
@@ -4160,7 +4163,7 @@ static int __cold mdbx_read_header(MDBX_env *env, MDBX_meta *meta) {
     STATIC_ASSERT(MIN_MAPSIZE < MAX_MAPSIZE);
     if (mapsize_max > MAX_MAPSIZE ||
         MAX_PAGENO < mdbx_roundup2((size_t)mapsize_max, env->me_os_psize) /
-                         (uint64_t)page.mp_meta.mm_psize) {
+                         (size_t)page.mp_meta.mm_psize) {
       const uint64_t used_bytes =
           page.mp_meta.mm_geo.next * (uint64_t)page.mp_meta.mm_psize;
       if (page.mp_meta.mm_geo.next - 1 > MAX_PAGENO ||
@@ -4762,13 +4765,13 @@ LIBMDBX_API int mdbx_env_set_geometry(MDBX_env *env, intptr_t size_lower,
 
     if (pagesize < 0) {
       pagesize = env->me_os_psize;
-      if (pagesize > MAX_PAGESIZE)
+      if ((uintptr_t)pagesize > MAX_PAGESIZE)
         pagesize = MAX_PAGESIZE;
-      mdbx_assert(env, pagesize >= MIN_PAGESIZE);
+      mdbx_assert(env, (uintptr_t)pagesize >= MIN_PAGESIZE);
     }
   }
 
-  if (pagesize < MIN_PAGESIZE || pagesize > MAX_PAGESIZE ||
+  if (pagesize < (intptr_t)MIN_PAGESIZE || pagesize > (intptr_t)MAX_PAGESIZE ||
       !mdbx_is_power2(pagesize)) {
     rc = MDBX_EINVAL;
     goto bailout;
@@ -4802,7 +4805,7 @@ LIBMDBX_API int mdbx_env_set_geometry(MDBX_env *env, intptr_t size_lower,
       size_upper = pagesize * MAX_PAGENO;
   }
 
-  if (unlikely(size_lower < MIN_MAPSIZE || size_lower > size_upper)) {
+  if (unlikely(size_lower < (intptr_t)MIN_MAPSIZE || size_lower > size_upper)) {
     rc = MDBX_EINVAL;
     goto bailout;
   }
@@ -5109,7 +5112,7 @@ static int __cold mdbx_setup_dxb(MDBX_env *env, int lck_rc) {
                 filesize_before_mmap,
                 bytes2pgno(env, (size_t)filesize_before_mmap));
     } else {
-      mdbx_notice("filesize mismatch (expect %" PRIuPTR "/%" PRIaPGNO
+      mdbx_notice("filesize mismatch (expect %" PRIuSIZE "/%" PRIaPGNO
                   ", have %" PRIu64 "/%" PRIaPGNO ")",
                   expected_bytes, bytes2pgno(env, expected_bytes),
                   filesize_before_mmap,
@@ -5125,11 +5128,11 @@ static int __cold mdbx_setup_dxb(MDBX_env *env, int lck_rc) {
       if (env->me_flags & MDBX_RDONLY) {
         mdbx_notice("ignore filesize mismatch in readonly-mode");
       } else {
-        mdbx_info("resize datafile to %" PRIu64 " bytes, %" PRIaPGNO " pages",
+        mdbx_info("resize datafile to %" PRIuSIZE " bytes, %" PRIaPGNO " pages",
                   expected_bytes, bytes2pgno(env, expected_bytes));
         err = mdbx_ftruncate(env->me_fd, expected_bytes);
         if (unlikely(err != MDBX_SUCCESS)) {
-          mdbx_error("error %d, while resize datafile to %" PRIu64
+          mdbx_error("error %d, while resize datafile to %" PRIuSIZE
                      " bytes, %" PRIaPGNO " pages",
                      rc, expected_bytes, bytes2pgno(env, expected_bytes));
           return err;
@@ -7406,9 +7409,11 @@ int mdbx_cursor_put(MDBX_cursor *mc, MDBX_val *key, MDBX_val *data,
           memcpy((char *)mp + mp->mp_upper + PAGEHDRSZ,
                  (char *)fp + fp->mp_upper + PAGEHDRSZ,
                  olddata.iov_len - fp->mp_upper - PAGEHDRSZ);
+          memcpy((char *)(&mp->mp_ptrs), (char *)(&fp->mp_ptrs),
+                 NUMKEYS(fp) * sizeof(mp->mp_ptrs[0]));
           for (i = 0; i < NUMKEYS(fp); i++) {
-            mdbx_cassert(mc, fp->mp_ptrs[i] + offset <= UINT16_MAX);
-            mp->mp_ptrs[i] = (indx_t)(fp->mp_ptrs[i] + offset);
+            mdbx_cassert(mc, mp->mp_ptrs[i] + offset <= UINT16_MAX);
+            mp->mp_ptrs[i] += (indx_t)offset;
           }
         }
       }
