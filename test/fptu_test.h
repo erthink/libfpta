@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 libfptu authors: please see AUTHORS file.
+ * Copyright 2017-2018 libfptu authors: please see AUTHORS file.
  *
  * This file is part of libfptu, aka "Fast Positive Tuples".
  *
