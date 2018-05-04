@@ -31,7 +31,7 @@ const unsigned default_option_flags =
     bench_0 | bench_1 | bench_2 | bench_xxhash | bench_tiny | bench_medium;
 
 const unsigned available_eas_flags =
-#ifdef T1HA0_AESNI_AVAILABLE
+#if T1HA0_AESNI_AVAILABLE
     bench_aes | bench_avx | user_wanna_aes |
 #ifndef __e2k__
     bench_avx2 |
@@ -82,7 +82,7 @@ void usage(void) {
       "                              i.e. t1ha0_32le(), t1ha2...\n"
       "  --be, --no-le             - include/exclude big-endian targets,\n"
       "                              i.e. t1ha0_32be(), t1ha1_64be()...\n"
-#ifdef T1HA0_AESNI_AVAILABLE
+#if T1HA0_AESNI_AVAILABLE
       "  --aes, --no-aes           - include/exclude AES-NI accelerated,\n"
       "                              i.e. t1ha0_ia32aes_avx(), etc...\n"
 #endif /* T1HA0_AESNI_AVAILABLE */
@@ -227,11 +227,12 @@ int main(int argc, const char *argv[]) {
   failed |= verify("t1ha0_32le", t1ha0_32le, refval_32le);
   failed |= verify("t1ha0_32be", t1ha0_32be, refval_32be);
 
+#if T1HA0_AESNI_AVAILABLE
 #ifdef __e2k__
   failed |=
       verify("t1ha0_ia32aes_noavx", t1ha0_ia32aes_noavx, refval_ia32aes_a);
   failed |= verify("t1ha0_ia32aes_avx", t1ha0_ia32aes_avx, refval_ia32aes_a);
-#elif defined(T1HA0_AESNI_AVAILABLE)
+#else
   ia32_fetch_cpu_features();
   if (ia32_cpu_features.basic.ecx & UINT32_C(0x02000000)) {
     failed |=
@@ -254,6 +255,7 @@ int main(int argc, const char *argv[]) {
     option_flags &= ~bench_avx;
   if ((ia32_cpu_features.extended_7.ebx & 32) == 0)
     option_flags &= ~bench_avx2;
+#endif
 #endif /* T1HA0_AESNI_AVAILABLE */
 
   if (failed)
@@ -287,7 +289,7 @@ int main(int argc, const char *argv[]) {
       hash_function = XXH64;
       hash_name = "xxhash64";
     } else {
-      hash_function = t1ha;
+      hash_function = t1ha1_le;
       hash_name = "t1ha-default";
     }
 
@@ -385,9 +387,9 @@ int main(int argc, const char *argv[]) {
   printf("\nNon-optimized/Debug build, skip benchmark\n");
 #else
   if (is_option_set(bench_tiny))
-    bench_size(5, "tiny");
+    bench_size(7, "tiny");
   if (is_option_set(bench_small))
-    bench_size(31, "small");
+    bench_size(63, "small");
   if (is_option_set(bench_medium))
     bench_size(1024, "medium");
   if (is_option_set(bench_large))

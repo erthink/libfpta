@@ -43,6 +43,10 @@
 
 #pragma once
 
+#define T1HA_VERSION_MAJOR 2
+#define T1HA_VERSION_MINOR 0
+#define T1HA_VERSION_RELEASE 2
+
 #ifndef __has_attribute
 #define __has_attribute(x) (0)
 #endif
@@ -68,6 +72,15 @@
 #define __CLANG_PREREQ(maj, min) (0)
 #endif
 #endif /* __CLANG_PREREQ */
+
+#ifndef __LCC_PREREQ
+#ifdef __LCC__
+#define __LCC_PREREQ(maj, min)                                                 \
+  ((__LCC__ << 16) + __LCC_MINOR__ >= ((maj) << 16) + (min))
+#else
+#define __LCC_PREREQ(maj, min) (0)
+#endif
+#endif /* __LCC_PREREQ */
 
 /*****************************************************************************/
 
@@ -209,12 +222,14 @@
 #endif
 #endif /* __dll_import */
 
+#ifndef T1HA_API
 #if defined(t1ha_EXPORTS)
 #define T1HA_API __dll_export
 #elif defined(t1ha_IMPORTS)
 #define T1HA_API __dll_import
 #else
 #define T1HA_API
+#endif
 #endif /* T1HA_API */
 
 #if defined(_MSC_VER) && defined(__ia32__)
@@ -269,6 +284,7 @@ typedef struct t1ha_context {
  * Note: Due performance reason 64- and 128-bit results are completely
  *       different each other, i.e. 64-bit result is NOT any part of 128-bit.
  */
+#ifndef T1HA2_DISABLED
 
 /* The at-once variant with 64-bit result */
 T1HA_API uint64_t t1ha2_atonce(const void *data, size_t length, uint64_t seed);
@@ -299,6 +315,8 @@ T1HA_API void t1ha2_update(t1ha_context_t *__restrict ctx,
 T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
                               uint64_t *__restrict extra_result /* optional */);
 
+#endif /* T1HA2_DISABLED */
+
 /******************************************************************************
  *
  *  t1ha1 = 64-bit, BASELINE FAST PORTABLE HASH:
@@ -314,6 +332,7 @@ T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
  *      However, nowadays this issue has resolved in the next t1ha2(),
  *      that was initially planned to providing a bit more quality.
  */
+#ifndef T1HA1_DISABLED
 
 /* The little-endian variant. */
 T1HA_API uint64_t t1ha1_le(const void *data, size_t length, uint64_t seed);
@@ -321,10 +340,7 @@ T1HA_API uint64_t t1ha1_le(const void *data, size_t length, uint64_t seed);
 /* The big-endian variant. */
 T1HA_API uint64_t t1ha1_be(const void *data, size_t length, uint64_t seed);
 
-/* The historical nicname for generic little-endian variant. */
-static __inline uint64_t t1ha(const void *data, size_t length, uint64_t seed) {
-  return t1ha1_le(data, length, seed);
-}
+#endif /* T1HA1_DISABLED */
 
 /******************************************************************************
  *
@@ -351,24 +367,41 @@ static __inline uint64_t t1ha(const void *data, size_t length, uint64_t seed) {
  *      over a network.
  */
 
+#ifndef T1HA0_DISABLED
+
 /* The little-endian variant for 32-bit CPU. */
 uint64_t t1ha0_32le(const void *data, size_t length, uint64_t seed);
 /* The big-endian variant for 32-bit CPU. */
 uint64_t t1ha0_32be(const void *data, size_t length, uint64_t seed);
 
-#if defined(__e2k__)
-#define T1HA0_AESNI_AVAILABLE
-uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
-uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
-#elif defined(__ia32__) && (!defined(_M_IX86) || _MSC_VER > 1800)
-#define T1HA0_AESNI_AVAILABLE
-#define T1HA0_RUNTIME_SELECT
-uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
-uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
-uint64_t t1ha0_ia32aes_avx2(const void *data, size_t length, uint64_t seed);
-#endif /* __ia32__ */
+/* Define T1HA0_AESNI_AVAILABLE to 0 for disable AES-NI support. */
+#ifndef T1HA0_AESNI_AVAILABLE
+#if defined(__e2k__) ||                                                        \
+    (defined(__ia32__) && (!defined(_M_IX86) || _MSC_VER > 1800))
+#define T1HA0_AESNI_AVAILABLE 1
+#else
+#define T1HA0_AESNI_AVAILABLE 0
+#endif
+#endif /* T1HA0_AESNI_AVAILABLE */
 
-#ifdef T1HA0_RUNTIME_SELECT
+/* Define T1HA0_RUNTIME_SELECT to 0 for disable dispatching t1ha0 at runtime. */
+#ifndef T1HA0_RUNTIME_SELECT
+#if T1HA0_AESNI_AVAILABLE && !defined(__e2k__)
+#define T1HA0_RUNTIME_SELECT 1
+#else
+#define T1HA0_RUNTIME_SELECT 0
+#endif
+#endif /* T1HA0_RUNTIME_SELECT */
+
+#if T1HA0_AESNI_AVAILABLE
+uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
+uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
+#ifndef __e2k__
+uint64_t t1ha0_ia32aes_avx2(const void *data, size_t length, uint64_t seed);
+#endif
+#endif /* T1HA0_AESNI_AVAILABLE */
+
+#if T1HA0_RUNTIME_SELECT
 #ifdef __ELF__
 /* ifunc/gnu_indirect_function will be used on ELF.
  * Please see https://en.wikipedia.org/wiki/Executable_and_Linkable_Format */
@@ -400,6 +433,8 @@ static __inline uint64_t t1ha0(const void *data, size_t length, uint64_t seed) {
 #endif
 }
 #endif /* !T1HA0_RUNTIME_SELECT */
+
+#endif /* T1HA0_DISABLED */
 
 #ifdef __cplusplus
 }
