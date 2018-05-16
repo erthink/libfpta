@@ -51,6 +51,14 @@
 
 #include <gtest/gtest.h>
 
+#ifndef GTEST_TUPLE_NAMESPACE_
+#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
+#define GTEST_TUPLE_NAMESPACE_ ::std::tr1
+#else
+#define GTEST_TUPLE_NAMESPACE_ ::std
+#endif
+#endif /* GTEST_TUPLE_NAMESPACE_ */
+
 #include <algorithm>
 #include <array>
 #include <cmath>

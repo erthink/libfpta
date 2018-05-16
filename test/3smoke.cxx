@@ -1521,13 +1521,9 @@ TEST_F(SmokeCRUD, none) {
 
 //----------------------------------------------------------------------------
 
-class SmokeSelect : public ::testing::TestWithParam<
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-                        std::tr1::tuple<fpta_index_type, fpta_cursor_options>>
-#else
-                        std::tuple<fpta_index_type, fpta_cursor_options>>
-#endif
-{
+class SmokeSelect
+    : public ::testing::TestWithParam<
+          GTEST_TUPLE_NAMESPACE_::tuple<fpta_index_type, fpta_cursor_options>> {
 public:
   scoped_db_guard db_quard;
   scoped_txn_guard txn_guard;
@@ -1540,13 +1536,8 @@ public:
 
   unsigned count_value_3;
   virtual void SetUp() {
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-    index = std::tr1::get<0>(GetParam());
-    ordering = std::tr1::get<1>(GetParam());
-#else
-    index = std::get<0>(GetParam());
-    ordering = std::get<1>(GetParam());
-#endif
+    index = GTEST_TUPLE_NAMESPACE_::get<0>(GetParam());
+    ordering = GTEST_TUPLE_NAMESPACE_::get<1>(GetParam());
     valid_ops =
         is_valid4primary(fptu_int32, index) && is_valid4cursor(index, ordering);
     ordering = (fpta_cursor_options)(ordering | fpta_dont_fetch);

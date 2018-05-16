@@ -20,15 +20,9 @@
 #include "fpta_test.h"
 
 class CursorSecondary
-    : public ::testing::TestWithParam<
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-          std::tr1::tuple<fpta_index_type, fptu_type, fpta_index_type,
-                          fptu_type, fpta_cursor_options>>
-#else
-          std::tuple<fpta_index_type, fptu_type, fpta_index_type, fptu_type,
-                     fpta_cursor_options>>
-#endif
-{
+    : public ::testing::TestWithParam<GTEST_TUPLE_NAMESPACE_::tuple<
+          fpta_index_type, fptu_type, fpta_index_type, fptu_type,
+          fpta_cursor_options>> {
 public:
   fptu_type pk_type;
   fpta_index_type pk_index;
@@ -220,19 +214,11 @@ public:
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
     ASSERT_GE(65535, NNN * NDUP);
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-    pk_index = std::tr1::get<0>(GetParam());
-    pk_type = std::tr1::get<1>(GetParam());
-    se_index = std::tr1::get<2>(GetParam());
-    se_type = std::tr1::get<3>(GetParam());
-    ordering = std::tr1::get<4>(GetParam());
-#else
-    pk_index = std::get<0>(GetParam());
-    pk_type = std::get<1>(GetParam());
-    se_index = std::get<2>(GetParam());
-    se_type = std::get<3>(GetParam());
-    ordering = std::get<4>(GetParam());
-#endif
+    pk_index = GTEST_TUPLE_NAMESPACE_::get<0>(GetParam());
+    pk_type = GTEST_TUPLE_NAMESPACE_::get<1>(GetParam());
+    se_index = GTEST_TUPLE_NAMESPACE_::get<2>(GetParam());
+    se_type = GTEST_TUPLE_NAMESPACE_::get<3>(GetParam());
+    ordering = GTEST_TUPLE_NAMESPACE_::get<4>(GetParam());
 
     bool valid_pk = is_valid4primary(pk_type, pk_index);
     bool valid_se = is_valid4secondary(pk_type, pk_index, se_type, se_index);

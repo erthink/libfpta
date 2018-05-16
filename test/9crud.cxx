@@ -24,13 +24,9 @@ static const char testdb_name[] = TEST_DB_DIR "ut_crud.fpta";
 static const char testdb_name_lck[] =
     TEST_DB_DIR "ut_crud.fpta" MDBX_LOCK_SUFFIX;
 
-class CrudSimple : public ::testing::TestWithParam<
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-                       std::tr1::tuple<bool, int, int, int, int>>
-#else
-                       std::tuple<bool, int, int, int, int>>
-#endif
-{
+class CrudSimple
+    : public ::testing::TestWithParam<
+          GTEST_TUPLE_NAMESPACE_::tuple<bool, int, int, int, int>> {
 public:
   bool secondary;
   int order_key;
@@ -45,19 +41,11 @@ public:
   fpta_name table, col_pk, col_se, col_val;
 
   virtual void SetUp() {
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-    secondary = std::tr1::get<0>(GetParam());
-    nitems = (unsigned)std::tr1::get<1>(GetParam());
-    shift = std::tr1::get<2>(GetParam());
-    order_key = std::tr1::get<3>(GetParam());
-    order_val = std::tr1::get<4>(GetParam());
-#else
-    secondary = std::get<0>(GetParam());
-    nitems = (unsigned)std::get<1>(GetParam());
-    shift = std::get<2>(GetParam());
-    order_key = std::get<3>(GetParam());
-    order_val = std::get<4>(GetParam());
-#endif
+    secondary = GTEST_TUPLE_NAMESPACE_::get<0>(GetParam());
+    nitems = (unsigned)GTEST_TUPLE_NAMESPACE_::get<1>(GetParam());
+    shift = GTEST_TUPLE_NAMESPACE_::get<2>(GetParam());
+    order_key = GTEST_TUPLE_NAMESPACE_::get<3>(GetParam());
+    order_val = GTEST_TUPLE_NAMESPACE_::get<4>(GetParam());
 
     // инициализируем идентификаторы таблицы и её колонок
     EXPECT_EQ(FPTA_OK, fpta_table_init(&table, "table"));

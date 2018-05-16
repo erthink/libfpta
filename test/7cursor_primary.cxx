@@ -41,13 +41,8 @@ static const char testdb_name_lck[] =
     TEST_DB_DIR "ut_cursor_primary.fpta" MDBX_LOCK_SUFFIX;
 
 class CursorPrimary
-    : public ::testing::TestWithParam<
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-          std::tr1::tuple<fptu_type, fpta_index_type, fpta_cursor_options>>
-#else
-          std::tuple<fptu_type, fpta_index_type, fpta_cursor_options>>
-#endif
-{
+    : public ::testing::TestWithParam<GTEST_TUPLE_NAMESPACE_::tuple<
+          fptu_type, fpta_index_type, fpta_cursor_options>> {
 public:
   fptu_type type;
   fpta_index_type index;
@@ -218,15 +213,9 @@ public:
     ASSERT_TRUE(isPrime(NNN));
     // иначе не сможем проверить fptu_uint16
     ASSERT_GE(65535, NNN);
-#if GTEST_USE_OWN_TR1_TUPLE || GTEST_HAS_TR1_TUPLE
-    type = std::tr1::get<0>(GetParam());
-    index = std::tr1::get<1>(GetParam());
-    ordering = std::tr1::get<2>(GetParam());
-#else
-    type = std::get<0>(GetParam());
-    index = std::get<1>(GetParam());
-    ordering = std::get<2>(GetParam());
-#endif
+    type = GTEST_TUPLE_NAMESPACE_::get<0>(GetParam());
+    index = GTEST_TUPLE_NAMESPACE_::get<1>(GetParam());
+    ordering = GTEST_TUPLE_NAMESPACE_::get<2>(GetParam());
     valid_index_ops = is_valid4primary(type, index);
     valid_cursor_ops = is_valid4cursor(index, ordering);
 
