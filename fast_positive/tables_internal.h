@@ -64,6 +64,10 @@
 #pragma warning(disable : 4770) /* partially validated enum used as index */
 #endif
 
+#if _MSC_VER > 1913
+#pragma warning(disable : 5045) /* will insert Spectre mitigation... */
+#endif
+
 #ifndef _WIN64 /* We don't worry about padding for 32-bit builds */
 #pragma warning(disable : 4820) /* 4 bytes padding added after data member */
 #endif
