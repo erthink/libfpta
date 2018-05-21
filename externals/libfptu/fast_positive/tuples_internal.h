@@ -76,6 +76,10 @@
 #pragma warning(disable : 4350) /* behavior change: 'std::_Wrap_alloc... */
 #endif
 
+#if _MSC_VER > 1913
+#   pragma warning(disable : 5045) /* will insert Spectre mitigation... */
+#endif
+
 #pragma warning(disable : 4514) /* 'xyz': unreferenced inline function         \
                                    has been removed */
 #pragma warning(disable : 4710) /* 'xyz': function not inlined */

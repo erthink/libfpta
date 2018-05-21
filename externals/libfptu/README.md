@@ -11,6 +11,7 @@ to machining, including cases with shared memory.
 в разделяемой памяти.
 
 *The Future will Positive. Всё будет хорошо.*
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 [![Build Status](https://travis-ci.org/leo-yuriev/libfptu.svg?branch=devel)](https://travis-ci.org/leo-yuriev/libfptu)
 [![Build status](https://ci.appveyor.com/api/projects/status/8617mtix9paivmkx/branch/devel?svg=true)](https://ci.appveyor.com/project/leo-yuriev/libfptu/branch/devel)
 [![CircleCI](https://circleci.com/gh/leo-yuriev/libfptu/tree/devel.svg?style=svg)](https://circleci.com/gh/leo-yuriev/libfptu/tree/devel)
