@@ -1272,7 +1272,7 @@ typedef enum fpta_index_type {
       fpta_secondary_withdups_unordered_nullable_obverse - fpta_index_fobverse
 } fpta_index_type;
 
-#if defined(___cplusplus) && __cplusplus >= 201103L
+#if defined(__cplusplus) && __cplusplus >= 201103L
 inline constexpr fpta_index_type operator|(const fpta_index_type a,
                                            const fpta_index_type b) {
   return (fpta_index_type)((unsigned)a | (unsigned)b);
